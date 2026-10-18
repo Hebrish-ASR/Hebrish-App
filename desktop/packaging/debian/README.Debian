@@ -1,0 +1,13 @@
+Voice To Hebrish for Ubuntu
+===========================
+
+  /usr/bin/voice-to-hebrish         the app (window + tray)
+  /usr/bin/voice-to-hebrish-model   model CLI: status | check | download [--replace]
+  /usr/lib/voice-to-hebrish/        app code + bundled sherpa-onnx (not in Ubuntu)
+  ~/.config/voice-to-hebrish/       config.json
+  ~/.local/share/voice-to-hebrish/  downloaded model versions, state.json
+
+The model (~660 MB) downloads on first launch. For the hotkey, join the input
+group and log in again:  sudo usermod -aG input $USER
+The bundled wheels match the python3 minor version the package was built for;
+rebuild after Ubuntu moves python3 to a new minor version.

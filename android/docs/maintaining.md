@@ -4,6 +4,10 @@ Written 2026-10-18. (V) = verified, (I) = inferred / not yet tested on a device.
 
 ## Model updates (0.3.0+)
 
+The protocol and the model's quirks are shared with the desktop app: [`../../shared/update-protocol.md`](../../shared/update-protocol.md).
+**Trailing silence (0.5.0):** the model needs ≥0.6 s of silence at the end, or it can drop the last sentence (measured on desktop). Since 0.5.0, `Transcriber.transcribe` appends 1 s of zeros before `acceptWaveform` (I: compiled in CI, not yet run on a device). Before 0.5.0 nothing was padded.
+
+
 A new fine-tune reaches installed apps **without a new APK**. Pushing new
 `sherpa-onnx/int8/` files to `main` of
 `danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching` is all it takes.

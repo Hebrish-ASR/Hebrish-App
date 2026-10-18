@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">Codeswitch Voice</string>
-    <string name="ime_name">Codeswitch Voice</string>
+    <string name="app_name">Voice To Hebrish</string>
+    <string name="ime_name">Voice To Hebrish</string>
     <string name="subtype_label">English + Hebrew (voice)</string>
 
     <string name="url_heliboard">https://github.com/Helium314/HeliBoard/releases</string>
@@ -38,13 +38,13 @@
     <string name="grant">Grant</string>
 
     <string name="step_ime">3. Keyboard</string>
-    <string name="ime_enabled">Codeswitch Voice is enabled.</string>
-    <string name="ime_disabled">Not enabled yet. Turn on “Codeswitch Voice” in the system keyboard list.</string>
+    <string name="ime_enabled">Voice To Hebrish is enabled.</string>
+    <string name="ime_disabled">Not enabled yet. Turn on “Voice To Hebrish” in the system keyboard list.</string>
     <string name="enable">Keyboard settings</string>
     <string name="pick">Switch keyboard</string>
 
     <string name="step_heliboard">Recommended: HeliBoard</string>
-    <string name="heliboard_body">Use HeliBoard as your main keyboard. Its mic key opens Codeswitch Voice, and once the text is in you are taken back to HeliBoard. In HeliBoard: Settings → Toolbar (or Preferences) → show the voice input key.</string>
+    <string name="heliboard_body">Use HeliBoard as your main keyboard. Its mic key opens Voice To Hebrish, and once the text is in you are taken back to HeliBoard. In HeliBoard: Settings → Toolbar (or Preferences) → show the voice input key.</string>
     <string name="get_heliboard">Get HeliBoard</string>
 
     <string name="step_options">Behaviour</string>
@@ -52,7 +52,7 @@
     <string name="auto_return">Return to previous keyboard after inserting</string>
 
     <string name="step_try">Try it</string>
-    <string name="try_hint">Tap here, switch to Codeswitch Voice, and speak…</string>
+    <string name="try_hint">Tap here, switch to Voice To Hebrish, and speak…</string>
     <string name="links">Links</string>
     <string name="open_model">Model on HF</string>
     <string name="open_dataset">Dataset on HF</string>
@@ -75,7 +75,7 @@
     <string name="return_fixed">Always %1$s</string>
     <string name="return_change">Change</string>
     <string name="return_auto_option">Automatic</string>
-    <string name="return_hint">Long-press the keyboard key in Codeswitch Voice to open the system keyboard picker at any time.</string>
+    <string name="return_hint">Long-press the keyboard key in Voice To Hebrish to open the system keyboard picker at any time.</string>
     <string name="ime_no_model">Model not downloaded. Tap the mic to open setup.</string>
     <string name="ime_no_permission">Microphone not granted. Tap the mic to open setup.</string>
     <string name="ime_tap_to_speak">Tap the mic to speak</string>

@@ -3,6 +3,7 @@ build/
 local.properties
 *.jks
 *.keystore
-app/libs/*.aar
+android/app/libs/*.aar
 .idea/
 *.iml
+.kotlin/

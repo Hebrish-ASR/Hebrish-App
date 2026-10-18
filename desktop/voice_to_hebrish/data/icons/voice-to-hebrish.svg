@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#0038B8"/>
+  <rect x="4" y="16" width="120" height="7" fill="#ffffff" opacity="0.9"/>
+  <rect x="4" y="105" width="120" height="7" fill="#ffffff" opacity="0.9"/>
+  <path d="M24 34h80a10 10 0 0 1 10 10v34a10 10 0 0 1-10 10H58l-18 14v-14H24a10 10 0 0 1-10-10V44a10 10 0 0 1 10-10z" fill="#ffffff"/>
+  <text x="44" y="76" font-family="DejaVu Sans, Arial, sans-serif" font-size="34" font-weight="700" fill="#0038B8" text-anchor="middle">A</text>
+  <text x="84" y="76" font-family="DejaVu Sans, Arial, sans-serif" font-size="34" font-weight="700" fill="#0038B8" text-anchor="middle">א</text>
+</svg>

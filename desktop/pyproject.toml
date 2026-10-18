@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voice-to-hebrish"
+dynamic = ["version"]
+description = "Voice To Hebrish: desktop dictation for English speakers in Israel (Parakeet English-Hebrew fine-tune)"
+authors = [{name = "Daniel Rosehill"}]
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+# On Linux, PySide6 and python3-evdev come from the distro (install.sh makes the venv with
+# --system-site-packages; the .deb depends on the apt packages). Windows gets them from pip.
+dependencies = ["sherpa-onnx>=1.12", "sounddevice>=0.4", "numpy"]
+
+[project.optional-dependencies]
+windows = ["PySide6-Essentials>=6.8", "pynput>=1.7", "pyperclip>=1.8"]
+
+[project.scripts]
+voice-to-hebrish = "voice_to_hebrish.ui.app:main"
+voice-to-hebrish-model = "voice_to_hebrish.model_store:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "voice_to_hebrish.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["voice_to_hebrish*"]
+
+[tool.setuptools.package-data]
+voice_to_hebrish = ["data/icons/*.svg"]

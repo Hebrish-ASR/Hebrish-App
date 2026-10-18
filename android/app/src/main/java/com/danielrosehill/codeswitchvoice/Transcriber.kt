@@ -55,7 +55,10 @@ object Transcriber {
         val rec = load(ctx)
         val stream = rec.createStream()
         try {
-            stream.acceptWaveform(samples, SAMPLE_RATE)
+            // The model drops the end of audio that has under ~0.6 s of trailing silence
+            // (measured on desktop, 2026-10-18; see shared/update-protocol.md), and a take
+            // ends the moment you tap stop. FloatArray(n) is zeros.
+            stream.acceptWaveform(samples + FloatArray(SAMPLE_RATE), SAMPLE_RATE)
             rec.decode(stream)
             return rec.getResult(stream).text.trim()
         } finally {

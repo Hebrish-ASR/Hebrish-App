@@ -1,0 +1,11 @@
+{
+  "_comment": "Where both apps get the model and how they decide it changed. Android: ModelStore.kt (REPO, SUBDIR, VERSION_FILE). Desktop: voice_to_hebrish/model_store.py (REPO, SUBDIR, FILES); desktop/tests/test_shared.py fails if they drift. Protocol: shared/update-protocol.md.",
+  "repo": "danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching",
+  "subdir": "sherpa-onnx/int8",
+  "files": ["encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"],
+  "version_file": "version.json",
+  "model_type": "nemo_transducer",
+  "sample_rate": 16000,
+  "feature_dim": 128,
+  "min_trailing_silence_s": 0.6
+}
