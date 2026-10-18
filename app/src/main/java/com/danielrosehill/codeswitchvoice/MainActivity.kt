@@ -32,6 +32,7 @@ class MainActivity : Activity() {
     private lateinit var imeStatus: TextView
     private lateinit var locationStatus: TextView
     private lateinit var resetLocationBtn: Button
+    private lateinit var returnStatus: TextView
     /** Set while the user is away granting storage access, so the folder picker opens on return. */
     private var pickAfterGrant = false
 
@@ -49,6 +50,8 @@ class MainActivity : Activity() {
         imeStatus = findViewById(R.id.ime_status)
         locationStatus = findViewById(R.id.location_status)
         resetLocationBtn = findViewById(R.id.reset_location)
+        returnStatus = findViewById(R.id.return_status)
+        findViewById<Button>(R.id.return_change).setOnClickListener { chooseReturnIme() }
 
         downloadBtn.setOnClickListener {
             if (ModelDownload.status is ModelDownload.Status.Running) ModelDownload.cancel() else ModelDownload.start(this)
@@ -74,6 +77,10 @@ class MainActivity : Activity() {
             isChecked = Prefs.autoReturn(this@MainActivity)
             setOnCheckedChangeListener { _, v -> Prefs.setAutoReturn(this@MainActivity, v) }
         }
+        findViewById<Switch>(R.id.back_switches).apply {
+            isChecked = Prefs.backSwitches(this@MainActivity)
+            setOnCheckedChangeListener { _, v -> Prefs.setBackSwitches(this@MainActivity, v) }
+        }
     }
 
     override fun onResume() {
@@ -81,6 +88,7 @@ class MainActivity : Activity() {
         ModelDownload.listener = { render() }
         if (pickAfterGrant && hasStorageAccess()) openFolderPicker()
         pickAfterGrant = false
+        noteDefaultIme()
         ModelDownload.check(this)
         render()
     }
@@ -184,6 +192,14 @@ class MainActivity : Activity() {
         micStatus.setText(if (mic) R.string.mic_ok else R.string.mic_missing)
         micBtn.visibility = if (mic) View.GONE else View.VISIBLE
 
+        val fixed = imeLabel(Prefs.returnIme(this))
+        val auto = imeLabel(Prefs.lastOtherIme(this))
+        returnStatus.text = when {
+            fixed != null -> getString(R.string.return_fixed, fixed)
+            auto != null -> getString(R.string.return_auto, auto)
+            else -> getString(R.string.return_auto_unknown)
+        }
+
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         val enabled = imm.enabledInputMethodList.any { it.packageName == packageName }
         imeStatus.setText(if (enabled) R.string.ime_enabled else R.string.ime_disabled)
@@ -205,6 +221,35 @@ class MainActivity : Activity() {
             ModelDownload.latest != null -> getString(R.string.update_none, installed.version)
             else -> ""
         }
+    }
+
+    /**
+     * The IME service can't see which keyboard it was opened from, but the system default is
+     * readable here. When setup opens it is usually the user's regular keyboard: remember it
+     * as a fallback target for VoiceImeService.switchBack.
+     */
+    private fun noteDefaultIme() {
+        val id = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) ?: return
+        if (!id.startsWith("$packageName/")) Prefs.setLastOtherIme(this, id)
+    }
+
+    private fun otherImes() = (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).enabledInputMethodList
+        .filter { it.packageName != packageName }
+
+    private fun imeLabel(id: String?) = otherImes().firstOrNull { it.id == id }?.loadLabel(packageManager)?.toString()
+
+    private fun chooseReturnIme() {
+        val imes = otherImes()
+        val labels = listOf(getString(R.string.return_auto_option)) + imes.map { it.loadLabel(packageManager).toString() }
+        val current = imes.indexOfFirst { it.id == Prefs.returnIme(this) } + 1
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.return_title)
+            .setSingleChoiceItems(labels.toTypedArray(), current) { d, which ->
+                Prefs.setReturnIme(this, if (which == 0) null else imes[which - 1].id)
+                d.dismiss()
+                render()
+            }
+            .show()
     }
 
     private fun open(url: String) = startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))

@@ -9,6 +9,8 @@ import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
+import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -17,17 +19,27 @@ import android.widget.TextView
  * The voice input method. Opened from another keyboard's mic key (HeliBoard finds it through
  * the `voice` subtype in res/xml/method.xml) or picked directly. Tap the mic to stop; the
  * transcript is committed and, by default, the previous keyboard comes back.
+ *
+ * Getting back to the regular keyboard is the part voice IMEs most often get wrong, so there
+ * are three routes (keyboard key, Back, long-press for the system picker), and [switchBack]
+ * falls through several methods. See docs/maintaining.md, "Returning to the keyboard".
  */
 class VoiceImeService : InputMethodService() {
-    private enum class State { IDLE, LOADING, RECORDING, TRANSCRIBING }
+    private enum class State { IDLE, LOADING, RECORDING, PAUSED, TRANSCRIBING }
 
     private val main = Handler(Looper.getMainLooper())
     private var state = State.IDLE
     private var recorder: Recorder? = null
+    /** Set when the user asked to leave while a take was being transcribed: insert, then switch. */
+    private var switchWhenDone = false
+    private var shownSeconds = -1
     private lateinit var status: TextView
     private lateinit var mic: ImageButton
     private lateinit var spinner: ProgressBar
     private lateinit var level: View
+    private lateinit var takeControls: View
+    private lateinit var pauseBtn: Button
+    private lateinit var insertLastBtn: Button
 
     override fun onCreateInputView(): View {
         val v = layoutInflater.inflate(R.layout.ime_view, null)
@@ -35,32 +47,63 @@ class VoiceImeService : InputMethodService() {
         mic = v.findViewById(R.id.mic)
         spinner = v.findViewById(R.id.spinner)
         level = v.findViewById(R.id.level)
+        takeControls = v.findViewById(R.id.take_controls)
+        pauseBtn = v.findViewById(R.id.pause)
+        insertLastBtn = v.findViewById(R.id.insert_last)
+        insertLastBtn.setOnClickListener { insertLast() }
         mic.setOnClickListener { onMic() }
-        v.findViewById<ImageButton>(R.id.switch_ime).setOnClickListener { cancelAndSwitchBack() }
+        v.findViewById<ImageButton>(R.id.switch_ime).apply {
+            setOnClickListener { leave() }
+            // Escape hatch that cannot fail: the system's own keyboard picker.
+            setOnLongClickListener { showPicker(); true }
+        }
         v.findViewById<ImageButton>(R.id.backspace).setOnClickListener { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
         v.findViewById<ImageButton>(R.id.space).setOnClickListener { currentInputConnection?.commitText(" ", 1) }
         v.findViewById<ImageButton>(R.id.enter).setOnClickListener { sendEnter() }
+        pauseBtn.setOnClickListener { togglePause() }
+        v.findViewById<Button>(R.id.restart).setOnClickListener { restart() }
+        v.findViewById<Button>(R.id.discard).setOnClickListener { discard() }
         return v
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         if (restarting) return
+        switchWhenDone = false
         when {
             !ModelStore.isReady(this) -> show(getString(R.string.ime_no_model), busy = false)
             !hasMic() -> show(getString(R.string.ime_no_permission), busy = false)
             Prefs.autoStart(this) -> startRecording()
             else -> { show(getString(R.string.ime_tap_to_speak), busy = false); preload() }
         }
+        renderTake()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
-        if (state == State.RECORDING) {
+        if (state == State.RECORDING || state == State.PAUSED) {
             recorder?.cancel()
             recorder = null
             state = State.IDLE
+            renderTake()
         }
+    }
+
+    /** Back leaves for the regular keyboard instead of just hiding this one (Prefs.backSwitches). */
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK && isInputViewShown && Prefs.backSwitches(this)) {
+            event.startTracking()
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK && isInputViewShown && Prefs.backSwitches(this) && event.isTracking && !event.isCanceled) {
+            leave()
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
     }
 
     private fun hasMic() = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
@@ -69,7 +112,7 @@ class VoiceImeService : InputMethodService() {
         when {
             !ModelStore.isReady(this) || !hasMic() -> openSetup()
             state == State.IDLE -> startRecording()
-            state == State.RECORDING -> stopAndTranscribe()
+            state == State.RECORDING || state == State.PAUSED -> stopAndTranscribe()
             else -> Unit
         }
     }
@@ -93,8 +136,55 @@ class VoiceImeService : InputMethodService() {
         }
         recorder = r
         state = State.RECORDING
+        shownSeconds = -1
         mic.setImageResource(R.drawable.ic_stop)
         show(getString(R.string.ime_listening), busy = false)
+        renderTake()
+    }
+
+    private fun togglePause() {
+        val r = recorder ?: return
+        when (state) {
+            State.RECORDING -> {
+                r.pause()
+                setLevel(0f)
+                state = State.PAUSED
+                show(getString(R.string.ime_paused, r.seconds / 60, r.seconds % 60), busy = false)
+            }
+            State.PAUSED -> {
+                try {
+                    r.start()
+                } catch (e: Exception) {
+                    show(getString(R.string.ime_mic_error, e.message ?: ""), busy = false)
+                    return
+                }
+                state = State.RECORDING
+                shownSeconds = -1
+                show(getString(R.string.ime_listening), busy = false)
+            }
+            else -> return
+        }
+        renderTake()
+    }
+
+    /** Throws the take away and starts a fresh one at once. */
+    private fun restart() {
+        if (state != State.RECORDING && state != State.PAUSED) return
+        recorder?.cancel()
+        recorder = null
+        state = State.IDLE
+        startRecording()
+    }
+
+    private fun discard() {
+        if (state != State.RECORDING && state != State.PAUSED) return
+        recorder?.cancel()
+        recorder = null
+        state = State.IDLE
+        setLevel(0f)
+        mic.setImageResource(R.drawable.ic_mic)
+        show(getString(R.string.ime_discarded), busy = false)
+        renderTake()
     }
 
     private fun stopAndTranscribe() {
@@ -105,34 +195,64 @@ class VoiceImeService : InputMethodService() {
         mic.setImageResource(R.drawable.ic_mic)
         if (samples.size < Transcriber.SAMPLE_RATE / 4) {
             state = State.IDLE
+            renderTake()
             show(getString(R.string.ime_too_short), busy = false)
+            if (switchWhenDone) switchBack()
             return
         }
         state = if (Transcriber.isLoaded()) State.TRANSCRIBING else State.LOADING
+        renderTake()
         show(getString(if (state == State.LOADING) R.string.ime_loading else R.string.ime_transcribing), busy = true)
         Thread {
             val result = runCatching { Transcriber.transcribe(this, samples) }
             main.post {
                 state = State.IDLE
+                val leave = switchWhenDone
+                switchWhenDone = false
                 result.onSuccess { text ->
                     if (text.isEmpty()) {
                         show(getString(R.string.ime_nothing_heard), busy = false)
+                        if (leave) switchBack()
                     } else {
-                        commit(text)
-                        show(getString(R.string.ime_tap_to_speak), busy = false)
-                        if (Prefs.autoReturn(this)) switchBack()
+                        Prefs.setLastTranscript(this, text)
+                        if (commit(text)) {
+                            show(getString(R.string.ime_tap_to_speak), busy = false)
+                            if (leave || Prefs.autoReturn(this)) switchBack()
+                        } else {
+                            // No field to type into (focus moved, field closed): keep this keyboard
+                            // up so Insert last is one tap away, even if the user asked to leave.
+                            show(getString(R.string.ime_not_inserted), busy = false)
+                        }
                     }
-                }.onFailure { show(getString(R.string.ime_error, it.message ?: it.javaClass.simpleName), busy = false) }
+                    renderTake()
+                }.onFailure {
+                    show(getString(R.string.ime_error, it.message ?: it.javaClass.simpleName), busy = false)
+                    if (leave) switchBack()
+                }
             }
         }.start()
     }
 
-    /** Adds a separating space when the cursor sits right after a non-space character. */
-    private fun commit(text: String) {
-        val ic = currentInputConnection ?: return
+    /**
+     * Adds a separating space when the cursor sits right after a non-space character. False
+     * when there is no live text field: commitText returns false on a dead connection.
+     */
+    private fun commit(text: String): Boolean {
+        val ic = currentInputConnection ?: return false
         val before = ic.getTextBeforeCursor(1, 0)
         val sep = if (!before.isNullOrEmpty() && !before[0].isWhitespace()) " " else ""
-        ic.commitText(sep + text, 1)
+        return ic.commitText(sep + text, 1)
+    }
+
+    /** Re-inserts the last transcript (kept in Prefs, so it survives the process being killed). */
+    private fun insertLast() {
+        val text = Prefs.lastTranscript(this) ?: return
+        if (commit(text)) {
+            show(getString(R.string.ime_tap_to_speak), busy = false)
+            if (Prefs.autoReturn(this)) switchBack()
+        } else {
+            show(getString(R.string.ime_no_field), busy = false)
+        }
     }
 
     private fun sendEnter() {
@@ -147,18 +267,46 @@ class VoiceImeService : InputMethodService() {
         }
     }
 
-    private fun cancelAndSwitchBack() {
-        recorder?.cancel()
-        recorder = null
-        state = State.IDLE
-        switchBack()
-    }
-
-    private fun switchBack() {
-        if (!switchToPreviousInputMethod()) {
-            (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).showInputMethodPicker()
+    /**
+     * The keyboard key and Back. A take in progress is not thrown away: it is transcribed and
+     * inserted first (Discard is the way to drop it), because losing a minute of dictation to a
+     * stray tap is worse than a sentence to delete.
+     */
+    private fun leave() {
+        when (state) {
+            State.RECORDING, State.PAUSED -> {
+                switchWhenDone = true
+                stopAndTranscribe()
+            }
+            State.LOADING, State.TRANSCRIBING -> {
+                switchWhenDone = true
+                show(getString(R.string.ime_switch_after), busy = true)
+            }
+            State.IDLE -> switchBack()
         }
     }
+
+    /**
+     * 1. The keyboard chosen in setup, if any. 2. Android's own "previous" IME, which returns
+     *    false when it has no history (e.g. this IME was picked from the system picker).
+     * 3. The last other keyboard seen as the system default, then HeliBoard, then any other
+     *    enabled keyboard. 4. The system picker, which always works.
+     */
+    private fun switchBack() {
+        val others = (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).enabledInputMethodList
+            .filter { it.packageName != packageName }.map { it.id }
+        val chosen = Prefs.returnIme(this)?.takeIf { it in others }
+        if (chosen != null && trySwitch(chosen)) return
+        if (runCatching { switchToPreviousInputMethod() }.getOrDefault(false)) return
+        val fallback = Prefs.lastOtherIme(this)?.takeIf { it in others }
+            ?: others.firstOrNull { it.startsWith(HELIBOARD) } ?: others.firstOrNull()
+        if (fallback != null && trySwitch(fallback)) return
+        showPicker()
+    }
+
+    private fun trySwitch(id: String) = runCatching { switchInputMethod(id); true }.getOrDefault(false)
+
+    private fun showPicker() = (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
 
     private fun openSetup() {
         startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -171,8 +319,27 @@ class VoiceImeService : InputMethodService() {
         mic.isEnabled = !busy
     }
 
+    /** Pause / Restart / Discard while a take is open; Insert last when idle and there is one. */
+    private fun renderTake() {
+        if (!::takeControls.isInitialized) return
+        val open = state == State.RECORDING || state == State.PAUSED
+        takeControls.visibility = if (open) View.VISIBLE else View.GONE
+        insertLastBtn.visibility = if (state == State.IDLE && Prefs.lastTranscript(this) != null) View.VISIBLE else View.GONE
+        pauseBtn.setText(if (state == State.PAUSED) R.string.resume else R.string.pause)
+    }
+
     private fun setLevel(l: Float) {
         if (!::level.isInitialized) return
         level.scaleX = (l * 4f).coerceIn(0.02f, 1f)
+        val secs = recorder?.seconds ?: return
+        if (state == State.RECORDING && secs != shownSeconds) {
+            shownSeconds = secs
+            status.text = getString(R.string.ime_listening_time, secs / 60, secs % 60, Recorder.MAX_SECONDS)
+        }
+    }
+
+    companion object {
+        /** HeliBoard's package (`helium314.keyboard`, plus `.debug` / `.nouserlib` builds). */
+        const val HELIBOARD = "helium314.keyboard"
     }
 }

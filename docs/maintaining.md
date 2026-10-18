@@ -98,6 +98,50 @@ behaviour, which HeliBoard inherits). After committing text the service calls
 `switchToPreviousInputMethod()` (API 28+, hence `minSdk 28`) and falls back to the system
 picker if that fails.
 
+## Returning to the keyboard (0.4.0)
+
+This is the part voice IMEs most often get wrong, so it has three routes and several fallbacks.
+
+Routes, all in `VoiceImeService`:
+- **Keyboard key** (bottom left): `leave()`.
+- **Back**, as a key or a gesture: `onKeyDown`/`onKeyUp` catch `KEYCODE_BACK` and call
+  `leave()` in place of the default (which only hides the IME and leaves you with no
+  keyboard). Toggle: `Prefs.backSwitches`, on by default. (I: Back reaches an IME's
+  `onKeyDown` with gesture navigation too; not yet confirmed on the Nord 3.)
+- **Long-press the keyboard key**: the system picker (`showInputMethodPicker`), which can't
+  fail.
+
+`leave()` never drops audio. A take that is recording or paused is transcribed and inserted
+first, and one already being transcribed finishes first (`switchWhenDone`). Discard is the
+explicit way to drop a take.
+
+`switchBack()` tries, in order:
+1. `Prefs.returnIme`, the keyboard chosen in setup, via `InputMethodService.switchInputMethod(id)`
+   (API 28+).
+2. `switchToPreviousInputMethod()`. It returns false when the system has no history, e.g.
+   when this IME was chosen from the picker or after a reboot. That failure is the usual
+   reason a voice IME strands the user.
+3. `Prefs.lastOtherIme`: the system default keyboard as `MainActivity.noteDefaultIme` last saw
+   it (`Settings.Secure.DEFAULT_INPUT_METHOD`, read whenever setup opens). After that,
+   HeliBoard (`helium314.keyboard*`), then any other enabled IME.
+4. The system picker.
+
+Every candidate is checked against `enabledInputMethodList` first, so a keyboard that was
+uninstalled or disabled is skipped instead of throwing.
+
+## Takes and insertion (0.4.0)
+
+- While a take is open, a row shows **Pause / Restart / Discard**. Pause stops `AudioRecord`
+  and frees the mic, so the privacy indicator goes off, and keeps the samples. Resume appends
+  to them. The 90 s cap counts the whole take across pauses. The status line shows elapsed
+  time.
+- Text is inserted automatically with `commitText` at the cursor, adding a space after a
+  non-space character. `commitText` returns false on a dead connection, e.g. when focus left
+  the field during transcription. In that case the keyboard does **not** switch away, even if
+  the user asked to leave, and **Insert last transcript** stays one tap away.
+- Every transcript is saved to `Prefs.lastTranscript`. SharedPreferences means it survives
+  the process being killed. The button shows whenever the IME is idle and a transcript exists.
+
 ## Signing
 
 The release key is **not** in the repo. GitHub Actions secrets: `RELEASE_KEYSTORE_B64`
@@ -109,6 +153,7 @@ to it. Losing it means users must uninstall before installing a newer APK.
 ## Not yet verified (as of 2026-10-18)
 
 - The update flow on a device (first real test: v4).
+- Back with gesture navigation; `switchInputMethod(id)` on OxygenOS; pause/resume on device.
 - No on-device run has been recorded yet: model load time, RAM, and transcription speed
   on the Nord 3.
 - The HeliBoard mic key landing on this IME.

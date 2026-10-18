@@ -27,4 +27,20 @@ object Prefs {
     /** Wall-clock ms of the last successful update check. */
     fun lastCheck(ctx: Context) = sp(ctx).getLong("last_check", 0L)
     fun setLastCheck(ctx: Context, v: Long) = sp(ctx).edit().putLong("last_check", v).apply()
+
+    /** Back (key or gesture) switches to the regular keyboard instead of only hiding this one. */
+    fun backSwitches(ctx: Context) = sp(ctx).getBoolean("back_switches", true)
+    fun setBackSwitches(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("back_switches", v).apply()
+
+    /** IME id the keyboard key returns to; null = automatic (see VoiceImeService.switchBack). */
+    fun returnIme(ctx: Context): String? = sp(ctx).getString("return_ime", null)
+    fun setReturnIme(ctx: Context, v: String?) = sp(ctx).edit().putString("return_ime", v).apply()
+
+    /** The last system default keyboard that wasn't this one, noted whenever setup opens. */
+    fun lastOtherIme(ctx: Context): String? = sp(ctx).getString("last_other_ime", null)
+    fun setLastOtherIme(ctx: Context, v: String) = sp(ctx).edit().putString("last_other_ime", v).apply()
+
+    /** The most recent transcript, for Insert last when it could not be typed into a field. */
+    fun lastTranscript(ctx: Context): String? = sp(ctx).getString("last_transcript", null)
+    fun setLastTranscript(ctx: Context, v: String) = sp(ctx).edit().putString("last_transcript", v).apply()
 }

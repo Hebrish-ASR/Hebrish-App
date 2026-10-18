@@ -57,6 +57,25 @@
     <string name="open_model">Model on HF</string>
     <string name="open_dataset">Dataset on HF</string>
 
+    <string name="ime_listening_time">Listening… %1$d:%2$02d (max %3$d s). Tap ■ to insert.</string>
+    <string name="ime_paused">Paused at %1$d:%2$02d. Resume, or tap ■ to insert.</string>
+    <string name="ime_discarded">Take discarded. Tap the mic to speak.</string>
+    <string name="ime_switch_after">Inserting, then switching back…</string>
+    <string name="ime_not_inserted">No text field to type into. Tap a field, then Insert last.</string>
+    <string name="ime_no_field">Tap a text field first, then Insert last.</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="restart">Restart</string>
+    <string name="discard">Discard</string>
+    <string name="insert_last">Insert last transcript</string>
+    <string name="back_switches">Back returns to my keyboard</string>
+    <string name="return_title">Keyboard to return to</string>
+    <string name="return_auto">Automatic: the keyboard you came from (now %1$s)</string>
+    <string name="return_auto_unknown">Automatic: the keyboard you came from</string>
+    <string name="return_fixed">Always %1$s</string>
+    <string name="return_change">Change</string>
+    <string name="return_auto_option">Automatic</string>
+    <string name="return_hint">Long-press the keyboard key in Codeswitch Voice to open the system keyboard picker at any time.</string>
     <string name="ime_no_model">Model not downloaded. Tap the mic to open setup.</string>
     <string name="ime_no_permission">Microphone not granted. Tap the mic to open setup.</string>
     <string name="ime_tap_to_speak">Tap the mic to speak</string>

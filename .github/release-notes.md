@@ -1,6 +1,7 @@
-**0.3.0: model updates from Hugging Face.** No new APK is needed for new fine-tunes. When a newer model is published, the setup screen shows **Update to vN**. It downloads alongside the current model (about 660 MB, Wi-Fi recommended, resumable, SHA-256 checked), then switches over and deletes the old weights.
+**0.4.0: reliable return to your keyboard, pause/restart, insert last transcript.**
 
-- Upgrading from 0.2.0 keeps your downloaded v3 model.
-- Checks run when you open the app (at most every 6 h), or tap **Check for update**.
-- Model card: https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching
-- arm64-v8a only. Android 9+. Recommended with HeliBoard as your main keyboard.
+- **Back to your keyboard:** the keyboard key and the Back key/gesture both switch back. Long-press the keyboard key for the system picker. If Android's "previous keyboard" fails, the app falls back to the keyboard you set (setup → *Keyboard to return to*), then HeliBoard, then the picker. Leaving mid-take still inserts what you said.
+- **During a take:** Pause / Resume (frees the mic while paused), Restart and Discard. The status line shows elapsed time.
+- **Insert last transcript:** if the text had nowhere to go (no field focused), the keyboard stays up and one tap inserts it once you're in a field.
+- Includes 0.3.0's model updates from Hugging Face. Upgrading keeps your downloaded model.
+- arm64-v8a only. Android 9+. Recommended with HeliBoard.

@@ -48,6 +48,15 @@ picker.
 
 Voice keyboard keys: previous keyboard · delete · **mic** · space · enter.
 
+- **Getting back to your keyboard:** tap the keyboard key or press **Back**. Long-press the
+  keyboard key for the system picker. If you leave mid-take, what you said is still
+  transcribed and inserted first. Under *Keyboard to return to* you can fix a target keyboard
+  in case the automatic choice gets it wrong.
+- **During a take:** **Pause / Resume**, **Restart** (throw it away and start again) and
+  **Discard**.
+- **Insert last transcript:** if no text field had focus when the transcript came back, it
+  is kept, and this button types it in once you tap a field.
+
 ## The model
 
 | | |

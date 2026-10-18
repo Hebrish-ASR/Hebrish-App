@@ -25,6 +25,11 @@
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/step_options" android:textAppearance="?android:attr/textAppearanceMedium" android:textStyle="bold" />
 <Switch android:id="@+id/auto_start" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="@string/auto_start" />
 <Switch android:id="@+id/auto_return" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="@string/auto_return" />
+<Switch android:id="@+id/back_switches" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="@string/back_switches" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="@string/return_title" android:textStyle="bold" />
+<TextView android:id="@+id/return_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" />
+<Button android:id="@+id/return_change" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/return_change" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/return_hint" />
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/step_try" android:textAppearance="?android:attr/textAppearanceMedium" android:textStyle="bold" />
 <EditText android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/try_hint" android:inputType="textMultiLine|textCapSentences" android:minLines="3" />
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/links" android:textAppearance="?android:attr/textAppearanceMedium" android:textStyle="bold" />
