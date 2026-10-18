@@ -29,6 +29,12 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".TryActivity"
+            android:exported="false"
+            android:label="@string/try_title"
+            android:windowSoftInputMode="adjustResize" />
+
         <service
             android:name=".VoiceImeService"
             android:exported="true"

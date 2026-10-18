@@ -3,6 +3,8 @@
 The desktop app of [Voice To Hebrish](../README.md): dictation for English speakers in
 Israel, running the English-Hebrew Parakeet fine-tune on your CPU with sherpa-onnx.
 
+![The Dictate tab on KDE Plasma](../docs/screenshots/linux-dictate.png)
+
 ## Two ways to work
 
 **Dictate** (hotkey, anywhere):

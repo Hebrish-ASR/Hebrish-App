@@ -4,6 +4,8 @@
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/app_name" android:textAppearance="?android:attr/textAppearanceLarge" android:textStyle="bold" />
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/intro" />
 <TextView android:id="@+id/version" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" />
+<Button android:id="@+id/open_try" android:layout_width="match_parent" android:layout_height="64dp" android:layout_marginTop="16dp" android:backgroundTint="@color/accent" android:textColor="#FFFFFF" android:textSize="17sp" android:text="@string/try_open" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="@string/try_open_hint" />
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/step_model" android:textAppearance="?android:attr/textAppearanceMedium" android:textStyle="bold" />
 <TextView android:id="@+id/model_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" />
 <ProgressBar android:id="@+id/model_progress" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="1000" android:visibility="gone" />

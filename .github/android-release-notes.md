@@ -1,6 +1,6 @@
-**0.5.0: new name, same app.** *Codeswitch Voice* is now **Voice To Hebrish** (a working title, and a gag).
+**0.6.0: try it without setting anything up.**
 
-- The keyboard's name in Android's keyboard list changes to "Voice To Hebrish". The app ID is unchanged, so this installs over 0.4.0 and keeps your downloaded model.
-- The code now lives in the [Voice-To-Hebrish](https://github.com/danielrosehill/Voice-To-Hebrish) repo, next to the desktop app.
+- **Try it now**: a big button at the top of the app opens a notepad with a mic button. Tap, talk, tap again, and your words appear. You don't need to enable or switch keyboards. It has example sentences to read aloud, plus Copy, Share and Clear. The model loads as the screen opens, so the first take isn't slow.
+- Includes 0.5.0: the new name (Voice To Hebrish), and 1 s of silence added after each take, so the last words aren't dropped.
+- Same app ID, so it installs over 0.4.0 and 0.5.0 and keeps your downloaded model.
 - arm64-v8a only. Android 9+. Recommended with HeliBoard.
-- **Fix:** 1 s of silence is added after each take before decoding. Without it the model could drop the last words, or the whole last sentence, if you stopped right after speaking.

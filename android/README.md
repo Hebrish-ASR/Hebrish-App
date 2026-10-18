@@ -1,6 +1,6 @@
 # Voice To Hebrish: English–Hebrew voice keyboard for Android
 
-[![Download APK v0.5.0](https://img.shields.io/badge/Download_APK-v0.5.0-2E7D6B?logo=android)](https://github.com/danielrosehill/Voice-To-Hebrish/releases/download/android-v0.5.0/VoiceToHebrish-v0.5.0.apk)
+[![Download APK v0.6.0](https://img.shields.io/badge/Download_APK-v0.6.0-2E7D6B?logo=android)](https://github.com/danielrosehill/Voice-To-Hebrish/releases/download/android-v0.6.0/VoiceToHebrish-v0.6.0.apk)
 [![Model on HF](https://img.shields.io/badge/%F0%9F%A4%97%20Model-Parakeet%20TDT%200.6B%20v2%20EN--HE%20(v3)-yellow)](https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching)
 [![Dataset on HF](https://img.shields.io/badge/%F0%9F%A4%97%20Dataset-Read--Aloud--Voice--Sentences-yellow)](https://huggingface.co/datasets/danielrosehill/Read-Aloud-Voice-Sentences)
 
@@ -13,12 +13,16 @@ Hebrew words mixed in ("I'll meet you at the *makolet* after *Shabbat*"), and it
 English with the Hebrew words **romanized**. Recognition runs **fully on the phone**; nothing
 is sent anywhere. The only network use is a single model download from Hugging Face.
 
+**Just want to hear it?** Install the APK, open the app, let it download the model, and tap
+**Try it now**. That opens a notepad with a mic button: tap, talk, tap again. No keyboard
+setup is needed. Set it up as a keyboard (below) when you want it in other apps.
+
 ## Install (recommended setup)
 
 1. Install **[HeliBoard](https://github.com/Helium314/HeliBoard/releases)** and make it your
    main keyboard.
 2. Download the APK from the
-   [APK (v0.5.0)](https://github.com/danielrosehill/Voice-To-Hebrish/releases/download/android-v0.5.0/VoiceToHebrish-v0.5.0.apk)
+   [APK (v0.6.0)](https://github.com/danielrosehill/Voice-To-Hebrish/releases/download/android-v0.6.0/VoiceToHebrish-v0.6.0.apk)
    and install it. You will need to allow installs from your browser or file manager.
 3. Open **Voice To Hebrish** and work through it:
    - **Download** the model. It is about 660 MB, downloaded once; use Wi-Fi. The download

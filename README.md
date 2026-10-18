@@ -10,6 +10,8 @@ fine-tune of NVIDIA's Parakeet that was trained on exactly that kind of English:
 with Hebrew words dropped in, written in Latin letters (*teudat zehut*, *bituach leumi*,
 *rishayon iski*). Linguists call it code-switching. Everybody else calls it Hebrish.
 
+![Voice To Hebrish on Linux: the Dictate tab, with a transcript mixing English and Hebrew words](docs/screenshots/linux-dictate.png)
+
 Everything runs **on your device**. The only network traffic is the one-time model download
 (~660 MB) and a periodic check for a newer fine-tune.
 
@@ -17,7 +19,7 @@ Everything runs **on your device**. The only network traffic is the one-time mod
 
 | Platform | Get it | What it is |
 | --- | --- | --- |
-| **Android** | [APK](https://github.com/danielrosehill/Voice-To-Hebrish/releases/download/android-v0.5.0/VoiceToHebrish-v0.5.0.apk) | A voice keyboard, the companion voice input for HeliBoard. Android 9+, arm64 |
+| **Android** | [APK](https://github.com/danielrosehill/Voice-To-Hebrish/releases/download/android-v0.6.0/VoiceToHebrish-v0.6.0.apk) | A voice keyboard, the companion voice input for HeliBoard. Android 9+, arm64 |
 | **Ubuntu** | [.deb](https://github.com/danielrosehill/Voice-To-Hebrish/releases/download/desktop-v0.2.0/voice-to-hebrish_0.2.0-1_amd64.deb) | A tray app for Ubuntu 26.04 amd64 |
 | **Windows** | [.zip](https://github.com/danielrosehill/Voice-To-Hebrish/releases/download/desktop-v0.2.0/VoiceToHebrish-v0.2.0-windows-x64.zip) | A tray app, portable: unzip and run `VoiceToHebrish.exe` |
 
@@ -46,7 +48,7 @@ Ubuntu: `sudo apt install ./voice-to-hebrish_0.2.0-1_amd64.deb`, then
 
 ## Android app
 
-A voice keyboard (IME). HeliBoard's mic key opens it, you talk, and you're returned to
+A voice keyboard (IME). Open the app and tap **Try it now** to test it in a built-in notepad before setting up anything. Once it's set up as a keyboard, HeliBoard's mic key opens it, you talk, and you're returned to
 HeliBoard with the text inserted. It updates the model by itself when a new fine-tune is
 published. Details: [`android/README.md`](android/README.md).
 

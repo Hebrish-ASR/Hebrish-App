@@ -52,6 +52,7 @@ class MainActivity : Activity() {
         resetLocationBtn = findViewById(R.id.reset_location)
         returnStatus = findViewById(R.id.return_status)
         findViewById<Button>(R.id.return_change).setOnClickListener { chooseReturnIme() }
+        findViewById<Button>(R.id.open_try).setOnClickListener { startActivity(Intent(this, TryActivity::class.java)) }
 
         downloadBtn.setOnClickListener {
             if (ModelDownload.status is ModelDownload.Status.Running) ModelDownload.cancel() else ModelDownload.start(this)
@@ -182,6 +183,10 @@ class MainActivity : Activity() {
         }
 
         renderUpdate(installed, s, ready)
+        findViewById<Button>(R.id.open_try).apply {
+            isEnabled = ready
+            setText(if (ready) R.string.try_open else R.string.try_open_no_model)
+        }
 
         val root = Prefs.modelRoot(this)
         locationStatus.text = if (root == null) getString(R.string.location_private)
