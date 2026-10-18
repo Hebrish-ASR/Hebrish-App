@@ -38,6 +38,34 @@ PyTorch on 4/5 clips (V, from the fine-tune repo's `docs/on-device.md`).
   examples; not yet checked on a device).
 - `OfflineStream.release()` frees the native stream. Call it after every decode.
 
+## IME registration: `overridesImplicitlyEnabledSubtype`
+
+0.1.0 installed but did not register as a usable keyboard on the Nord 3 (reported
+2026-10-18). Its only subtype was `imeSubtypeMode="voice"`, `languageTag="en-US"`, with no
+`overridesImplicitlyEnabledSubtype`. When an IME is enabled without explicitly chosen
+subtypes, Android implicitly enables only its keyboard-mode subtypes that match the system
+locale, plus any subtype flagged `overridesImplicitlyEnabledSubtype`. A voice-only IME
+without the flag therefore has no enabled subtype, and the picker and HeliBoard's voice-IME
+lookup skip it. 0.2.0 adds the flag, as the working `android_transcribe_app` voice IME does
+(I: the cause is reasoned from AOSP's subtype rules and that comparison; not yet confirmed
+on the device). If 0.2.0 still doesn't appear, run `adb shell ime list -a` to see whether
+the system parsed the service at all, then try adding a second subtype with
+`imeSubtypeMode="keyboard"`.
+
+## Model location
+
+`Prefs.modelRoot` is null (app storage, `filesDir/models/<version>`) or an absolute path the
+user picked; the model then lives in
+`<root>/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching/<version>`. `pruneOld` only clears
+that dedicated subfolder, never the user's folder. The picker is `ACTION_OPEN_DOCUMENT_TREE`;
+its tree URI is turned into a path (`primary:X` → `/storage/emulated/0/X`, `<uuid>:X` →
+`/storage/<uuid>/X`) because sherpa-onnx loads by file path, so a SAF URI alone is useless
+and `MANAGE_EXTERNAL_STORAGE` is required (API 30+; `WRITE_EXTERNAL_STORAGE` on 28–29).
+`ModelDownload.relocate` copies (different filesystems, so no rename) and deletes the source
+only when it was app storage; a shared copy is left for other apps. It unloads the
+recognizer first. If all-files access is later revoked, `isReady` is false and the IME
+reports the model as missing. (I: written 2026-10-18, compiled but not run on a device.)
+
 ## HeliBoard integration
 
 HeliBoard's mic key switches to an enabled IME that has a subtype with

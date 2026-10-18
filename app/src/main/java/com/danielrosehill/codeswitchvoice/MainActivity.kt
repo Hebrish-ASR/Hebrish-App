@@ -5,7 +5,10 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
@@ -14,6 +17,7 @@ import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.Switch
 import android.widget.TextView
+import java.io.File
 
 /** Setup: download the model, grant the mic, enable the keyboard, and try it out. */
 class MainActivity : Activity() {
@@ -23,6 +27,10 @@ class MainActivity : Activity() {
     private lateinit var micStatus: TextView
     private lateinit var micBtn: Button
     private lateinit var imeStatus: TextView
+    private lateinit var locationStatus: TextView
+    private lateinit var resetLocationBtn: Button
+    /** Set while the user is away granting storage access, so the folder picker opens on return. */
+    private var pickAfterGrant = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +41,8 @@ class MainActivity : Activity() {
         micStatus = findViewById(R.id.mic_status)
         micBtn = findViewById(R.id.grant_mic)
         imeStatus = findViewById(R.id.ime_status)
+        locationStatus = findViewById(R.id.location_status)
+        resetLocationBtn = findViewById(R.id.reset_location)
 
         findViewById<TextView>(R.id.version).text =
             getString(R.string.version_line, BuildConfigShim.versionName(this), ModelStore.MODEL_VERSION, ModelStore.REVISION.take(12))
@@ -40,7 +50,9 @@ class MainActivity : Activity() {
         downloadBtn.setOnClickListener {
             if (ModelDownload.status is ModelDownload.Status.Running) ModelDownload.cancel() else ModelDownload.start(this)
         }
-        micBtn.setOnClickListener { requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1) }
+        micBtn.setOnClickListener { requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC) }
+        findViewById<Button>(R.id.choose_location).setOnClickListener { chooseLocation() }
+        resetLocationBtn.setOnClickListener { ModelDownload.relocate(this, null); render() }
         findViewById<Button>(R.id.enable_ime).setOnClickListener { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
         findViewById<Button>(R.id.pick_ime).setOnClickListener {
             (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
@@ -62,6 +74,8 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         ModelDownload.listener = { render() }
+        if (pickAfterGrant && hasStorageAccess()) openFolderPicker()
+        pickAfterGrant = false
         render()
     }
 
@@ -72,10 +86,54 @@ class MainActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         render()
+        if (requestCode == REQ_STORAGE) {
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) openFolderPicker()
+            return
+        }
         if (grantResults.firstOrNull() == PackageManager.PERMISSION_DENIED && !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) {
             // Permanently denied: only the app settings page can grant it now.
             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_FOLDER || resultCode != RESULT_OK) return
+        val path = data?.data?.let(::treeToPath)
+        val dir = path?.let { File(it, ModelStore.SHARED_FOLDER) }
+        if (dir == null || !(dir.isDirectory || dir.mkdirs()) || !dir.canWrite()) {
+            locationStatus.text = getString(R.string.location_unusable)
+            return
+        }
+        ModelDownload.relocate(this, path)
+        render()
+    }
+
+    /** Shared storage needs a real file path (sherpa-onnx opens files by path), hence all-files access. */
+    private fun chooseLocation() {
+        if (hasStorageAccess()) return openFolderPicker()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            pickAfterGrant = true
+            startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:$packageName")))
+        } else {
+            requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), REQ_STORAGE)
+        }
+    }
+
+    private fun hasStorageAccess() =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Environment.isExternalStorageManager()
+        else checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+
+    private fun openFolderPicker() = startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), REQ_FOLDER)
+
+    /** "primary:Models" -> /storage/emulated/0/Models; "1234-ABCD:x" -> /storage/1234-ABCD/x (SD card). */
+    private fun treeToPath(uri: Uri): String? {
+        if (uri.authority != "com.android.externalstorage.documents") return null
+        val id = DocumentsContract.getTreeDocumentId(uri)
+        val volume = id.substringBefore(':')
+        val rel = id.substringAfter(':', "")
+        val root = if (volume == "primary") Environment.getExternalStorageDirectory().path else "/storage/$volume"
+        return if (rel.isEmpty()) root else "$root/$rel"
     }
 
     private fun render() {
@@ -86,7 +144,10 @@ class MainActivity : Activity() {
         when {
             s is ModelDownload.Status.Running -> {
                 modelProgress.progress = (s.done * 1000 / ModelStore.totalBytes).toInt()
-                modelStatus.text = getString(R.string.model_downloading, s.done / 1_000_000, mb)
+                modelStatus.text = getString(
+                    if (ModelDownload.moving) R.string.model_moving else R.string.model_downloading,
+                    s.done / 1_000_000, mb,
+                )
                 downloadBtn.setText(R.string.cancel)
                 window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
@@ -104,6 +165,11 @@ class MainActivity : Activity() {
             }
         }
 
+        val root = Prefs.modelRoot(this)
+        locationStatus.text = if (root == null) getString(R.string.location_private)
+        else getString(R.string.location_shared, ModelStore.dir(this).path)
+        resetLocationBtn.visibility = if (root == null) View.GONE else View.VISIBLE
+
         val mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         micStatus.setText(if (mic) R.string.mic_ok else R.string.mic_missing)
         micBtn.visibility = if (mic) View.GONE else View.VISIBLE
@@ -114,6 +180,12 @@ class MainActivity : Activity() {
     }
 
     private fun open(url: String) = startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+
+    private companion object {
+        const val REQ_MIC = 1
+        const val REQ_STORAGE = 2
+        const val REQ_FOLDER = 3
+    }
 }
 
 /** Avoids enabling the BuildConfig generator just for one string. */

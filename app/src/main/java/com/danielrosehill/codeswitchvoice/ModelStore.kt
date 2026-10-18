@@ -31,16 +31,68 @@ object ModelStore {
 
     fun url(f: ModelFile) = "https://huggingface.co/$REPO/resolve/$REVISION/sherpa-onnx/int8/${f.name}"
 
-    fun dir(ctx: Context) = File(ctx.filesDir, "models/$MODEL_VERSION-${REVISION.take(12)}")
+    /** Folder name inside a user-chosen location, so other apps can recognise what it holds. */
+    const val SHARED_FOLDER = "Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching"
+
+    /**
+     * The folder that holds one subfolder per model version. App-private by default; under a
+     * user-chosen folder (Prefs.modelRoot) it gets its own subfolder, because pruneOld deletes
+     * everything else in it.
+     */
+    fun base(ctx: Context, root: String? = Prefs.modelRoot(ctx)) =
+        if (root == null) File(ctx.filesDir, "models") else File(root, SHARED_FOLDER)
+
+    fun dir(ctx: Context, root: String? = Prefs.modelRoot(ctx)) =
+        File(base(ctx, root), "$MODEL_VERSION-${REVISION.take(12)}")
 
     fun file(ctx: Context, name: String) = File(dir(ctx), name)
 
-    fun isReady(ctx: Context) = FILES.all { file(ctx, it.name).let { f -> f.exists() && f.length() == it.size } }
+    fun isReady(ctx: Context, root: String? = Prefs.modelRoot(ctx)) =
+        FILES.all { File(dir(ctx, root), it.name).let { f -> f.exists() && f.length() == it.size } }
 
     /** Removes models left by earlier app versions that pinned a different revision. */
     fun pruneOld(ctx: Context) {
         val keep = dir(ctx).name
-        File(ctx.filesDir, "models").listFiles()?.filter { it.name != keep }?.forEach { it.deleteRecursively() }
+        base(ctx).listFiles()?.filter { it.name != keep }?.forEach { it.deleteRecursively() }
+    }
+
+    /**
+     * Copies a ready model from [from] to [to] (roots as in [base]). A copy, not a rename: app
+     * storage and shared storage are different filesystems. The source is deleted only when it
+     * was app storage; a copy in a shared folder is left for whatever other app uses it.
+     * Blocking; call from a worker thread.
+     */
+    fun move(ctx: Context, from: String?, to: String?, cancelled: () -> Boolean, progress: (Long) -> Unit) {
+        val src = dir(ctx, from)
+        val dst = dir(ctx, to).apply { mkdirs() }
+        var done = 0L
+        for (f in FILES) {
+            val target = File(dst, f.name)
+            if (!(target.exists() && target.length() == f.size)) {
+                val part = File(target.path + ".part")
+                var written = 0L
+                File(src, f.name).inputStream().use { input ->
+                    FileOutputStream(part).use { out ->
+                        val buf = ByteArray(1 shl 16)
+                        while (true) {
+                            if (cancelled()) throw InterruptedException("cancelled")
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            out.write(buf, 0, n)
+                            written += n
+                            progress(done + written)
+                        }
+                    }
+                }
+                if (part.length() != f.size || !part.renameTo(target)) {
+                    part.delete()
+                    throw java.io.IOException("Could not copy ${f.name}")
+                }
+            }
+            done += f.size
+            progress(done)
+        }
+        if (from == null) src.deleteRecursively()
     }
 
     /**

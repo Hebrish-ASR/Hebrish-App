@@ -19,6 +19,12 @@ object Transcriber {
 
     fun isLoaded() = recognizer != null
 
+    /** Frees the loaded model, e.g. after it moved; the next transcription loads it again. */
+    fun unload() = synchronized(lock) {
+        recognizer?.release()
+        recognizer = null
+    }
+
     /** Blocking. Safe to call repeatedly; only the first call loads. */
     fun load(ctx: Context): OfflineRecognizer {
         recognizer?.let { return it }

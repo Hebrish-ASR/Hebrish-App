@@ -1,11 +1,10 @@
-# Codeswitch Voice: English–Hebrew voice keyboard for Android (POC)
+# Codeswitch Voice: English–Hebrew voice keyboard for Android
 
 [![Download APK](https://img.shields.io/github/v/release/danielrosehill/English-Hebrew-Codeswitching-Voice-Keyboard-Android?label=Download%20APK&logo=android&color=2E7D6B)](https://github.com/danielrosehill/English-Hebrew-Codeswitching-Voice-Keyboard-Android/releases/latest)
 [![Model on HF](https://img.shields.io/badge/%F0%9F%A4%97%20Model-Parakeet%20TDT%200.6B%20v2%20EN--HE%20(v3)-yellow)](https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching)
 [![Dataset on HF](https://img.shields.io/badge/%F0%9F%A4%97%20Dataset-Read--Aloud--Voice--Sentences-yellow)](https://huggingface.co/datasets/danielrosehill/Read-Aloud-Voice-Sentences)
-![Status: POC](https://img.shields.io/badge/status-proof%20of%20concept-orange)
 
-> **Proof of concept, for testing.** This app exists to test English–Hebrew code-switching
+> **Early testing build.** This app exists to test English–Hebrew code-switching
 > dictation on Android with a fine-tuned **Parakeet TDT 0.6B v2**. It is not a finished
 > keyboard.
 
@@ -21,9 +20,17 @@ is sent anywhere. The only network use is a single model download from Hugging F
 2. Download the APK from the
    [latest release](https://github.com/danielrosehill/English-Hebrew-Codeswitching-Voice-Keyboard-Android/releases/latest)
    and install it. You will need to allow installs from your browser or file manager.
-3. Open **Codeswitch Voice (POC)** and work through it:
+3. Open **Codeswitch Voice** and work through it:
    - **Download** the model. It is about 660 MB, downloaded once; use Wi-Fi. The download
      resumes if interrupted and is checked against SHA-256.
+   - Optional, **Model location → Choose folder**: keep the model in a shared folder
+     (internal storage or SD card) instead of app storage, so other on-device ASR apps can
+     load the same files. This needs Android's *All files access* permission, because
+     sherpa-onnx opens model files by path. The app writes into
+     `<chosen folder>/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching/<version>/`
+     (`encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx`, `tokens.txt`: a standard
+     sherpa-onnx NeMo transducer). An already-downloaded model is copied there; a model already
+     present there is used as is.
    - **Grant** the microphone.
    - **Keyboard settings**: turn on *Codeswitch Voice*.
 4. In HeliBoard, make the voice input key visible (toolbar key or the key by the space bar).
@@ -53,7 +60,7 @@ The fine-tune is trained on a single speaker's voice, so expect it to work best 
 voice. Output is punctuated and cased, numbers come out as digits, and Hebrew is written in
 Latin script (the v2 tokenizer has no Hebrew characters).
 
-## Limits (POC)
+## Limits
 
 - **Offline (whole-utterance) recognition.** Text appears after you stop, not while you
   speak. Takes stop automatically at **90 s**.

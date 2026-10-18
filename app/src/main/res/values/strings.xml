@@ -1,21 +1,28 @@
 <resources>
-    <string name="app_name">Codeswitch Voice (POC)</string>
+    <string name="app_name">Codeswitch Voice</string>
     <string name="ime_name">Codeswitch Voice</string>
     <string name="subtype_label">English + Hebrew (voice)</string>
 
     <string name="url_heliboard">https://github.com/Helium314/HeliBoard/releases</string>
     <string name="url_dataset">https://huggingface.co/datasets/danielrosehill/Read-Aloud-Voice-Sentences</string>
 
-    <string name="intro">Proof-of-concept voice input for English–Hebrew code-switching. On-device Parakeet TDT 0.6B v2, fine-tuned to keep Hebrew words (romanized) inside English speech. Testing build, not a finished product.</string>
+    <string name="intro">Voice input for English–Hebrew code-switching. On-device Parakeet TDT 0.6B v2, fine-tuned to keep Hebrew words (romanized) inside English speech.</string>
     <string name="version_line">App %1$s · model %2$s (HF rev %3$s) · sherpa-onnx int8</string>
 
     <string name="step_model">1. Model</string>
     <string name="model_missing">Not downloaded. About %1$d MB from Hugging Face, once. Wi-Fi recommended.</string>
     <string name="model_downloading">Downloading… %1$d / %2$d MB</string>
     <string name="model_ready">Model %1$s ready (%2$d MB).</string>
+    <string name="model_moving">Moving model… %1$d / %2$d MB</string>
     <string name="model_failed">Download failed: %1$s. Tap Download to resume.</string>
     <string name="download">Download</string>
     <string name="cancel">Cancel</string>
+    <string name="location_title">Model location</string>
+    <string name="location_private">App storage (private to this app).</string>
+    <string name="location_shared">%1$s\nStandard sherpa-onnx int8 files: other apps with file access can load them from here.</string>
+    <string name="location_unusable">Can\'t use that folder. Pick a folder on internal storage or an SD card.</string>
+    <string name="choose_location">Choose folder</string>
+    <string name="reset_location">Use app storage</string>
 
     <string name="step_mic">2. Microphone</string>
     <string name="mic_ok">Granted.</string>

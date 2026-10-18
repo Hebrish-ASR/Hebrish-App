@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- imeSubtypeMode="voice" is what lets HeliBoard (and AOSP-derived keyboards) find this IME
-     as the target of their microphone key. -->
+     as the target of their microphone key.
+     overridesImplicitlyEnabledSubtype: when an IME is enabled, Android implicitly enables only
+     its *keyboard*-mode subtypes matching the system locale. A voice-only IME without this flag
+     ends up with no enabled subtype and is left out of the keyboard picker and of HeliBoard's
+     voice-IME lookup. See docs/maintaining.md. -->
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
     android:settingsActivity="com.danielrosehill.codeswitchvoice.MainActivity"
     android:supportsSwitchingToNextInputMethod="true">
@@ -8,5 +12,6 @@
         android:imeSubtypeLocale="en_US"
         android:imeSubtypeMode="voice"
         android:label="@string/subtype_label"
-        android:languageTag="en-US" />
+        android:languageTag="en-US"
+        android:overridesImplicitlyEnabledSubtype="true" />
 </input-method>
