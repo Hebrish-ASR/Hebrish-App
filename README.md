@@ -34,14 +34,25 @@ and needs KDE. The desktop counterpart of the Android
 
 ## Install
 
+**Ubuntu (.deb, amd64):** download it from the
+[latest release](https://github.com/danielrosehill/English-Hebrew-Codeswitching-Dictation-Linux/releases/latest), then:
+
+```bash
+sudo apt install ./codeswitch-dictation_*_amd64.deb
+sudo usermod -aG input $USER     # for the hotkey; log in again afterwards
+```
+
+The .deb bundles sherpa-onnx and is built for the python3 of Ubuntu 26.04 (3.14). On another
+Ubuntu release, rebuild it with `./build-deb.sh` (needs uv), or install from source:
+
 ```bash
 sudo apt install python3-gi gir1.2-gtk-3.0 gir1.2-ayatanaappindicator3-0.1 python3-evdev libportaudio2 wl-clipboard
-sudo usermod -aG input $USER     # for the hotkey; log in again afterwards
-./install.sh                     # needs uv; re-run to upgrade
+./install.sh                     # per-user venv in ~/.local; needs uv
 ```
 
 Then launch **Codeswitch Dictation** from the menu. In the window you can turn on
-*Start at login*.
+*Start at login*. The .deb conflicts with `parakeet-dictation` (Parakeet-Type-Ubuntu), so
+apt removes that one if it is installed. The two apps aren't meant to run side by side.
 
 ## Files
 

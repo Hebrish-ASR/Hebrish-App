@@ -81,6 +81,28 @@ The update branch (old version installed, new weights published) is covered only
 - `libayatana-appindicator is deprecated` is printed at startup. It is harmless: the GIR
   binding for the -glib replacement isn't packaged on Ubuntu yet (I).
 
+## Releasing
+
+1. Bump `__version__` in `codeswitch_dictation/__init__.py`.
+2. Run `./build-deb.sh`, which writes `dist/codeswitch-dictation_<ver>-1_amd64.deb`. It bundles
+   sherpa-onnx + sherpa-onnx-core 1.13.8 (as of 0.1.0) and is pinned to the build machine's
+   python3 minor (3.14).
+3. Run `gh release create v<ver> dist/*.deb`.
+
+The download links live in four places. Update them when the version changes:
+- this README (uses `releases/latest`, so it needs no edit);
+- the project hub `English-Hebrew-Codeswitching-Parakeet-Finetune` README;
+- the HF model card;
+- `Speech-Tech-Index`.
+
+The package has `Conflicts: parakeet-dictation`, so only one of the two Linux apps is ever
+installed. It ships `/usr/lib/udev/rules.d/70-codeswitch-dictation-uinput.rules` (uaccess on
+uinput, the same rule Steam uses) for the paste device. The hotkey still needs the
+`input` group, because a uaccess rule on keyboards would let any seat app read keystrokes.
+
+Verified 2026-10-18 (V): 0.1.0 installed with apt on daniellaptop. `ldd` shows no missing
+libs in the bundled .so files, and `--toggle` record → transcribe ran from `/usr/bin`.
+
 ## Testing
 
 - `.venv/bin/python -m pytest tests`: offline tests of the update logic.
