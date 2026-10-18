@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codeswitch-dictation"
+dynamic = ["version"]
+description = "Linux desktop dictation with the English-Hebrew code-switching Parakeet fine-tune"
+authors = [{name = "Daniel Rosehill"}]
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+# PyGObject (GTK 3 + AyatanaAppIndicator3) and python3-evdev come from the distro:
+# install.sh makes the venv with --system-site-packages.
+dependencies = ["sherpa-onnx>=1.12", "sounddevice>=0.4", "numpy"]
+
+[project.scripts]
+codeswitch-dictation = "codeswitch_dictation.app:main"
+codeswitch-dictation-model = "codeswitch_dictation.model_store:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "codeswitch_dictation.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["codeswitch_dictation*"]

@@ -1,0 +1,3 @@
+# Let the logged-in seat user create the virtual keyboard that sends the paste chord
+# (same rule Steam ships). Reading the hotkey from /dev/input still needs the input group.
+KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"

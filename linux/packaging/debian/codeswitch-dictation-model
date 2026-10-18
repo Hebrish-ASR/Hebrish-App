@@ -1,0 +1,3 @@
+#!/bin/sh
+export PYTHONPATH=/usr/lib/codeswitch-dictation${PYTHONPATH:+:$PYTHONPATH}
+exec /usr/bin/python3 -m codeswitch_dictation.model_store "$@"

@@ -1,0 +1,13 @@
+Codeswitch Dictation for Ubuntu
+===============================
+
+  /usr/bin/codeswitch-dictation         the app (window + tray)
+  /usr/bin/codeswitch-dictation-model   model CLI: status | check | download [--replace]
+  /usr/lib/codeswitch-dictation/        app code + bundled sherpa-onnx (not in Ubuntu)
+  ~/.config/codeswitch-dictation/       config.json
+  ~/.local/share/codeswitch-dictation/  downloaded model versions, state.json
+
+The model (~660 MB) downloads on first launch. For the hotkey, join the input
+group and log in again:  sudo usermod -aG input $USER
+The bundled wheels match the python3 minor version the package was built for;
+rebuild after Ubuntu moves python3 to a new minor version.
