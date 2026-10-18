@@ -15,7 +15,7 @@ license = "MIT"
 dependencies = ["sherpa-onnx>=1.12", "sounddevice>=0.4", "numpy"]
 
 [project.optional-dependencies]
-windows = ["PySide6-Essentials>=6.8", "pynput>=1.7", "pyperclip>=1.8"]
+windows = ["PySide6-Essentials>=6.8", "pynput>=1.7", "pyperclip>=1.8", "soundfile>=0.12"]
 
 [project.scripts]
 voice-to-hebrish = "voice_to_hebrish.ui.app:main"
