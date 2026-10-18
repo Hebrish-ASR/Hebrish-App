@@ -1,7 +1,7 @@
 # Voice To Hebrish: English–Hebrew voice keyboard for Android
 
 [![Download APK v0.6.0](https://img.shields.io/badge/Download_APK-v0.6.0-2E7D6B?logo=android)](https://github.com/danielrosehill/Voice-To-Hebrish/releases/download/android-v0.6.0/VoiceToHebrish-v0.6.0.apk)
-[![Model on HF](https://img.shields.io/badge/%F0%9F%A4%97%20Model-Parakeet%20TDT%200.6B%20v2%20EN--HE%20(v3)-yellow)](https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching)
+[![Model on HF](https://img.shields.io/badge/%F0%9F%A4%97%20Model-Parakeet%20TDT%200.6B%20v2%20EN--HE%20(v5)-yellow)](https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching)
 [![Dataset on HF](https://img.shields.io/badge/%F0%9F%A4%97%20Dataset-Read--Aloud--Voice--Sentences-yellow)](https://huggingface.co/datasets/danielrosehill/Read-Aloud-Voice-Sentences)
 
 > **Early testing build.** This app exists to test English–Hebrew code-switching
@@ -66,11 +66,11 @@ Voice keyboard keys: previous keyboard · delete · **mic** · space · enter.
 | | |
 | --- | --- |
 | Base | [`nvidia/parakeet-tdt-0.6b-v2`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2) (v2 on purpose, not v3) |
-| Fine-tune | **v3** (training run `r3-en30`), English–Hebrew code-switching |
+| Fine-tune | **v5** (training run `r5-en30`, released 2026-10-18, not yet benchmarked), English–Hebrew code-switching. The app downloads whatever version is on HF `main` |
 | Model card | [danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching](https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching) |
 | Training data | [danielrosehill/Read-Aloud-Voice-Sentences](https://huggingface.co/datasets/danielrosehill/Read-Aloud-Voice-Sentences) (code-switching subset: [English-Hebrew-Codeswitching-Sentences](https://huggingface.co/datasets/danielrosehill/English-Hebrew-Codeswitching-Sentences)) |
 | Format used here | `sherpa-onnx/int8/` (encoder, decoder, joiner, tokens), about 660 MB |
-| Pinned HF revision | `92679110e821baf9425f620c9deb9920ce9b7539` |
+| Offline fallback (`ModelStore.BUNDLED`) | v3, HF revision `92679110e821baf9425f620c9deb9920ce9b7539`. Used only when HF can't be reached on first download; kept on v3 because it is the latest benchmarked version |
 | Runtime | [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8 Android AAR, CPU, greedy search |
 
 The fine-tune is trained on a single speaker's voice, so expect it to work best for that
