@@ -1,0 +1,6 @@
+<resources>
+    <color name="accent">#2E7D6B</color>
+    <color name="ime_bg">#1F2124</color>
+    <color name="ime_key">#33363B</color>
+    <color name="ime_text">#E8EAED</color>
+</resources>

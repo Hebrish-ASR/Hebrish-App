@@ -1,0 +1,60 @@
+<resources>
+    <string name="app_name">Codeswitch Voice (POC)</string>
+    <string name="ime_name">Codeswitch Voice</string>
+    <string name="subtype_label">English + Hebrew (voice)</string>
+
+    <string name="url_heliboard">https://github.com/Helium314/HeliBoard/releases</string>
+    <string name="url_dataset">https://huggingface.co/datasets/danielrosehill/Read-Aloud-Voice-Sentences</string>
+
+    <string name="intro">Proof-of-concept voice input for English–Hebrew code-switching. On-device Parakeet TDT 0.6B v2, fine-tuned to keep Hebrew words (romanized) inside English speech. Testing build, not a finished product.</string>
+    <string name="version_line">App %1$s · model %2$s (HF rev %3$s) · sherpa-onnx int8</string>
+
+    <string name="step_model">1. Model</string>
+    <string name="model_missing">Not downloaded. About %1$d MB from Hugging Face, once. Wi-Fi recommended.</string>
+    <string name="model_downloading">Downloading… %1$d / %2$d MB</string>
+    <string name="model_ready">Model %1$s ready (%2$d MB).</string>
+    <string name="model_failed">Download failed: %1$s. Tap Download to resume.</string>
+    <string name="download">Download</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="step_mic">2. Microphone</string>
+    <string name="mic_ok">Granted.</string>
+    <string name="mic_missing">Needed to hear you. Audio never leaves the phone.</string>
+    <string name="grant">Grant</string>
+
+    <string name="step_ime">3. Keyboard</string>
+    <string name="ime_enabled">Codeswitch Voice is enabled.</string>
+    <string name="ime_disabled">Not enabled yet. Turn on “Codeswitch Voice” in the system keyboard list.</string>
+    <string name="enable">Keyboard settings</string>
+    <string name="pick">Switch keyboard</string>
+
+    <string name="step_heliboard">Recommended: HeliBoard</string>
+    <string name="heliboard_body">Use HeliBoard as your main keyboard. Its mic key opens Codeswitch Voice, and once the text is in you are taken back to HeliBoard. In HeliBoard: Settings → Toolbar (or Preferences) → show the voice input key.</string>
+    <string name="get_heliboard">Get HeliBoard</string>
+
+    <string name="step_options">Behaviour</string>
+    <string name="auto_start">Start recording when opened</string>
+    <string name="auto_return">Return to previous keyboard after inserting</string>
+
+    <string name="step_try">Try it</string>
+    <string name="try_hint">Tap here, switch to Codeswitch Voice, and speak…</string>
+    <string name="links">Links</string>
+    <string name="open_model">Model on HF</string>
+    <string name="open_dataset">Dataset on HF</string>
+
+    <string name="ime_no_model">Model not downloaded. Tap the mic to open setup.</string>
+    <string name="ime_no_permission">Microphone not granted. Tap the mic to open setup.</string>
+    <string name="ime_tap_to_speak">Tap the mic to speak</string>
+    <string name="ime_listening">Listening… tap to finish</string>
+    <string name="ime_loading">Loading model (first use)…</string>
+    <string name="ime_transcribing">Transcribing…</string>
+    <string name="ime_too_short">Too short. Tap the mic to try again.</string>
+    <string name="ime_nothing_heard">Heard nothing. Tap the mic to try again.</string>
+    <string name="ime_error">Error: %1$s</string>
+    <string name="ime_mic_error">Microphone error: %1$s</string>
+    <string name="cd_switch">Back to previous keyboard</string>
+    <string name="cd_mic">Record</string>
+    <string name="cd_backspace">Delete</string>
+    <string name="cd_space">Space</string>
+    <string name="cd_enter">Enter</string>
+</resources>

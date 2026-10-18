@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/ime_bg"
+    android:orientation="vertical"
+    android:paddingHorizontal="12dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="14dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ProgressBar
+            android:id="@+id/spinner"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="8dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/ime_text"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <View
+        android:id="@+id/level"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:layout_marginHorizontal="40dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/level_bar"
+        android:scaleX="0.02" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="96dp"
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/switch_ime"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_margin="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/key_bg"
+            android:contentDescription="@string/cd_switch"
+            android:src="@drawable/ic_keyboard" />
+
+        <ImageButton
+            android:id="@+id/backspace"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_margin="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/key_bg"
+            android:contentDescription="@string/cd_backspace"
+            android:src="@drawable/ic_backspace" />
+
+        <ImageButton
+            android:id="@+id/mic"
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:layout_marginHorizontal="8dp"
+            android:background="@drawable/mic_bg"
+            android:contentDescription="@string/cd_mic"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_mic" />
+
+        <ImageButton
+            android:id="@+id/space"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_margin="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/key_bg"
+            android:contentDescription="@string/cd_space"
+            android:src="@drawable/ic_space" />
+
+        <ImageButton
+            android:id="@+id/enter"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_margin="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/key_bg"
+            android:contentDescription="@string/cd_enter"
+            android:src="@drawable/ic_enter" />
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- imeSubtypeMode="voice" is what lets HeliBoard (and AOSP-derived keyboards) find this IME
+     as the target of their microphone key. -->
+<input-method xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.danielrosehill.codeswitchvoice.MainActivity"
+    android:supportsSwitchingToNextInputMethod="true">
+    <subtype
+        android:imeSubtypeLocale="en_US"
+        android:imeSubtypeMode="voice"
+        android:label="@string/subtype_label"
+        android:languageTag="en-US" />
+</input-method>
