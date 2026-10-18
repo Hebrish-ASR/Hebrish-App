@@ -31,6 +31,10 @@ is sent anywhere. The only network use is a single model download from Hugging F
      (`encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx`, `tokens.txt`: a standard
      sherpa-onnx NeMo transducer). An already-downloaded model is copied there; a model already
      present there is used as is.
+   - **Model updates**: when a newer fine-tune is published on Hugging Face, the setup
+     screen shows **Update to vN**. The new model downloads alongside the old one, which you
+     keep using until the new files have been downloaded and checked. Then the old one is
+     deleted. The screen checks when you open it, or tap **Check for update**.
    - **Grant** the microphone.
    - **Keyboard settings**: turn on *Codeswitch Voice*.
 4. In HeliBoard, make the voice input key visible (toolbar key or the key by the space bar).

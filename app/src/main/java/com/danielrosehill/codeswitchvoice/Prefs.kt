@@ -19,4 +19,12 @@ object Prefs {
      */
     fun modelRoot(ctx: Context): String? = sp(ctx).getString("model_root", null)
     fun setModelRoot(ctx: Context, v: String?) = sp(ctx).edit().putString("model_root", v).apply()
+
+    /** JSON of the last fully downloaded ModelStore.Manifest; null means ModelStore.BUNDLED. */
+    fun installedManifest(ctx: Context): String? = sp(ctx).getString("installed_manifest", null)
+    fun setInstalledManifest(ctx: Context, v: String) = sp(ctx).edit().putString("installed_manifest", v).apply()
+
+    /** Wall-clock ms of the last successful update check. */
+    fun lastCheck(ctx: Context) = sp(ctx).getLong("last_check", 0L)
+    fun setLastCheck(ctx: Context, v: Long) = sp(ctx).edit().putLong("last_check", v).apply()
 }

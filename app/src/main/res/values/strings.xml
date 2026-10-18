@@ -16,6 +16,14 @@
     <string name="model_moving">Moving model… %1$d / %2$d MB</string>
     <string name="model_failed">Download failed: %1$s. Tap Download to resume.</string>
     <string name="download">Download</string>
+    <string name="model_downloading_version">Downloading %1$s… %2$d / %3$d MB</string>
+    <string name="check_update">Check for update</string>
+    <string name="update_checking">Checking Hugging Face for a newer model…</string>
+    <string name="update_none">Up to date (latest on Hugging Face: %1$s).</string>
+    <string name="update_available">Update available: %1$s (%2$d MB). %3$s stays in use until the new model is downloaded and verified, then it is deleted.</string>
+    <string name="update_button">Update to %1$s</string>
+    <string name="update_failed">Update failed: %1$s. %2$s is still installed. Tap Update to resume.</string>
+    <string name="update_check_failed">Couldn\'t check for updates: %1$s</string>
     <string name="cancel">Cancel</string>
     <string name="location_title">Model location</string>
     <string name="location_private">App storage (private to this app).</string>

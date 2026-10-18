@@ -2,28 +2,52 @@
 
 Written 2026-10-18. (V) = verified, (I) = inferred / not yet tested on a device.
 
-## Moving to a new model version
+## Model updates (0.3.0+)
 
-All model identity lives in `app/src/main/java/com/danielrosehill/codeswitchvoice/ModelStore.kt`:
+A new fine-tune reaches installed apps **without a new APK**. Pushing new
+`sherpa-onnx/int8/` files to `main` of
+`danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching` is all it takes.
 
-- `MODEL_VERSION`: display label ("v3").
-- `REVISION`: full 40-char HF commit of
-  `danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching`. Downloads use
-  `resolve/<REVISION>/sherpa-onnx/int8/<file>`, so pushes to `main` never change an
-  installed app.
-- `FILES`: `size` and `sha256` per file, from
-  `https://huggingface.co/api/models/<repo>/tree/<REVISION>?recursive=1` (`size`,
-  `lfs.oid`). `tokens.txt` is a plain git file with no `lfs.oid`, so only its size is
-  checked.
+How the app decides (`ModelStore.checkLatest`, `ModelDownload.check`/`update`):
 
-The model directory is `filesDir/models/<MODEL_VERSION>-<REVISION[:12]>`.
-`ModelStore.pruneOld` deletes other directories when a download starts, so an upgrade
-frees the old 660 MB.
+1. `GET https://huggingface.co/api/models/<repo>/revision/main` → `sha` (the commit `main`
+   points at now).
+2. `GET https://huggingface.co/api/models/<repo>/tree/<sha>/sherpa-onnx/int8` → per file
+   `size` and `lfs.oid` (= SHA-256). `tokens.txt` is a plain git file with no `lfs.oid`, so
+   only its size is known.
+3. Optional `GET https://huggingface.co/<repo>/resolve/<sha>/sherpa-onnx/int8/version.json`
+   → `{"version": "v4", "run": "r4-en30"}`. It only sets the label. Without it the label is
+   `rev <sha[:7]>`. The training repo's `export_sherpa` writes it (added 2026-10-18).
+4. An update is offered when the four files' SHA-256 (size for `tokens.txt`) differ from the
+   installed manifest's. The decision **compares weights, not revisions**: `main` moves on
+   every model-card or eval commit (10 commits on 2026-10-18 alone, none of them weight
+   changes), and comparing commits would offer a pointless 660 MB download each time.
+5. **Update to vN** downloads into its own folder `<version>-<sha[:12]>`, pinned to the `sha`
+   from step 1 so a push mid-download can't mix versions. Each file's SHA-256 is verified.
+   Only then does the app unload the recognizer, record the new manifest
+   (`Prefs.installedManifest`, JSON) and run `pruneOld`, which deletes the previous model
+   folder. Cancel or a failure leaves the old model in use, and the `.part` files resume on
+   the next tap. A free-space check runs first, because for a moment both models (~1.3 GB)
+   are on disk.
+
+Checks run when the setup screen opens, at most every 6 h (`Prefs.lastCheck`), plus a
+**Check for update** button. The IME never checks; it just loads whatever is installed.
+A first **Download** fetches the newest model on HF, and falls back to the bundled manifest
+when HF can't be asked.
+
+`ModelStore.BUNDLED` is v3 (run `r3-en30`, rev `92679110e821`). Its folder name
+`v3-92679110e821` is the same one 0.1.0/0.2.0 used, so upgrading the APK keeps an existing
+download. Change `BUNDLED` only to make a newer model the offline default.
 
 The v3 values were read from the HF tree API on 2026-10-18 (V). The sherpa-onnx int8 files
 at that revision were exported from `r3-en30`. Commit `728e6f88d4` published them, and the
 pinned `92679110e8` is the model-card commit after it. The upstream `check_sherpa` matched
 PyTorch on 4/5 clips (V, from the fine-tune repo's `docs/on-device.md`).
+
+Verified 2026-10-18: it compiles (`assembleRelease`), and the three endpoints above return
+the expected shapes for the live repo, where main is `d961d25643aa` with no `version.json`
+and the same weights as v3, so the app would report "up to date". Not yet run on a
+device (I).
 
 ## sherpa-onnx API notes (1.13.8 AAR, read with javap 2026-10-18)
 
@@ -84,6 +108,7 @@ to it. Losing it means users must uninstall before installing a newer APK.
 
 ## Not yet verified (as of 2026-10-18)
 
+- The update flow on a device (first real test: v4).
 - No on-device run has been recorded yet: model load time, RAM, and transcription speed
   on the Nord 3.
 - The HeliBoard mic key landing on this IME.

@@ -24,6 +24,9 @@ class MainActivity : Activity() {
     private lateinit var modelStatus: TextView
     private lateinit var modelProgress: ProgressBar
     private lateinit var downloadBtn: Button
+    private lateinit var updateStatus: TextView
+    private lateinit var updateBtn: Button
+    private lateinit var checkUpdateBtn: Button
     private lateinit var micStatus: TextView
     private lateinit var micBtn: Button
     private lateinit var imeStatus: TextView
@@ -38,18 +41,20 @@ class MainActivity : Activity() {
         modelStatus = findViewById(R.id.model_status)
         modelProgress = findViewById(R.id.model_progress)
         downloadBtn = findViewById(R.id.download)
+        updateStatus = findViewById(R.id.update_status)
+        updateBtn = findViewById(R.id.update)
+        checkUpdateBtn = findViewById(R.id.check_update)
         micStatus = findViewById(R.id.mic_status)
         micBtn = findViewById(R.id.grant_mic)
         imeStatus = findViewById(R.id.ime_status)
         locationStatus = findViewById(R.id.location_status)
         resetLocationBtn = findViewById(R.id.reset_location)
 
-        findViewById<TextView>(R.id.version).text =
-            getString(R.string.version_line, BuildConfigShim.versionName(this), ModelStore.MODEL_VERSION, ModelStore.REVISION.take(12))
-
         downloadBtn.setOnClickListener {
             if (ModelDownload.status is ModelDownload.Status.Running) ModelDownload.cancel() else ModelDownload.start(this)
         }
+        updateBtn.setOnClickListener { ModelDownload.update(this) }
+        checkUpdateBtn.setOnClickListener { ModelDownload.check(this, force = true) }
         micBtn.setOnClickListener { requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC) }
         findViewById<Button>(R.id.choose_location).setOnClickListener { chooseLocation() }
         resetLocationBtn.setOnClickListener { ModelDownload.relocate(this, null); render() }
@@ -76,6 +81,7 @@ class MainActivity : Activity() {
         ModelDownload.listener = { render() }
         if (pickAfterGrant && hasStorageAccess()) openFolderPicker()
         pickAfterGrant = false
+        ModelDownload.check(this)
         render()
     }
 
@@ -137,22 +143,24 @@ class MainActivity : Activity() {
     }
 
     private fun render() {
-        val mb = ModelStore.totalBytes / 1_000_000
+        val installed = ModelStore.installed(this)
+        val mb = installed.totalBytes / 1_000_000
         val s = ModelDownload.status
         val ready = ModelStore.isReady(this)
+        findViewById<TextView>(R.id.version).text =
+            getString(R.string.version_line, BuildConfigShim.versionName(this), installed.version, installed.revision.take(12))
         modelProgress.visibility = if (s is ModelDownload.Status.Running) View.VISIBLE else View.GONE
         when {
             s is ModelDownload.Status.Running -> {
-                modelProgress.progress = (s.done * 1000 / ModelStore.totalBytes).toInt()
-                modelStatus.text = getString(
-                    if (ModelDownload.moving) R.string.model_moving else R.string.model_downloading,
-                    s.done / 1_000_000, mb,
-                )
+                modelProgress.progress = (s.done * 1000 / s.total.coerceAtLeast(1)).toInt()
+                modelStatus.text = if (ModelDownload.moving) getString(R.string.model_moving, s.done / 1_000_000, s.total / 1_000_000)
+                else getString(R.string.model_downloading_version, ModelDownload.target?.version ?: "", s.done / 1_000_000, s.total / 1_000_000)
                 downloadBtn.setText(R.string.cancel)
+                downloadBtn.visibility = View.VISIBLE
                 window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
             ready -> {
-                modelStatus.text = getString(R.string.model_ready, ModelStore.MODEL_VERSION, mb)
+                modelStatus.text = getString(R.string.model_ready, installed.version, mb)
                 downloadBtn.visibility = View.GONE
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
@@ -164,6 +172,8 @@ class MainActivity : Activity() {
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
         }
+
+        renderUpdate(installed, s, ready)
 
         val root = Prefs.modelRoot(this)
         locationStatus.text = if (root == null) getString(R.string.location_private)
@@ -177,6 +187,24 @@ class MainActivity : Activity() {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         val enabled = imm.enabledInputMethodList.any { it.packageName == packageName }
         imeStatus.setText(if (enabled) R.string.ime_enabled else R.string.ime_disabled)
+    }
+
+    /** Only once a model is installed; before that, Download already fetches the newest one. */
+    private fun renderUpdate(installed: ModelStore.Manifest, s: ModelDownload.Status, ready: Boolean) {
+        val running = s is ModelDownload.Status.Running
+        val update = ModelDownload.updateAvailable(this)
+        checkUpdateBtn.visibility = if (ready && !running && !ModelDownload.checking) View.VISIBLE else View.GONE
+        updateBtn.visibility = if (update != null && !running) View.VISIBLE else View.GONE
+        update?.let { updateBtn.text = getString(R.string.update_button, it.version) }
+        updateStatus.visibility = if (ready && !running) View.VISIBLE else View.GONE
+        updateStatus.text = when {
+            ModelDownload.checking -> getString(R.string.update_checking)
+            update != null && s is ModelDownload.Status.Failed -> getString(R.string.update_failed, s.message, installed.version)
+            update != null -> getString(R.string.update_available, update.version, update.totalBytes / 1_000_000, installed.version)
+            ModelDownload.checkError != null -> getString(R.string.update_check_failed, ModelDownload.checkError)
+            ModelDownload.latest != null -> getString(R.string.update_none, installed.version)
+            else -> ""
+        }
     }
 
     private fun open(url: String) = startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
