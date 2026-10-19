@@ -1,6 +1,5 @@
-**0.1.1: Hebrish icon and feedback by email.**
+**0.1.2: the app is now called Hebrish.**
 
-- New launcher icon: the Hebrish mark (serif H on green), from the Hebrish brand standard.
-- The **Hebrish** section on the setup screen now has **Report a bug**, **Request a feature** and **Send feedback**. Each opens your email app with a message to feedback@hebrish.app, with the app version, Android version and phone model already filled in at the bottom.
-- The website link and the Suggest a word, Send voice samples and Get involved links (hebrish.app contact form) stay.
+- The launcher, app info, keyboard list and setup screens show **Hebrish** instead of Parlance, so searching your apps for "Hebrish" finds it. Package name, settings and downloaded models are unchanged; it installs over 0.1.1. If the keyboard was enabled, it stays enabled under its new name.
+- From 0.1.1: the Hebrish icon, and Report a bug, Request a feature and Send feedback by email to feedback@hebrish.app.
 - arm64-v8a only. Android 9+.

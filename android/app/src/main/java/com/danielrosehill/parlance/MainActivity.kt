@@ -341,7 +341,7 @@ class MainActivity : Activity() {
         if (!url.startsWith("mailto:")) return startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         // Feedback email: the version lines help triage; the user writes above them.
         val version = packageManager.getPackageInfo(packageName, 0).versionName
-        val body = "\n\n--\nParlance $version, Android ${Build.VERSION.RELEASE}, ${Build.MANUFACTURER} ${Build.MODEL}"
+        val body = "\n\n--\nHebrish $version, Android ${Build.VERSION.RELEASE}, ${Build.MANUFACTURER} ${Build.MODEL}"
         val mail = Intent(Intent.ACTION_SENDTO, Uri.parse("$url&body=" + Uri.encode(body)))
         try { startActivity(mail) } catch (_: android.content.ActivityNotFoundException) {
             Toast.makeText(this, getString(R.string.no_email_app, Hebrish.FEEDBACK), Toast.LENGTH_LONG).show()

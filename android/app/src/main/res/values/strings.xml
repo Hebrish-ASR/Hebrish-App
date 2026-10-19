@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">Parlance</string>
-    <string name="ime_name">Parlance</string>
+    <string name="app_name">Hebrish</string>
+    <string name="ime_name">Hebrish</string>
     <string name="subtype_label">English (voice)</string>
 
     <string name="url_heliboard">https://github.com/Helium314/HeliBoard/releases</string>
@@ -50,13 +50,13 @@
     <string name="grant">Grant</string>
 
     <string name="step_ime">3. Keyboard</string>
-    <string name="ime_enabled">Parlance is enabled.</string>
-    <string name="ime_disabled">Not enabled yet. Turn on “Parlance” in the system keyboard list.</string>
+    <string name="ime_enabled">Hebrish is enabled.</string>
+    <string name="ime_disabled">Not enabled yet. Turn on “Hebrish” in the system keyboard list.</string>
     <string name="enable">Keyboard settings</string>
     <string name="pick">Switch keyboard</string>
 
     <string name="step_heliboard">Recommended: HeliBoard</string>
-    <string name="heliboard_body">Use HeliBoard as your main keyboard. Its mic key opens Parlance, and once the text is in you are taken back to HeliBoard. In HeliBoard: Settings → Toolbar (or Preferences) → show the voice input key.</string>
+    <string name="heliboard_body">Use HeliBoard as your main keyboard. Its mic key opens Hebrish, and once the text is in you are taken back to HeliBoard. In HeliBoard: Settings → Toolbar (or Preferences) → show the voice input key.</string>
     <string name="get_heliboard">Get HeliBoard</string>
 
     <string name="step_options">Behaviour</string>
@@ -64,11 +64,11 @@
     <string name="auto_return">Return to previous keyboard after inserting</string>
 
     <string name="step_try">Try it</string>
-    <string name="try_hint">Tap here, switch to Parlance, and speak…</string>
+    <string name="try_hint">Tap here, switch to Hebrish, and speak…</string>
     <string name="links">Links</string>
     <string name="open_model">Model card</string>
     <string name="open_source">Source code</string>
-    <string name="hebrish_title">Hebrish: the English-Hebrew model</string>
+    <string name="hebrish_title">Website and feedback</string>
     <string name="hebrish_body">Using the code-switching model? Its website has the results and every model, dataset and demo. Report a bug, ask for a feature or send feedback by email to feedback@hebrish.app, suggest a Hebrew word it gets wrong, or send voice samples to help it learn more voices.</string>
     <string name="hebrish_site">Hebrish website</string>
     <string name="hebrish_bug">Report a bug</string>
@@ -97,7 +97,7 @@
     <string name="return_fixed">Always %1$s</string>
     <string name="return_change">Change</string>
     <string name="return_auto_option">Automatic</string>
-    <string name="return_hint">Long-press the keyboard key in Parlance to open the system keyboard picker at any time.</string>
+    <string name="return_hint">Long-press the keyboard key in Hebrish to open the system keyboard picker at any time.</string>
     <string name="ime_no_model">Model not downloaded. Tap the mic to open setup.</string>
     <string name="ime_no_permission">Microphone not granted. Tap the mic to open setup.</string>
     <string name="ime_tap_to_speak">Tap the mic to speak</string>
@@ -117,7 +117,7 @@
     <string name="try_open">Try it now: no setup needed</string>
     <string name="try_open_hint">Hear what it does before you set it up as a keyboard.</string>
     <string name="try_open_no_model">Try it (download the model first)</string>
-    <string name="try_title">Try Parlance</string>
+    <string name="try_title">Try Hebrish</string>
     <string name="try_instructions">Tap the mic, say a sentence, then tap again to stop. The text appears below. Nothing leaves your phone.</string>
     <string name="try_examples_title">Things to try saying:</string>
     <string-array name="try_examples">

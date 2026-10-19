@@ -414,7 +414,7 @@ def main():
         sock.disconnectFromServer()
         return
     if args.toggle:
-        print("Parlance isn't running.", file=sys.stderr)
+        print("Hebrish isn't running.", file=sys.stderr)
         sys.exit(1)
     QLocalServer.removeServer(name)            # stale socket from a crash
     server = QLocalServer()

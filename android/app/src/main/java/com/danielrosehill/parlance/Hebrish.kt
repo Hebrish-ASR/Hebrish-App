@@ -13,7 +13,7 @@ object Hebrish {
     const val SITE = "https://hebrish.app"
     const val FEEDBACK = "feedback@hebrish.app"
 
-    private fun mail(subject: String) = "mailto:$FEEDBACK?subject=" + Uri.encode("$subject (Parlance for Android)")
+    private fun mail(subject: String) = "mailto:$FEEDBACK?subject=" + Uri.encode("$subject (Hebrish for Android)")
 
     /** (button label, URL), in display order. */
     val LINKS = listOf(

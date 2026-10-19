@@ -5,7 +5,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from .config import APP_NAME
+from .config import APP_NAME, AUTOSTART_KEY
 
 _RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 _DESKTOP = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "autostart" / "parlance.desktop"
@@ -26,7 +26,7 @@ def enabled() -> bool:
         import winreg
         try:
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUN_KEY) as k:
-                winreg.QueryValueEx(k, APP_NAME)
+                winreg.QueryValueEx(k, AUTOSTART_KEY)
             return True
         except OSError:
             return False
@@ -38,10 +38,10 @@ def set_enabled(on: bool):
         import winreg
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUN_KEY, 0, winreg.KEY_SET_VALUE) as k:
             if on:
-                winreg.SetValueEx(k, APP_NAME, 0, winreg.REG_SZ, _command())
+                winreg.SetValueEx(k, AUTOSTART_KEY, 0, winreg.REG_SZ, _command())
             else:
                 try:
-                    winreg.DeleteValue(k, APP_NAME)
+                    winreg.DeleteValue(k, AUTOSTART_KEY)
                 except OSError:
                     pass
         return

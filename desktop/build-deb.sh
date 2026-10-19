@@ -53,7 +53,7 @@ Depends: python3 (>= $PYVER), python3 (<< $PYNEXT), python3-pyside6.qtwidgets, p
 Recommends: ffmpeg
 Conflicts: parakeet-dictation, codeswitch-dictation, voice-to-hebrish
 Replaces: codeswitch-dictation, voice-to-hebrish
-Description: Parlance: on-device dictation with NVIDIA Parakeet
+Description: Hebrish: on-device dictation with NVIDIA Parakeet
  Offline speech recognition with a choice of models: stock NVIDIA Parakeet
  TDT 0.6B v2, or one of the author's fine-tunes of it (English-Hebrew
  code-switching; technical and personal-voice models to follow). Runs on the

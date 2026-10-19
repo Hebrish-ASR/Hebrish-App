@@ -8,6 +8,10 @@ that suits how you talk: stock Parakeet, or a fine-tune of it.
 Everything runs **on your device**. The only network traffic is downloading the model you
 pick (~630 MB, once) and a periodic check for a newer version.
 
+**Display name:** since 0.1.2 the installed app shows as **Hebrish** (launcher, app list,
+keyboard list, window and tray), with the Hebrish icon. The project, package (`parlance`),
+command, app ID and config paths keep the Parlance name, so updates install over older versions.
+
 **Website for the English-Hebrew code-switching model: [hebrish.app](https://hebrish.app)**: get the Hebrish keyboard for Android and the desktop apps, see the results, and find every model, dataset and demo in one place.
 
 ## Models

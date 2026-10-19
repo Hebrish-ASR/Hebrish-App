@@ -26,9 +26,9 @@ FEEDBACK = "feedback@hebrish.app"
 
 
 def _mail(subject: str) -> str:
-    body = f"\n\n--\nParlance {__version__}, {platform.system()} {platform.release()}"
+    body = f"\n\n--\nHebrish {__version__}, {platform.system()} {platform.release()}"
     return f"mailto:{FEEDBACK}?" + urlencode(
-        {"subject": f"{subject} (Parlance for desktop)", "body": body}, quote_via=quote)
+        {"subject": f"{subject} (Hebrish for desktop)", "body": body}, quote_via=quote)
 
 
 HEBRISH_LINKS = [
@@ -72,7 +72,7 @@ def html(model_label: str, accent: str) -> str:
         + (f" <a href='{m.card}'>Model card</a>" if m.card else "") + "</li>"
         for m in model_store.models())
     return f"""
-<h2 style="margin-bottom:0">Parlance</h2>
+<h2 style="margin-bottom:0">Hebrish</h2>
 <p style="margin-top:2px">app v{__version__} · model {model_label}</p>
 
 <p>Dictation that runs on your own computer. Press a hotkey, talk, and the text is pasted

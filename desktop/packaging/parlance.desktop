@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
-Name=Parlance
+Name=Hebrish
 GenericName=Voice dictation
-Comment=On-device dictation with NVIDIA Parakeet
+Comment=On-device English dictation that gets the Hebrew words right
 Exec=parlance
 Icon=parlance
 Categories=Utility;Accessibility;AudioVideo;
-Keywords=dictation;speech;transcription;voice;parakeet;offline;
+Keywords=hebrish;parlance;dictation;speech;transcription;voice;hebrew;parakeet;offline;
 StartupNotify=false
 StartupWMClass=parlance

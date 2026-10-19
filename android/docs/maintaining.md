@@ -198,3 +198,7 @@ to it. Losing it means users must uninstall before installing a newer APK.
 - No on-device run has been recorded yet: model load time, RAM, and transcription speed
   on the Nord 3.
 - The HeliBoard mic key landing on this IME.
+
+## Display name: Hebrish (0.1.2, 2026-10-19)
+
+User-facing name is **Hebrish** so app search finds it; everything that identifies the install keeps `parlance`. Android: `app_name`, `ime_name` and every other user-visible string in `strings.xml` (not `url_source`); the package `com.danielrosehill.parlance` and the IME component are unchanged, so an enabled keyboard stays enabled. The release APK is still named `Parlance-<ver>.apk`.

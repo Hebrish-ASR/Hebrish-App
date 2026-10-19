@@ -1,6 +1,5 @@
-**0.1.1: Hebrish icon and feedback by email.**
+**0.1.2: the app is now called Hebrish.**
 
-- New app icon: the Hebrish mark (serif H on green). The tray status icons are unchanged.
-- **Report a bug**, **Request a feature** and **Send feedback** (tray Hebrish menu, About tab, Model tab) open your mail client with a message to feedback@hebrish.app, with the app and OS version filled in at the bottom.
-- The website link and the Suggest a word, Send voice samples and Get involved links (hebrish.app contact form) stay.
+- The app menu entry, window title, tray tooltip and About tab show **Hebrish** instead of Parlance, so searching your apps for "Hebrish" finds it ("Parlance" still matches as a keyword). The command (`parlance`), the package name, settings and downloaded models are unchanged; it installs over 0.1.1.
+- From 0.1.1: the Hebrish icon, and Report a bug, Request a feature and Send feedback by email to feedback@hebrish.app.
 - Ubuntu 26.04 .deb and a portable Windows zip (Windows still untested on real hardware).

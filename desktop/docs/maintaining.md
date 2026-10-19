@@ -171,3 +171,7 @@ libs in the bundled .so files, and `--toggle` record → transcribe ran from `/u
   `evdev.UInput`. Wait ≥4 s after creating the device: the listener rescans every 3 s.
 - When killing a test instance, don't `pkill -f parlance`: the pattern also
   matches the shell running the command.
+
+## Display name: Hebrish (0.1.2, 2026-10-19)
+
+User-facing name is **Hebrish** so app search finds it; everything that identifies the install keeps `parlance`. Desktop: `config.APP_NAME` (window, tray, About, Linux autostart entry) and `Name=` in `packaging/parlance.desktop` (with `parlance` kept in `Keywords=`). Unchanged: the package and command `parlance`, `APP_ID`, config/data dirs, `Icon=parlance`, and `config.AUTOSTART_KEY = "Parlance"`, the Windows Run-key value name, so an existing autostart entry is still found. Release assets keep the Parlance file names.

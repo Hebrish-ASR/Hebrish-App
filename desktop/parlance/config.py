@@ -7,7 +7,10 @@ import sys
 from pathlib import Path
 
 APP_ID = "com.danielrosehill.Parlance"
-APP_NAME = "Parlance"
+# Display name (window, tray, launcher). Since 0.1.2 the app shows as Hebrish; the package,
+# paths, app ID and Windows autostart key stay "parlance" so existing installs carry over.
+APP_NAME = "Hebrish"
+AUTOSTART_KEY = "Parlance"
 TAGLINE = "On-device dictation with Parakeet"
 
 _env = lambda var, default: Path(os.environ.get(var) or Path.home() / default)  # noqa: E731
