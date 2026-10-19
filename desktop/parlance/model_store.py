@@ -30,7 +30,7 @@ from .config import CATALOGUE_CACHE, MODELS_DIR, STATE_PATH, load_json, save_jso
 BUNDLED_CATALOGUE = Path(__file__).resolve().parent / "data" / "models.json"
 SCHEMA = 1
 HF = "https://huggingface.co"
-USER_AGENT = "parlance (+https://github.com/danielrosehill/Parlance-Dictation)"
+USER_AGENT = "parlance (+https://github.com/Hebrish-ASR/Parlance-Dictation)"
 
 
 class Cancelled(Exception):

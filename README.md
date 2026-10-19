@@ -30,7 +30,7 @@ in the apps by themselves once published: both apps re-read the catalogue
 On held-out recordings, the code-switching model (v3, the latest benchmarked version) cut
 word error rate on code-switched English from 10.9% to 5.3%, and plain English got slightly
 better, not worse. Training data, every version's results and the roadmap:
-[English-Hebrew-Codeswitching-Parakeet-Finetune](https://github.com/danielrosehill/English-Hebrew-Codeswitching-Parakeet-Finetune).
+[English-Hebrew-Codeswitching-Parakeet-Finetune](https://github.com/Hebrish-ASR/English-Hebrew-Codeswitching-Parakeet-Finetune).
 
 To help improve it, both apps link to hebrish.app's contact form: [report a bug](https://hebrish.app/contact?topic=bug),
 [suggest a word](https://hebrish.app/contact?topic=word),
@@ -47,7 +47,7 @@ To help improve it, both apps link to hebrish.app's contact form: [report a bug]
 | **Ubuntu** | A tray app for Ubuntu 26.04 amd64 (.deb) |
 | **Windows** | A portable tray app (.zip): unzip and run `Parlance.exe` |
 
-Builds are on the [releases page](https://github.com/danielrosehill/Parlance-Dictation/releases):
+Builds are on the [releases page](https://github.com/Hebrish-ASR/Parlance-Dictation/releases):
 tags `android-v*` carry the APK, tags `desktop-v*` the .deb and the Windows zip. The Windows
 build and the Android app have not yet been tried on real hardware.
 

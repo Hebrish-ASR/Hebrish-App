@@ -1,6 +1,6 @@
 # Parlance for Android: on-device voice keyboard
 
-[![Download APK v0.1.0](https://img.shields.io/badge/Download_APK-v0.1.0-24527A?logo=android)](https://github.com/danielrosehill/Parlance-Dictation/releases/download/android-v0.1.0/Parlance-v0.1.0.apk)
+[![Download APK v0.1.0](https://img.shields.io/badge/Download_APK-v0.1.0-24527A?logo=android)](https://github.com/Hebrish-ASR/Parlance-Dictation/releases/download/android-v0.1.0/Parlance-v0.1.0.apk)
 [![Website: hebrish.app](https://img.shields.io/badge/Website-hebrish.app-1F6FEB?logo=googlechrome&logoColor=white)](https://hebrish.app)
 
 **Website for the English-Hebrew code-switching model: [hebrish.app](https://hebrish.app)**: get the Hebrish keyboard for Android and the desktop apps, see the results, and find every model, dataset and demo in one place.
@@ -44,7 +44,7 @@ report a bug, suggest a word, send voice samples, or get involved.
 1. Install **[HeliBoard](https://github.com/Helium314/HeliBoard/releases)** and make it your
    main keyboard.
 2. Download the APK from the
-   [APK (v0.1.0)](https://github.com/danielrosehill/Parlance-Dictation/releases/download/android-v0.1.0/Parlance-v0.1.0.apk)
+   [APK (v0.1.0)](https://github.com/Hebrish-ASR/Parlance-Dictation/releases/download/android-v0.1.0/Parlance-v0.1.0.apk)
    and install it. You will need to allow installs from your browser or file manager.
 3. Open **Parlance** and work through it:
    - **Pick a model** and **Download** it. It is about 660 MB, downloaded once; use Wi-Fi.
@@ -121,7 +121,7 @@ attaches it to a GitHub release. Maintainer notes are in [`docs/maintaining.md`]
 ## Related
 
 - Code-switching fine-tune project:
-  [English-Hebrew-Codeswitching-Parakeet-Finetune](https://github.com/danielrosehill/English-Hebrew-Codeswitching-Parakeet-Finetune)
+  [English-Hebrew-Codeswitching-Parakeet-Finetune](https://github.com/Hebrish-ASR/English-Hebrew-Codeswitching-Parakeet-Finetune)
 
 ## License
 
