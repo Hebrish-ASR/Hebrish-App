@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Per-user install: venv in ~/.local/share/voice-to-hebrish/venv, launchers in
+# Per-user install: venv in ~/.local/share/parlance/venv, launchers in
 # ~/.local/bin, menu entry in ~/.local/share/applications. Re-run to upgrade.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
-VENV="$DATA/voice-to-hebrish/venv"
+VENV="$DATA/parlance/venv"
 BIN="$HOME/.local/bin"
 
 missing=()
@@ -23,15 +23,15 @@ command -v uv >/dev/null || { echo "Needs uv: https://docs.astral.sh/uv/"; exit 
 
 # The distro python, not a uv-managed one: gi and evdev are built for it.
 uv venv -q --allow-existing --python /usr/bin/python3 --system-site-packages "$VENV"
-VIRTUAL_ENV="$VENV" uv pip install -q --reinstall-package voice-to-hebrish .
+VIRTUAL_ENV="$VENV" uv pip install -q --reinstall-package parlance .
 
 mkdir -p "$BIN" "$DATA/applications"
-ln -sf "$VENV/bin/voice-to-hebrish" "$BIN/voice-to-hebrish"
-ln -sf "$VENV/bin/voice-to-hebrish-model" "$BIN/voice-to-hebrish-model"
-install -m644 packaging/voice-to-hebrish.desktop "$DATA/applications/"
+ln -sf "$VENV/bin/parlance" "$BIN/parlance"
+ln -sf "$VENV/bin/parlance-model" "$BIN/parlance-model"
+install -m644 packaging/parlance.desktop "$DATA/applications/"
 mkdir -p "$DATA/icons/hicolor/scalable/apps"
-install -m644 voice_to_hebrish/data/icons/voice-to-hebrish.svg "$DATA/icons/hicolor/scalable/apps/"
+install -m644 parlance/data/icons/parlance.svg "$DATA/icons/hicolor/scalable/apps/"
 
-echo "Installed. Launch 'Voice To Hebrish' from the menu or run: voice-to-hebrish"
+echo "Installed. Launch 'Parlance' from the menu or run: parlance"
 id -nG | grep -qw input || echo "NOTE: add yourself to the input group for the hotkey: sudo usermod -aG input \$USER (then log in again)"
 [ -w /dev/uinput ] || echo "NOTE: /dev/uinput isn't writable, so transcripts will go to the clipboard but won't be pasted."

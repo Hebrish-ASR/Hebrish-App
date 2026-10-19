@@ -16,7 +16,7 @@ from evdev import ecodes
 
 from .hotkey import HotkeyMachine
 
-OWN_DEVICE_NAME = "voice-to-hebrish-keyboard"     # our uinput paster; never listen to it
+OWN_DEVICE_NAME = "parlance-keyboard"     # our uinput paster; never listen to it
 
 
 def key_name(code: int) -> str:
@@ -45,7 +45,7 @@ class EvdevHotkeys(HotkeyMachine):
             # list_devices() silently skips nodes it cannot open
             self.problem = ("Can't read /dev/input, so the hotkey is off. Run "
                             "`sudo usermod -aG input $USER` and log in again. Until then use "
-                            "the button, the tray, or `voice-to-hebrish --toggle`.")
+                            "the button, the tray, or `parlance --toggle`.")
         for path in list(self._devices):
             if path not in paths:
                 self._drop(path)

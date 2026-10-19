@@ -1,28 +1,37 @@
-"""The desktop app must read the model from where shared/model.json says (Android does too)."""
+"""Both apps must read the model catalogue from shared/models.json."""
 
 import json
 import os
-import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "desktop"))
 
-from voice_to_hebrish import model_store  # noqa: E402
+from parlance import model_store  # noqa: E402
 
-SHARED = json.load(open(os.path.join(ROOT, "shared", "model.json")))
-
-
-def test_desktop_matches_shared():
-    assert model_store.REPO == SHARED["repo"]
-    assert model_store.SUBDIR == SHARED["subdir"]
-    assert list(model_store.FILES) == SHARED["files"]
+SHARED = os.path.join(ROOT, "shared", "models.json")
 
 
-def test_android_matches_shared():
-    kt = open(os.path.join(ROOT, "android", "app", "src", "main", "java", "com", "danielrosehill",
-                           "codeswitchvoice", "ModelStore.kt")).read()
-    consts = dict(re.findall(r'const val (\w+) = "([^"]+)"', kt))
-    assert consts.get("REPO") == SHARED["repo"]
-    assert consts.get("SUBDIR") == SHARED["subdir"]
-    assert consts.get("VERSION_FILE") == SHARED["version_file"]
+def test_desktop_bundles_the_shared_catalogue():
+    """desktop/parlance/data/models.json is a copy (PyInstaller and the .deb need it inside
+    the package). After editing shared/models.json: cp shared/models.json desktop/parlance/data/"""
+    assert open(model_store.BUNDLED_CATALOGUE).read() == open(SHARED).read()
+
+
+ANDROID = os.path.join(ROOT, "android", "app")
+KT = os.path.join(ANDROID, "src", "main", "java", "com", "danielrosehill", "parlance")
+
+
+def test_android_bundles_the_shared_catalogue():
+    """The APK's assets/models.json is copied from shared/ at build time, never by hand."""
+    assert "../shared/models.json" in open(os.path.join(ANDROID, "build.gradle.kts")).read()
+    import re
+    schema = re.search(r"const val SCHEMA = (\d+)", open(os.path.join(KT, "Catalogue.kt")).read())
+    assert schema and int(schema.group(1)) == json.load(open(SHARED))["schema"]
+
+
+def test_android_offline_fallbacks_are_available_models():
+    import re
+    ids = set(re.findall(r'"(\w+)" to Manifest\(', open(os.path.join(KT, "ModelStore.kt")).read()))
+    available = {m["id"] for m in json.load(open(SHARED))["models"] if m["status"] == "available"}
+    assert ids and ids <= available

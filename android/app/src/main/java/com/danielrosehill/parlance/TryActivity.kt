@@ -1,4 +1,4 @@
-package com.danielrosehill.codeswitchvoice
+package com.danielrosehill.parlance
 
 import android.Manifest
 import android.app.Activity
@@ -89,7 +89,7 @@ class TryActivity : Activity() {
 
     /** The first load reads 650 MB and takes a few seconds; do it before the first tap. */
     private fun preload() {
-        if (Transcriber.isLoaded()) return setState(State.IDLE, getString(R.string.try_ready))
+        if (Transcriber.isLoaded(this)) return setState(State.IDLE, getString(R.string.try_ready))
         setState(State.LOADING, getString(R.string.try_loading))
         Thread {
             val err = runCatching { Transcriber.load(this) }.exceptionOrNull()

@@ -6,8 +6,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from voice_to_hebrish.hotkey import HotkeyMachine, pretty  # noqa: E402
-from voice_to_hebrish.inserter import chord_names  # noqa: E402
+from parlance.hotkey import HotkeyMachine, pretty  # noqa: E402
+from parlance.inserter import chord_names  # noqa: E402
 
 
 class Rig:
@@ -77,7 +77,7 @@ def test_names():
 
 def test_stretch_pauses_only_inner_short_ones():
     import numpy as np
-    from voice_to_hebrish.engine import stretch_pauses
+    from parlance.engine import stretch_pauses
     sr = 16000
     tone = lambda s: (0.3 * np.sin(np.arange(int(s * sr)) / 3)).astype(np.float32)
     z = lambda s: np.zeros(int(s * sr), np.float32)

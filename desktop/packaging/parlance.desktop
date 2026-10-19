@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Parlance
+GenericName=Voice dictation
+Comment=On-device dictation with NVIDIA Parakeet
+Exec=parlance
+Icon=parlance
+Categories=Utility;Accessibility;AudioVideo;
+Keywords=dictation;speech;transcription;voice;parakeet;offline;
+StartupNotify=false
+StartupWMClass=parlance

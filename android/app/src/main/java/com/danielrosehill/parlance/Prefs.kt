@@ -1,4 +1,4 @@
-package com.danielrosehill.codeswitchvoice
+package com.danielrosehill.parlance
 
 import android.content.Context
 
@@ -20,9 +20,18 @@ object Prefs {
     fun modelRoot(ctx: Context): String? = sp(ctx).getString("model_root", null)
     fun setModelRoot(ctx: Context, v: String?) = sp(ctx).edit().putString("model_root", v).apply()
 
-    /** JSON of the last fully downloaded ModelStore.Manifest; null means ModelStore.BUNDLED. */
-    fun installedManifest(ctx: Context): String? = sp(ctx).getString("installed_manifest", null)
-    fun setInstalledManifest(ctx: Context, v: String) = sp(ctx).edit().putString("installed_manifest", v).apply()
+    /** Catalogue id of the model the keyboard uses; null = the catalogue's default. */
+    fun selectedModel(ctx: Context): String? = sp(ctx).getString("model_id", null)
+    fun setSelectedModel(ctx: Context, v: String) = sp(ctx).edit().putString("model_id", v).apply()
+
+    /** JSON of [model]'s last fully downloaded ModelStore.Manifest; null means its ModelStore.BUNDLED one. */
+    fun installedManifest(ctx: Context, model: String): String? = sp(ctx).getString("installed_manifest_$model", null)
+    fun setInstalledManifest(ctx: Context, model: String, v: String?) =
+        sp(ctx).edit().putString("installed_manifest_$model", v).apply()
+
+    /** The last catalogue fetched from catalogue_url that parsed; null = the bundled asset. */
+    fun catalogueJson(ctx: Context): String? = sp(ctx).getString("catalogue", null)
+    fun setCatalogueJson(ctx: Context, v: String) = sp(ctx).edit().putString("catalogue", v).apply()
 
     /** Wall-clock ms of the last successful update check. */
     fun lastCheck(ctx: Context) = sp(ctx).getLong("last_check", 0L)

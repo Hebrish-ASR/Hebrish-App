@@ -1,4 +1,0 @@
-#!/bin/sh
-# System python3 (GTK, evdev, numpy, sounddevice from apt) + the bundled sherpa-onnx.
-export PYTHONPATH=/usr/lib/voice-to-hebrish${PYTHONPATH:+:$PYTHONPATH}
-exec /usr/bin/python3 -m voice_to_hebrish "$@"

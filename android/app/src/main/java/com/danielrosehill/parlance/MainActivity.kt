@@ -1,4 +1,4 @@
-package com.danielrosehill.codeswitchvoice
+package com.danielrosehill.parlance
 
 import android.Manifest
 import android.app.Activity
@@ -15,12 +15,16 @@ import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.ProgressBar
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.Switch
 import android.widget.TextView
 import java.io.File
 
-/** Setup: download the model, grant the mic, enable the keyboard, and try it out. */
+/** Setup: pick and download a model, grant the mic, enable the keyboard, and try it out. */
 class MainActivity : Activity() {
+    private lateinit var modelPicker: RadioGroup
+    private lateinit var manageBtn: Button
     private lateinit var modelStatus: TextView
     private lateinit var modelProgress: ProgressBar
     private lateinit var downloadBtn: Button
@@ -39,6 +43,9 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        modelPicker = findViewById(R.id.model_picker)
+        manageBtn = findViewById(R.id.manage_models)
+        manageBtn.setOnClickListener { manageModels() }
         modelStatus = findViewById(R.id.model_status)
         modelProgress = findViewById(R.id.model_progress)
         downloadBtn = findViewById(R.id.download)
@@ -67,8 +74,11 @@ class MainActivity : Activity() {
             (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
         }
         findViewById<Button>(R.id.get_heliboard).setOnClickListener { open(getString(R.string.url_heliboard)) }
-        findViewById<Button>(R.id.open_model).setOnClickListener { open("https://huggingface.co/${ModelStore.REPO}") }
-        findViewById<Button>(R.id.open_dataset).setOnClickListener { open(getString(R.string.url_dataset)) }
+        findViewById<Button>(R.id.open_model).setOnClickListener {
+            val m = Catalogue.selected(this)
+            open(m.card ?: "https://huggingface.co/${m.repo}")
+        }
+        findViewById<Button>(R.id.open_source).setOnClickListener { open(getString(R.string.url_source)) }
 
         findViewById<Switch>(R.id.auto_start).apply {
             isChecked = Prefs.autoStart(this@MainActivity)
@@ -115,7 +125,7 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != REQ_FOLDER || resultCode != RESULT_OK) return
         val path = data?.data?.let(::treeToPath)
-        val dir = path?.let { File(it, ModelStore.SHARED_FOLDER) }
+        val dir = path?.let { File(it, ModelStore.sharedFolder(Catalogue.selected(this))) }
         if (dir == null || !(dir.isDirectory || dir.mkdirs()) || !dir.canWrite()) {
             locationStatus.text = getString(R.string.location_unusable)
             return
@@ -151,31 +161,93 @@ class MainActivity : Activity() {
         return if (rel.isEmpty()) root else "$root/$rel"
     }
 
+    /**
+     * One radio button per catalogue model. Planned models are shown, disabled, as coming soon.
+     * Picking a model makes it the keyboard's model at once; if it isn't downloaded yet the model
+     * section below offers the download. Disabled while a download or move runs.
+     */
+    private fun renderPicker(running: Boolean) {
+        val selected = Catalogue.selected(this)
+        modelPicker.setOnCheckedChangeListener(null)
+        modelPicker.removeAllViews()
+        for (m in Catalogue.get(this).models) {
+            val state = when {
+                !m.available -> getString(R.string.model_coming_soon)
+                ModelStore.isReady(this, model = m) -> getString(R.string.model_downloaded)
+                else -> getString(R.string.model_not_downloaded)
+            }
+            modelPicker.addView(RadioButton(this).apply {
+                id = View.generateViewId()
+                tag = m.id
+                text = getString(R.string.model_option, m.name, state, m.summary)
+                isEnabled = m.available && !running
+                isChecked = m.id == selected.id
+                setPadding(paddingLeft, 8, paddingRight, 8)
+            })
+        }
+        modelPicker.setOnCheckedChangeListener { group, checkedId ->
+            val id = group.findViewById<RadioButton>(checkedId)?.tag as? String ?: return@setOnCheckedChangeListener
+            if (id == Catalogue.selected(this).id) return@setOnCheckedChangeListener
+            Prefs.setSelectedModel(this, id)
+            Transcriber.unload()
+            ModelDownload.clearFailure()
+            ModelDownload.check(this)
+            render()
+        }
+    }
+
+    /** Lists downloaded models other than the selected one; tapping one deletes it after a confirm. */
+    private fun manageModels() {
+        val selected = Catalogue.selected(this)
+        val others = ModelStore.readyModels(this).filter { it.id != selected.id }
+        if (others.isEmpty()) {
+            android.app.AlertDialog.Builder(this).setMessage(R.string.manage_none).setPositiveButton(android.R.string.ok, null).show()
+            return
+        }
+        val labels = others.map { getString(R.string.manage_item, it.name, ModelStore.installed(this, it)!!.totalBytes / 1_000_000) }
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.manage_title)
+            .setItems(labels.toTypedArray()) { _, which ->
+                val m = others[which]
+                android.app.AlertDialog.Builder(this)
+                    .setMessage(getString(R.string.manage_confirm, m.name))
+                    .setPositiveButton(R.string.delete) { _, _ -> ModelStore.delete(this, m); render() }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
     private fun render() {
-        val installed = ModelStore.installed(this)
-        val mb = installed.totalBytes / 1_000_000
+        val model = Catalogue.selected(this)
+        val installed = ModelStore.installed(this, model)
+        val mb = (installed?.totalBytes ?: ModelStore.BUNDLED.values.first().totalBytes) / 1_000_000
         val s = ModelDownload.status
         val ready = ModelStore.isReady(this)
-        findViewById<TextView>(R.id.version).text =
-            getString(R.string.version_line, BuildConfigShim.versionName(this), installed.version, installed.revision.take(12))
+        renderPicker(s is ModelDownload.Status.Running)
+        manageBtn.visibility = if (ModelStore.readyModels(this).any { it.id != model.id }) View.VISIBLE else View.GONE
+        findViewById<TextView>(R.id.version).text = if (installed != null)
+            getString(R.string.version_line, BuildConfigShim.versionName(this), model.name, installed.version, installed.revision.take(12))
+        else getString(R.string.version_line_none, BuildConfigShim.versionName(this), model.name)
         modelProgress.visibility = if (s is ModelDownload.Status.Running) View.VISIBLE else View.GONE
         when {
             s is ModelDownload.Status.Running -> {
                 modelProgress.progress = (s.done * 1000 / s.total.coerceAtLeast(1)).toInt()
                 modelStatus.text = if (ModelDownload.moving) getString(R.string.model_moving, s.done / 1_000_000, s.total / 1_000_000)
-                else getString(R.string.model_downloading_version, ModelDownload.target?.version ?: "", s.done / 1_000_000, s.total / 1_000_000)
+                else getString(R.string.model_downloading_version, ModelDownload.target?.let { (m, v) -> listOfNotNull(m.name, v?.version).joinToString(" ") } ?: "", s.done / 1_000_000, s.total / 1_000_000)
                 downloadBtn.setText(R.string.cancel)
                 downloadBtn.visibility = View.VISIBLE
                 window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
             ready -> {
-                modelStatus.text = getString(R.string.model_ready, installed.version, mb)
+                modelStatus.text = getString(R.string.model_ready, model.name, installed!!.version, mb)
                 downloadBtn.visibility = View.GONE
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
             else -> {
                 modelStatus.text = if (s is ModelDownload.Status.Failed) getString(R.string.model_failed, s.message)
-                else getString(R.string.model_missing, mb)
+                else getString(R.string.model_missing, model.name, mb)
                 downloadBtn.setText(R.string.download)
                 downloadBtn.visibility = View.VISIBLE
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -190,7 +262,7 @@ class MainActivity : Activity() {
 
         val root = Prefs.modelRoot(this)
         locationStatus.text = if (root == null) getString(R.string.location_private)
-        else getString(R.string.location_shared, ModelStore.dir(this).path)
+        else getString(R.string.location_shared, ModelStore.base(this).path)
         resetLocationBtn.visibility = if (root == null) View.GONE else View.VISIBLE
 
         val mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
@@ -211,7 +283,7 @@ class MainActivity : Activity() {
     }
 
     /** Only once a model is installed; before that, Download already fetches the newest one. */
-    private fun renderUpdate(installed: ModelStore.Manifest, s: ModelDownload.Status, ready: Boolean) {
+    private fun renderUpdate(installed: ModelStore.Manifest?, s: ModelDownload.Status, ready: Boolean) {
         val running = s is ModelDownload.Status.Running
         val update = ModelDownload.updateAvailable(this)
         checkUpdateBtn.visibility = if (ready && !running && !ModelDownload.checking) View.VISIBLE else View.GONE
@@ -220,10 +292,10 @@ class MainActivity : Activity() {
         updateStatus.visibility = if (ready && !running) View.VISIBLE else View.GONE
         updateStatus.text = when {
             ModelDownload.checking -> getString(R.string.update_checking)
-            update != null && s is ModelDownload.Status.Failed -> getString(R.string.update_failed, s.message, installed.version)
-            update != null -> getString(R.string.update_available, update.version, update.totalBytes / 1_000_000, installed.version)
+            update != null && s is ModelDownload.Status.Failed -> getString(R.string.update_failed, s.message, installed?.version ?: "")
+            update != null -> getString(R.string.update_available, update.version, update.totalBytes / 1_000_000, installed?.version ?: "")
             ModelDownload.checkError != null -> getString(R.string.update_check_failed, ModelDownload.checkError)
-            ModelDownload.latest != null -> getString(R.string.update_none, installed.version)
+            ModelDownload.latest(Catalogue.selected(this).id) != null -> getString(R.string.update_none, installed?.version ?: "")
             else -> ""
         }
     }

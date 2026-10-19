@@ -1,4 +1,4 @@
-package com.danielrosehill.codeswitchvoice
+package com.danielrosehill.parlance
 
 import android.content.Context
 import com.k2fsa.sherpa.onnx.FeatureConfig
@@ -15,21 +15,27 @@ object Transcriber {
     const val SAMPLE_RATE = 16000
 
     @Volatile private var recognizer: OfflineRecognizer? = null
+    /** Folder the loaded recognizer came from; a different selected model means reload. */
+    @Volatile private var loadedDir: String? = null
     private val lock = Any()
 
-    fun isLoaded() = recognizer != null
+    fun isLoaded(ctx: Context) = recognizer != null && loadedDir == ModelStore.dir(ctx)?.path
 
     /** Frees the loaded model, e.g. after it moved; the next transcription loads it again. */
     fun unload() = synchronized(lock) {
         recognizer?.release()
         recognizer = null
+        loadedDir = null
     }
 
     /** Blocking. Safe to call repeatedly; only the first call loads. */
     fun load(ctx: Context): OfflineRecognizer {
-        recognizer?.let { return it }
+        val want = ModelStore.dir(ctx)?.path
+        recognizer?.takeIf { loadedDir == want }?.let { return it }
         synchronized(lock) {
-            recognizer?.let { return it }
+            recognizer?.takeIf { loadedDir == want }?.let { return it }
+            recognizer?.release()
+            recognizer = null
             val app = ctx.applicationContext
             val config = OfflineRecognizerConfig(
                 // sherpa-onnx reads the NeMo feature settings (128 mels) from the model metadata.
@@ -46,7 +52,7 @@ object Transcriber {
                 ),
                 decodingMethod = "greedy_search",
             )
-            return OfflineRecognizer(assetManager = null, config = config).also { recognizer = it }
+            return OfflineRecognizer(assetManager = null, config = config).also { recognizer = it; loadedDir = want }
         }
     }
 

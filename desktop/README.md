@@ -1,7 +1,7 @@
-# Voice To Hebrish: desktop (Linux and Windows)
+# Parlance: desktop (Linux and Windows)
 
-The desktop app of [Voice To Hebrish](../README.md): dictation for English speakers in
-Israel, running the English-Hebrew Parakeet fine-tune on your CPU with sherpa-onnx.
+The desktop app of [Parlance](../README.md): on-device dictation with NVIDIA Parakeet,
+stock or one of the fine-tunes, running on your CPU with sherpa-onnx.
 
 ![The Dictate tab on KDE Plasma](../docs/screenshots/linux-dictate.png)
 
@@ -15,7 +15,7 @@ Israel, running the English-Hebrew Parakeet fine-tune on your CPU with sherpa-on
 - The text is pasted at the cursor: the app puts it on the clipboard and sends Ctrl+V, so
   it works whatever keyboard layout is active, Hebrew included. Clipboard-only is an option.
 - Recent transcripts are listed with Copy buttons, plus **Copy all** and **Clear history**.
-- `voice-to-hebrish --toggle` starts or stops the running app, for a desktop shortcut.
+- `parlance --toggle` starts or stops the running app, for a desktop shortcut.
 
 **Transcribe** (long form):
 - Pick the microphone, then record with a level meter, a timer and Pause/Resume. Recordings can run up to 3 hours.
@@ -26,30 +26,35 @@ Israel, running the English-Hebrew Parakeet fine-tune on your CPU with sherpa-on
 
 **Also included:**
 - **Tray icon:** closing the window leaves the app in the tray. Middle-click the tray icon to start or stop dictation.
-- **Model management:**
-  - It downloads the model (~660 MB) on first run and checks its SHA-256.
-  - It checks for new fine-tunes on a schedule, and installs them automatically or after you confirm.
-  - It can keep previous versions so you can switch back.
-- **About tab:** what the model is, how it was trained, and its benchmark numbers.
+- **Model choice** (Model tab): stock Parakeet, or the English-Hebrew code-switching
+  fine-tune. The technical and personal-voice fine-tunes are listed as *coming soon* and
+  appear by themselves once published (the app re-reads the catalogue from this repo).
+  - Each model (~630 MB) downloads once, on request, with its SHA-256 checked.
+  - Models you've downloaded stay on disk, so switching back is instant; *Delete the other
+    models* frees the space.
+  - It checks the selected model for new versions on a schedule, and installs them
+    automatically or after you confirm. It can keep previous versions so you can switch back.
+- **About tab:** the models, and the code-switching model's training data and benchmarks.
 
 ## Install
 
 **Ubuntu 26.04** (amd64): download the .deb from the
-[releases](https://github.com/danielrosehill/Voice-To-Hebrish/releases), then:
+[releases](https://github.com/danielrosehill/Parlance-Dictation/releases), then:
 
 ```bash
-sudo apt install ./voice-to-hebrish_*_amd64.deb
+sudo apt install ./parlance_*_amd64.deb
 sudo usermod -aG input $USER     # for the hotkey; log in again afterwards
 ```
 
 The .deb bundles sherpa-onnx (Ubuntu doesn't ship it) and is pinned to Ubuntu 26.04's
-python3 (3.14). It replaces `codeswitch-dictation` (this app's old name) and
-`parakeet-dictation` (Parakeet-Type-Ubuntu), so only one dictation app is installed. On
+python3 (3.14). It replaces the predecessor apps `voice-to-hebrish`, `codeswitch-dictation`
+and `parakeet-dictation` (Parakeet-Type-Ubuntu), so only one dictation app is installed, and
+on first start it adopts Voice To Hebrish's settings and downloaded model. On
 other Ubuntu releases, run `./install.sh` (a per-user venv; needs uv) or rebuild with
 `./build-deb.sh`.
 
 **Windows 10/11** (x64): download the `-windows-x64.zip` from the releases, unzip it, and
-run `VoiceToHebrish.exe`. There is no installer and no admin rights are needed. Turn on
+run `Parlance.exe`. There is no installer and no admin rights are needed. Turn on
 *Start at login* under Settings if you want it in the tray at every login. Windows
 SmartScreen may warn you because the build is unsigned.
 
@@ -57,12 +62,13 @@ SmartScreen may warn you because the build is unsigned.
 
 | | Linux | Windows |
 | --- | --- | --- |
-| Settings | `~/.config/voice-to-hebrish/config.json` | `%APPDATA%\VoiceToHebrish\config.json` |
-| Models, history, state | `~/.local/share/voice-to-hebrish/` | `%LOCALAPPDATA%\VoiceToHebrish\` |
-| Log | stderr | `%LOCALAPPDATA%\VoiceToHebrish\voice-to-hebrish.log` |
+| Settings | `~/.config/parlance/config.json` | `%APPDATA%\Parlance\config.json` |
+| Models, history, state | `~/.local/share/parlance/` | `%LOCALAPPDATA%\Parlance\` |
+| Log | stderr | `%LOCALAPPDATA%\Parlance\parlance.log` |
 
-`config.json` keys and defaults: `DEFAULTS` in [`voice_to_hebrish/config.py`](voice_to_hebrish/config.py).
-Model CLI: `voice-to-hebrish-model status|check|download [--replace]`.
+`config.json` keys and defaults: `DEFAULTS` in [`parlance/config.py`](parlance/config.py).
+Model CLI: `parlance-model list`, `parlance-model use <model>`,
+`parlance-model status|check|download [<model>] [--replace]`.
 
 ## Development
 
@@ -70,7 +76,7 @@ Model CLI: `voice-to-hebrish-model status|check|download [--replace]`.
 # Linux: the distro python, for apt's PySide6 and evdev
 uv venv --python /usr/bin/python3 --system-site-packages .venv && uv pip install -e . pytest
 .venv/bin/python -m pytest tests
-.venv/bin/voice-to-hebrish
+.venv/bin/parlance
 ```
 
 Windows: `pip install -e ".[windows]"`. The CI build is `.github/workflows/desktop.yml`.

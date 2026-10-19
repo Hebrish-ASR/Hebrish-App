@@ -102,12 +102,12 @@ The update branch (old version installed, new weights published) is covered only
 
 ## Releasing
 
-1. Bump `__version__` in `voice_to_hebrish/__init__.py` and write
+1. Bump `__version__` in `parlance/__init__.py` and write
    `../.github/desktop-release-notes.md`.
 2. Push the tag `desktop-v<ver>`. CI (`.github/workflows/desktop.yml`) runs the tests on
    Linux and Windows, builds the Windows zip with PyInstaller, runs the frozen exe's
    `--selftest`, and creates the release with the zip attached.
-3. On Ubuntu 26.04, run `./build-deb.sh`. It writes `dist/voice-to-hebrish_<ver>-1_amd64.deb`,
+3. On Ubuntu 26.04, run `./build-deb.sh`. It writes `dist/parlance_<ver>-1_amd64.deb`,
    bundles sherpa-onnx + sherpa-onnx-core, and is pinned to the build machine's python3
    minor (3.14). Then run `gh release upload desktop-v<ver> dist/*.deb`. CI can't build it
    because the GitHub runners' Ubuntu has an older python3.
@@ -119,17 +119,40 @@ The download links live in these places. Update them when a version changes:
 - `Speech-Tech-Index`;
 - `English-Hebrew-Code-Switching-Index` (README and `data/index.json`).
 
-The package has `Conflicts: parakeet-dictation, codeswitch-dictation` and `Replaces:
-codeswitch-dictation`, so only one Linux dictation app is ever installed. On first start,
-`config.migrate_legacy()` renames 0.1.0's `codeswitch-dictation` config and data folders, so
-the model isn't downloaded again.
+The package has `Conflicts`/`Replaces` on the predecessors (`voice-to-hebrish`,
+`codeswitch-dictation`, and `parakeet-dictation` from Parakeet-Type-Ubuntu), so only one Linux
+dictation app is ever installed. On first start (no `~/.config/parlance/config.json` yet),
+`config.migrate_legacy()` copies Voice To Hebrish's (or Codeswitch Dictation's) settings and
+**moves** its downloaded versions into `models/codeswitch/`, then selects that model, so
+nothing is downloaded again.
 
-**Trap (V, 2026-10-18):** if a 0.1.0 process is still running when 0.2.0 first starts, the
-rename pulls the model out from under it. The old app then sees no model, treats it as a
-first run, and downloads 660 MB again into the old folder. It happened on daniellaptop: a
-hand-launched 0.1.0 tray instance survived the package upgrade. The cleanup was to kill the
-old process and delete `~/.local/share/codeswitch-dictation` after checking its manifest had
-the same weights. Only 0.1.0 → 0.2.0 upgrades with the old app running are affected. It ships `/usr/lib/udev/rules.d/70-voice-to-hebrish-uinput.rules` (uaccess on
+**Trap (V, 2026-10-18, seen when Codeswitch Dictation 0.1.0 became Voice To Hebrish 0.2.0):** if the old app is
+still running when the new one first starts, the move pulls the model out from under it. The
+old app then sees no model and downloads 660 MB again into its own folder. Quit the old app
+(and purge its package) before the first Parlance start.
+
+## Models
+
+The catalogue is `../shared/models.json`, bundled as `parlance/data/models.json`
+(`tests/test_shared.py` fails if the copies differ). Each update check first re-fetches it
+from `catalogue_url` (raw GitHub, `main`) into `~/.local/share/parlance/catalogue.json`; an
+unparseable or wrong-`schema` copy is ignored and the bundled one is used. So **publishing a
+model needs no app release**: push the HF repo (files: `encoder.int8.onnx`,
+`decoder.int8.onnx`, `joiner.int8.onnx`, `tokens.txt`, optional `version.json`), then flip its
+entry to `"status": "available"` with `repo` and `subdir`, re-copy the bundled file, push.
+
+- `subdir` may be empty: the stock mirror (`csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8`)
+  keeps its files at the repo root. `Model.path()` joins without stray slashes.
+- `version_label` is the label for a repo without `version.json` (stock: `v2`).
+- Layout: `models/<id>/<version>-<sha12>/`. `state.json` holds `model` (the selected id) and
+  `active` (`{id: dirname}`). Pruning old versions never crosses model ids.
+- A model in the middle of a download can't be switched away from (the picker is disabled).
+
+Verified 2026-10-19 (V): stock downloaded through `parlance-model download stock` (630 MB,
+SHA-256 checked) and decoded the mirror's `test_wavs/0.wav` correctly with the unchanged
+engine settings (`feature_dim=128`, greedy search). Code-switch `check` returned v5, r5-en30.
+
+It ships `/usr/lib/udev/rules.d/70-parlance-uinput.rules` (uaccess on
 uinput, the same rule Steam uses) for the paste device. The hotkey still needs the
 `input` group, because a uaccess rule on keyboards would let any seat app read keystrokes.
 
@@ -139,12 +162,12 @@ libs in the bundled .so files, and `--toggle` record → transcribe ran from `/u
 ## Testing
 
 - `.venv/bin/python -m pytest tests`: offline tests of the update logic, the hotkey state
-  machine, chord parsing, and drift from `shared/model.json`.
+  machine, chord parsing, and drift from `shared/models.json`.
 - UI: render the tabs off-screen with `QT_QPA_PLATFORM=offscreen` and `window.grab()`.
   Drive the Transcribe tab with `win.transcribe.transcribe_file(path)`.
 - To smoke-test without touching real settings or colliding with another dictation tool,
   run with `XDG_CONFIG_HOME=<tmp>` and a config of
   `{"hotkey": "KEY_F20", "insert": "clipboard"}`. Inject F20 through a throwaway
   `evdev.UInput`. Wait ≥4 s after creating the device: the listener rescans every 3 s.
-- When killing a test instance, don't `pkill -f voice-to-hebrish`: the pattern also
+- When killing a test instance, don't `pkill -f parlance`: the pattern also
   matches the shell running the command.

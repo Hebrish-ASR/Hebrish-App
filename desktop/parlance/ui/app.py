@@ -24,7 +24,7 @@ from ..engine import Engine
 from ..hotkey import make_listener
 from ..inserter import make_inserter
 
-log = logging.getLogger("voice-to-hebrish")
+log = logging.getLogger("parlance")
 ICONS = Path(__file__).resolve().parent.parent / "data" / "icons"
 HISTORY_MAX = 50
 
@@ -76,6 +76,7 @@ class Controller(QObject):
         self.win = MainWindow(self)
         self.sig.progress.connect(self.win.progress)
         self._build_tray()
+        self.pending_download: str | None = None   # model the user asked to download
         if not hidden or model_store.active() is None:
             self.win.show()
         self.load_model()
@@ -90,7 +91,7 @@ class Controller(QObject):
             self.win.banner(msg)
 
     def notify(self, title, body=""):
-        self.tray.showMessage(title, body, icon("voice-to-hebrish"), 6000)
+        self.tray.showMessage(title, body, icon("parlance"), 6000)
 
     # -- dictation -----------------------------------------------------------------
     def toggle(self):
@@ -182,7 +183,7 @@ class Controller(QObject):
             self._update_tray()
             return
         self.set_state("busy")
-        self.win.status(f"Loading {cur[1].label}…")
+        self.win.status(f"Loading {cur[1].full_label}…")
 
         def work():
             try:
@@ -197,15 +198,30 @@ class Controller(QObject):
             self.notify("Couldn't load the model", str(err))
             self.win.banner(f"Couldn't load the model: {err}")
         else:
-            self.win.status(f"Loaded {model_store.active()[1].label}.")
+            cur = model_store.active()
+            self.win.status(f"Loaded {cur[1].full_label}." if cur else "")
         self.set_state("idle")
+
+    def select_model(self, mid: str):
+        """Switch to another catalogue model. One that isn't on disk yet is downloaded."""
+        if self.downloading or mid == model_store.current_id():
+            return
+        model_store.select(mid)
+        self.latest = None
+        self.load_model()
+        if model_store.active() is None:
+            self.pending_download = mid
+        self.check_updates(manual=True)
+        self.win.update_model()
 
     def check_updates(self, manual=False):
         self.win.status("Checking Hugging Face for a newer model…")
+        mid = model_store.current_id()
 
         def work():
             try:
-                self.sig.checked.emit(model_store.fetch_latest(), None, manual)
+                model_store.refresh_catalogue()
+                self.sig.checked.emit(model_store.fetch_latest(mid), None, manual)
             except Exception as e:
                 self.sig.checked.emit(None, e, manual)
         threading.Thread(target=work, daemon=True).start()
@@ -220,23 +236,28 @@ class Controller(QObject):
         state = load_json(STATE_PATH)
         state["last_check"] = time.time()
         save_json(STATE_PATH, state)
+        if latest.model != model_store.current_id():     # the user switched model meanwhile
+            return
         self.latest = latest
-        first_run = model_store.active() is None
+        missing = model_store.active() is None
         if not model_store.needs_update(latest):
-            self.win.status(f"Up to date ({latest.label}).")
-        elif first_run or self.cfg["auto_update"]:
+            self.win.status(f"Up to date ({latest.full_label}).")
+        elif self.pending_download == latest.model or (self.cfg["auto_update"] and not missing):
+            self.pending_download = None
             self.download(latest)
+        elif missing:
+            self.win.status(f"Ready to download {latest.full_label} ({latest.total_size >> 20} MB).")
         else:
-            self.win.status(f"Update available: {latest.label}")
+            self.win.status(f"Update available: {latest.full_label}")
             if not manual:
-                self.notify("Model update available", f"{latest.label}. Open {APP_NAME} to install it.")
+                self.notify("Model update available", f"{latest.full_label}. Open {APP_NAME} to install it.")
         self.win.update_model()
         self._update_tray()
 
     def _first_check(self):
         if model_store.active() is None:
-            self.win.present_tab("model")
-            self.check_updates(manual=True)    # first run: fetch the weights
+            self.win.present_tab("model")      # first run: pick a model, then Download
+            self.check_updates(manual=True)
         else:
             self._periodic_check()
 
@@ -271,9 +292,10 @@ class Controller(QObject):
             self.win.status(f"Download failed: {err}")
             self.notify("Model download failed", str(err))
         else:
-            self.notify("Model ready", f"{manifest.label}. Yalla, start talking.")
-            self.win.status(f"Installed {manifest.label}.")
-            self.load_model()
+            self.notify("Model ready", f"{manifest.full_label}. Ready to dictate.")
+            self.win.status(f"Installed {manifest.full_label}.")
+            if manifest.model == model_store.current_id():
+                self.load_model()
         self.win.progress(-1, "")
         self.win.update_model()
         self._update_tray()
@@ -323,9 +345,9 @@ class Controller(QObject):
 
 def _selftest() -> int:
     """Used by the Windows CI build: prove the frozen bundle has every native piece.
-    A --windowed exe has no stdout, so results go to $VTH_SELFTEST_OUT when set."""
+    A --windowed exe has no stdout, so results go to $PARLANCE_SELFTEST_OUT when set."""
     import os
-    out = open(os.environ["VTH_SELFTEST_OUT"], "w") if os.environ.get("VTH_SELFTEST_OUT") else sys.stdout
+    out = open(os.environ["PARLANCE_SELFTEST_OUT"], "w") if os.environ.get("PARLANCE_SELFTEST_OUT") else sys.stdout
     try:
         import sherpa_onnx
         import sounddevice
@@ -355,7 +377,7 @@ def _selftest() -> int:
 
 
 def main():
-    p = argparse.ArgumentParser(prog="voice-to-hebrish")
+    p = argparse.ArgumentParser(prog="parlance")
     p.add_argument("--toggle", action="store_true", help="start or stop dictation in the running app")
     p.add_argument("--hidden", action="store_true", help="start in the tray")
     p.add_argument("--selftest", action="store_true", help=argparse.SUPPRESS)
@@ -363,7 +385,7 @@ def main():
     if sys.stderr is None:                    # Windows --windowed build: log to a file
         from ..config import DATA_DIR
         DATA_DIR.mkdir(parents=True, exist_ok=True)
-        logging.basicConfig(filename=DATA_DIR / "voice-to-hebrish.log", level=logging.INFO,
+        logging.basicConfig(filename=DATA_DIR / "parlance.log", level=logging.INFO,
                             format="%(asctime)s %(message)s")
     else:
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
@@ -373,12 +395,12 @@ def main():
     migrate_legacy()
     app = QApplication([sys.argv[0], *qt_args])
     app.setApplicationName(APP_NAME)
-    app.setDesktopFileName("voice-to-hebrish")
-    app.setWindowIcon(icon("voice-to-hebrish"))
+    app.setDesktopFileName("parlance")
+    app.setWindowIcon(icon("parlance"))
     app.setQuitOnLastWindowClosed(False)
 
     # single instance: a second launch hands its command to the first and exits
-    name = f"voice-to-hebrish-{getpass.getuser()}"
+    name = f"parlance-{getpass.getuser()}"
     sock = QLocalSocket()
     sock.connectToServer(name)
     if sock.waitForConnected(500):
@@ -387,7 +409,7 @@ def main():
         sock.disconnectFromServer()
         return
     if args.toggle:
-        print("Voice To Hebrish isn't running.", file=sys.stderr)
+        print("Parlance isn't running.", file=sys.stderr)
         sys.exit(1)
     QLocalServer.removeServer(name)            # stale socket from a crash
     server = QLocalServer()

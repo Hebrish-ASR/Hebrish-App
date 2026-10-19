@@ -1,4 +1,4 @@
-package com.danielrosehill.codeswitchvoice
+package com.danielrosehill.parlance
 
 import android.Manifest
 import android.content.Intent
@@ -118,7 +118,7 @@ class VoiceImeService : InputMethodService() {
     }
 
     private fun preload() {
-        if (Transcriber.isLoaded()) return
+        if (Transcriber.isLoaded(this)) return
         Thread { runCatching { Transcriber.load(this) } }.start()
     }
 
@@ -200,7 +200,7 @@ class VoiceImeService : InputMethodService() {
             if (switchWhenDone) switchBack()
             return
         }
-        state = if (Transcriber.isLoaded()) State.TRANSCRIBING else State.LOADING
+        state = if (Transcriber.isLoaded(this)) State.TRANSCRIBING else State.LOADING
         renderTake()
         show(getString(if (state == State.LOADING) R.string.ime_loading else R.string.ime_transcribing), busy = true)
         Thread {

@@ -1,13 +1,13 @@
-Voice To Hebrish for Ubuntu
-===========================
+Parlance for Ubuntu
+===================
 
-  /usr/bin/voice-to-hebrish         the app (window + tray)
-  /usr/bin/voice-to-hebrish-model   model CLI: status | check | download [--replace]
-  /usr/lib/voice-to-hebrish/        app code + bundled sherpa-onnx (not in Ubuntu)
-  ~/.config/voice-to-hebrish/       config.json
-  ~/.local/share/voice-to-hebrish/  downloaded model versions, state.json
+  /usr/bin/parlance         the app (window + tray)
+  /usr/bin/parlance-model   model CLI: list | use | status | check | download [<model>] [--replace]
+  /usr/lib/parlance/        app code + bundled sherpa-onnx (not in Ubuntu)
+  ~/.config/parlance/       config.json
+  ~/.local/share/parlance/  models/<model>/<version>/, state.json
 
-The model (~660 MB) downloads on first launch. For the hotkey, join the input
+Pick a model in the Model tab; each is ~660 MB and downloads once. For the hotkey, join the input
 group and log in again:  sudo usermod -aG input $USER
 The bundled wheels match the python3 minor version the package was built for;
 rebuild after Ubuntu moves python3 to a new minor version.

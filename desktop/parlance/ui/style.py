@@ -1,7 +1,7 @@
 """Look and feel. Accent colours are fixed (flag blue, record red); everything else uses
 the system palette, so the window follows light and dark themes."""
 
-BLUE = "#0038B8"
+BLUE = "#24527A"
 BLUE_HOVER = "#1a4fd0"
 RED = "#D62828"
 RED_PULSE = "#ef4b4b"

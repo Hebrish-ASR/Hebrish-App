@@ -1,4 +1,4 @@
-package com.danielrosehill.codeswitchvoice
+package com.danielrosehill.parlance
 
 import android.content.Context
 import org.json.JSONArray
@@ -10,16 +10,16 @@ import java.net.URL
 import java.security.MessageDigest
 
 /**
- * The fine-tune as a sherpa-onnx int8 transducer. Each installed model is a [Manifest]: one HF
- * commit plus the size and SHA-256 of every file at it, so a later push to the model repo never
- * changes what is already on the phone. [BUNDLED] (v3, run r3-en30) is what this APK knows
- * offline; [checkLatest] builds a manifest for whatever `main` holds now.
+ * The models of [Catalogue], each a sherpa-onnx int8 transducer. Each installed model is a
+ * [Manifest]: one HF commit plus the size and SHA-256 of every file at it, so a later push to a
+ * model repo never changes what is already on the phone. [BUNDLED] holds the manifests this APK
+ * knows offline; [checkLatest] builds one for whatever a model repo's `main` holds now.
+ *
+ * Every function takes the model it acts on and defaults to [Catalogue.selected].
  */
 object ModelStore {
-    const val REPO = "danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching"
-    private const val SUBDIR = "sherpa-onnx/int8"
-    /** Optional label file written next to the weights by the training repo's export_sherpa. */
-    private const val VERSION_FILE = "version.json"
+    /** Optional label file written next to the weights by a training repo's export_sherpa. */
+    const val VERSION_FILE = "version.json"
 
     data class ModelFile(val name: String, val size: Long, val sha256: String?)
 
@@ -56,66 +56,106 @@ object ModelStore {
         }
     }
 
-    /** Sizes and SHA-256 are the HF tree API's `size` and `lfs.oid` at that revision. */
-    val BUNDLED = Manifest(
-        "v3", "92679110e821baf9425f620c9deb9920ce9b7539", listOf(
-            ModelFile("encoder.int8.onnx", 652282307, "b79474c430250d1dd34a2b0ff2f5f2bf6643faffe8b782519b3b0b5e98f42237"),
-            ModelFile("decoder.int8.onnx", 7257753, "bb625f0d27add1342c63e78ea6561331960f3fcef57221cc50c3a7691aa4bd68"),
-            ModelFile("joiner.int8.onnx", 1739080, "095c35c6ca595b65e1ec83aa561fd4207e1d3200ffe5a7473431e2a5da3c7fba"),
-            // Small files are stored in git, not LFS, so HF gives no hash; size is checked.
-            ModelFile("tokens.txt", 9384, null),
-        )
+    /**
+     * What this APK can download without asking HF first, per model id. Sizes and SHA-256 are the
+     * HF tree API's `size` and `lfs.oid` at that revision. Small files are stored in git, not
+     * LFS, so HF gives no hash for tokens.txt; its size is checked. A model missing here (one
+     * added to the catalogue later) is resolved with [checkLatest] before its first download.
+     */
+    val BUNDLED: Map<String, Manifest> = mapOf(
+        // csukuangfj's export of NVIDIA's release; it has no version.json, hence the fixed label.
+        "stock" to Manifest(
+            "v2", "1ab9323565ddb038682214b292f588070a538ce2", listOf(
+                ModelFile("encoder.int8.onnx", 652184296, "a32b12d17bbbc309d0686fbbcc2987b5e9b8333a7da83fa6b089f0a2acd651ab"),
+                ModelFile("decoder.int8.onnx", 7257753, "b6bb64963457237b900e496ee9994b59294526439fbcc1fecf705b31a15c6b4e"),
+                ModelFile("joiner.int8.onnx", 1739080, "7946164367946e7f9f29a122407c3252b680dbae9a51343eb2488d057c3c43d2"),
+                ModelFile("tokens.txt", 9384, null),
+            )
+        ),
+        // v3, run r3-en30.
+        "codeswitch" to Manifest(
+            "v3", "92679110e821baf9425f620c9deb9920ce9b7539", listOf(
+                ModelFile("encoder.int8.onnx", 652282307, "b79474c430250d1dd34a2b0ff2f5f2bf6643faffe8b782519b3b0b5e98f42237"),
+                ModelFile("decoder.int8.onnx", 7257753, "bb625f0d27add1342c63e78ea6561331960f3fcef57221cc50c3a7691aa4bd68"),
+                ModelFile("joiner.int8.onnx", 1739080, "095c35c6ca595b65e1ec83aa561fd4207e1d3200ffe5a7473431e2a5da3c7fba"),
+                ModelFile("tokens.txt", 9384, null),
+            )
+        ),
     )
 
-    /** The files the recognizer loads; anything else in the HF folder (bpe.vocab) is skipped. */
-    private val NAMES = BUNDLED.files.map { it.name }
+    private fun sel(ctx: Context) = Catalogue.selected(ctx)
 
-    /** The model the app loads: the last one fully downloaded, or [BUNDLED] before any update. */
-    fun installed(ctx: Context): Manifest = Prefs.installedManifest(ctx)?.let(Manifest::fromJson) ?: BUNDLED
+    /** The model's last fully downloaded manifest, else its [BUNDLED] one; null if neither exists. */
+    fun installed(ctx: Context, model: Catalogue.Model = sel(ctx)): Manifest? =
+        Prefs.installedManifest(ctx, model.id)?.let(Manifest::fromJson) ?: BUNDLED[model.id]
 
-    fun url(m: Manifest, f: ModelFile) = "https://huggingface.co/$REPO/resolve/${m.revision}/$SUBDIR/${f.name}"
+    /** `a/b/c` from the non-empty parts: the stock model's files sit at the repo root (empty subdir). */
+    private fun path(vararg parts: String) = parts.filter { it.isNotEmpty() }.joinToString("/")
+
+    fun url(model: Catalogue.Model, m: Manifest, name: String) =
+        "https://huggingface.co/" + path(model.repo!!, "resolve", m.revision, model.subdir, name)
 
     /** Folder name inside a user-chosen location, so other apps can recognise what it holds. */
-    const val SHARED_FOLDER = "Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching"
+    fun sharedFolder(model: Catalogue.Model) = model.repo?.substringAfterLast('/') ?: model.id
 
     /**
-     * The folder that holds one subfolder per model version. App-private by default; under a
+     * The folder that holds one subfolder per version of [model]. App-private by default; under a
      * user-chosen folder (Prefs.modelRoot) it gets its own subfolder, because pruneOld deletes
      * everything else in it.
      */
-    fun base(ctx: Context, root: String? = Prefs.modelRoot(ctx)) =
-        if (root == null) File(ctx.filesDir, "models") else File(root, SHARED_FOLDER)
+    fun base(ctx: Context, root: String? = Prefs.modelRoot(ctx), model: Catalogue.Model = sel(ctx)) =
+        if (root == null) File(File(ctx.filesDir, "models"), model.id) else File(root, sharedFolder(model))
 
-    fun dir(ctx: Context, root: String? = Prefs.modelRoot(ctx), m: Manifest = installed(ctx)) =
-        File(base(ctx, root), m.dirName)
+    fun dir(ctx: Context, root: String? = Prefs.modelRoot(ctx), model: Catalogue.Model = sel(ctx),
+            m: Manifest? = installed(ctx, model)): File? =
+        m?.let { File(base(ctx, root, model), it.dirName) }
 
-    fun file(ctx: Context, name: String) = File(dir(ctx), name)
+    /** A file of the selected model; only meaningful once [isReady]. */
+    fun file(ctx: Context, name: String) = File(dir(ctx) ?: throw IllegalStateException("no model"), name)
 
-    fun isReady(ctx: Context, root: String? = Prefs.modelRoot(ctx), m: Manifest = installed(ctx)) =
-        m.files.all { File(dir(ctx, root, m), it.name).let { f -> f.exists() && f.length() == it.size } }
+    fun isReady(ctx: Context, root: String? = Prefs.modelRoot(ctx), model: Catalogue.Model = sel(ctx),
+                m: Manifest? = installed(ctx, model)): Boolean {
+        val d = dir(ctx, root, model, m) ?: return false
+        return m!!.files.all { File(d, it.name).let { f -> f.exists() && f.length() == it.size } }
+    }
 
-    /** Deletes every model folder except the installed one: older versions and abandoned updates. */
-    fun pruneOld(ctx: Context) {
-        val keep = dir(ctx).name
-        base(ctx).listFiles()?.filter { it.name != keep }?.forEach { it.deleteRecursively() }
+    /** Deletes every folder of [model] except its installed version: older versions and abandoned updates. */
+    fun pruneOld(ctx: Context, model: Catalogue.Model = sel(ctx)) {
+        val keep = dir(ctx, model = model)?.name
+        base(ctx, model = model).listFiles()?.filter { it.name != keep }?.forEach { it.deleteRecursively() }
     }
 
     /**
-     * Asks HF what `main` holds now. Blocking; call from a worker thread. The manifest is pinned
-     * to the commit `main` pointed at during the check, so a push mid-download cannot mix files
-     * from two versions. The label comes from [VERSION_FILE]; without one it is the short commit.
+     * Deletes [model]'s downloaded files and forgets its manifest. In a shared folder the files
+     * may be another app's too, so only the version this app installed is removed there.
      */
-    fun checkLatest(): Manifest {
-        val sha = JSONObject(get("https://huggingface.co/api/models/$REPO/revision/main")).getString("sha")
-        val tree = JSONArray(get("https://huggingface.co/api/models/$REPO/tree/$sha/$SUBDIR"))
+    fun delete(ctx: Context, model: Catalogue.Model) {
+        if (Prefs.modelRoot(ctx) == null) base(ctx, null, model).deleteRecursively()
+        else dir(ctx, model = model)?.deleteRecursively()
+        Prefs.setInstalledManifest(ctx, model.id, null)
+    }
+
+    /**
+     * Asks HF what [model]'s `main` holds now. Blocking; call from a worker thread. The manifest is
+     * pinned to the commit `main` pointed at during the check, so a push mid-download cannot mix
+     * files from two versions. The label comes from [VERSION_FILE]; without one it is the
+     * catalogue's `version_label` (the stock export has no version.json), else the short commit.
+     */
+    fun checkLatest(ctx: Context, model: Catalogue.Model = sel(ctx)): Manifest {
+        val repo = model.repo ?: throw java.io.IOException("${model.name} is not published yet")
+        val names = Catalogue.get(ctx).files
+        val sha = JSONObject(get("https://huggingface.co/api/models/$repo/revision/main")).getString("sha")
+        val tree = JSONArray(get("https://huggingface.co/" + path("api/models", repo, "tree", sha, model.subdir)))
         val byName = (0 until tree.length()).map { tree.getJSONObject(it) }.associateBy { it.getString("path").substringAfterLast('/') }
-        val files = NAMES.map { name ->
-            val e = byName[name] ?: throw java.io.IOException("$name missing from $SUBDIR at ${sha.take(12)}")
+        val files = names.map { name ->
+            val e = byName[name] ?: throw java.io.IOException("$name missing from $repo/${model.subdir} at ${sha.take(12)}")
             ModelFile(name, e.getLong("size"), e.optJSONObject("lfs")?.getString("oid"))
         }
-        val version = runCatching {
-            JSONObject(get("https://huggingface.co/$REPO/resolve/$sha/$SUBDIR/$VERSION_FILE")).getString("version")
-        }.getOrNull() ?: "rev ${sha.take(7)}"
+        val labelled = runCatching {
+            JSONObject(get("https://huggingface.co/" + path(repo, "resolve", sha, model.subdir, Catalogue.get(ctx).versionFile)))
+                .getString("version")
+        }.getOrNull()
+        val version = labelled ?: model.versionLabel ?: "rev ${sha.take(7)}"
         return Manifest(version, sha, files)
     }
 
@@ -131,17 +171,22 @@ object ModelStore {
         }
     }
 
+    /** Models whose installed version is complete under [root], in catalogue order. */
+    fun readyModels(ctx: Context, root: String? = Prefs.modelRoot(ctx)) =
+        Catalogue.get(ctx).models.filter { it.available && isReady(ctx, root, it) }
+
     /**
      * Copies a ready model from [from] to [to] (roots as in [base]). A copy, not a rename: app
      * storage and shared storage are different filesystems. The source is deleted only when it
      * was app storage; a copy in a shared folder is left for whatever other app uses it.
-     * Blocking; call from a worker thread.
+     * Blocking; call from a worker thread. [progress] starts counting at [offset].
      */
-    fun move(ctx: Context, from: String?, to: String?, cancelled: () -> Boolean, progress: (Long) -> Unit) {
-        val m = installed(ctx)
-        val src = dir(ctx, from, m)
-        val dst = dir(ctx, to, m).apply { mkdirs() }
-        var done = 0L
+    fun move(ctx: Context, model: Catalogue.Model, from: String?, to: String?, offset: Long,
+             cancelled: () -> Boolean, progress: (Long) -> Unit) {
+        val m = installed(ctx, model)!!
+        val src = dir(ctx, from, model, m)!!
+        val dst = dir(ctx, to, model, m)!!.apply { mkdirs() }
+        var done = offset
         for (f in m.files) {
             val target = File(dst, f.name)
             if (!(target.exists() && target.length() == f.size)) {
@@ -177,8 +222,8 @@ object ModelStore {
      * installed model. Blocking; call from a worker thread. [progress] receives bytes done
      * across all files.
      */
-    fun download(ctx: Context, m: Manifest, cancelled: () -> Boolean, progress: (Long) -> Unit) {
-        val dir = dir(ctx, m = m).apply { mkdirs() }
+    fun download(ctx: Context, model: Catalogue.Model, m: Manifest, cancelled: () -> Boolean, progress: (Long) -> Unit) {
+        val dir = dir(ctx, model = model, m = m)!!.apply { mkdirs() }
         val need = m.files.sumOf { f -> File(dir, f.name).let { if (it.exists() && it.length() == f.size) 0L else f.size - File(it.path + ".part").length().coerceAtMost(f.size) } }
         if (dir.usableSpace < need + 50_000_000) {
             throw java.io.IOException("Not enough free space: need ${need / 1_000_000} MB, have ${dir.usableSpace / 1_000_000} MB")
@@ -195,7 +240,7 @@ object ModelStore {
             if (part.length() > f.size) part.delete()
             while (part.length() < f.size) {
                 if (cancelled()) throw InterruptedException("cancelled")
-                val conn = URL(url(m, f)).openConnection() as HttpURLConnection
+                val conn = URL(url(model, m, f.name)).openConnection() as HttpURLConnection
                 conn.connectTimeout = 20_000
                 conn.readTimeout = 30_000
                 conn.instanceFollowRedirects = true

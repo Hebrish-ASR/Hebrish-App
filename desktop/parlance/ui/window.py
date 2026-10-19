@@ -91,12 +91,12 @@ class MainWindow(QMainWindow):
         lay = QHBoxLayout(h)
         lay.setContentsMargins(18, 14, 18, 14)
         logo = QLabel()
-        logo.setPixmap(icon("voice-to-hebrish").pixmap(48, 48))
+        logo.setPixmap(icon("parlance").pixmap(48, 48))
         lay.addWidget(logo)
         text = QVBoxLayout()
         text.setSpacing(0)
         text.addWidget(QLabel(APP_NAME, objectName="title"))
-        text.addWidget(QLabel(f"{TAGLINE} · it knows makolet isn't Macaulay", objectName="tagline"))
+        text.addWidget(QLabel(TAGLINE, objectName="tagline"))
         lay.addLayout(text, 1)
         return h
 
@@ -180,8 +180,8 @@ class MainWindow(QMainWindow):
             if w:
                 w.deleteLater()
         if not self.ctl.history:
-            empty = muted("Nothing yet. Press your hotkey and say something like "
-                          "<i>“I need to renew my teudat zehut before the chag.”</i>")
+            empty = muted("Nothing yet. Press your hotkey and start talking; the text appears "
+                          "wherever your cursor is.")
             empty.setAlignment(Qt.AlignCenter)
             self.hist_box.addWidget(empty)
         for h in self.ctl.history:
@@ -243,7 +243,17 @@ class MainWindow(QMainWindow):
         page = QWidget()
         lay = QVBoxLayout(page)
         lay.setContentsMargins(16, 14, 16, 14)
-        box, b = card("Model")
+        box, b = card("Choose a model")
+        self.picker = QComboBox()
+        self.picker.activated.connect(self._on_pick)
+        b.addWidget(self.picker)
+        self.model_summary = muted()
+        self.model_summary.setTextFormat(Qt.RichText)
+        self.model_summary.setOpenExternalLinks(True)
+        b.addWidget(self.model_summary)
+        lay.addWidget(box)
+
+        box, b = card("Status")
         self.model_label = QLabel()
         self.model_label.setWordWrap(True)
         self.model_label.setTextFormat(Qt.RichText)
@@ -277,14 +287,44 @@ class MainWindow(QMainWindow):
         row.addWidget(use)
         row.addWidget(delete)
         b.addLayout(row)
+        self.others_label = muted()
+        b.addWidget(self.others_label)
+        self.btn_free = QPushButton("Delete the other models")
+        self.btn_free.clicked.connect(self._delete_others)
+        b.addWidget(self.btn_free, 0, Qt.AlignLeft)
         lay.addWidget(box)
         lay.addStretch(1)
         return page
+
+    def _on_pick(self, _i):
+        mid = self.picker.currentData()
+        m = model_store.get_model(mid)
+        if not m or not m.available or mid == model_store.current_id():
+            self.update_model()
+            return
+        if not model_store.installed(mid) and QMessageBox.question(
+                self, "Download model",
+                f"{m.name} isn't on this computer yet. Download it now (about 660 MB)? "
+                "It works offline afterwards.") != QMessageBox.Yes:
+            self.update_model()
+            return
+        self.ctl.select_model(mid)
+
+    def _delete_others(self):
+        cur = model_store.current_id()
+        others = [mid for mid in model_store.installed_ids() if mid != cur]
+        names = ", ".join(model_store.get_model(m).name for m in others)
+        if others and QMessageBox.question(
+                self, "Delete models", f"Delete {names}? You can download them again later.") == QMessageBox.Yes:
+            for mid in others:
+                model_store.remove_model(mid)
+            self.update_model()
 
     def _on_download(self):
         if self.ctl.latest:
             self.ctl.download(self.ctl.latest)
         else:
+            self.ctl.pending_download = model_store.current_id()
             self.ctl.check_updates(manual=True)
 
     def _use_version(self):
@@ -308,11 +348,29 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "model_label"):
             return
         cur, ctl = model_store.active(), self.ctl
+        sel = model_store.current()
+        on_disk = set(model_store.installed_ids())
+        self.picker.blockSignals(True)
+        self.picker.clear()
+        for m in model_store.models():
+            tag = "" if m.available else "  (coming soon)"
+            if m.id in on_disk:
+                tag = "  ✓ downloaded"
+            self.picker.addItem(m.name + tag, m.id)
+            if not m.available:
+                self.picker.model().item(self.picker.count() - 1).setEnabled(False)
+        self.picker.setCurrentIndex(self.picker.findData(sel.id))
+        self.picker.setEnabled(not ctl.downloading)
+        self.picker.blockSignals(False)
+        link = f" <a href='{sel.card}'>Model card</a>" if sel.card else ""
+        soon = [m.name for m in model_store.models() if not m.available]
+        self.model_summary.setText(sel.summary + link + (
+            f"<br><small>Coming soon: {', '.join(soon)}.</small>" if soon else ""))
         if cur is None:
-            text = ("<b>Not downloaded yet</b> (~660 MB). It downloads by itself on first run, "
-                    "once, and then works offline.")
+            text = (f"<b>{sel.name} isn't downloaded yet</b> (~660 MB). Click Download; "
+                    "it downloads once and then works offline.")
         else:
-            text = f"In use: <b>{cur[1].label}</b>"
+            text = f"In use: <b>{sel.name}</b> {cur[1].label}"
             if ctl.engine.loaded_dir != cur[0]:
                 text += " <i>(loading…)</i>"
         if ctl.update_available():
@@ -332,6 +390,12 @@ class MainWindow(QMainWindow):
             self.versions.addItem(m.label + ("  ✓ in use" if cur and d == cur[0] else ""), d.name)
         if cur:
             self.versions.setCurrentIndex(self.versions.findData(cur[0].name))
+        others = [mid for mid in on_disk if mid != sel.id]
+        self.others_label.setText("Also on disk: " + ", ".join(
+            f"{model_store.get_model(mid).name} ({model_store.disk_usage(mid) >> 20} MB)" for mid in others)
+            if others else "")
+        self.others_label.setVisible(bool(others))
+        self.btn_free.setVisible(bool(others) and not busy)
 
     def progress(self, frac: float, text: str):
         if frac < 0:
@@ -453,7 +517,7 @@ class MainWindow(QMainWindow):
 
     def _refresh_about(self):
         cur = model_store.active()
-        self._about.setHtml(about.html(cur[1].label if cur else "not downloaded yet", BLUE))
+        self._about.setHtml(about.html(cur[1].full_label if cur else "not downloaded yet", BLUE))
 
     # -- misc ----------------------------------------------------------------------
     def status(self, text):

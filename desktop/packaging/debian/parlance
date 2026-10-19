@@ -1,0 +1,4 @@
+#!/bin/sh
+# System python3 (GTK, evdev, numpy, sounddevice from apt) + the bundled sherpa-onnx.
+export PYTHONPATH=/usr/lib/parlance${PYTHONPATH:+:$PYTHONPATH}
+exec /usr/bin/python3 -m parlance "$@"

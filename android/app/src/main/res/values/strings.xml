@@ -1,18 +1,30 @@
 <resources>
-    <string name="app_name">Voice To Hebrish</string>
-    <string name="ime_name">Voice To Hebrish</string>
-    <string name="subtype_label">English + Hebrew (voice)</string>
+    <string name="app_name">Parlance</string>
+    <string name="ime_name">Parlance</string>
+    <string name="subtype_label">English (voice)</string>
 
     <string name="url_heliboard">https://github.com/Helium314/HeliBoard/releases</string>
-    <string name="url_dataset">https://huggingface.co/datasets/danielrosehill/Read-Aloud-Voice-Sentences</string>
+    <string name="url_source">https://github.com/danielrosehill/Parlance-Dictation</string>
 
-    <string name="intro">Voice input for English–Hebrew code-switching. On-device Parakeet TDT 0.6B v2, fine-tuned to keep Hebrew words (romanized) inside English speech.</string>
-    <string name="version_line">App %1$s · model %2$s (HF rev %3$s) · sherpa-onnx int8</string>
+    <string name="intro">On-device voice typing with NVIDIA Parakeet TDT 0.6B v2. Choose the stock model or a fine-tune. Recognition runs on the phone; audio never leaves it.</string>
+    <string name="version_line">App %1$s · %2$s %3$s (HF rev %4$s) · sherpa-onnx int8</string>
+    <string name="version_line_none">App %1$s · %2$s · sherpa-onnx int8</string>
 
     <string name="step_model">1. Model</string>
-    <string name="model_missing">Not downloaded. About %1$d MB from Hugging Face, once. Wi-Fi recommended.</string>
+    <string name="model_missing">%1$s is not downloaded. About %2$d MB from Hugging Face, once. Wi-Fi recommended.</string>
     <string name="model_downloading">Downloading… %1$d / %2$d MB</string>
-    <string name="model_ready">Model %1$s ready (%2$d MB).</string>
+    <string name="model_ready">%1$s %2$s ready (%3$d MB).</string>
+    <string name="model_pick_hint">The model the keyboard uses. Each one is a separate ~660 MB download; downloaded models stay until you delete them.</string>
+    <string name="model_option">%1$s (%2$s)\n%3$s</string>
+    <string name="model_coming_soon">coming soon</string>
+    <string name="model_downloaded">downloaded</string>
+    <string name="model_not_downloaded">not downloaded</string>
+    <string name="manage_models">Delete other models…</string>
+    <string name="manage_title">Downloaded models</string>
+    <string name="manage_item">%1$s (%2$d MB)</string>
+    <string name="manage_none">No other models are downloaded.</string>
+    <string name="manage_confirm">Delete %1$s from this phone? You can download it again later.</string>
+    <string name="delete">Delete</string>
     <string name="model_moving">Moving model… %1$d / %2$d MB</string>
     <string name="model_failed">Download failed: %1$s. Tap Download to resume.</string>
     <string name="download">Download</string>
@@ -38,13 +50,13 @@
     <string name="grant">Grant</string>
 
     <string name="step_ime">3. Keyboard</string>
-    <string name="ime_enabled">Voice To Hebrish is enabled.</string>
-    <string name="ime_disabled">Not enabled yet. Turn on “Voice To Hebrish” in the system keyboard list.</string>
+    <string name="ime_enabled">Parlance is enabled.</string>
+    <string name="ime_disabled">Not enabled yet. Turn on “Parlance” in the system keyboard list.</string>
     <string name="enable">Keyboard settings</string>
     <string name="pick">Switch keyboard</string>
 
     <string name="step_heliboard">Recommended: HeliBoard</string>
-    <string name="heliboard_body">Use HeliBoard as your main keyboard. Its mic key opens Voice To Hebrish, and once the text is in you are taken back to HeliBoard. In HeliBoard: Settings → Toolbar (or Preferences) → show the voice input key.</string>
+    <string name="heliboard_body">Use HeliBoard as your main keyboard. Its mic key opens Parlance, and once the text is in you are taken back to HeliBoard. In HeliBoard: Settings → Toolbar (or Preferences) → show the voice input key.</string>
     <string name="get_heliboard">Get HeliBoard</string>
 
     <string name="step_options">Behaviour</string>
@@ -52,10 +64,10 @@
     <string name="auto_return">Return to previous keyboard after inserting</string>
 
     <string name="step_try">Try it</string>
-    <string name="try_hint">Tap here, switch to Voice To Hebrish, and speak…</string>
+    <string name="try_hint">Tap here, switch to Parlance, and speak…</string>
     <string name="links">Links</string>
-    <string name="open_model">Model on HF</string>
-    <string name="open_dataset">Dataset on HF</string>
+    <string name="open_model">Model card</string>
+    <string name="open_source">Source code</string>
 
     <string name="ime_listening_time">Listening… %1$d:%2$02d (max %3$d s). Tap ■ to insert.</string>
     <string name="ime_paused">Paused at %1$d:%2$02d. Resume, or tap ■ to insert.</string>
@@ -75,7 +87,7 @@
     <string name="return_fixed">Always %1$s</string>
     <string name="return_change">Change</string>
     <string name="return_auto_option">Automatic</string>
-    <string name="return_hint">Long-press the keyboard key in Voice To Hebrish to open the system keyboard picker at any time.</string>
+    <string name="return_hint">Long-press the keyboard key in Parlance to open the system keyboard picker at any time.</string>
     <string name="ime_no_model">Model not downloaded. Tap the mic to open setup.</string>
     <string name="ime_no_permission">Microphone not granted. Tap the mic to open setup.</string>
     <string name="ime_tap_to_speak">Tap the mic to speak</string>
@@ -95,14 +107,14 @@
     <string name="try_open">Try it now: no setup needed</string>
     <string name="try_open_hint">Hear what it does before you set it up as a keyboard.</string>
     <string name="try_open_no_model">Try it (download the model first)</string>
-    <string name="try_title">Try Voice To Hebrish</string>
-    <string name="try_instructions">Tap the mic, say a sentence in English with a few Hebrew words in it, then tap again to stop. The text appears below. Nothing leaves your phone.</string>
+    <string name="try_title">Try Parlance</string>
+    <string name="try_instructions">Tap the mic, say a sentence, then tap again to stop. The text appears below. Nothing leaves your phone.</string>
     <string name="try_examples_title">Things to try saying:</string>
     <string-array name="try_examples">
-        <item>I need to renew my teudat zehut before the chag.</item>
-        <item>Can you pick up bamba and a challah from the makolet?</item>
-        <item>The arnona bill came, and Bituach Leumi sent a letter too.</item>
-        <item>Let\'s meet at the tachana merkazit, yalla, I\'m on my way.</item>
+        <item>Please send the revised quote by Thursday, and copy in the accounts team.</item>
+        <item>The meeting moved to half past three; I\'ll bring the printed agenda.</item>
+        <item>Can you restart the server and check whether the backup finished overnight?</item>
+        <item>Thanks for the update. Let\'s review the numbers on Monday morning.</item>
     </string-array>
     <string name="try_example_toast">Read it aloud: tap the mic first.</string>
     <string name="try_text_hint">Your words land here. You can edit them, then copy or share.</string>

@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Build an Ubuntu .deb:  ./build-deb.sh  ->  dist/voice-to-hebrish_<version>-1_amd64.deb
+# Build an Ubuntu .deb:  ./build-deb.sh  ->  dist/parlance_<version>-1_amd64.deb
 #
-# /usr/lib/voice-to-hebrish/ holds the app plus sherpa-onnx (+ sherpa-onnx-core,
+# /usr/lib/parlance/ holds the app plus sherpa-onnx (+ sherpa-onnx-core,
 # which bundles onnxruntime), installed with `uv pip install --target`: Ubuntu ships
 # neither, and nothing is fetched at install time. Everything else comes from apt.
 # The wheels are CPython-ABI specific, so the package is amd64 and pinned to the
-# python3 minor it was built against (see Depends). Same approach as Parakeet-Type-Ubuntu.
+# python3 minor it was built against (see Depends).
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 
-PKG=voice-to-hebrish
-VERSION=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' voice_to_hebrish/__init__.py)
+PKG=parlance
+VERSION=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' parlance/__init__.py)
 DEB_REVISION=${DEB_REVISION:-1}
 ARCH=$(dpkg --print-architecture)
 PY=/usr/bin/python3
@@ -34,7 +34,7 @@ bundled=$(cd "$LIB" && ls -d sherpa*.dist-info | sed 's/\.dist-info$//' | tr '\n
 
 install -m755 packaging/debian/$PKG packaging/debian/$PKG-model "$ROOT/usr/bin/"
 install -m644 packaging/$PKG.desktop "$ROOT/usr/share/applications/"
-install -m644 voice_to_hebrish/data/icons/voice-to-hebrish.svg "$ROOT/usr/share/icons/hicolor/scalable/apps/"
+install -m644 parlance/data/icons/parlance.svg "$ROOT/usr/share/icons/hicolor/scalable/apps/"
 install -m644 packaging/debian/70-$PKG-uinput.rules "$ROOT/usr/lib/udev/rules.d/"
 install -m644 README.md packaging/debian/README.Debian "$ROOT/usr/share/doc/$PKG/"
 install -m644 LICENSE "$ROOT/usr/share/doc/$PKG/copyright"
@@ -48,19 +48,19 @@ Section: sound
 Priority: optional
 Installed-Size: $(du -sk "$ROOT/usr" | cut -f1)
 Maintainer: Daniel Rosehill <daniel@danielrosehill.co.il>
-Homepage: https://github.com/danielrosehill/English-Hebrew-Codeswitching-Dictation-Linux
+Homepage: https://github.com/danielrosehill/Parlance-Dictation
 Depends: python3 (>= $PYVER), python3 (<< $PYNEXT), python3-pyside6.qtwidgets, python3-pyside6.qtnetwork, qt6-svg-plugins, python3-numpy, python3-sounddevice, python3-evdev, libportaudio2, wl-clipboard | xclip
 Recommends: ffmpeg
-Conflicts: parakeet-dictation, codeswitch-dictation
-Replaces: codeswitch-dictation
-Description: Voice To Hebrish: dictation for English speakers in Israel
- Speech recognition that gets the Hebrew words right when you drop them into
- English ("pick up bamba from the makolet"). Runs the English-Hebrew
- code-switching fine-tune of NVIDIA Parakeet TDT 0.6B v2 on the CPU with
- sherpa-onnx. Hotkey dictation from any keyboard or pedal (tap to toggle, or
+Conflicts: parakeet-dictation, codeswitch-dictation, voice-to-hebrish
+Replaces: codeswitch-dictation, voice-to-hebrish
+Description: Parlance: on-device dictation with NVIDIA Parakeet
+ Offline speech recognition with a choice of models: stock NVIDIA Parakeet
+ TDT 0.6B v2, or one of the author's fine-tunes of it (English-Hebrew
+ code-switching; technical and personal-voice models to follow). Runs on the
+ CPU with sherpa-onnx. Hotkey dictation from any keyboard or pedal (tap to toggle, or
  hold to talk) that pastes at the cursor, plus a long-form mode that records
  or opens audio files and transcribes into an editable text box. Downloads
- the model on first run and checks for new versions.
+ the chosen model once and checks for new versions.
  Bundles: $bundled
 CTRL
 

@@ -1,57 +1,81 @@
 # Maintaining
 
-Written 2026-10-18. (V) = verified, (I) = inferred / not yet tested on a device.
+Written 2026-10-18, as Voice To Hebrish; updated 2026-10-19 for Parlance. (V) = verified, (I) = inferred / not yet tested on a device.
 
-## Model updates (0.3.0+)
+## Models and the catalogue (Parlance 0.1.0, 2026-10-19)
+
+Parlance replaces Voice To Hebrish (app ID `com.danielrosehill.codeswitchvoice`, last 0.6.0).
+The new app ID is `com.danielrosehill.parlance`, so it installs alongside and keeps none of
+the old app's downloads or settings. Version numbers restarted at 0.1.0 / versionCode 1.
+
+The models come from [`../../shared/models.json`](../../shared/models.json), shared with the
+desktop app (`Catalogue.kt`):
+
+- **Bundled:** the gradle `copyCatalogue` task copies `../shared/models.json` into
+  `app/build/generated/catalogue/`, which is an assets source dir, so the APK has
+  `assets/models.json` (V: present in the debug APK, 2026-10-19). Never hand-copy it.
+- **Remote:** every update check (`ModelDownload.check`) first calls `Catalogue.refresh`,
+  which fetches `catalogue_url` (the file on GitHub `main`). If it parses with `schema` 1 and
+  lists at least one available model, it is cached in `Prefs.catalogueJson` and used from
+  then on. Otherwise the current one stays. So publishing a model = add its repo to
+  `models.json` with `status: "available"` and push; no APK release (I: not yet run on a device).
+- A model with `status: "planned"` (tech, personal) is shown disabled as "coming soon".
+- `version_label` (stock: `v2`) is the label for a repo without `version.json`.
+- A schema change that old apps can't read must bump `schema`; old apps then ignore the
+  remote copy and keep their cached or bundled one.
+
+Per model (`ModelStore`, every function takes a `Catalogue.Model`, default `Catalogue.selected`):
+
+- Folder: `filesDir/models/<id>/<version>-<sha12>/`, or `<root>/<repo name>/<version>-<sha12>/`
+  in a shared folder (`ModelStore.sharedFolder`).
+- Installed manifest: `Prefs.installedManifest(id)` (key `installed_manifest_<id>`), else
+  `ModelStore.BUNDLED[id]`. `stock` is pinned to rev `1ab9323565dd` and `codeswitch` to v3
+  rev `92679110e821`, hashes from the HF tree API (V, 2026-10-19 for stock). A model with no
+  bundled manifest gets one from `checkLatest` before its first download.
+- `subdir` may be empty (the stock repo has its files at the root). URLs are built with
+  `ModelStore.path`, which skips empty parts, so there is no `//`.
+- `pruneOld` deletes old versions of one model only. Other models' downloads stay until the
+  user deletes them (**Delete other models…** → `ModelStore.delete`).
+- Switching model (`MainActivity.renderPicker`) sets `Prefs.selectedModel`, unloads the
+  recognizer, clears a stale download failure and checks HF for that model. `Transcriber`
+  also remembers which folder it loaded and reloads if the selected model's folder differs,
+  so the IME can't keep transcribing with the previous model.
+- Relocation (`ModelDownload.relocate`) moves every ready model, not just the selected one.
+
+## Model updates
 
 The protocol and the model's quirks are shared with the desktop app: [`../../shared/update-protocol.md`](../../shared/update-protocol.md).
-**Trailing silence (0.5.0):** the model needs ≥0.6 s of silence at the end, or it can drop the last sentence (measured on desktop). Since 0.5.0, `Transcriber.transcribe` appends 1 s of zeros before `acceptWaveform` (I: compiled in CI, not yet run on a device). Before 0.5.0 nothing was padded.
+**Trailing silence:** the model needs ≥0.6 s of silence at the end, or it can drop the last sentence (measured on desktop). `Transcriber.transcribe` appends 1 s of zeros before `acceptWaveform` (I: compiled, not yet run on a device).
 
+A new version of a model reaches installed apps **without a new APK**: push new files to
+`main` of that model's repo, in the catalogue's `subdir`.
 
-A new fine-tune reaches installed apps **without a new APK**. Pushing new
-`sherpa-onnx/int8/` files to `main` of
-`danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching` is all it takes.
+How the app decides (`ModelStore.checkLatest`, `ModelDownload.check`/`update`), for the
+selected model only:
 
-How the app decides (`ModelStore.checkLatest`, `ModelDownload.check`/`update`):
-
-1. `GET https://huggingface.co/api/models/<repo>/revision/main` → `sha` (the commit `main`
-   points at now).
-2. `GET https://huggingface.co/api/models/<repo>/tree/<sha>/sherpa-onnx/int8` → per file
-   `size` and `lfs.oid` (= SHA-256). `tokens.txt` is a plain git file with no `lfs.oid`, so
-   only its size is known.
-3. Optional `GET https://huggingface.co/<repo>/resolve/<sha>/sherpa-onnx/int8/version.json`
-   → `{"version": "v4", "run": "r4-en30"}`. It only sets the label. Without it the label is
-   `rev <sha[:7]>`. The training repo's `export_sherpa` writes it (added 2026-10-18).
+1. `GET https://huggingface.co/api/models/<repo>/revision/main` → `sha`.
+2. `GET https://huggingface.co/api/models/<repo>/tree/<sha>[/<subdir>]` → per file `size` and
+   `lfs.oid` (= SHA-256). `tokens.txt` is a plain git file with no `lfs.oid`, so only its
+   size is known.
+3. Optional `GET https://huggingface.co/<repo>/resolve/<sha>[/<subdir>]/version.json` →
+   `{"version": "v4", "run": "r4-en30"}`. It only sets the label. Without it the label is
+   the catalogue's `version_label`, else `rev <sha[:7]>`.
 4. An update is offered when the four files' SHA-256 (size for `tokens.txt`) differ from the
    installed manifest's. The decision **compares weights, not revisions**: `main` moves on
-   every model-card or eval commit (10 commits on 2026-10-18 alone, none of them weight
-   changes), and comparing commits would offer a pointless 660 MB download each time.
-5. **Update to vN** downloads into its own folder `<version>-<sha[:12]>`, pinned to the `sha`
-   from step 1 so a push mid-download can't mix versions. Each file's SHA-256 is verified.
-   Only then does the app unload the recognizer, record the new manifest
-   (`Prefs.installedManifest`, JSON) and run `pruneOld`, which deletes the previous model
-   folder. Cancel or a failure leaves the old model in use, and the `.part` files resume on
-   the next tap. A free-space check runs first, because for a moment both models (~1.3 GB)
-   are on disk.
+   every model-card or eval commit (10 commits on 2026-10-18 alone for the code-switch repo,
+   none of them weight changes).
+5. **Update to vN** downloads into its own folder, pinned to the `sha` from step 1, verifies
+   each file's SHA-256, then unloads the recognizer, records the new manifest and runs
+   `pruneOld` for that model. Cancel or a failure leaves the old version in use, and the
+   `.part` files resume on the next tap. A free-space check runs first, because for a moment
+   both versions (~1.3 GB) are on disk.
 
-Checks run when the setup screen opens, at most every 6 h (`Prefs.lastCheck`), plus a
-**Check for update** button. The IME never checks; it just loads whatever is installed.
-A first **Download** fetches the newest model on HF, and falls back to the bundled manifest
-when HF can't be asked.
+Checks run when the setup screen opens, at most every 6 h (`Prefs.lastCheck`), when the
+model is switched, and on **Check for update**. The IME never checks; it loads whatever is
+installed for the selected model.
 
-`ModelStore.BUNDLED` is v3 (run `r3-en30`, rev `92679110e821`). Its folder name
-`v3-92679110e821` is the same one 0.1.0/0.2.0 used, so upgrading the APK keeps an existing
-download. Change `BUNDLED` only to make a newer model the offline default.
-
-The v3 values were read from the HF tree API on 2026-10-18 (V). The sherpa-onnx int8 files
-at that revision were exported from `r3-en30`. Commit `728e6f88d4` published them, and the
-pinned `92679110e8` is the model-card commit after it. The upstream `check_sherpa` matched
-PyTorch on 4/5 clips (V, from the fine-tune repo's `docs/on-device.md`).
-
-Verified 2026-10-18: it compiles (`assembleRelease`), and the three endpoints above return
-the expected shapes for the live repo, where main is `d961d25643aa` with no `version.json`
-and the same weights as v3, so the app would report "up to date". Not yet run on a
-device (I).
+Verified 2026-10-19: `assembleDebug` compiles with JDK 21 and the APK contains
+`assets/models.json`. Not run on a device (I).
 
 ## sherpa-onnx API notes (1.13.8 AAR, read with javap 2026-10-18)
 
@@ -82,9 +106,8 @@ the system parsed the service at all, then try adding a second subtype with
 
 ## Model location
 
-`Prefs.modelRoot` is null (app storage, `filesDir/models/<version>`) or an absolute path the
-user picked; the model then lives in
-`<root>/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching/<version>`. `pruneOld` only clears
+`Prefs.modelRoot` is null (app storage, `filesDir/models/<id>/<version>`) or an absolute path
+the user picked; each model then lives in `<root>/<repo name>/<version>`. `pruneOld` only clears
 that dedicated subfolder, never the user's folder. The picker is `ACTION_OPEN_DOCUMENT_TREE`;
 its tree URI is turned into a path (`primary:X` → `/storage/emulated/0/X`, `<uuid>:X` →
 `/storage/<uuid>/X`) because sherpa-onnx loads by file path, so a SAF URI alone is useless
@@ -150,13 +173,14 @@ uninstalled or disabled is skipped instead of throwing.
 
 The release key is **not** in the repo. GitHub Actions secrets: `RELEASE_KEYSTORE_B64`
 (base64 of the .jks), `RELEASE_KEYSTORE_PASSWORD` (store and key password are the same),
-`RELEASE_KEY_ALIAS` (`codeswitchvoice`). Daniel's local copy is
+`RELEASE_KEY_ALIAS` (`codeswitchvoice`: the key was carried over from Voice To Hebrish, alias
+unchanged). The secrets must be set on the Parlance-Dictation repo too. Daniel's local copy is
 `~/.android/keystores/codeswitch-voice-release.jks`, with its password in the `.txt` next
 to it. Losing it means users must uninstall before installing a newer APK.
 
-## Not yet verified (as of 2026-10-18)
+## Not yet verified (as of 2026-10-19)
 
-- The update flow on a device (first real test: v4).
+- The update flow and the model picker on a device; the remote catalogue fetch.
 - Back with gesture navigation; `switchInputMethod(id)` on OxygenOS; pause/resume on device.
 - No on-device run has been recorded yet: model load time, RAM, and transcription speed
   on the Nord 3.

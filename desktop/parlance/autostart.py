@@ -8,17 +8,17 @@ from pathlib import Path
 from .config import APP_NAME
 
 _RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-_DESKTOP = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "autostart" / "voice-to-hebrish.desktop"
+_DESKTOP = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "autostart" / "parlance.desktop"
 
 
 def _command() -> str:
     if getattr(sys, "frozen", False):                      # PyInstaller build
         return f'"{sys.executable}" --hidden'
-    exe = shutil.which("voice-to-hebrish")
+    exe = shutil.which("parlance")
     if exe:
         return f"{exe} --hidden"
     py = sys.executable.replace("python.exe", "pythonw.exe")
-    return f'"{py}" -m voice_to_hebrish --hidden'
+    return f'"{py}" -m parlance --hidden'
 
 
 def enabled() -> bool:
@@ -50,5 +50,5 @@ def set_enabled(on: bool):
         return
     _DESKTOP.parent.mkdir(parents=True, exist_ok=True)
     _DESKTOP.write_text("[Desktop Entry]\nType=Application\n"
-                        f"Name={APP_NAME}\nExec={_command()}\nIcon=voice-to-hebrish\n"
+                        f"Name={APP_NAME}\nExec={_command()}\nIcon=parlance\n"
                         "X-GNOME-Autostart-enabled=true\n")

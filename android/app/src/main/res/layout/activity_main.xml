@@ -7,11 +7,14 @@
 <Button android:id="@+id/open_try" android:layout_width="match_parent" android:layout_height="64dp" android:layout_marginTop="16dp" android:backgroundTint="@color/accent" android:textColor="#FFFFFF" android:textSize="17sp" android:text="@string/try_open" />
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="@string/try_open_hint" />
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/step_model" android:textAppearance="?android:attr/textAppearanceMedium" android:textStyle="bold" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/model_pick_hint" />
+<RadioGroup android:id="@+id/model_picker" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:orientation="vertical" />
 <TextView android:id="@+id/model_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" />
 <ProgressBar android:id="@+id/model_progress" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="1000" android:visibility="gone" />
 <Button android:id="@+id/download" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/download" />
 <TextView android:id="@+id/update_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" />
 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><Button android:id="@+id/update" android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone" /><Button android:id="@+id/check_update" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/check_update" /></LinearLayout>
+<Button android:id="@+id/manage_models" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/manage_models" />
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="@string/location_title" android:textStyle="bold" />
 <TextView android:id="@+id/location_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" />
 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><Button android:id="@+id/choose_location" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/choose_location" /><Button android:id="@+id/reset_location" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/reset_location" /></LinearLayout>
@@ -35,6 +38,6 @@
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/step_try" android:textAppearance="?android:attr/textAppearanceMedium" android:textStyle="bold" />
 <EditText android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/try_hint" android:inputType="textMultiLine|textCapSentences" android:minLines="3" />
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/links" android:textAppearance="?android:attr/textAppearanceMedium" android:textStyle="bold" />
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><Button android:id="@+id/open_model" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/open_model" /><Button android:id="@+id/open_dataset" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/open_dataset" /></LinearLayout>
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><Button android:id="@+id/open_model" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/open_model" /><Button android:id="@+id/open_source" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/open_source" /></LinearLayout>
 </LinearLayout>
 </ScrollView>

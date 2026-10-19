@@ -1,0 +1,44 @@
+{
+  "_comment": "The model catalogue both apps read. Bundled in each app, and re-fetched from catalogue_url on every update check so a newly published model shows up without an app release. A model with status 'planned' is listed as coming soon and cannot be downloaded. Protocol: shared/update-protocol.md. desktop/tests/test_shared.py fails if either app's bundled copy drifts from this file.",
+  "schema": 1,
+  "catalogue_url": "https://raw.githubusercontent.com/danielrosehill/Parlance-Dictation/main/shared/models.json",
+  "default": "stock",
+  "files": ["encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"],
+  "version_file": "version.json",
+  "model_type": "nemo_transducer",
+  "sample_rate": 16000,
+  "min_trailing_silence_s": 0.6,
+  "models": [
+    {
+      "id": "stock",
+      "name": "Parakeet (stock)",
+      "summary": "NVIDIA Parakeet TDT 0.6B v2 as released. General English, any speaker.",
+      "status": "available",
+      "repo": "csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8",
+      "subdir": "",
+      "version_label": "v2",
+      "card": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2"
+    },
+    {
+      "id": "codeswitch",
+      "name": "English-Hebrew code-switching",
+      "summary": "Fine-tuned on English with Hebrew words in it (teudat zehut, arnona, makolet). One speaker's voice.",
+      "status": "available",
+      "repo": "danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching",
+      "subdir": "sherpa-onnx/int8",
+      "card": "https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching"
+    },
+    {
+      "id": "tech",
+      "name": "Technical vocabulary",
+      "summary": "Fine-tuned on software, AI and infrastructure terms. One speaker's voice.",
+      "status": "planned"
+    },
+    {
+      "id": "personal",
+      "name": "Personal (general)",
+      "summary": "Fine-tuned on general English in one speaker's voice (Irish-accented), for slightly higher everyday accuracy.",
+      "status": "planned"
+    }
+  ]
+}

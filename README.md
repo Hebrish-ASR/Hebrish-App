@@ -1,70 +1,68 @@
-# Voice To Hebrish
+# Parlance
 
-**Dictation for Anglos in Israel.** It knows *makolet* isn't *Macaulay*.
+**On-device dictation with NVIDIA Parakeet, for Android, Linux and Windows.** Pick the model
+that suits how you talk: stock Parakeet, or a fine-tune of it.
 
-*"Voice To Hebrish" is a working title. It is also, frankly, a gag.*
+![Parlance on Linux: the Model tab, choosing between stock Parakeet and the fine-tunes](docs/screenshots/desktop-model.png)
 
-You say *"I'll grab bamba from the makolet, then I have to deal with the arnona,"* and
-ordinary speech recognition writes *"Micollette"* and gives up on the rest. These apps run a
-fine-tune of NVIDIA's Parakeet that was trained on exactly that kind of English: English
-with Hebrew words dropped in, written in Latin letters (*teudat zehut*, *bituach leumi*,
-*rishayon iski*). Linguists call it code-switching. Everybody else calls it Hebrish.
+Everything runs **on your device**. The only network traffic is downloading the model you
+pick (~630 MB, once) and a periodic check for a newer version.
 
-![Voice To Hebrish on Linux: the Dictate tab, with a transcript mixing English and Hebrew words](docs/screenshots/linux-dictate.png)
+## Models
 
-Everything runs **on your device**. The only network traffic is the one-time model download
-(~660 MB) and a periodic check for a newer fine-tune.
+Every model is [Parakeet TDT 0.6B v2](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2),
+run with sherpa-onnx (int8).
+
+| Model | Status | For |
+| --- | --- | --- |
+| **Parakeet (stock)** | available | General English, any speaker. NVIDIA's release, unchanged |
+| **English-Hebrew code-switching** | available | English with Hebrew words in it (*teudat zehut*, *arnona*, *bituach leumi*), written in Latin letters. [Model card](https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching) |
+| **Technical vocabulary** | coming soon | Software, AI and infrastructure terms |
+| **Personal (general)** | coming soon | General English in the author's voice (Irish-accented), for slightly higher everyday accuracy |
+
+The fine-tunes are trained on **one speaker's voice**, so they work best for voices like that
+one; stock Parakeet is the better choice for anyone else. Models marked *coming soon* appear
+in the apps by themselves once published: both apps re-read the catalogue
+([`shared/models.json`](shared/models.json)) from this repo when they check for updates.
+
+On held-out recordings, the code-switching model (v3, the latest benchmarked version) cut
+word error rate on code-switched English from 10.9% to 5.3%, and plain English got slightly
+better, not worse. Training data, every version's results and the roadmap:
+[English-Hebrew-Codeswitching-Parakeet-Finetune](https://github.com/danielrosehill/English-Hebrew-Codeswitching-Parakeet-Finetune).
 
 ## Download
 
-| Platform | Get it | What it is |
-| --- | --- | --- |
-| **Android** | [APK](https://github.com/danielrosehill/Voice-To-Hebrish/releases/download/android-v0.6.0/VoiceToHebrish-v0.6.0.apk) | A voice keyboard, the companion voice input for HeliBoard. Android 9+, arm64 |
-| **Ubuntu** | [.deb](https://github.com/danielrosehill/Voice-To-Hebrish/releases/download/desktop-v0.2.0/voice-to-hebrish_0.2.0-1_amd64.deb) | A tray app for Ubuntu 26.04 amd64 |
-| **Windows** | [.zip](https://github.com/danielrosehill/Voice-To-Hebrish/releases/download/desktop-v0.2.0/VoiceToHebrish-v0.2.0-windows-x64.zip) | A tray app, portable: unzip and run `VoiceToHebrish.exe` |
+| Platform | What it is |
+| --- | --- |
+| **Android** | A voice keyboard (IME), the companion voice input for HeliBoard. Android 9+, arm64 |
+| **Ubuntu** | A tray app for Ubuntu 26.04 amd64 (.deb) |
+| **Windows** | A portable tray app (.zip): unzip and run `Parlance.exe` |
 
-All releases: [github.com/danielrosehill/Voice-To-Hebrish/releases](https://github.com/danielrosehill/Voice-To-Hebrish/releases).
-These are **proof-of-concept** builds. The Windows build and the Android app have not yet been tried on real
-hardware; see each app's notes.
+Builds are on the [releases page](https://github.com/danielrosehill/Parlance-Dictation/releases):
+tags `android-v*` carry the APK, tags `desktop-v*` the .deb and the Windows zip. The Windows
+build and the Android app have not yet been tried on real hardware.
 
 ## Desktop app (Linux and Windows)
 
-There are two ways to work:
-
 - **Dictate**: press a hotkey anywhere, talk, and the text is pasted where your cursor is.
-  The hotkey can be any key or a foot pedal. Tap it to start and stop, or hold it while
-  you talk.
-- **Transcribe**: the long-form workflow. Record with a level meter, a timer and pause,
-  or open or drop an audio file (WAV, MP3, M4A, OGG, FLAC…). The transcript fills an
-  editable text box piece by piece, and you can save it as .txt or .md.
+  The hotkey can be any key or a foot pedal. Tap it to start and stop, or hold it while you
+  talk.
+- **Transcribe**: record with a level meter, a timer and pause, or open or drop an audio
+  file. The transcript fills an editable text box piece by piece; save it as .txt or .md.
+- **Model**: choose the model, download it, switch between downloaded ones, keep or delete
+  old versions.
 
-It downloads the model on first run, checks for new fine-tunes on a schedule, and can keep
-old versions so you can switch back. It also has a tray icon and an About tab with the
-model's training data and benchmark numbers.
-
-Ubuntu: `sudo apt install ./voice-to-hebrish_0.2.0-1_amd64.deb`, then
-`sudo usermod -aG input $USER` for the hotkey, and log in again. Details:
-[`desktop/README.md`](desktop/README.md).
+Ubuntu: `sudo apt install ./parlance_<version>-1_amd64.deb`, then
+`sudo usermod -aG input $USER` for the hotkey, and log in again. It replaces Voice To
+Hebrish and Parakeet-Type-Ubuntu, and keeps Voice To Hebrish's settings and downloaded
+model. Details: [`desktop/README.md`](desktop/README.md).
 
 ## Android app
 
-A voice keyboard (IME). Open the app and tap **Try it now** to test it in a built-in notepad before setting up anything. Once it's set up as a keyboard, HeliBoard's mic key opens it, you talk, and you're returned to
-HeliBoard with the text inserted. It updates the model by itself when a new fine-tune is
-published. Details: [`android/README.md`](android/README.md).
-
-## The model
-
-[`danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching`](https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching)
-is Parakeet TDT 0.6B v2, fine-tuned on several hours of English sentences with Hebrew
-words, the speaker's own plain English, and LibriSpeech. On held-out recordings (v3, the
-latest benchmarked version), word error rate on Hebrish fell from 10.9% to 5.3%, and plain
-English got slightly better, not worse. On a frozen public benchmark it gets 67.4% of
-Hebrew words right, against 45.9% for Whisper Large V3 and 32.6% for stock Parakeet.
-
-It is trained on **one speaker's voice** (an Anglo in Jerusalem), so it works best for
-voices like that one. The project hub, with the training data, every version's results
-and the roadmap:
-[English-Hebrew-Codeswitching-Parakeet-Finetune](https://github.com/danielrosehill/English-Hebrew-Codeswitching-Parakeet-Finetune).
+A voice keyboard (IME). Open the app, pick a model, and tap **Try it now** to test it in a
+built-in notepad before setting anything up. Once it's set up, HeliBoard's mic key opens it,
+you talk, and you're returned to HeliBoard with the text inserted. Details:
+[`android/README.md`](android/README.md).
 
 ## Repository layout
 
@@ -72,20 +70,25 @@ and the roadmap:
 | --- | --- |
 | `desktop/` | Linux + Windows app (Python, PySide6, sherpa-onnx). Only the hotkey and paste code differs per OS |
 | `android/` | Android voice keyboard (Kotlin, sherpa-onnx AAR) |
-| `shared/model.json` | Where both apps get the model; a test fails if either app drifts from it |
-| `shared/update-protocol.md` | How both apps decide a new model is out, and the model's quirks they work around |
+| `shared/models.json` | The model catalogue both apps bundle and re-fetch; a test fails if either app's copy drifts |
+| `shared/update-protocol.md` | How models are listed, downloaded and updated, and the quirks both apps work around |
 
 Releases: tag `android-vX.Y.Z` builds the signed APK in CI. Tag `desktop-vX.Y.Z` builds the
-Windows zip in CI, and the Ubuntu .deb is built with `desktop/build-deb.sh` and added to
-the same release.
+Windows zip in CI; the Ubuntu .deb is built with `desktop/build-deb.sh` and added to the same
+release. Adding a model needs no release: see `shared/update-protocol.md`.
 
 ## History
 
-Until 2026-10-18 these were two repos: *English-Hebrew-Codeswitching-Voice-Keyboard-Android*
-("Codeswitch Voice"), which this repo was renamed from, and
-*English-Hebrew-Codeswitching-Dictation-Linux* ("Codeswitch Dictation"), merged into
-`desktop/` with its history intact.
+Parlance (2026-10-19) is the successor to all of the author's earlier Parakeet dictation
+apps, and the only one maintained:
+
+- **Voice To Hebrish** (2026-10-18), the Android + desktop monorepo this repo was copied
+  from, history included. It ran only the code-switching model.
+- Before that, *English-Hebrew-Codeswitching-Voice-Keyboard-Android* ("Codeswitch Voice")
+  and *English-Hebrew-Codeswitching-Dictation-Linux* ("Codeswitch Dictation").
+- **Parakeet-Type-Ubuntu** (`parakeet-dictation`), a KDE-only app with stock and
+  code-switching profiles.
 
 ## License
 
-Apps: MIT. Model: CC-BY-4.0.
+Apps: MIT. Fine-tuned models: CC-BY-4.0. Stock Parakeet: CC-BY-4.0 (NVIDIA).

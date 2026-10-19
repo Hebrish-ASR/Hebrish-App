@@ -22,18 +22,26 @@ val fetchSherpaAar by tasks.registering {
         }
     }
 }
-tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(fetchSherpaAar) }
+
+// The model catalogue (shared/models.json) is shared with the desktop app. It is copied into the
+// APK's assets at build time, never edited or hand-copied here.
+val catalogueDir = layout.buildDirectory.dir("generated/catalogue")
+val copyCatalogue by tasks.registering(Copy::class) {
+    from(rootProject.file("../shared/models.json"))
+    into(catalogueDir)
+}
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(fetchSherpaAar, copyCatalogue) }
 
 android {
-    namespace = "com.danielrosehill.codeswitchvoice"
+    namespace = "com.danielrosehill.parlance"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.danielrosehill.codeswitchvoice"
+        applicationId = "com.danielrosehill.parlance"
         minSdk = 28
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.6.0"
+        versionCode = 1
+        versionName = "0.1.0"
         // Phones only: x86 libs would add ~25 MB for emulator use nobody needs here.
         ndk { abiFilters += "arm64-v8a" }
     }
@@ -58,6 +66,8 @@ android {
                 signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
+
+    sourceSets["main"].assets.srcDir(catalogueDir)
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
