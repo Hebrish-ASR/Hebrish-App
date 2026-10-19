@@ -363,6 +363,9 @@ class MainWindow(QMainWindow):
         self.picker.setEnabled(not ctl.downloading)
         self.picker.blockSignals(False)
         link = f" <a href='{sel.card}'>Model card</a>" if sel.card else ""
+        if sel.id == "codeswitch":
+            link += f" · <a href='{about.HEBRISH}'>hebrish.app</a> · " + " · ".join(
+                f"<a href='{u}'>{n}</a>" for n, u in about.HEBRISH_LINKS[1:])
         soon = [m.name for m in model_store.models() if not m.available]
         self.model_summary.setText(sel.summary + link + (
             f"<br><small>Coming soon: {', '.join(soon)}.</small>" if soon else ""))

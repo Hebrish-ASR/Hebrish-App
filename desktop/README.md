@@ -37,6 +37,10 @@ stock or one of the fine-tunes, running on your CPU with sherpa-onnx.
   - It checks the selected model for new versions on a schedule, and installs them
     automatically or after you confirm. It can keep previous versions so you can switch back.
 - **About tab:** the models, and the code-switching model's training data and benchmarks.
+- **Hebrish links:** [hebrish.app](https://hebrish.app), the code-switching model's website,
+  and its contact form (report a bug, suggest a word, send voice samples, get involved). In
+  the tray's **Hebrish** submenu, on the About tab, and under the code-switching model on the
+  Model tab.
 
 ## Install
 

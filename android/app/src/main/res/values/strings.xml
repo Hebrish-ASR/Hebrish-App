@@ -68,6 +68,13 @@
     <string name="links">Links</string>
     <string name="open_model">Model card</string>
     <string name="open_source">Source code</string>
+    <string name="hebrish_title">Hebrish: the English-Hebrew model</string>
+    <string name="hebrish_body">Using the code-switching model? Its website has the results and every model, dataset and demo. Report a bug, suggest a Hebrew word it gets wrong, or send voice samples to help it learn more voices.</string>
+    <string name="hebrish_site">Hebrish website</string>
+    <string name="hebrish_bug">Report a bug</string>
+    <string name="hebrish_word">Suggest a word</string>
+    <string name="hebrish_samples">Send voice samples</string>
+    <string name="hebrish_involved">Get involved</string>
 
     <string name="ime_listening_time">Listening… %1$d:%2$02d (max %3$d s). Tap ■ to insert.</string>
     <string name="ime_paused">Paused at %1$d:%2$02d. Resume, or tap ■ to insert.</string>

@@ -39,5 +39,8 @@
 <EditText android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/try_hint" android:inputType="textMultiLine|textCapSentences" android:minLines="3" />
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/links" android:textAppearance="?android:attr/textAppearanceMedium" android:textStyle="bold" />
 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><Button android:id="@+id/open_model" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/open_model" /><Button android:id="@+id/open_source" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/open_source" /></LinearLayout>
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/hebrish_title" android:textAppearance="?android:attr/textAppearanceMedium" android:textStyle="bold" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/hebrish_body" />
+<LinearLayout android:id="@+id/hebrish_links" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
 </LinearLayout>
 </ScrollView>

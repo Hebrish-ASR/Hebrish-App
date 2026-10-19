@@ -35,6 +35,10 @@ yet, the screen offers **Download** (about 660 MB per model, once). Models you d
 earlier stay on the phone, so switching back is instant; **Delete other models…** removes
 them.
 
+The **Hebrish** section at the bottom of the setup screen links to
+[hebrish.app](https://hebrish.app), the code-switching model's website, and its contact form:
+report a bug, suggest a word, send voice samples, or get involved.
+
 ## Install (recommended setup)
 
 1. Install **[HeliBoard](https://github.com/Helium314/HeliBoard/releases)** and make it your

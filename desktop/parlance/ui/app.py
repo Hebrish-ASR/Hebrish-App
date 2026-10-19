@@ -13,8 +13,8 @@ import threading
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QTimer, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QObject, QTimer, QUrl, Signal
+from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
@@ -23,6 +23,7 @@ from ..config import APP_NAME, HISTORY_PATH, STATE_PATH, Config, load_json, migr
 from ..engine import Engine
 from ..hotkey import make_listener
 from ..inserter import make_inserter
+from . import about
 
 log = logging.getLogger("parlance")
 ICONS = Path(__file__).resolve().parent.parent / "data" / "icons"
@@ -313,6 +314,10 @@ class Controller(QObject):
         m.addSeparator()
         self.act_update = m.addAction("Install update", lambda: self.latest and self.download(self.latest))
         m.addAction("Check for model update", lambda: self.check_updates(manual=True))
+        m.addSeparator()
+        hebrish = m.addMenu("Hebrish")
+        for label, url in about.HEBRISH_LINKS:
+            hebrish.addAction(label, lambda u=url: QDesktopServices.openUrl(QUrl(u)))
         m.addSeparator()
         m.addAction("Quit", self.quit)
         self._menu = m

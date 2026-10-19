@@ -18,7 +18,7 @@ run with sherpa-onnx (int8).
 | Model | Status | For |
 | --- | --- | --- |
 | **Parakeet (stock)** | available | General English, any speaker. NVIDIA's release, unchanged |
-| **English-Hebrew code-switching** | available | English with Hebrew words in it (*teudat zehut*, *arnona*, *bituach leumi*), written in Latin letters. [Model card](https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching) |
+| **English-Hebrew code-switching** | available | English with Hebrew words in it (*teudat zehut*, *arnona*, *bituach leumi*), written in Latin letters. [Model card](https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching) · website: [hebrish.app](https://hebrish.app) |
 | **Technical vocabulary** | coming soon | Software, AI and infrastructure terms |
 | **Personal (general)** | coming soon | General English in the author's voice (Irish-accented), for slightly higher everyday accuracy |
 
@@ -31,6 +31,13 @@ On held-out recordings, the code-switching model (v3, the latest benchmarked ver
 word error rate on code-switched English from 10.9% to 5.3%, and plain English got slightly
 better, not worse. Training data, every version's results and the roadmap:
 [English-Hebrew-Codeswitching-Parakeet-Finetune](https://github.com/danielrosehill/English-Hebrew-Codeswitching-Parakeet-Finetune).
+
+To help improve it, both apps link to hebrish.app's contact form: [report a bug](https://hebrish.app/contact?topic=bug),
+[suggest a word](https://hebrish.app/contact?topic=word),
+[send voice samples](https://hebrish.app/contact?topic=samples) or
+[get involved](https://hebrish.app/contact?topic=involved). On Android they are in the
+**Hebrish** section at the bottom of the setup screen; on the desktop, in the tray's
+**Hebrish** submenu, the About tab, and under the code-switching model on the Model tab.
 
 ## Download
 

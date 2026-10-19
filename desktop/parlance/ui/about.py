@@ -13,6 +13,18 @@ LEADERBOARD = "https://huggingface.co/spaces/danielrosehill/English-Hebrew-Codes
 DEMO = "https://huggingface.co/spaces/danielrosehill/English-Hebrew-Codeswitching-Parakeet-Demo"
 SOURCE = "https://github.com/danielrosehill/Parlance-Dictation"
 
+# hebrish.app, the website for the code-switching model, and its contact topics. The only
+# place these URLs live: the About tab, the Model tab and the tray's "Hebrish" submenu all
+# read this list. The `topic` values are the ones hebrish.app/contact understands.
+HEBRISH = "https://hebrish.app"
+HEBRISH_LINKS = [
+    ("Hebrish website", HEBRISH),
+    ("Report a bug", f"{HEBRISH}/contact?topic=bug"),
+    ("Suggest a word", f"{HEBRISH}/contact?topic=word"),
+    ("Send voice samples", f"{HEBRISH}/contact?topic=samples"),
+    ("Get involved", f"{HEBRISH}/contact?topic=involved"),
+]
+
 BENCH_VERSION = "v3"          # latest benchmarked (2026-10-18)
 # (test, stock Parakeet v2, fine-tune, lower_is_better)
 BENCH = [
@@ -37,6 +49,7 @@ def html(model_label: str, accent: str) -> str:
         f"<tr><td>{name}</td><td align='center'>{stock}</td>"
         f"<td align='center'><b style='color:{accent}'>{ft}</b></td></tr>"
         for name, stock, ft, _ in BENCH)
+    hebrish = " · ".join(f"<a href='{u}'>{n}</a>" for n, u in HEBRISH_LINKS)
     leader = "".join(f"<tr><td>{n}</td><td align='center'>{v}</td></tr>" for n, v in LEADER)
     catalogue = "".join(
         f"<li><b>{m.name}</b>{'' if m.available else ' <i>(coming soon)</i>'}: {m.summary}"
@@ -83,6 +96,12 @@ damage a model's English. Training took {t['minutes']} minutes on {t['gpu']}
 
 <p><b>Public leaderboard</b> (Hebrew-word recall on a frozen test set):</p>
 <table cellpadding="4" cellspacing="0">{leader}</table>
+
+<h3>Hebrish: help improve it</h3>
+<p>The code-switching model has its own website, <a href="{HEBRISH}">hebrish.app</a>, with
+the results and every model, dataset and demo. Report a bug, suggest a Hebrew word it gets
+wrong, or send voice samples to help it learn more voices:</p>
+<p>{hebrish}</p>
 
 <p>The fine-tuned models are CC-BY-4.0, stock Parakeet is CC-BY-4.0 (NVIDIA), and the app
 is MIT.</p>

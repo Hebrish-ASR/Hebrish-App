@@ -169,6 +169,16 @@ uninstalled or disabled is skipped instead of throwing.
 - Every transcript is saved to `Prefs.lastTranscript`. SharedPreferences means it survives
   the process being killed. The button shows whenever the IME is idle and a transcript exists.
 
+## hebrish.app links (2026-10-19)
+
+`Hebrish.kt` is the one place for the hebrish.app URLs: `Hebrish.LINKS` pairs a string
+resource (`hebrish_*` in `strings.xml`) with the site or a `/contact?topic=bug|word|samples|involved`
+URL. `MainActivity` builds the buttons of the **Hebrish** section (`@id/hebrish_links`, last on
+the setup screen) from that list, so adding or retiring a link touches only `Hebrish.kt` and
+its label string. Checked with `./gradlew --offline compileDebugKotlin` (V, 2026-10-19, JDK 17
+at `/usr/lib/jvm/java-17-openjdk-amd64`; daniellaptop's shell `JAVA_HOME` points at a
+non-existent `/usr/lib64/jvm/java-17-openjdk`, so set it per command). Not yet seen on a device.
+
 ## Signing
 
 The release key is **not** in the repo. GitHub Actions secrets: `RELEASE_KEYSTORE_B64`

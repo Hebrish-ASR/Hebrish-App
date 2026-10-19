@@ -14,6 +14,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.RadioButton
 import android.widget.RadioGroup
@@ -79,6 +80,12 @@ class MainActivity : Activity() {
             open(m.card ?: "https://huggingface.co/${m.repo}")
         }
         findViewById<Button>(R.id.open_source).setOnClickListener { open(getString(R.string.url_source)) }
+        findViewById<LinearLayout>(R.id.hebrish_links).let { box ->
+            for ((label, url) in Hebrish.LINKS) box.addView(Button(this).apply {
+                setText(label)
+                setOnClickListener { open(url) }
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
 
         findViewById<Switch>(R.id.auto_start).apply {
             isChecked = Prefs.autoStart(this@MainActivity)
