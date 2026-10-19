@@ -40,8 +40,8 @@ android {
         applicationId = "app.hebrish.dictation"
         minSdk = 28
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.2.0"
+        versionCode = 5
+        versionName = "0.2.1"
         // Phones only: x86 libs would add ~25 MB for emulator use nobody needs here.
         ndk { abiFilters += "arm64-v8a" }
     }

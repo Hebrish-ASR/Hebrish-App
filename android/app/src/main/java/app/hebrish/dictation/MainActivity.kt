@@ -82,6 +82,7 @@ class MainActivity : Activity() {
             open(m.card ?: "https://huggingface.co/${m.repo}")
         }
         findViewById<Button>(R.id.open_source).setOnClickListener { open(getString(R.string.url_source)) }
+        findViewById<Button>(R.id.open_terms).setOnClickListener { open(getString(R.string.url_terms)) }
         findViewById<LinearLayout>(R.id.hebrish_links).let { box ->
             for ((label, url) in Hebrish.LINKS) box.addView(Button(this).apply {
                 setText(label)

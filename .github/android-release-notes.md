@@ -1,5 +1,5 @@
-**0.2.0: Hebrish everywhere, including the package name.**
+**0.2.1: model download fixed, terms of use.**
 
-- **Installs as a new app** with package `app.hebrish.dictation`; turn the keyboard on in Keyboard settings. Your 0.1.x install (`com.danielrosehill.parlance`) is now [Parlance](https://github.com/danielrosehill/Parlance-Dictation), a separate general-purpose dictation app that Parlance 0.2.0 updates; keep it, or uninstall it. A model kept in a shared folder (Model location → Choose folder) is picked up without downloading again.
-- After dictation it returns to [Hebrish Keyboard](https://github.com/Hebrish-ASR/Hebrish-Keyboard) (the HeliBoard fork) if you use it, then HeliBoard, then your other keyboards.
+- **Fixes the code-switching model download.** The model's main repository on Hugging Face now needs an access request, so downloads and update checks failed. The app now downloads v1.0 from the open app build ([`Hebrish/…-sherpa-onnx-int8`](https://huggingface.co/Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8)); the offline fallback is v1.0 too. Installed 0.2.0 apps also pick up the new location on their next update check.
+- **Terms of use** on the setup screen, and a note under the download button: the Hebrish models are free for personal and non-commercial use; commercial use, including telephony, needs a licence. Full terms: [hebrish.app/terms](https://hebrish.app/terms).
 - arm64-v8a only. Android 9+.

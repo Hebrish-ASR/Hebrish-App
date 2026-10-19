@@ -12,6 +12,7 @@
 <TextView android:id="@+id/model_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" />
 <ProgressBar android:id="@+id/model_progress" style="?android:attr/progressBarStyleHorizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:max="1000" android:visibility="gone" />
 <Button android:id="@+id/download" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/download" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:textSize="12sp" android:alpha="0.75" android:text="@string/download_terms" />
 <TextView android:id="@+id/update_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" />
 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"><Button android:id="@+id/update" android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone" /><Button android:id="@+id/check_update" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/check_update" /></LinearLayout>
 <Button android:id="@+id/manage_models" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/manage_models" />
@@ -42,5 +43,8 @@
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/hebrish_title" android:textAppearance="?android:attr/textAppearanceMedium" android:textStyle="bold" />
 <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/hebrish_body" />
 <LinearLayout android:id="@+id/hebrish_links" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/terms_title" android:textAppearance="?android:attr/textAppearanceMedium" android:textStyle="bold" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="@string/terms_body" />
+<Button android:id="@+id/open_terms" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/open_terms" />
 </LinearLayout>
 </ScrollView>

@@ -72,12 +72,13 @@ object ModelStore {
                 ModelFile("tokens.txt", 9384, null),
             )
         ),
-        // v3, run r3-en30.
+        // v1.0, run r6-en30, from the ungated Hebrish/...-sherpa-onnx-int8 mirror (commit bb137e50,
+        // 2026-10-19). The catalogue's repo is used for the URL, so this revision must exist there.
         "codeswitch" to Manifest(
-            "v3", "92679110e821baf9425f620c9deb9920ce9b7539", listOf(
-                ModelFile("encoder.int8.onnx", 652282307, "b79474c430250d1dd34a2b0ff2f5f2bf6643faffe8b782519b3b0b5e98f42237"),
-                ModelFile("decoder.int8.onnx", 7257753, "bb625f0d27add1342c63e78ea6561331960f3fcef57221cc50c3a7691aa4bd68"),
-                ModelFile("joiner.int8.onnx", 1739080, "095c35c6ca595b65e1ec83aa561fd4207e1d3200ffe5a7473431e2a5da3c7fba"),
+            "v1.0", "bb137e504b9733fc582e03936477fe190dd4a464", listOf(
+                ModelFile("encoder.int8.onnx", 652282307, "aff69ffe1187d1c52a1c98ec2a4674a5cd9a1ea42af26c7576f4fbde0f877bb5"),
+                ModelFile("decoder.int8.onnx", 7257753, "682b2b4b99c4391fcb067199e5a39094cf69b83d3a3c26a6f6ac9f837148ec3c"),
+                ModelFile("joiner.int8.onnx", 1739080, "2afe3966a97ad97488b1e6a1ee32e73b1008e8adedfae10adae4a9c9fad1074a"),
                 ModelFile("tokens.txt", 9384, null),
             )
         ),

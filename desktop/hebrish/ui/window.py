@@ -372,6 +372,9 @@ class MainWindow(QMainWindow):
         if cur is None:
             text = (f"<b>{sel.name} isn't downloaded yet</b> (~660 MB). Click Download; "
                     "it downloads once and then works offline.")
+            if sel.id == "codeswitch":
+                text += (f"<br><small>By downloading it you agree to the <a href='{about.TERMS}'>"
+                         "terms of use</a>: free for personal and non-commercial use.</small>")
         else:
             text = f"In use: <b>{sel.name}</b> {cur[1].label}"
             if ctl.engine.loaded_dir != cur[0]:
