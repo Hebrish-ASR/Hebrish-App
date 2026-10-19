@@ -33,15 +33,15 @@ val copyCatalogue by tasks.registering(Copy::class) {
 tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(fetchSherpaAar, copyCatalogue) }
 
 android {
-    namespace = "com.danielrosehill.parlance"
+    namespace = "app.hebrish.dictation"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.danielrosehill.parlance"
+        applicationId = "app.hebrish.dictation"
         minSdk = 28
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.1.2"
+        versionCode = 4
+        versionName = "0.2.0"
         // Phones only: x86 libs would add ~25 MB for emulator use nobody needs here.
         ndk { abiFilters += "arm64-v8a" }
     }

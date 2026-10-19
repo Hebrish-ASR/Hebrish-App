@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
-# Build an Ubuntu .deb:  ./build-deb.sh  ->  dist/parlance_<version>-1_amd64.deb
+# Build an Ubuntu .deb:  ./build-deb.sh  ->  dist/hebrish_<version>-1_amd64.deb
 #
-# /usr/lib/parlance/ holds the app plus sherpa-onnx (+ sherpa-onnx-core,
+# /usr/lib/hebrish/ holds the app plus sherpa-onnx (+ sherpa-onnx-core,
 # which bundles onnxruntime), installed with `uv pip install --target`: Ubuntu ships
 # neither, and nothing is fetched at install time. Everything else comes from apt.
 # The wheels are CPython-ABI specific, so the package is amd64 and pinned to the
 # python3 minor it was built against (see Depends).
+# Installs alongside the separate `parlance` package (Parlance-Dictation, which upgrades the
+# 0.1.x `parlance` builds of this app): no Conflicts/Replaces between them, and every installed
+# path here is named hebrish, so none collides with parlance's.
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 
-PKG=parlance
-VERSION=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' parlance/__init__.py)
+PKG=hebrish
+VERSION=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' hebrish/__init__.py)
 DEB_REVISION=${DEB_REVISION:-1}
 ARCH=$(dpkg --print-architecture)
 PY=/usr/bin/python3
@@ -34,7 +37,7 @@ bundled=$(cd "$LIB" && ls -d sherpa*.dist-info | sed 's/\.dist-info$//' | tr '\n
 
 install -m755 packaging/debian/$PKG packaging/debian/$PKG-model "$ROOT/usr/bin/"
 install -m644 packaging/$PKG.desktop "$ROOT/usr/share/applications/"
-install -m644 parlance/data/icons/parlance.svg "$ROOT/usr/share/icons/hicolor/scalable/apps/"
+install -m644 hebrish/data/icons/hebrish.svg "$ROOT/usr/share/icons/hicolor/scalable/apps/"
 install -m644 packaging/debian/70-$PKG-uinput.rules "$ROOT/usr/lib/udev/rules.d/"
 install -m644 README.md packaging/debian/README.Debian "$ROOT/usr/share/doc/$PKG/"
 install -m644 LICENSE "$ROOT/usr/share/doc/$PKG/copyright"

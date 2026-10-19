@@ -1,4 +1,4 @@
-package com.danielrosehill.parlance
+package app.hebrish.dictation
 
 import android.Manifest
 import android.content.Intent
@@ -299,6 +299,7 @@ class VoiceImeService : InputMethodService() {
         if (chosen != null && trySwitch(chosen)) return
         if (runCatching { switchToPreviousInputMethod() }.getOrDefault(false)) return
         val fallback = Prefs.lastOtherIme(this)?.takeIf { it in others }
+            ?: others.firstOrNull { it.startsWith(HEBRISH_KEYBOARD) }
             ?: others.firstOrNull { it.startsWith(HELIBOARD) } ?: others.firstOrNull()
         if (fallback != null && trySwitch(fallback)) return
         showPicker()
@@ -341,5 +342,7 @@ class VoiceImeService : InputMethodService() {
     companion object {
         /** HeliBoard's package (`helium314.keyboard`, plus `.debug` / `.nouserlib` builds). */
         const val HELIBOARD = "helium314.keyboard"
+        /** Hebrish Keyboard, the HeliBoard fork (`Hebrish-ASR/Hebrish-Keyboard`). */
+        const val HEBRISH_KEYBOARD = "app.hebrish.keyboard"
     }
 }

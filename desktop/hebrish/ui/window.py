@@ -91,7 +91,7 @@ class MainWindow(QMainWindow):
         lay = QHBoxLayout(h)
         lay.setContentsMargins(18, 14, 18, 14)
         logo = QLabel()
-        logo.setPixmap(icon("parlance").pixmap(48, 48))
+        logo.setPixmap(icon("hebrish").pixmap(48, 48))
         lay.addWidget(logo)
         text = QVBoxLayout()
         text.setSpacing(0)

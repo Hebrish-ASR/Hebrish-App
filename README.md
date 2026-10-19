@@ -1,16 +1,21 @@
-# Parlance
+# Hebrish Dictation
 
 **On-device dictation with NVIDIA Parakeet, for Android, Linux and Windows.** Pick the model
 that suits how you talk: stock Parakeet, or a fine-tune of it.
 
-![Parlance on Linux: the Model tab, choosing between stock Parakeet and the fine-tunes](docs/screenshots/desktop-model.png)
+![Hebrish on Linux: the Model tab, choosing between stock Parakeet and the fine-tunes](docs/screenshots/desktop-model.png)
 
 Everything runs **on your device**. The only network traffic is downloading the model you
 pick (~630 MB, once) and a periodic check for a newer version.
 
-**Display name:** since 0.1.2 the installed app shows as **Hebrish** (launcher, app list,
-keyboard list, window and tray), with the Hebrish icon. The project, package (`parlance`),
-command, app ID and config paths keep the Parlance name, so updates install over older versions.
+**Name:** the apps were first released as **Parlance** (0.1.0–0.1.2, 2026-10-19). Since
+0.2.0 every identifier is Hebrish too: Android application ID `app.hebrish.dictation`, desktop
+package and command `hebrish`, config and data under `hebrish`, default hotkey F14. Hebrish 0.2.0
+is a fresh install. **Parlance continues as a separate general-purpose app**
+([danielrosehill/Parlance-Dictation](https://github.com/danielrosehill/Parlance-Dictation)) that
+keeps every `parlance` identifier and hotkey F13, so the two install side by side; an existing
+0.1.x install becomes Parlance when Parlance 0.2.0 updates it. On first start the Hebrish desktop
+app copies Parlance's settings (not its hotkey) and hardlinks its downloaded models.
 
 **Website for the English-Hebrew code-switching model: [hebrish.app](https://hebrish.app)**: get the Hebrish keyboard for Android and the desktop apps, see the results, and find every model, dataset and demo in one place.
 
@@ -49,9 +54,9 @@ app and OS version filled in, and link to hebrish.app's contact form to
 
 | Platform | What it is |
 | --- | --- |
-| **Android** | A voice keyboard (IME), the companion voice input for HeliBoard. Android 9+, arm64 |
+| **Android** | A voice keyboard (IME), the companion voice input for HeliBoard or any keyboard. Android 9+, arm64. For a full keyboard with dictation built in, see [Hebrish Keyboard](https://github.com/Hebrish-ASR/Hebrish-Keyboard), a HeliBoard fork |
 | **Ubuntu** | A tray app for Ubuntu 26.04 amd64 (.deb) |
-| **Windows** | A portable tray app (.zip): unzip and run `Parlance.exe` |
+| **Windows** | A portable tray app (.zip): unzip and run `Hebrish.exe` |
 
 Builds are on the [releases page](https://github.com/Hebrish-ASR/Hebrish-Dictation/releases):
 tags `android-v*` carry the APK, tags `desktop-v*` the .deb and the Windows zip. The Windows
@@ -67,7 +72,7 @@ build and the Android app have not yet been tried on real hardware.
 - **Model**: choose the model, download it, switch between downloaded ones, keep or delete
   old versions.
 
-Ubuntu: `sudo apt install ./parlance_<version>-1_amd64.deb`, then
+Ubuntu: `sudo apt install ./hebrish_<version>-1_amd64.deb`, then
 `sudo usermod -aG input $USER` for the hotkey, and log in again. It replaces Voice To
 Hebrish and Parakeet-Type-Ubuntu, and keeps Voice To Hebrish's settings and downloaded
 model. Details: [`desktop/README.md`](desktop/README.md).
@@ -94,7 +99,7 @@ release. Adding a model needs no release: see `shared/update-protocol.md`.
 
 ## History
 
-Parlance (2026-10-19) is the successor to all of the author's earlier Parakeet dictation
+Hebrish Dictation (first released as Parlance, 2026-10-19) is the successor to all of the author's earlier Parakeet dictation
 apps, and the only one maintained:
 
 - **Voice To Hebrish** (2026-10-18), the Android + desktop monorepo this repo was copied

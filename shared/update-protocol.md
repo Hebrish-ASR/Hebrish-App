@@ -4,7 +4,7 @@ Written 2026-10-18 for one model; catalogue added 2026-10-19. (V) = verified, (I
 
 Both apps read the same catalogue, download the same files from the same places, and use
 the same rule to decide whether a new version is out. Android: `ModelStore.kt` /
-`ModelDownload.kt`. Desktop: `parlance/model_store.py`. `desktop/tests/test_shared.py` fails
+`ModelDownload.kt`. Desktop: `hebrish/model_store.py`. `desktop/tests/test_shared.py` fails
 if either app's bundled catalogue drifts from [`models.json`](models.json).
 
 ## The catalogue

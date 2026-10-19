@@ -1,6 +1,6 @@
-# Parlance: desktop (Linux and Windows)
+# Hebrish: desktop (Linux and Windows)
 
-The desktop app of [Parlance](../README.md): on-device dictation with NVIDIA Parakeet,
+The desktop app of [Hebrish](../README.md): on-device dictation with NVIDIA Parakeet,
 stock or one of the fine-tunes, running on your CPU with sherpa-onnx.
 
 **Website for the English-Hebrew code-switching model: [hebrish.app](https://hebrish.app)**: get the Hebrish keyboard for Android and the desktop apps, see the results, and find every model, dataset and demo in one place.
@@ -10,14 +10,14 @@ stock or one of the fine-tunes, running on your CPU with sherpa-onnx.
 ## Two ways to work
 
 **Dictate** (hotkey, anywhere):
-- The hotkey can be any key on any keyboard, or a foot pedal. There are three modes:
+- The hotkey can be any key on any keyboard, or a foot pedal (default F14). There are three modes:
   - *hybrid* (the default): a tap starts and a second tap stops; holding the key is push-to-talk.
   - *toggle*: tap to start, tap to stop.
   - *hold*: push-to-talk.
 - The text is pasted at the cursor: the app puts it on the clipboard and sends Ctrl+V, so
   it works whatever keyboard layout is active, Hebrew included. Clipboard-only is an option.
 - Recent transcripts are listed with Copy buttons, plus **Copy all** and **Clear history**.
-- `parlance --toggle` starts or stops the running app, for a desktop shortcut.
+- `hebrish --toggle` starts or stops the running app, for a desktop shortcut.
 
 **Transcribe** (long form):
 - Pick the microphone, then record with a level meter, a timer and Pause/Resume. Recordings can run up to 3 hours.
@@ -50,7 +50,7 @@ stock or one of the fine-tunes, running on your CPU with sherpa-onnx.
 [releases](https://github.com/Hebrish-ASR/Hebrish-Dictation/releases), then:
 
 ```bash
-sudo apt install ./parlance_*_amd64.deb
+sudo apt install ./hebrish_*_amd64.deb
 sudo usermod -aG input $USER     # for the hotkey; log in again afterwards
 ```
 
@@ -62,21 +62,30 @@ other Ubuntu releases, run `./install.sh` (a per-user venv; needs uv) or rebuild
 `./build-deb.sh`.
 
 **Windows 10/11** (x64): download the `-windows-x64.zip` from the releases, unzip it, and
-run `Parlance.exe`. There is no installer and no admin rights are needed. Turn on
+run `Hebrish.exe`. There is no installer and no admin rights are needed. Turn on
 *Start at login* under Settings if you want it in the tray at every login. Windows
 SmartScreen may warn you because the build is unsigned.
+
+**Alongside Parlance.** Up to 0.1.2 this app was called Parlance internally (package, command
+and folders `parlance`). From 0.2.0 Hebrish and [Parlance](https://github.com/danielrosehill/Parlance-Dictation)
+are separate apps that can be installed together; an existing 0.1.x `parlance` install stays
+Parlance and is upgraded by Parlance 0.2.0. On its first start Hebrish copies Parlance's
+settings (except the hotkey) and history, and hardlinks its downloaded models (copies them if
+hardlinking fails), so nothing is downloaded twice and Parlance is left untouched. Hebrish's
+default hotkey is F14 because Parlance keeps F13: both apps read keys without grabbing them, so
+a shared hotkey would start both.
 
 ## Files
 
 | | Linux | Windows |
 | --- | --- | --- |
-| Settings | `~/.config/parlance/config.json` | `%APPDATA%\Parlance\config.json` |
-| Models, history, state | `~/.local/share/parlance/` | `%LOCALAPPDATA%\Parlance\` |
-| Log | stderr | `%LOCALAPPDATA%\Parlance\parlance.log` |
+| Settings | `~/.config/hebrish/config.json` | `%APPDATA%\Hebrish\config.json` |
+| Models, history, state | `~/.local/share/hebrish/` | `%LOCALAPPDATA%\Hebrish\` |
+| Log | stderr | `%LOCALAPPDATA%\Hebrish\hebrish.log` |
 
-`config.json` keys and defaults: `DEFAULTS` in [`parlance/config.py`](parlance/config.py).
-Model CLI: `parlance-model list`, `parlance-model use <model>`,
-`parlance-model status|check|download [<model>] [--replace]`.
+`config.json` keys and defaults: `DEFAULTS` in [`hebrish/config.py`](hebrish/config.py).
+Model CLI: `hebrish-model list`, `hebrish-model use <model>`,
+`hebrish-model status|check|download [<model>] [--replace]`.
 
 ## Development
 
@@ -84,7 +93,7 @@ Model CLI: `parlance-model list`, `parlance-model use <model>`,
 # Linux: the distro python, for apt's PySide6 and evdev
 uv venv --python /usr/bin/python3 --system-site-packages .venv && uv pip install -e . pytest
 .venv/bin/python -m pytest tests
-.venv/bin/parlance
+.venv/bin/hebrish
 ```
 
 Windows: `pip install -e ".[windows]"`. The CI build is `.github/workflows/desktop.yml`.

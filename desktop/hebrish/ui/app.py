@@ -19,13 +19,14 @@ from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from .. import audio, model_store
-from ..config import APP_NAME, HISTORY_PATH, STATE_PATH, Config, load_json, migrate_legacy, save_json
+from ..config import (APP_NAME, HISTORY_PATH, STATE_PATH, Config, load_json, migrate_legacy,
+                      import_parlance, save_json)
 from ..engine import Engine
 from ..hotkey import make_listener
 from ..inserter import make_inserter
 from . import about
 
-log = logging.getLogger("parlance")
+log = logging.getLogger("hebrish")
 ICONS = Path(__file__).resolve().parent.parent / "data" / "icons"
 HISTORY_MAX = 50
 
@@ -92,7 +93,7 @@ class Controller(QObject):
             self.win.banner(msg)
 
     def notify(self, title, body=""):
-        self.tray.showMessage(title, body, icon("parlance"), 6000)
+        self.tray.showMessage(title, body, icon("hebrish"), 6000)
 
     # -- dictation -----------------------------------------------------------------
     def toggle(self):
@@ -350,9 +351,9 @@ class Controller(QObject):
 
 def _selftest() -> int:
     """Used by the Windows CI build: prove the frozen bundle has every native piece.
-    A --windowed exe has no stdout, so results go to $PARLANCE_SELFTEST_OUT when set."""
+    A --windowed exe has no stdout, so results go to $HEBRISH_SELFTEST_OUT when set."""
     import os
-    out = open(os.environ["PARLANCE_SELFTEST_OUT"], "w") if os.environ.get("PARLANCE_SELFTEST_OUT") else sys.stdout
+    out = open(os.environ["HEBRISH_SELFTEST_OUT"], "w") if os.environ.get("HEBRISH_SELFTEST_OUT") else sys.stdout
     try:
         import sherpa_onnx
         import sounddevice
@@ -382,7 +383,9 @@ def _selftest() -> int:
 
 
 def main():
-    p = argparse.ArgumentParser(prog="parlance")
+    # Before anything touches the config/data dirs (the Windows log below creates DATA_DIR).
+    import_parlance()
+    p = argparse.ArgumentParser(prog="hebrish")
     p.add_argument("--toggle", action="store_true", help="start or stop dictation in the running app")
     p.add_argument("--hidden", action="store_true", help="start in the tray")
     p.add_argument("--selftest", action="store_true", help=argparse.SUPPRESS)
@@ -390,7 +393,7 @@ def main():
     if sys.stderr is None:                    # Windows --windowed build: log to a file
         from ..config import DATA_DIR
         DATA_DIR.mkdir(parents=True, exist_ok=True)
-        logging.basicConfig(filename=DATA_DIR / "parlance.log", level=logging.INFO,
+        logging.basicConfig(filename=DATA_DIR / "hebrish.log", level=logging.INFO,
                             format="%(asctime)s %(message)s")
     else:
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
@@ -400,12 +403,12 @@ def main():
     migrate_legacy()
     app = QApplication([sys.argv[0], *qt_args])
     app.setApplicationName(APP_NAME)
-    app.setDesktopFileName("parlance")
-    app.setWindowIcon(icon("parlance"))
+    app.setDesktopFileName("hebrish")
+    app.setWindowIcon(icon("hebrish"))
     app.setQuitOnLastWindowClosed(False)
 
     # single instance: a second launch hands its command to the first and exits
-    name = f"parlance-{getpass.getuser()}"
+    name = f"hebrish-{getpass.getuser()}"
     sock = QLocalSocket()
     sock.connectToServer(name)
     if sock.waitForConnected(500):

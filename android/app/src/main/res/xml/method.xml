@@ -6,7 +6,7 @@
      ends up with no enabled subtype and is left out of the keyboard picker and of HeliBoard's
      voice-IME lookup. See docs/maintaining.md. -->
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
-    android:settingsActivity="com.danielrosehill.parlance.MainActivity"
+    android:settingsActivity="app.hebrish.dictation.MainActivity"
     android:supportsSwitchingToNextInputMethod="true">
     <subtype
         android:imeSubtypeLocale="en_US"

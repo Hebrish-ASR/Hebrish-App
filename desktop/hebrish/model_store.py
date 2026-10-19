@@ -30,7 +30,7 @@ from .config import CATALOGUE_CACHE, MODELS_DIR, STATE_PATH, load_json, save_jso
 BUNDLED_CATALOGUE = Path(__file__).resolve().parent / "data" / "models.json"
 SCHEMA = 1
 HF = "https://huggingface.co"
-USER_AGENT = "parlance (+https://github.com/Hebrish-ASR/Hebrish-Dictation)"
+USER_AGENT = "hebrish (+https://github.com/Hebrish-ASR/Hebrish-Dictation)"
 
 
 class Cancelled(Exception):
@@ -372,7 +372,9 @@ def download(m: Manifest, on_progress=None, cancel: threading.Event | None = Non
 def main():
     import argparse
     import sys
-    p = argparse.ArgumentParser(prog="parlance-model")
+    from .config import import_parlance
+    import_parlance()                   # first start: copy Parlance's settings and models
+    p = argparse.ArgumentParser(prog="hebrish-model")
     p.add_argument("cmd", choices=["list", "status", "check", "download", "use"])
     p.add_argument("model", nargs="?", help="catalogue id (default: the selected model)")
     p.add_argument("--replace", action="store_true", help="delete older versions after download")

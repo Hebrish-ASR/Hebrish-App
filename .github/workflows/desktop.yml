@@ -37,28 +37,28 @@ jobs:
       - name: Tests
         run: python -m pytest -q tests
       - name: Icon
-        run: python packaging/windows/make_icon.py parlance/data/icons/parlance.svg packaging/windows/icon.ico
+        run: python packaging/windows/make_icon.py hebrish/data/icons/hebrish.svg packaging/windows/icon.ico
       - name: Freeze
         run: >
-          pyinstaller --noconfirm --windowed --name Parlance
+          pyinstaller --noconfirm --windowed --name Hebrish
           --icon packaging/windows/icon.ico
           --collect-all sherpa_onnx --collect-all _sounddevice_data
           --collect-all soundfile --collect-all _soundfile_data
-          --collect-data parlance
-          --hidden-import parlance.hotkey_win --hidden-import parlance.inserter_win
+          --collect-data hebrish
+          --hidden-import hebrish.hotkey_win --hidden-import hebrish.inserter_win
           --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32
           packaging/windows/launcher.py
       - name: Self-test the frozen exe
         run: |
-          $env:PARLANCE_SELFTEST_OUT = "$PWD\selftest.txt"
-          $p = Start-Process dist\Parlance\Parlance.exe -ArgumentList "--selftest" -Wait -PassThru
+          $env:HEBRISH_SELFTEST_OUT = "$PWD\selftest.txt"
+          $p = Start-Process dist\Hebrish\Hebrish.exe -ArgumentList "--selftest" -Wait -PassThru
           Get-Content selftest.txt
           if ($p.ExitCode -ne 0) { exit 1 }
       - name: Zip
         run: |
           $ver = "${{ github.ref_name }}".Replace("desktop-", "")
           if (-not $ver.StartsWith("v")) { $ver = "dev" }
-          Compress-Archive -Path dist\Parlance -DestinationPath "Hebrish-$ver-windows-x64.zip"
+          Compress-Archive -Path dist\Hebrish -DestinationPath "Hebrish-$ver-windows-x64.zip"
           "ZIP=Hebrish-$ver-windows-x64.zip" | Out-File -Append $env:GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with: { name: windows-build, path: "desktop/${{ env.ZIP }}" }

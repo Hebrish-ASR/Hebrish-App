@@ -3,9 +3,9 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "parlance"
+name = "hebrish"
 dynamic = ["version"]
-description = "Parlance: on-device desktop dictation with NVIDIA Parakeet (stock or fine-tuned)"
+description = "Hebrish: on-device desktop dictation with NVIDIA Parakeet (stock or fine-tuned)"
 authors = [{name = "Daniel Rosehill"}]
 readme = "README.md"
 requires-python = ">=3.12"
@@ -18,14 +18,14 @@ dependencies = ["sherpa-onnx>=1.12", "sounddevice>=0.4", "numpy"]
 windows = ["PySide6-Essentials>=6.8", "pynput>=1.7", "pyperclip>=1.8", "soundfile>=0.12"]
 
 [project.scripts]
-parlance = "parlance.ui.app:main"
-parlance-model = "parlance.model_store:main"
+hebrish = "hebrish.ui.app:main"
+hebrish-model = "hebrish.model_store:main"
 
 [tool.setuptools.dynamic]
-version = {attr = "parlance.__version__"}
+version = {attr = "hebrish.__version__"}
 
 [tool.setuptools.packages.find]
-include = ["parlance*"]
+include = ["hebrish*"]
 
 [tool.setuptools.package-data]
-parlance = ["data/icons/*.svg", "data/models.json"]
+hebrish = ["data/icons/*.svg", "data/models.json"]

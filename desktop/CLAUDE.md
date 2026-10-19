@@ -1,8 +1,8 @@
-# Parlance: desktop (Linux + Windows)
+# Hebrish: desktop (Linux + Windows)
 
 Read `docs/maintaining.md` before changing the update protocol, the engine padding and
 pause handling, or the hotkey and paste path. Each has a measured reason recorded there.
-The model source and update rules are shared with Android: `../shared/models.json` (the model catalogue; `parlance/data/models.json` is a
+The model source and update rules are shared with Android: `../shared/models.json` (the model catalogue; `hebrish/data/models.json` is a
 byte-identical copy, re-copy after editing) and
 `../shared/update-protocol.md` (`tests/test_shared.py` enforces them).
 
@@ -13,3 +13,7 @@ byte-identical copy, re-copy after editing) and
   `inserter_linux.py` / `inserter_win.py` and `autostart.py`. Everything else is shared.
 - Don't run live record-and-paste tests on Daniel's desktop. Render the UI off-screen
   (`QT_QPA_PLATFORM=offscreen`) and drive the controller from a script.
+- Hebrish runs alongside the separate Parlance app (`../../Parlance-Dictation`, same code
+  lineage, every identifier `parlance`). Keep every installed path, dir, socket, uinput device
+  and autostart entry named `hebrish`, and never write to Parlance's dirs: see
+  `docs/maintaining.md`, "Hebrish and Parlance".

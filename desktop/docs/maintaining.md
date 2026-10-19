@@ -15,7 +15,7 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | `inserter.py` + `inserter_linux.py` / `inserter_win.py` | clipboard, then a paste chord (uinput / SendInput) |
 | `autostart.py` | XDG autostart entry / HKCU `Run` key |
 | `ui/app.py` | `Controller`, tray, single instance + `--toggle` over `QLocalServer`, `--selftest`, `main()` |
-| `ui/window.py`, `ui/transcribe.py`, `ui/about.py`, `ui/style.py` | window, tabs, About copy and numbers, QSS. `about.HEBRISH_LINKS` is the one list of hebrish.app URLs (site, `contact?topic=word/samples/involved`, and `mailto:feedback@hebrish.app` links for bug / feature / feedback with app and OS version in the body; since 0.1.1). The app icon `data/icons/parlance.svg` is the Hebrish mark, copied from `Hebrish-Mgmt/brand/logo/mark.svg`, read by the About tab, the Model tab and the tray submenu |
+| `ui/window.py`, `ui/transcribe.py`, `ui/about.py`, `ui/style.py` | window, tabs, About copy and numbers, QSS. `about.HEBRISH_LINKS` is the one list of hebrish.app URLs (site, `contact?topic=word/samples/involved`, and `mailto:feedback@hebrish.app` links for bug / feature / feedback with app and OS version in the body; since 0.1.1). The app icon `data/icons/hebrish.svg` is the Hebrish mark, copied from `Hebrish-Mgmt/brand/logo/mark.svg`, read by the About tab, the Model tab and the tray submenu |
 
 Threads: the hotkey source, decoding, the HF check and downloads run off the GUI thread.
 They report back only through `Signal`s, whose cross-thread emits Qt queues onto the GUI
@@ -91,10 +91,11 @@ The update branch (old version installed, new weights published) is covered only
 - `/dev/uinput` on this machine is `root:input 0660` plus a logind uaccess ACL for the
   seat user, so it is writable without udev rules (V). Other distros may need a rule (I).
 - evdev reading is non-exclusive: the hotkey also reaches other apps and other dictation
-  tools. Voxtype on the same machine uses F13, which is also this app's default hotkey.
-  Pick a different key if both run.
-- The hotkey listener ignores its own uinput device by name (`OWN_DEVICE_NAME`).
-  Otherwise it would hear its own paste chord.
+  tools. Voxtype on the same machine and Parlance both use F13, so Hebrish's default is F14
+  (since 0.2.0). Pick a different key if another tool uses it.
+- The hotkey listener ignores its own uinput device by name (`OWN_DEVICE_NAME`,
+  `hebrish-keyboard`), and Parlance's (`parlance-keyboard`), via `IGNORED_DEVICES`.
+  Otherwise it would hear its own, or the other app's, paste chord.
 - With a modifier as the hotkey (e.g. Right Ctrl), pressing another key while holding it
   cancels the take, so Right-Ctrl+C stays a shortcut.
 - `libayatana-appindicator is deprecated` is printed at startup. It is harmless: the GIR
@@ -102,12 +103,12 @@ The update branch (old version installed, new weights published) is covered only
 
 ## Releasing
 
-1. Bump `__version__` in `parlance/__init__.py` and write
+1. Bump `__version__` in `hebrish/__init__.py` and write
    `../.github/desktop-release-notes.md`.
 2. Push the tag `desktop-v<ver>`. CI (`.github/workflows/desktop.yml`) runs the tests on
    Linux and Windows, builds the Windows zip with PyInstaller, runs the frozen exe's
    `--selftest`, and creates the release with the zip attached.
-3. On Ubuntu 26.04, run `./build-deb.sh`. It writes `dist/parlance_<ver>-1_amd64.deb`,
+3. On Ubuntu 26.04, run `./build-deb.sh`. It writes `dist/hebrish_<ver>-1_amd64.deb`,
    bundles sherpa-onnx + sherpa-onnx-core, and is pinned to the build machine's python3
    minor (3.14). Then run `gh release upload desktop-v<ver> dist/*.deb`. CI can't build it
    because the GitHub runners' Ubuntu has an older python3.
@@ -121,7 +122,7 @@ The download links live in these places. Update them when a version changes:
 
 The package has `Conflicts`/`Replaces` on the predecessors (`voice-to-hebrish`,
 `codeswitch-dictation`, and `parakeet-dictation` from Parakeet-Type-Ubuntu), so only one Linux
-dictation app is ever installed. On first start (no `~/.config/parlance/config.json` yet),
+dictation app is ever installed (the separate `parlance` package is not a predecessor and is deliberately not listed: see "Hebrish and Parlance"). On first start (no `~/.config/hebrish/config.json` yet, and nothing imported from Parlance),
 `config.migrate_legacy()` copies Voice To Hebrish's (or Codeswitch Dictation's) settings and transcript history, and
 **moves** its downloaded versions into `models/codeswitch/`, then selects that model, so
 nothing is downloaded again.
@@ -129,13 +130,13 @@ nothing is downloaded again.
 **Trap (V, 2026-10-18, seen when Codeswitch Dictation 0.1.0 became Voice To Hebrish 0.2.0):** if the old app is
 still running when the new one first starts, the move pulls the model out from under it. The
 old app then sees no model and downloads 660 MB again into its own folder. Quit the old app
-(and purge its package) before the first Parlance start.
+(and purge its package) before the first Hebrish start.
 
 ## Models
 
-The catalogue is `../shared/models.json`, bundled as `parlance/data/models.json`
+The catalogue is `../shared/models.json`, bundled as `hebrish/data/models.json`
 (`tests/test_shared.py` fails if the copies differ). Each update check first re-fetches it
-from `catalogue_url` (raw GitHub, `main`; builds up to 0.1.2 use the pre-2026-10-19 repo name `Parlance-Dictation` and depend on GitHub's rename redirect, see `android/docs/maintaining.md`, "Repo name") into `~/.local/share/parlance/catalogue.json`; an
+from `catalogue_url` (raw GitHub, `main`; builds up to 0.1.2 use the pre-2026-10-19 repo name `Parlance-Dictation` and depend on GitHub's rename redirect, see `android/docs/maintaining.md`, "Repo name") into `~/.local/share/hebrish/catalogue.json`; an
 unparseable or wrong-`schema` copy is ignored and the bundled one is used. So **publishing a
 model needs no app release**: push the HF repo (files: `encoder.int8.onnx`,
 `decoder.int8.onnx`, `joiner.int8.onnx`, `tokens.txt`, optional `version.json`), then flip its
@@ -148,11 +149,11 @@ entry to `"status": "available"` with `repo` and `subdir`, re-copy the bundled f
   `active` (`{id: dirname}`). Pruning old versions never crosses model ids.
 - A model in the middle of a download can't be switched away from (the picker is disabled).
 
-Verified 2026-10-19 (V): stock downloaded through `parlance-model download stock` (630 MB,
+Verified 2026-10-19 (V): stock downloaded through `parlance-model download stock` (the command's name at the time) (630 MB,
 SHA-256 checked) and decoded the mirror's `test_wavs/0.wav` correctly with the unchanged
 engine settings (`feature_dim=128`, greedy search). Code-switch `check` returned v5, r5-en30.
 
-It ships `/usr/lib/udev/rules.d/70-parlance-uinput.rules` (uaccess on
+It ships `/usr/lib/udev/rules.d/70-hebrish-uinput.rules` (uaccess on
 uinput, the same rule Steam uses) for the paste device. The hotkey still needs the
 `input` group, because a uaccess rule on keyboards would let any seat app read keystrokes.
 
@@ -169,9 +170,53 @@ libs in the bundled .so files, and `--toggle` record → transcribe ran from `/u
   run with `XDG_CONFIG_HOME=<tmp>` and a config of
   `{"hotkey": "KEY_F20", "insert": "clipboard"}`. Inject F20 through a throwaway
   `evdev.UInput`. Wait ≥4 s after creating the device: the listener rescans every 3 s.
-- When killing a test instance, don't `pkill -f parlance`: the pattern also
+- When killing a test instance, don't `pkill -f hebrish`: the pattern also
   matches the shell running the command.
 
 ## Display name: Hebrish (0.1.2, 2026-10-19)
 
-User-facing name is **Hebrish** so app search finds it; everything that identifies the install keeps `parlance`. Desktop: `config.APP_NAME` (window, tray, About, Linux autostart entry) and `Name=` in `packaging/parlance.desktop` (with `parlance` kept in `Keywords=`). Unchanged: the package and command `parlance`, `APP_ID`, config/data dirs, `Icon=parlance`, and `config.AUTOSTART_KEY = "Parlance"`, the Windows Run-key value name, so an existing autostart entry is still found. Release assets keep the Parlance file names.
+0.1.2 changed only the user-facing name (`config.APP_NAME`, `Name=` in the .desktop file) and
+deliberately kept every identifier `parlance` (package, command, `APP_ID`, dirs, icon, autostart
+key) so existing installs carried over. **Reversed 2026-10-19, for 0.2.0** (next section).
+
+## Hebrish and Parlance (0.2.0, 2026-10-19)
+
+Decision, 2026-10-19: every internal `parlance` identifier is now `hebrish`, for clarity, done
+while installs were near zero (0.1.2 shipped the same day). Parlance was then re-created as a
+separate, live app (`danielrosehill/Parlance-Dictation`, local `../../Parlance-Dictation`)
+that keeps every `parlance` identifier; Parlance 0.2.0 upgrades the 0.1.x `parlance` package in
+place. Daniel wants both installed at once, so the rename is a split, not a replacement:
+
+- Identifiers: package and commands `hebrish` / `hebrish-model`, Python package `hebrish`,
+  `APP_ID = "app.hebrish.Dictation"`, dirs `~/.config/hebrish`, `~/.local/share/hebrish`
+  (`%APPDATA%\Hebrish`, `%LOCALAPPDATA%\Hebrish`, log `hebrish.log`), single-instance socket
+  `hebrish-<user>`, uinput device `hebrish-keyboard`, icon and .desktop `hebrish`, udev rule
+  `70-hebrish-uinput.rules`, Linux autostart `hebrish.desktop`, Windows Run value `Hebrish`,
+  exe `Hebrish.exe`, `HEBRISH_SELFTEST_OUT` in CI.
+- The .deb has **no** Conflicts/Replaces/Breaks/Provides for `parlance`. Checked 2026-10-19
+  against Parlance-Dictation's `build-deb.sh` (V): it installs `/usr/bin/parlance{,-model}`,
+  `/usr/lib/parlance/`, `parlance.desktop`, `parlance.svg`, `70-parlance-uinput.rules` and
+  `/usr/share/doc/parlance`; every Hebrish path is named `hebrish`, so none collide. The two udev
+  rules are identical and harmless together.
+- **First-start import, `config.import_parlance()`** (called first in both `main()`s, before
+  the Windows log creates `DATA_DIR`): config.json is copied if Hebrish has none, minus
+  `hotkey` and unknown keys; `state.json` and `history.json` are copied and `models/` is
+  `copytree`d with `os.link` (falling back to `copy2` per file when linking fails: cross-device,
+  or no hardlink support) if Hebrish has no `state.json` and no `models/` yet. Those file
+  checks, not "dir absent", because `install.sh` creates `DATA_DIR/venv` first. Parlance's
+  dirs are only read, never moved or deleted. `*.part` files and the venv are not copied.
+  Sharing inodes is safe because both apps download to `<file>.part` then rename, and prune by
+  unlinking a version folder; neither writes into a finished model file. Tests:
+  `tests/test_migration.py`. Review for removal at 0.3.0.
+- `migrate_legacy()` (voice-to-hebrish / codeswitch-dictation) runs after the import and does
+  nothing once a Parlance config was imported.
+- Autostart: Hebrish manages only `hebrish.desktop` / the `Hebrish` value. Parlance's entries
+  belong to Parlance and are not touched, so a 0.1.x user who had autostart on keeps it for
+  Parlance and turns it on in Hebrish separately.
+- Hotkey: default F14 (Parlance keeps F13; evdev reads without grabbing, so a shared key starts
+  both), and the imported config drops `hotkey`.
+- `tests/conftest.py` points `XDG_*`, `APPDATA`, `LOCALAPPDATA` at a temp dir before any test
+  module imports `hebrish.config`, and asserts the paths landed there. Before it, the first
+  module to import `config` fixed the paths; on 2026-10-19 a run that imported it before
+  `test_model_store` set the env wrote into the real `~/.config/hebrish` and the legacy test's
+  cleanup deleted the real `~/.config/voice-to-hebrish` and `~/.local/share/voice-to-hebrish`.

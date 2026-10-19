@@ -201,7 +201,25 @@ to it. Losing it means users must uninstall before installing a newer APK.
 
 ## Display name: Hebrish (0.1.2, 2026-10-19)
 
-User-facing name is **Hebrish** so app search finds it; everything that identifies the install keeps `parlance`. Android: `app_name`, `ime_name` and every other user-visible string in `strings.xml` (not `url_source`); the package `com.danielrosehill.parlance` and the IME component are unchanged, so an enabled keyboard stays enabled. The release APK is still named `Parlance-<ver>.apk`.
+User-facing name is **Hebrish** so app search finds it; everything that identifies the install keeps `parlance`. Android: `app_name`, `ime_name` and every other user-visible string in `strings.xml` (not `url_source`); the package `com.danielrosehill.parlance` and the IME component were left unchanged so an enabled keyboard stayed enabled. Superseded by the next section.
+
+## Identifiers: Hebrish (0.2.0, decided 2026-10-19)
+
+Reverses the decision above: every identifier is now Hebrish, for clarity, done the day 0.1.2
+shipped while installs were near zero.
+
+- `applicationId` and `namespace`: `app.hebrish.dictation` (was `com.danielrosehill.parlance`);
+  sources moved to `app/src/main/java/app/hebrish/dictation/`. `rootProject.name = "Hebrish"`.
+- **Not an upgrade:** Android treats it as a new app; install it and enable the keyboard. The
+  0.1.x install (`com.danielrosehill.parlance`) is now Parlance, a separate general-purpose app
+  re-created 2026-10-19 in `danielrosehill/Parlance-Dictation` that keeps the old identifiers;
+  Parlance 0.2.0 updates it in place, and both apps can be installed together. App-private data (prefs, a model kept in app storage) does
+  not carry over; a model in a user-chosen shared folder does, because the folder is named after
+  the model repo (`ModelStore.sharedFolder`), not the app.
+- Same signing key as 0.1.x (nothing depends on it, since the package changed).
+- `VoiceImeService` return-to-keyboard fallback now prefers Hebrish Keyboard
+  (`app.hebrish.keyboard`, the HeliBoard fork in `Hebrish-ASR/Hebrish-Keyboard`) before HeliBoard.
+- Release APK: `Hebrish-<ver>.apk` (already so since the 0.1.2 workflow).
 
 ## Repo name: Hebrish-Dictation (renamed 2026-10-19)
 
@@ -211,8 +229,8 @@ On 2026-10-19 the GitHub repo `Hebrish-ASR/Parlance-Dictation` was renamed to
 redirects the old URLs; checked the same day that `raw.githubusercontent.com/.../main/shared/models.json`
 and the release-asset download URLs still return 200 under the old name. Source links,
 `catalogue_url` (both copies of `models.json`), the desktop `USER_AGENT`, About link, `.deb`
-`Homepage` and Android `url_source` now use the new name. Code identifiers (`parlance` package,
-`com.danielrosehill.parlance`, applicationId, deb package, asset names) are unchanged.
+`Homepage` and Android `url_source` now use the new name. Code identifiers followed the same
+day; see "Identifiers: Hebrish (0.2.0)".
 
 **Never create a new repo named `Hebrish-ASR/Parlance-Dictation`.** Installed builds up to and
 including 0.1.2 (desktop and Android) fetch the catalogue from the old-name `catalogue_url`;

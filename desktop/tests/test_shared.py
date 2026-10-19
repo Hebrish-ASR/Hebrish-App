@@ -7,19 +7,19 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "desktop"))
 
-from parlance import model_store  # noqa: E402
+from hebrish import model_store  # noqa: E402
 
 SHARED = os.path.join(ROOT, "shared", "models.json")
 
 
 def test_desktop_bundles_the_shared_catalogue():
-    """desktop/parlance/data/models.json is a copy (PyInstaller and the .deb need it inside
-    the package). After editing shared/models.json: cp shared/models.json desktop/parlance/data/"""
+    """desktop/hebrish/data/models.json is a copy (PyInstaller and the .deb need it inside
+    the package). After editing shared/models.json: cp shared/models.json desktop/hebrish/data/"""
     assert open(model_store.BUNDLED_CATALOGUE).read() == open(SHARED).read()
 
 
 ANDROID = os.path.join(ROOT, "android", "app")
-KT = os.path.join(ANDROID, "src", "main", "java", "com", "danielrosehill", "parlance")
+KT = os.path.join(ANDROID, "src", "main", "java", "app", "hebrish", "dictation")
 
 
 def test_android_bundles_the_shared_catalogue():

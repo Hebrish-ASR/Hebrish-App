@@ -1,4 +1,4 @@
-package com.danielrosehill.parlance
+package app.hebrish.dictation
 
 import android.content.Context
 import android.os.Handler

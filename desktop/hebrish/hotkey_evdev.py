@@ -16,7 +16,10 @@ from evdev import ecodes
 
 from .hotkey import HotkeyMachine
 
-OWN_DEVICE_NAME = "parlance-keyboard"     # our uinput paster; never listen to it
+OWN_DEVICE_NAME = "hebrish-keyboard"     # our uinput paster; never listen to it
+# Paste devices never listened to: ours, and Parlance's (a separate app that can run alongside
+# and has the same hotkey code), so neither app reacts to the other's paste chord.
+IGNORED_DEVICES = (OWN_DEVICE_NAME, "parlance-keyboard")
 
 
 def key_name(code: int) -> str:
@@ -45,7 +48,7 @@ class EvdevHotkeys(HotkeyMachine):
             # list_devices() silently skips nodes it cannot open
             self.problem = ("Can't read /dev/input, so the hotkey is off. Run "
                             "`sudo usermod -aG input $USER` and log in again. Until then use "
-                            "the button, the tray, or `parlance --toggle`.")
+                            "the button, the tray, or `hebrish --toggle`.")
         for path in list(self._devices):
             if path not in paths:
                 self._drop(path)
@@ -55,7 +58,7 @@ class EvdevHotkeys(HotkeyMachine):
             except OSError:
                 continue
             keys = dev.capabilities().get(ecodes.EV_KEY, [])
-            if dev.name == OWN_DEVICE_NAME or not any(_is_key(k) for k in keys):
+            if dev.name in IGNORED_DEVICES or not any(_is_key(k) for k in keys):
                 dev.close()
                 continue
             self._devices[path] = dev

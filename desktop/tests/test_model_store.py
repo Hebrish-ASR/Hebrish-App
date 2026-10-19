@@ -4,17 +4,13 @@ import json
 import os
 import shutil
 import sys
-import tempfile
 
 import pytest
 
-os.environ["XDG_DATA_HOME"] = tempfile.mkdtemp()
-os.environ["XDG_CONFIG_HOME"] = tempfile.mkdtemp()
-os.environ["APPDATA"] = tempfile.mkdtemp()          # Windows equivalents
-os.environ["LOCALAPPDATA"] = tempfile.mkdtemp()
+# conftest.py points XDG_* / APPDATA / LOCALAPPDATA at a temp dir before this is imported.
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from parlance import model_store as ms  # noqa: E402
+from hebrish import model_store as ms  # noqa: E402
 
 # Shape of GET /api/models/<repo>/tree/<sha>/sherpa-onnx/int8, trimmed (live 2026-10-18).
 TREE = [
@@ -171,7 +167,7 @@ def test_bad_cached_catalogue_falls_back_to_bundled():
 
 
 def test_legacy_voice_to_hebrish_install_is_adopted(monkeypatch):
-    from parlance import config
+    from hebrish import config
     old_data = config.DATA_DIR.with_name(config._LEGACY[0])     # VoiceToHebrish on Windows
     old_cfg = config.CONFIG_DIR.with_name(config._LEGACY[0])
     m = manifest()

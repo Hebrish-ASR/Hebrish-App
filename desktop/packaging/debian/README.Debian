@@ -1,11 +1,17 @@
-Hebrish (Parlance) for Ubuntu
-===================
+Hebrish for Ubuntu
+==================
 
-  /usr/bin/parlance         the app (window + tray)
-  /usr/bin/parlance-model   model CLI: list | use | status | check | download [<model>] [--replace]
-  /usr/lib/parlance/        app code + bundled sherpa-onnx (not in Ubuntu)
-  ~/.config/parlance/       config.json
-  ~/.local/share/parlance/  models/<model>/<version>/, state.json
+  /usr/bin/hebrish         the app (window + tray)
+  /usr/bin/hebrish-model   model CLI: list | use | status | check | download [<model>] [--replace]
+  /usr/lib/hebrish/        app code + bundled sherpa-onnx (not in Ubuntu)
+  ~/.config/hebrish/       config.json
+  ~/.local/share/hebrish/  models/<model>/<version>/, state.json
+
+Installs alongside the separate "parlance" package (Parlance 0.2.0 upgrades the 0.1.x
+parlance builds of this app). On first start Hebrish copies ~/.config/parlance/config.json
+(minus the hotkey), history and state, and hardlinks ~/.local/share/parlance/models, so no
+model is downloaded twice; Parlance's folders are left as they are. Default hotkey: F14
+(Parlance uses F13; both apps would react to a shared key).
 
 Pick a model in the Model tab; each is ~660 MB and downloads once. For the hotkey, join the input
 group and log in again:  sudo usermod -aG input $USER
