@@ -3,6 +3,8 @@
 The desktop app of [Parlance](../README.md): on-device dictation with NVIDIA Parakeet,
 stock or one of the fine-tunes, running on your CPU with sherpa-onnx.
 
+**Website for the English-Hebrew code-switching model: [hebrish.app](https://hebrish.app)**: get the Hebrish keyboard for Android and the desktop apps, see the results, and find every model, dataset and demo in one place.
+
 ![The Dictate tab on KDE Plasma](../docs/screenshots/linux-dictate.png)
 
 ## Two ways to work
