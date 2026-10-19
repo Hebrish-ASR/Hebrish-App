@@ -95,7 +95,10 @@ you talk, and you're returned to HeliBoard with the text inserted. Details:
 
 Releases: tag `android-vX.Y.Z` builds the signed APK in CI. Tag `desktop-vX.Y.Z` builds the
 Windows zip in CI; the Ubuntu .deb is built with `desktop/build-deb.sh` and added to the same
-release. Adding a model needs no release: see `shared/update-protocol.md`.
+release. Then copy all three to the Hebrish CDN, `https://cdn.hebrish.app/downloads/{android,ubuntu,windows}/`,
+rewrite `downloads/latest.json` and point hebrish.app's download links at the CDN (the `r2-upload` skill in
+`parakeet-finetune-ops`; the site has linked the CDN, not GitHub, since 0.2.2). Adding a model needs no release:
+see `shared/update-protocol.md`.
 
 ## History
 

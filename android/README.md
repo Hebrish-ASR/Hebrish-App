@@ -1,6 +1,6 @@
 # Hebrish for Android: on-device voice keyboard
 
-[![Download APK v0.2.1](https://img.shields.io/badge/Download_APK-v0.2.1-24527A?logo=android)](https://github.com/Hebrish-ASR/Hebrish-Dictation/releases/download/android-v0.2.1/Hebrish-v0.2.1.apk)
+[![Download APK v0.2.2](https://img.shields.io/badge/Download_APK-v0.2.2-24527A?logo=android)](https://cdn.hebrish.app/downloads/android/Hebrish-v0.2.2.apk)
 [![Website: hebrish.app](https://img.shields.io/badge/Website-hebrish.app-1F6FEB?logo=googlechrome&logoColor=white)](https://hebrish.app)
 
 **Website for the English-Hebrew code-switching model: [hebrish.app](https://hebrish.app)**: get the Hebrish keyboard for Android and the desktop apps, see the results, and find every model, dataset and demo in one place.
@@ -45,7 +45,7 @@ a word, Send voice samples and Get involved open the site's contact form.
 1. Install **[HeliBoard](https://github.com/Helium314/HeliBoard/releases)** and make it your
    main keyboard.
 2. Download the APK from the
-   [APK (v0.2.1)](https://github.com/Hebrish-ASR/Hebrish-Dictation/releases/download/android-v0.2.1/Hebrish-v0.2.1.apk)
+   [APK (v0.2.2)](https://cdn.hebrish.app/downloads/android/Hebrish-v0.2.2.apk)
    and install it. You will need to allow installs from your browser or file manager.
 3. Open **Hebrish** and work through it:
    - **Pick a model** and **Download** it. It is about 660 MB, downloaded once; use Wi-Fi.
