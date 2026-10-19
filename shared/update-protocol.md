@@ -24,8 +24,17 @@ recognizer loads), `version_file`, `default` (the id selected on a fresh install
 | id | repo | subdir | label without version.json |
 | --- | --- | --- | --- |
 | `stock` | `csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8` (k2-fsa's int8 export of NVIDIA's release; static since 2025-08-16) | *(root)* | `v2` |
-| `codeswitch` | `danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching` | `sherpa-onnx/int8` | `rev <sha7>` |
+| `codeswitch` | `Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8` (since 2026-10-19) | *(root)* | `rev <sha7>` |
 | `tech`, `personal` | not published yet | | |
+
+**2026-10-19: moved to the mirror.** The main repo `danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching`
+became **gated** (manual access requests), so its `sherpa-onnx/int8/` returns 401 to the apps.
+The catalogue now points at the ungated mirror `Hebrish/…-sherpa-onnx-int8`, files at the root,
+with a `version.json` added there (`{"version": "v1.0", "run": "r6-en30"}`, HF commit `bb137e50`).
+Apps that read this catalogue (Hebrish 0.2.x) follow it on their next update check; older
+builds that hard-code the main repo path (Voice To Hebrish, Parlance 0.1.x) cannot download the
+code-switching model any more. **A model release must now update the mirror and its
+`version.json`**, not just the main repo. The paragraph below describes the layout before the move.
 
 For `codeswitch`, the fine-tune repo's `export_sherpa` writes the four files plus
 `version.json`. **Don't move that folder**: installed apps (including Voice To Hebrish, the

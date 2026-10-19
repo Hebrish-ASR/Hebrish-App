@@ -12,21 +12,22 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from hebrish import model_store as ms  # noqa: E402
 
-# Shape of GET /api/models/<repo>/tree/<sha>/sherpa-onnx/int8, trimmed (live 2026-10-18).
+# Shape of GET /api/models/Hebrish/Parakeet-...-sherpa-onnx-int8/tree/<sha>, trimmed. Files sit at the
+# repo root since 2026-10-19, when the app moved off the (now gated) main repo's sherpa-onnx/int8/.
 TREE = [
-    {"type": "file", "size": 12441, "path": "sherpa-onnx/int8/bpe.vocab"},
-    {"type": "file", "size": 7, "path": "sherpa-onnx/int8/decoder.int8.onnx",
+    {"type": "file", "size": 12441, "path": "bpe.vocab"},
+    {"type": "file", "size": 7, "path": "decoder.int8.onnx",
      "lfs": {"oid": "d" * 64, "size": 7}},
-    {"type": "file", "size": 6, "path": "sherpa-onnx/int8/encoder.int8.onnx",
+    {"type": "file", "size": 6, "path": "encoder.int8.onnx",
      "lfs": {"oid": "e" * 64, "size": 6}},
-    {"type": "file", "size": 5, "path": "sherpa-onnx/int8/joiner.int8.onnx",
+    {"type": "file", "size": 5, "path": "joiner.int8.onnx",
      "lfs": {"oid": "j" * 64, "size": 5}},
-    {"type": "file", "size": 4, "path": "sherpa-onnx/int8/tokens.txt"},
-    {"type": "file", "size": 35, "path": "sherpa-onnx/int8/version.json"},
+    {"type": "file", "size": 4, "path": "tokens.txt"},
+    {"type": "file", "size": 35, "path": "version.json"},
 ]
 
 
-# The stock repo keeps its files at the root (no subdir) and has no version.json.
+# The stock repo also keeps its files at the root, and has no version.json.
 STOCK_TREE = [{"type": "file", "size": e["size"], "path": e["path"].rsplit("/", 1)[-1],
                **({"lfs": e["lfs"]} if "lfs" in e else {})} for e in TREE[1:5]]
 CS = ms.get_model("codeswitch")
@@ -71,7 +72,7 @@ def test_label_without_version_json():
 def test_stock_root_level_tree_and_label():
     stock = ms.get_model("stock")
     assert stock.path("tokens.txt") == "tokens.txt" and stock.path() == ""
-    assert CS.path("tokens.txt") == "sherpa-onnx/int8/tokens.txt"
+    assert CS.path("tokens.txt") == "tokens.txt"
     m = ms.manifest_from_tree(stock, "s" * 40, STOCK_TREE, None)
     assert m.model == "stock" and m.version == "v2"
 

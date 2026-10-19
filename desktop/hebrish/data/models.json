@@ -24,9 +24,9 @@
       "name": "English-Hebrew code-switching",
       "summary": "Fine-tuned on English with Hebrew words in it (teudat zehut, arnona, makolet). One speaker's voice.",
       "status": "available",
-      "repo": "danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching",
-      "subdir": "sherpa-onnx/int8",
-      "card": "https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching"
+      "repo": "Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8",
+      "subdir": "",
+      "card": "https://huggingface.co/Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8"
     },
     {
       "id": "tech",
