@@ -122,7 +122,7 @@ The download links live in these places. Update them when a version changes:
 The package has `Conflicts`/`Replaces` on the predecessors (`voice-to-hebrish`,
 `codeswitch-dictation`, and `parakeet-dictation` from Parakeet-Type-Ubuntu), so only one Linux
 dictation app is ever installed. On first start (no `~/.config/parlance/config.json` yet),
-`config.migrate_legacy()` copies Voice To Hebrish's (or Codeswitch Dictation's) settings and
+`config.migrate_legacy()` copies Voice To Hebrish's (or Codeswitch Dictation's) settings and transcript history, and
 **moves** its downloaded versions into `models/codeswitch/`, then selects that model, so
 nothing is downloaded again.
 

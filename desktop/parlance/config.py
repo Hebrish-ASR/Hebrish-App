@@ -56,6 +56,9 @@ def migrate_legacy():
             continue
         stored = load_json(old_cfg)
         save_json(CONFIG_PATH, {k: v for k, v in stored.items() if k in DEFAULTS})
+        old_history = DATA_DIR.with_name(name) / "history.json"
+        if old_history.is_file() and not HISTORY_PATH.exists():
+            shutil.copy2(old_history, HISTORY_PATH)
         if old_models.is_dir():
             dest = MODELS_DIR / "codeswitch"
             dest.mkdir(parents=True, exist_ok=True)
