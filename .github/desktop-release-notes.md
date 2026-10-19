@@ -1,6 +1,6 @@
-**Parlance 0.1.0 for desktop: the first release.** Parlance succeeds Voice To Hebrish and Parakeet-Type-Ubuntu.
+**0.1.1: Hebrish icon and feedback by email.**
 
-- **Choice of model:** stock NVIDIA Parakeet TDT 0.6B v2, or the English-Hebrew code-switching fine-tune. Technical-vocabulary and personal-voice fine-tunes are listed as coming soon and will appear without an app update once published.
-- **Ubuntu 26.04**: `sudo apt install ./parlance_0.1.0-1_amd64.deb`. It replaces Voice To Hebrish and Parakeet-Type-Ubuntu, and keeps Voice To Hebrish's settings and downloaded model.
-- **Windows** (untested on real hardware): `Parlance-v0.1.0-windows-x64.zip`. Unzip it and run `Parlance.exe`. It is unsigned, so SmartScreen may warn you.
-- Everything else carries over: hotkey dictation (hybrid, toggle or hold), the Transcribe tab for recordings and files, the tray icon, and model updates with SHA-256 checks.
+- New app icon: the Hebrish mark (serif H on green). The tray status icons are unchanged.
+- **Report a bug**, **Request a feature** and **Send feedback** (tray Hebrish menu, About tab, Model tab) open your mail client with a message to feedback@hebrish.app, with the app and OS version filled in at the bottom.
+- The website link and the Suggest a word, Send voice samples and Get involved links (hebrish.app contact form) stay.
+- Ubuntu 26.04 .deb and a portable Windows zip (Windows still untested on real hardware).

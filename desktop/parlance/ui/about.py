@@ -5,6 +5,9 @@ Code-switching numbers come from the project hub, github.com/Hebrish-ASR/English
 benchmarked; v4 was released before its benchmark, so v3 is still the latest measured.
 """
 
+import platform
+from urllib.parse import quote, urlencode
+
 from .. import __version__, model_store
 
 HUB = "https://github.com/Hebrish-ASR/English-Hebrew-Codeswitching-Parakeet-Finetune"
@@ -13,13 +16,26 @@ LEADERBOARD = "https://huggingface.co/spaces/danielrosehill/English-Hebrew-Codes
 DEMO = "https://huggingface.co/spaces/danielrosehill/English-Hebrew-Codeswitching-Parakeet-Demo"
 SOURCE = "https://github.com/Hebrish-ASR/Parlance-Dictation"
 
-# hebrish.app, the website for the code-switching model, and its contact topics. The only
-# place these URLs live: the About tab, the Model tab and the tray's "Hebrish" submenu all
-# read this list. The `topic` values are the ones hebrish.app/contact understands.
+# hebrish.app, the website for the code-switching model, its contact topics and the feedback
+# address. The only place these URLs live: the About tab, the Model tab and the tray's
+# "Hebrish" submenu all read this list. The `topic` values are the ones hebrish.app/contact
+# understands. The mailto links open the user's mail client with the app and OS version
+# already in the body.
 HEBRISH = "https://hebrish.app"
+FEEDBACK = "feedback@hebrish.app"
+
+
+def _mail(subject: str) -> str:
+    body = f"\n\n--\nParlance {__version__}, {platform.system()} {platform.release()}"
+    return f"mailto:{FEEDBACK}?" + urlencode(
+        {"subject": f"{subject} (Parlance for desktop)", "body": body}, quote_via=quote)
+
+
 HEBRISH_LINKS = [
     ("Hebrish website", HEBRISH),
-    ("Report a bug", f"{HEBRISH}/contact?topic=bug"),
+    ("Report a bug", _mail("Bug report")),
+    ("Request a feature", _mail("Feature request")),
+    ("Send feedback", _mail("Feedback")),
     ("Suggest a word", f"{HEBRISH}/contact?topic=word"),
     ("Send voice samples", f"{HEBRISH}/contact?topic=samples"),
     ("Get involved", f"{HEBRISH}/contact?topic=involved"),
@@ -99,7 +115,8 @@ damage a model's English. Training took {t['minutes']} minutes on {t['gpu']}
 
 <h3>Hebrish: help improve it</h3>
 <p>The code-switching model has its own website, <a href="{HEBRISH}">hebrish.app</a>, with
-the results and every model, dataset and demo. Report a bug, suggest a Hebrew word it gets
+the results and every model, dataset and demo. Report a bug, ask for a feature or send
+feedback by email to <a href="mailto:{FEEDBACK}">{FEEDBACK}</a>, suggest a Hebrew word it gets
 wrong, or send voice samples to help it learn more voices:</p>
 <p>{hebrish}</p>
 

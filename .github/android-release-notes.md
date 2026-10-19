@@ -1,8 +1,6 @@
-**0.1.0: first release of Parlance for Android.**
+**0.1.1: Hebrish icon and feedback by email.**
 
-- A voice keyboard (IME) running NVIDIA Parakeet TDT 0.6B v2 on the phone, through sherpa-onnx (int8).
-- **Choose the model**: stock Parakeet, or the English-Hebrew code-switching fine-tune. A technical-vocabulary model and a personal general-English model are listed as coming soon; they appear in the app when they are published, without an app update.
-- Each model is a separate ~660 MB download from Hugging Face, kept until you delete it. Updates to a model are offered only when its weights change.
-- **Try it**: a notepad with a mic button, so you can test a model before setting up the keyboard.
-- New app ID (`com.danielrosehill.parlance`), so it installs alongside Voice To Hebrish, which it replaces. Uninstall that one once this works.
-- arm64-v8a only. Android 9+. Recommended with HeliBoard.
+- New launcher icon: the Hebrish mark (serif H on green), from the Hebrish brand standard.
+- The **Hebrish** section on the setup screen now has **Report a bug**, **Request a feature** and **Send feedback**. Each opens your email app with a message to feedback@hebrish.app, with the app version, Android version and phone model already filled in at the bottom.
+- The website link and the Suggest a word, Send voice samples and Get involved links (hebrish.app contact form) stay.
+- arm64-v8a only. Android 9+.

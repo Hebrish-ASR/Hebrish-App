@@ -69,9 +69,12 @@
     <string name="open_model">Model card</string>
     <string name="open_source">Source code</string>
     <string name="hebrish_title">Hebrish: the English-Hebrew model</string>
-    <string name="hebrish_body">Using the code-switching model? Its website has the results and every model, dataset and demo. Report a bug, suggest a Hebrew word it gets wrong, or send voice samples to help it learn more voices.</string>
+    <string name="hebrish_body">Using the code-switching model? Its website has the results and every model, dataset and demo. Report a bug, ask for a feature or send feedback by email to feedback@hebrish.app, suggest a Hebrew word it gets wrong, or send voice samples to help it learn more voices.</string>
     <string name="hebrish_site">Hebrish website</string>
     <string name="hebrish_bug">Report a bug</string>
+    <string name="hebrish_feature">Request a feature</string>
+    <string name="hebrish_feedback">Send feedback</string>
+    <string name="no_email_app">No email app found. Write to %1$s.</string>
     <string name="hebrish_word">Suggest a word</string>
     <string name="hebrish_samples">Send voice samples</string>
     <string name="hebrish_involved">Get involved</string>

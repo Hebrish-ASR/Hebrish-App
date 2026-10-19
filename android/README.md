@@ -36,8 +36,9 @@ earlier stay on the phone, so switching back is instant; **Delete other modelsâ€
 them.
 
 The **Hebrish** section at the bottom of the setup screen links to
-[hebrish.app](https://hebrish.app), the code-switching model's website, and its contact form:
-report a bug, suggest a word, send voice samples, or get involved.
+[hebrish.app](https://hebrish.app), the code-switching model's website. Report a bug, Request a
+feature and Send feedback open your email app with a message to feedback@hebrish.app; Suggest
+a word, Send voice samples and Get involved open the site's contact form.
 
 ## Install (recommended setup)
 

@@ -15,7 +15,7 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | `inserter.py` + `inserter_linux.py` / `inserter_win.py` | clipboard, then a paste chord (uinput / SendInput) |
 | `autostart.py` | XDG autostart entry / HKCU `Run` key |
 | `ui/app.py` | `Controller`, tray, single instance + `--toggle` over `QLocalServer`, `--selftest`, `main()` |
-| `ui/window.py`, `ui/transcribe.py`, `ui/about.py`, `ui/style.py` | window, tabs, About copy and numbers, QSS. `about.HEBRISH_LINKS` is the one list of hebrish.app URLs (site + `contact?topic=bug/word/samples/involved`), read by the About tab, the Model tab and the tray submenu |
+| `ui/window.py`, `ui/transcribe.py`, `ui/about.py`, `ui/style.py` | window, tabs, About copy and numbers, QSS. `about.HEBRISH_LINKS` is the one list of hebrish.app URLs (site, `contact?topic=word/samples/involved`, and `mailto:feedback@hebrish.app` links for bug / feature / feedback with app and OS version in the body; since 0.1.1). The app icon `data/icons/parlance.svg` is the Hebrish mark, copied from `Hebrish-Mgmt/brand/logo/mark.svg`, read by the About tab, the Model tab and the tray submenu |
 
 Threads: the hotkey source, decoding, the HF check and downloads run off the GUI thread.
 They report back only through `Signal`s, whose cross-thread emits Qt queues onto the GUI

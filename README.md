@@ -32,7 +32,9 @@ word error rate on code-switched English from 10.9% to 5.3%, and plain English g
 better, not worse. Training data, every version's results and the roadmap:
 [English-Hebrew-Codeswitching-Parakeet-Finetune](https://github.com/Hebrish-ASR/English-Hebrew-Codeswitching-Parakeet-Finetune).
 
-To help improve it, both apps link to hebrish.app's contact form: [report a bug](https://hebrish.app/contact?topic=bug),
+To help improve it, both apps have **Report a bug**, **Request a feature** and **Send
+feedback**, which open an email to [feedback@hebrish.app](mailto:feedback@hebrish.app) with the
+app and OS version filled in, and link to hebrish.app's contact form to
 [suggest a word](https://hebrish.app/contact?topic=word),
 [send voice samples](https://hebrish.app/contact?topic=samples) or
 [get involved](https://hebrish.app/contact?topic=involved). On Android they are in the

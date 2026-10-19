@@ -1,5 +1,7 @@
 <resources>
     <color name="accent">#24527A</color>
+    <!-- Hebrish brand (Hebrish-Mgmt/brand/tokens.json): launcher icon background. -->
+    <color name="hebrish_green">#0F6B5C</color>
     <color name="ime_bg">#1F2124</color>
     <color name="ime_key">#33363B</color>
     <color name="ime_text">#E8EAED</color>
