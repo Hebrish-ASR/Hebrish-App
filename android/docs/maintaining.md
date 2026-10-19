@@ -187,7 +187,7 @@ non-existent `/usr/lib64/jvm/java-17-openjdk`, so set it per command). Not yet s
 The release key is **not** in the repo. GitHub Actions secrets: `RELEASE_KEYSTORE_B64`
 (base64 of the .jks), `RELEASE_KEYSTORE_PASSWORD` (store and key password are the same),
 `RELEASE_KEY_ALIAS` (`codeswitchvoice`: the key was carried over from Voice To Hebrish, alias
-unchanged). The secrets must be set on the Parlance-Dictation repo too. Daniel's local copy is
+unchanged). The secrets must be set on the Hebrish-Dictation repo too. Daniel's local copy is
 `~/.android/keystores/codeswitch-voice-release.jks`, with its password in the `.txt` next
 to it. Losing it means users must uninstall before installing a newer APK.
 
@@ -202,3 +202,20 @@ to it. Losing it means users must uninstall before installing a newer APK.
 ## Display name: Hebrish (0.1.2, 2026-10-19)
 
 User-facing name is **Hebrish** so app search finds it; everything that identifies the install keeps `parlance`. Android: `app_name`, `ime_name` and every other user-visible string in `strings.xml` (not `url_source`); the package `com.danielrosehill.parlance` and the IME component are unchanged, so an enabled keyboard stays enabled. The release APK is still named `Parlance-<ver>.apk`.
+
+## Repo name: Hebrish-Dictation (renamed 2026-10-19)
+
+On 2026-10-19 the GitHub repo `Hebrish-ASR/Parlance-Dictation` was renamed to
+`Hebrish-ASR/Hebrish-Dictation` (local clone moved from
+`~/repos/github/audio-dictation/Parlance-Dictation` to `.../Hebrish-Dictation`). GitHub
+redirects the old URLs; checked the same day that `raw.githubusercontent.com/.../main/shared/models.json`
+and the release-asset download URLs still return 200 under the old name. Source links,
+`catalogue_url` (both copies of `models.json`), the desktop `USER_AGENT`, About link, `.deb`
+`Homepage` and Android `url_source` now use the new name. Code identifiers (`parlance` package,
+`com.danielrosehill.parlance`, applicationId, deb package, asset names) are unchanged.
+
+**Never create a new repo named `Hebrish-ASR/Parlance-Dictation`.** Installed builds up to and
+including 0.1.2 (desktop and Android) fetch the catalogue from the old-name `catalogue_url`;
+a repo taking the old name kills GitHub's redirect and those installs stop seeing catalogue
+updates (they fall back to the bundled copy). Old download links on other sites rely on the
+same redirect.

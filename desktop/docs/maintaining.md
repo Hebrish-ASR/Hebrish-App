@@ -135,7 +135,7 @@ old app then sees no model and downloads 660 MB again into its own folder. Quit 
 
 The catalogue is `../shared/models.json`, bundled as `parlance/data/models.json`
 (`tests/test_shared.py` fails if the copies differ). Each update check first re-fetches it
-from `catalogue_url` (raw GitHub, `main`) into `~/.local/share/parlance/catalogue.json`; an
+from `catalogue_url` (raw GitHub, `main`; builds up to 0.1.2 use the pre-2026-10-19 repo name `Parlance-Dictation` and depend on GitHub's rename redirect, see `android/docs/maintaining.md`, "Repo name") into `~/.local/share/parlance/catalogue.json`; an
 unparseable or wrong-`schema` copy is ignored and the bundled one is used. So **publishing a
 model needs no app release**: push the HF repo (files: `encoder.int8.onnx`,
 `decoder.int8.onnx`, `joiner.int8.onnx`, `tokens.txt`, optional `version.json`), then flip its

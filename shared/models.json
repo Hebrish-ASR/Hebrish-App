@@ -1,7 +1,7 @@
 {
   "_comment": "The model catalogue both apps read. Bundled in each app, and re-fetched from catalogue_url on every update check so a newly published model shows up without an app release. A model with status 'planned' is listed as coming soon and cannot be downloaded. Protocol: shared/update-protocol.md. desktop/tests/test_shared.py fails if either app's bundled copy drifts from this file.",
   "schema": 1,
-  "catalogue_url": "https://raw.githubusercontent.com/Hebrish-ASR/Parlance-Dictation/main/shared/models.json",
+  "catalogue_url": "https://raw.githubusercontent.com/Hebrish-ASR/Hebrish-Dictation/main/shared/models.json",
   "default": "stock",
   "files": ["encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"],
   "version_file": "version.json",

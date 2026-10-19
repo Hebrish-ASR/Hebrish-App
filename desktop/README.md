@@ -47,7 +47,7 @@ stock or one of the fine-tunes, running on your CPU with sherpa-onnx.
 ## Install
 
 **Ubuntu 26.04** (amd64): download the .deb from the
-[releases](https://github.com/Hebrish-ASR/Parlance-Dictation/releases), then:
+[releases](https://github.com/Hebrish-ASR/Hebrish-Dictation/releases), then:
 
 ```bash
 sudo apt install ./parlance_*_amd64.deb
