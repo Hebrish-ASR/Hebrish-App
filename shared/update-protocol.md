@@ -27,6 +27,17 @@ recognizer loads), `version_file`, `default` (the id selected on a fresh install
 | `codeswitch` | `Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8` (since 2026-10-19) | *(root)* | `rev <sha7>` |
 | `tech`, `personal` | not published yet | | |
 
+**Since 0.2.2 (2026-10-20): the Hebrish CDN.** A catalogue entry may carry `manifest_url`; apps
+0.2.2+ use it in place of the Hugging Face API. One GET of
+`https://cdn.hebrish.app/models/parakeet-codeswitch/latest.json` returns `{schema, model,
+version, run, revision, base_url, files: {name: {size, sha256}}}`; each file is fetched from
+`base_url + name` (Range-resumable, SHA-256 checked as before; `tokens.txt` has `sha256: null`,
+checked by size, like the HF tree). `revision` is kept equal to the HF commit the files came
+from, so an install from Hugging Face is the same version (`v1.0-bb137e504b97`) and is not
+re-downloaded. Version folders under `models/<model>/<version>/` on the CDN never change; a new
+version is a new folder plus a new `latest.json` (cache 5 min). `repo` stays in the entry for
+apps up to 0.2.1. Uploading: the `r2-upload` skill (parakeet-finetune-ops).
+
 **2026-10-19: moved to the mirror.** The main repo `danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching`
 became **gated** (manual access requests), so its `sherpa-onnx/int8/` returns 401 to the apps.
 The catalogue now points at the ungated mirror `Hebrish/…-sherpa-onnx-int8`, files at the root,

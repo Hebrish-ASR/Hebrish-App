@@ -10,6 +10,11 @@ Same protocol as the Android app (../shared/update-protocol.md):
 3. GET /<repo>/resolve/<sha>[/<subdir>]/version.json      -> {"version": "v4", "run": ...}
    (optional; only sets the label)
 
+Since 0.2.2 a model may instead have a `manifest_url` (the Hebrish CDN, cdn.hebrish.app):
+one GET returns {"version", "run", "revision", "base_url", "files": {name: {size, sha256}}},
+and files download from base_url + name. It is used whenever present; `repo` stays in the
+catalogue for older apps.
+
 An update is offered when the weights differ, never because `main` moved: model-card
 and eval commits move `main` many times a day without touching the weights.
 
@@ -49,10 +54,11 @@ class Model:
     subdir: str = ""
     card: str = ""
     version_label: str = ""          # label when the repo has no version.json
+    manifest_url: str = ""           # CDN manifest; preferred over repo when set (0.2.2+)
 
     @property
     def available(self) -> bool:
-        return self.status == "available" and bool(self.repo)
+        return self.status == "available" and bool(self.repo or self.manifest_url)
 
     def path(self, name: str = "") -> str:
         """`subdir/name` without stray slashes; subdir is empty when files sit at the repo root."""
@@ -129,6 +135,7 @@ class Manifest:
     version: str                     # "v4", or "rev abc1234" without version.json
     run: str = ""
     files: dict = field(default_factory=dict)   # name -> {"size": int, "sha256": str|None}
+    base_url: str = ""               # CDN folder the files download from; empty = Hugging Face
 
     @property
     def dirname(self) -> str:
@@ -165,13 +172,16 @@ class Manifest:
         return True
 
     def to_json(self) -> dict:
-        return {"model": self.model, "revision": self.revision, "version": self.version,
-                "run": self.run, "files": self.files}
+        d = {"model": self.model, "revision": self.revision, "version": self.version,
+             "run": self.run, "files": self.files}
+        if self.base_url:
+            d["base_url"] = self.base_url
+        return d
 
     @classmethod
     def from_json(cls, d: dict, model: str = "") -> "Manifest":
         return cls(d.get("model") or model, d["revision"], d["version"], d.get("run", ""),
-                   d.get("files", {}))
+                   d.get("files", {}), d.get("base_url", ""))
 
 
 # -- remote ------------------------------------------------------------------
@@ -197,10 +207,21 @@ def manifest_from_tree(model: Model, sha: str, tree: list, version_info: dict | 
     return Manifest(model.id, sha, version, info.get("run", ""), files)
 
 
+def manifest_from_cdn(model: Model, doc: dict) -> Manifest:
+    files = {n: doc["files"][n] for n in FILES if n in doc.get("files", {})}
+    missing = [f for f in FILES if f not in files]
+    if missing:
+        raise RuntimeError(f"{model.manifest_url} is missing {', '.join(missing)}")
+    base = doc["base_url"] if doc["base_url"].endswith("/") else doc["base_url"] + "/"
+    return Manifest(model.id, doc["revision"], doc["version"], doc.get("run", ""), files, base)
+
+
 def fetch_latest(mid: str | None = None) -> Manifest:
     model = get_model(mid or current_id())
     if not model or not model.available:
         raise RuntimeError(f"{mid} is not downloadable yet")
+    if model.manifest_url:
+        return manifest_from_cdn(model, json.loads(_get(model.manifest_url)))
     sha = json.loads(_get(f"{HF}/api/models/{model.repo}/revision/main"))["sha"]
     tree = json.loads(_get("/".join(p for p in (f"{HF}/api/models/{model.repo}/tree/{sha}", model.subdir) if p)))
     try:
@@ -334,7 +355,7 @@ def download(m: Manifest, on_progress=None, cancel: threading.Event | None = Non
         if have > info["size"]:
             part.unlink()
             have = 0
-        url = f"{HF}/{model.repo}/resolve/{m.revision}/{model.path(name)}"
+        url = (m.base_url + name) if m.base_url else f"{HF}/{model.repo}/resolve/{m.revision}/{model.path(name)}"
         req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
         if have:
             req.add_header("Range", f"bytes={have}-")

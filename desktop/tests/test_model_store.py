@@ -184,3 +184,23 @@ def test_legacy_voice_to_hebrish_install_is_adopted(monkeypatch):
     assert ms.active()[0].name == m.dirname and ms.active()[1].model == "codeswitch"
     shutil.rmtree(old_data)
     shutil.rmtree(old_cfg)
+
+
+CDN_DOC = {"schema": 1, "model": "codeswitch", "version": "v1.0", "run": "r6-en30",
+           "revision": "b" * 40, "base_url": "https://cdn.hebrish.app/models/parakeet-codeswitch/v1.0/sherpa-onnx-int8",
+           "files": {e["path"]: {"size": e["size"], "sha256": (e.get("lfs") or {}).get("oid")}
+                     for e in TREE if e["path"] in ms.FILES}}
+
+
+def test_cdn_manifest_and_url():
+    m = ms.manifest_from_cdn(CS, CDN_DOC)
+    assert m.version == "v1.0" and m.base_url.endswith("/sherpa-onnx-int8/")
+    assert ms.Manifest.from_json(m.to_json()).base_url == m.base_url
+    # same weights as the Hugging Face build of the same files: no re-download
+    assert m.same_weights(manifest(sha="b" * 40))
+
+
+def test_cdn_manifest_missing_file_is_an_error():
+    doc = json.loads(json.dumps(CDN_DOC)); doc["files"].pop("joiner.int8.onnx")
+    with pytest.raises(RuntimeError):
+        ms.manifest_from_cdn(CS, doc)

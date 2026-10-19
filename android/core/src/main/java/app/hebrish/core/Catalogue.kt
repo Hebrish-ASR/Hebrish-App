@@ -25,9 +25,11 @@ object Catalogue {
         val card: String?,
         /** Label for a repo with no version.json (the stock export); else "rev <sha7>". */
         val versionLabel: String?,
+        /** CDN manifest (cdn.hebrish.app); preferred over [repo] when set (0.2.2+). */
+        val manifestUrl: String? = null,
     ) {
         /** Listed but not downloadable: "planned" models show as coming soon. */
-        val available: Boolean get() = status == "available" && !repo.isNullOrEmpty()
+        val available: Boolean get() = status == "available" && !(repo.isNullOrEmpty() && manifestUrl.isNullOrEmpty())
     }
 
     data class Data(
@@ -77,6 +79,7 @@ object Catalogue {
                 subdir = m.optString("subdir").trim('/'),
                 card = m.optString("card").ifEmpty { null },
                 versionLabel = m.optString("version_label").ifEmpty { null },
+                manifestUrl = m.optString("manifest_url").ifEmpty { null },
             )
         }
         if (models.none { it.available }) return null

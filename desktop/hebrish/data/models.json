@@ -26,7 +26,8 @@
       "status": "available",
       "repo": "Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8",
       "subdir": "",
-      "card": "https://huggingface.co/Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8"
+      "card": "https://hebrish.app/models#parakeet",
+      "manifest_url": "https://cdn.hebrish.app/models/parakeet-codeswitch/latest.json"
     },
     {
       "id": "tech",
