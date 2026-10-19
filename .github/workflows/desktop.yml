@@ -58,8 +58,8 @@ jobs:
         run: |
           $ver = "${{ github.ref_name }}".Replace("desktop-", "")
           if (-not $ver.StartsWith("v")) { $ver = "dev" }
-          Compress-Archive -Path dist\Parlance -DestinationPath "Parlance-$ver-windows-x64.zip"
-          "ZIP=Parlance-$ver-windows-x64.zip" | Out-File -Append $env:GITHUB_ENV
+          Compress-Archive -Path dist\Parlance -DestinationPath "Hebrish-$ver-windows-x64.zip"
+          "ZIP=Hebrish-$ver-windows-x64.zip" | Out-File -Append $env:GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with: { name: windows-build, path: "desktop/${{ env.ZIP }}" }
       - name: Release
@@ -68,6 +68,6 @@ jobs:
         run: |
           gh release view $env:GITHUB_REF_NAME 2>$null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $env:GITHUB_REF_NAME --title "Parlance for desktop $($env:GITHUB_REF_NAME.Replace('desktop-',''))" --notes-file ../.github/desktop-release-notes.md
+            gh release create $env:GITHUB_REF_NAME --title "Hebrish for desktop $($env:GITHUB_REF_NAME.Replace('desktop-',''))" --notes-file ../.github/desktop-release-notes.md
           }
           gh release upload $env:GITHUB_REF_NAME $env:ZIP --clobber
