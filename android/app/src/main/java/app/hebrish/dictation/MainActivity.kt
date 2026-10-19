@@ -1,5 +1,6 @@
 package app.hebrish.dictation
 
+import app.hebrish.core.*
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
@@ -196,7 +197,7 @@ class MainActivity : Activity() {
         modelPicker.setOnCheckedChangeListener { group, checkedId ->
             val id = group.findViewById<RadioButton>(checkedId)?.tag as? String ?: return@setOnCheckedChangeListener
             if (id == Catalogue.selected(this).id) return@setOnCheckedChangeListener
-            Prefs.setSelectedModel(this, id)
+            ModelPrefs.setSelectedModel(this, id)
             Transcriber.unload()
             ModelDownload.clearFailure()
             ModelDownload.check(this)
@@ -268,7 +269,7 @@ class MainActivity : Activity() {
             setText(if (ready) R.string.try_open else R.string.try_open_no_model)
         }
 
-        val root = Prefs.modelRoot(this)
+        val root = ModelPrefs.modelRoot(this)
         locationStatus.text = if (root == null) getString(R.string.location_private)
         else getString(R.string.location_shared, ModelStore.base(this).path)
         resetLocationBtn.visibility = if (root == null) View.GONE else View.VISIBLE

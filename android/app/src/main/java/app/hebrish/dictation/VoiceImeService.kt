@@ -1,5 +1,6 @@
 package app.hebrish.dictation
 
+import app.hebrish.core.*
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager

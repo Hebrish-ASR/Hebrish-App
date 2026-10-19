@@ -1,4 +1,4 @@
-package app.hebrish.dictation
+package app.hebrish.core
 
 import android.content.Context
 import org.json.JSONArray
@@ -87,7 +87,7 @@ object ModelStore {
 
     /** The model's last fully downloaded manifest, else its [BUNDLED] one; null if neither exists. */
     fun installed(ctx: Context, model: Catalogue.Model = sel(ctx)): Manifest? =
-        Prefs.installedManifest(ctx, model.id)?.let(Manifest::fromJson) ?: BUNDLED[model.id]
+        ModelPrefs.installedManifest(ctx, model.id)?.let(Manifest::fromJson) ?: BUNDLED[model.id]
 
     /** `a/b/c` from the non-empty parts: the stock model's files sit at the repo root (empty subdir). */
     private fun path(vararg parts: String) = parts.filter { it.isNotEmpty() }.joinToString("/")
@@ -100,20 +100,20 @@ object ModelStore {
 
     /**
      * The folder that holds one subfolder per version of [model]. App-private by default; under a
-     * user-chosen folder (Prefs.modelRoot) it gets its own subfolder, because pruneOld deletes
+     * user-chosen folder (ModelPrefs.modelRoot) it gets its own subfolder, because pruneOld deletes
      * everything else in it.
      */
-    fun base(ctx: Context, root: String? = Prefs.modelRoot(ctx), model: Catalogue.Model = sel(ctx)) =
+    fun base(ctx: Context, root: String? = ModelPrefs.modelRoot(ctx), model: Catalogue.Model = sel(ctx)) =
         if (root == null) File(File(ctx.filesDir, "models"), model.id) else File(root, sharedFolder(model))
 
-    fun dir(ctx: Context, root: String? = Prefs.modelRoot(ctx), model: Catalogue.Model = sel(ctx),
+    fun dir(ctx: Context, root: String? = ModelPrefs.modelRoot(ctx), model: Catalogue.Model = sel(ctx),
             m: Manifest? = installed(ctx, model)): File? =
         m?.let { File(base(ctx, root, model), it.dirName) }
 
     /** A file of the selected model; only meaningful once [isReady]. */
     fun file(ctx: Context, name: String) = File(dir(ctx) ?: throw IllegalStateException("no model"), name)
 
-    fun isReady(ctx: Context, root: String? = Prefs.modelRoot(ctx), model: Catalogue.Model = sel(ctx),
+    fun isReady(ctx: Context, root: String? = ModelPrefs.modelRoot(ctx), model: Catalogue.Model = sel(ctx),
                 m: Manifest? = installed(ctx, model)): Boolean {
         val d = dir(ctx, root, model, m) ?: return false
         return m!!.files.all { File(d, it.name).let { f -> f.exists() && f.length() == it.size } }
@@ -130,9 +130,9 @@ object ModelStore {
      * may be another app's too, so only the version this app installed is removed there.
      */
     fun delete(ctx: Context, model: Catalogue.Model) {
-        if (Prefs.modelRoot(ctx) == null) base(ctx, null, model).deleteRecursively()
+        if (ModelPrefs.modelRoot(ctx) == null) base(ctx, null, model).deleteRecursively()
         else dir(ctx, model = model)?.deleteRecursively()
-        Prefs.setInstalledManifest(ctx, model.id, null)
+        ModelPrefs.setInstalledManifest(ctx, model.id, null)
     }
 
     /**
@@ -172,7 +172,7 @@ object ModelStore {
     }
 
     /** Models whose installed version is complete under [root], in catalogue order. */
-    fun readyModels(ctx: Context, root: String? = Prefs.modelRoot(ctx)) =
+    fun readyModels(ctx: Context, root: String? = ModelPrefs.modelRoot(ctx)) =
         Catalogue.get(ctx).models.filter { it.available && isReady(ctx, root, it) }
 
     /**

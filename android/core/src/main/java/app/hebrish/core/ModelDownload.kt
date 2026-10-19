@@ -1,4 +1,4 @@
-package app.hebrish.dictation
+package app.hebrish.core
 
 import android.content.Context
 import android.os.Handler
@@ -45,7 +45,7 @@ object ModelDownload {
         val app = ctx.applicationContext
         if (checking) return
         val model = Catalogue.selected(app)
-        if (!force && latestById[model.id] != null && System.currentTimeMillis() - Prefs.lastCheck(app) < CHECK_EVERY_MS) return
+        if (!force && latestById[model.id] != null && System.currentTimeMillis() - ModelPrefs.lastCheck(app) < CHECK_EVERY_MS) return
         checking = true
         checkError = null
         publish(status)
@@ -54,7 +54,7 @@ object ModelDownload {
                 Catalogue.refresh(app)
                 val m = Catalogue.selected(app)
                 latestById[m.id] = ModelStore.checkLatest(app, m)
-                Prefs.setLastCheck(app, System.currentTimeMillis())
+                ModelPrefs.setLastCheck(app, System.currentTimeMillis())
             } catch (e: Exception) {
                 checkError = e.message ?: e.javaClass.simpleName
             } finally {
@@ -93,7 +93,7 @@ object ModelDownload {
             ModelStore.download(app, model, chosen, { cancel }, report)
             // Only now that every file is verified: switch over, then delete the old weights.
             Transcriber.unload()
-            Prefs.setInstalledManifest(app, model.id, chosen.toJson())
+            ModelPrefs.setInstalledManifest(app, model.id, chosen.toJson())
             ModelStore.pruneOld(app, model)
         }
     }
@@ -104,13 +104,13 @@ object ModelDownload {
      * another app or an earlier install), which is simply used.
      */
     fun relocate(ctx: Context, to: String?) {
-        val from = Prefs.modelRoot(ctx)
+        val from = ModelPrefs.modelRoot(ctx)
         if (from == to || status is Status.Running) return
         val app = ctx.applicationContext
         val toMove = ModelStore.readyModels(app, from).filter { !ModelStore.isReady(app, to, it) }
         if (toMove.isEmpty()) {
             Transcriber.unload()
-            Prefs.setModelRoot(app, to)
+            ModelPrefs.setModelRoot(app, to)
             publish(Status.Idle)
             return
         }
@@ -122,7 +122,7 @@ object ModelDownload {
                 ModelStore.move(a, model, from, to, offset, { cancel }, report)
                 offset += ModelStore.installed(a, model)!!.totalBytes
             }
-            Prefs.setModelRoot(a, to)
+            ModelPrefs.setModelRoot(a, to)
         }
     }
 

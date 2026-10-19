@@ -1,5 +1,6 @@
 package app.hebrish.dictation
 
+import app.hebrish.core.*
 import android.Manifest
 import android.app.Activity
 import android.content.ClipData

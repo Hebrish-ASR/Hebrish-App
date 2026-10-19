@@ -1,4 +1,4 @@
-package app.hebrish.dictation
+package app.hebrish.core
 
 import android.annotation.SuppressLint
 import android.media.AudioFormat

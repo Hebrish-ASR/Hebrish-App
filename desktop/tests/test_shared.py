@@ -19,7 +19,7 @@ def test_desktop_bundles_the_shared_catalogue():
 
 
 ANDROID = os.path.join(ROOT, "android", "app")
-KT = os.path.join(ANDROID, "src", "main", "java", "app", "hebrish", "dictation")
+KT = os.path.join(ANDROID, "..", "core", "src", "main", "java", "app", "hebrish", "core")
 
 
 def test_android_bundles_the_shared_catalogue():

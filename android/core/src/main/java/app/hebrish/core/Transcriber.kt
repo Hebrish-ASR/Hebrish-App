@@ -1,4 +1,4 @@
-package app.hebrish.dictation
+package app.hebrish.core
 
 import android.content.Context
 import com.k2fsa.sherpa.onnx.FeatureConfig

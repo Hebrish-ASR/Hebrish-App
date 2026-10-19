@@ -68,6 +68,9 @@ android {
     }
 
     sourceSets["main"].assets.srcDir(catalogueDir)
+    // The engine (catalogue, model store and download, recorder, transcriber) lives in
+    // ../core so Hebrish Keyboard (the HeliBoard fork) compiles the same sources; see core/README.md.
+    sourceSets["main"].java.srcDir("../core/src/main/java")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

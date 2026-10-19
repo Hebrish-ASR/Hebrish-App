@@ -1,4 +1,4 @@
-package app.hebrish.dictation
+package app.hebrish.core
 
 import android.content.Context
 import org.json.JSONObject
@@ -43,7 +43,7 @@ object Catalogue {
     fun get(ctx: Context): Data {
         cached?.let { return it }
         val app = ctx.applicationContext
-        val data = Prefs.catalogueJson(app)?.let(::parse)
+        val data = ModelPrefs.catalogueJson(app)?.let(::parse)
             ?: parse(app.assets.open(ASSET).bufferedReader().use { it.readText() })
             ?: throw IllegalStateException("bundled $ASSET does not parse")
         cached = data
@@ -55,7 +55,7 @@ object Catalogue {
     /** The model the keyboard uses: the user's pick if still available, else the catalogue default. */
     fun selected(ctx: Context): Model {
         val data = get(ctx)
-        val pick = Prefs.selectedModel(ctx)?.let { id -> data.models.firstOrNull { it.id == id && it.available } }
+        val pick = ModelPrefs.selectedModel(ctx)?.let { id -> data.models.firstOrNull { it.id == id && it.available } }
         return pick ?: data.models.firstOrNull { it.id == data.default && it.available }
             ?: data.models.first { it.available }
     }
@@ -103,7 +103,7 @@ object Catalogue {
             }
         }.getOrNull() ?: return
         val data = parse(text) ?: return
-        Prefs.setCatalogueJson(ctx.applicationContext, text)
+        ModelPrefs.setCatalogueJson(ctx.applicationContext, text)
         cached = data
     }
 }
