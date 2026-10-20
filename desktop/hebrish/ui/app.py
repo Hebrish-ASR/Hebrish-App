@@ -8,6 +8,7 @@ cross-thread emits Qt queues onto the GUI thread.
 import argparse
 import getpass
 import logging
+import os
 import sys
 import threading
 import time
@@ -25,6 +26,7 @@ from ..engine import Engine
 from ..hotkey import make_listener
 from ..inserter import make_inserter
 from . import about
+from .overlay import OverlayHost
 
 log = logging.getLogger("hebrish")
 ICONS = Path(__file__).resolve().parent.parent / "data" / "icons"
@@ -48,7 +50,7 @@ class Signals(QObject):
 
 
 class Controller(QObject):
-    def __init__(self, hidden: bool):
+    def __init__(self, hidden: bool, splash=None):
         super().__init__()
         from .window import MainWindow
         self.cfg = Config()
@@ -59,6 +61,9 @@ class Controller(QObject):
         self.latest: model_store.Manifest | None = None
         self.downloading: threading.Event | None = None
         self.reload_pending = False
+        self.loading = False
+        self.splash = splash
+        self._overlay_done = False
         self.history: list[dict] = (load_json(HISTORY_PATH, []) if self.cfg["keep_history"] else [])
 
         self.sig = Signals()
@@ -75,13 +80,24 @@ class Controller(QObject):
                                      self.sig.cancel.emit, lambda: self.state == "recording")
         self.hotkeys.start()
 
+        self.overlay = OverlayHost(self)
+        self.overlay.action.connect(self._overlay_action)
+        self.overlay.moved.connect(lambda x, y: self.cfg.set("overlay_pos", [x, y]))
+        self._level_timer = QTimer(self, interval=66, timeout=self._overlay_push)
+
         self.win = MainWindow(self)
         self.sig.progress.connect(self.win.progress)
         self._build_tray()
         self.pending_download: str | None = None   # model the user asked to download
-        if not hidden or model_store.active() is None:
+        if model_store.active() is None:
+            self._close_splash()
+            self.win.show()                      # first run: straight to the Model tab
+        elif not hidden and splash is None:
             self.win.show()
+        elif not hidden:
+            QTimer.singleShot(15_000, lambda: self._close_splash(show=True))   # if loading hangs
         self.load_model()
+        self._overlay_push()
         QTimer.singleShot(10_000, self._first_check)
         self._timer = QTimer(self, interval=600_000, timeout=self._periodic_check)
         self._timer.start()
@@ -91,6 +107,11 @@ class Controller(QObject):
         msg = self.hotkeys.problem or self.inserter.error
         if msg:
             self.win.banner(msg)
+
+    def _close_splash(self, show=False):
+        if self.splash:
+            splash, self.splash = self.splash, None
+            splash.finish(then=self.win.show if show else None)
 
     def notify(self, title, body=""):
         self.tray.showMessage(title, body, icon("hebrish"), 6000)
@@ -123,6 +144,39 @@ class Controller(QObject):
             self.recorder.stop()
             self.set_state("idle")
 
+    def pause(self):
+        if self.state == "recording":
+            self.recorder.resume() if self.recorder.paused else self.recorder.pause()
+            self._overlay_push()
+
+    # -- overlay -------------------------------------------------------------------
+    def _overlay_action(self, action):
+        if action == "toggle":
+            self.toggle()
+        elif action == "pause":
+            self.pause()
+        elif action == "discard":
+            self.cancel()
+        elif action == "retake":
+            self.cancel()
+            self.start()
+
+    def overlay_changed(self):
+        self._overlay_push()
+
+    def _overlay_push(self):
+        st = "done" if self._overlay_done else ("idle" if self.loading else self.state)
+        show = self.cfg["overlay"]
+        self.overlay.send({
+            "visible": show == "always" or (show == "active" and st != "idle"),
+            "state": st, "paused": self.recorder.paused,
+            "seconds": round(self.recorder.seconds, 1), "level": round(self.recorder.level, 3),
+            "opacity": self.cfg["overlay_opacity"], "pos": self.cfg["overlay_pos"]})
+
+    def _overlay_clear_done(self):
+        self._overlay_done = False
+        self._overlay_push()
+
     def stop(self):
         if self.state != "recording":
             return
@@ -147,6 +201,8 @@ class Controller(QObject):
         if err:
             self.notify("Transcription failed", str(err))
         elif text:
+            self._overlay_done = True              # "Inserted" for a moment
+            QTimer.singleShot(1100, self._overlay_clear_done)
             self.history.insert(0, {"text": text, "at": time.time()})
             del self.history[HISTORY_MAX:]
             self._save_history()
@@ -170,6 +226,8 @@ class Controller(QObject):
         self.state = state
         self._update_tray()
         self.win.update_state()
+        self._level_timer.start() if state == "recording" else self._level_timer.stop()
+        self._overlay_push()
 
     # -- model ---------------------------------------------------------------------
     def load_model(self):
@@ -184,8 +242,11 @@ class Controller(QObject):
             self.win.update_model()
             self._update_tray()
             return
+        self.loading = True
         self.set_state("busy")
         self.win.status(f"Loading {cur[1].full_label}…")
+        if self.splash:
+            self.splash.set_message(f"Loading {cur[1].full_label}…")
 
         def work():
             try:
@@ -196,6 +257,8 @@ class Controller(QObject):
         threading.Thread(target=work, daemon=True).start()
 
     def _loaded(self, err):
+        self.loading = False
+        self._close_splash(show=True)
         if err:
             self.notify("Couldn't load the model", str(err))
             self.win.banner(f"Couldn't load the model: {err}")
@@ -311,6 +374,8 @@ class Controller(QObject):
         self.tray.setToolTip(APP_NAME)
         m = QMenu()
         self.act_toggle = m.addAction("Start dictation", self.toggle)
+        self.act_overlay = m.addAction("Show overlay", self._tray_overlay)
+        self.act_overlay.setCheckable(True)
         m.addAction("Show window", self.win.present_tab)
         m.addSeparator()
         self.act_update = m.addAction("Install update", lambda: self.latest and self.download(self.latest))
@@ -327,6 +392,11 @@ class Controller(QObject):
         self.tray.show()
         self._update_tray()
 
+    def _tray_overlay(self, on):
+        self.cfg.set("overlay", "always" if on else "off")
+        self._overlay_push()
+        self._update_tray()
+
     def _tray_click(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self.win.hide() if self.win.isVisible() and self.win.isActiveWindow() else self.win.present_tab()
@@ -339,11 +409,14 @@ class Controller(QObject):
         self.tray.setToolTip(f"{APP_NAME}: {dict(idle='ready', recording='listening', busy='working').get(self.state)}")
         self.act_toggle.setText("Stop dictation" if self.state == "recording" else "Start dictation")
         self.act_toggle.setEnabled(self.state != "busy")
+        self.act_overlay.setVisible(self.overlay.available)
+        self.act_overlay.setChecked(self.cfg["overlay"] != "off")
         self.act_update.setVisible(self.update_available() and not self.downloading)
         if self.latest:
             self.act_update.setText(f"Install update ({self.latest.version})")
 
     def quit(self):
+        self.overlay.close()
         self.win.quitting = True
         self.tray.hide()
         QApplication.quit()
@@ -412,7 +485,10 @@ def main():
     sock = QLocalSocket()
     sock.connectToServer(name)
     if sock.waitForConnected(500):
-        sock.write(b"toggle" if args.toggle else b"show")
+        # On Wayland only a fresh xdg-activation token lets the first instance raise its
+        # window; the launcher hands one to this process, so pass it along.
+        token = os.environ.get("XDG_ACTIVATION_TOKEN", "")
+        sock.write(b"toggle" if args.toggle else f"show {token}".strip().encode())
         sock.waitForBytesWritten(1000)
         sock.disconnectFromServer()
         return
@@ -425,12 +501,20 @@ def main():
 
     from .style import QSS
     app.setStyleSheet(QSS)
-    ctl = Controller(hidden=args.hidden)
+    splash = None
+    if not args.hidden:
+        from .splash import Splash
+        splash = Splash(icon("hebrish"))
+        splash.show()
+        splash.set_message("Starting…")
+    ctl = Controller(hidden=args.hidden, splash=splash)
 
     def on_conn():
         conn = server.nextPendingConnection()
         conn.waitForReadyRead(1000)
-        cmd = bytes(conn.readAll()).decode()
+        cmd, _, token = bytes(conn.readAll()).decode().partition(" ")
+        if token:
+            os.environ["XDG_ACTIVATION_TOKEN"] = token   # Qt's Wayland plugin uses it once
         ctl.toggle() if cmd == "toggle" else ctl.win.present_tab()
         conn.disconnectFromServer()
     server.newConnection.connect(on_conn)

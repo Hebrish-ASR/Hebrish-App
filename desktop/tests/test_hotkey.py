@@ -11,9 +11,13 @@ from hebrish.inserter import chord_names  # noqa: E402
 
 
 class Rig:
-    def __init__(self, mode, hotkey="KEY_F13"):
+    def __init__(self, mode, hotkey="KEY_F13", ptt=""):
         self.events, self.rec = [], False
-        cfg = {"hotkey": hotkey, "mode": mode, "hybrid_hold_ms": 50}
+        # the 0.2.x modes, expressed in the 0.3.0 keys
+        cfg = {"hotkey": hotkey, "ptt_hotkey": ptt, "hold_to_talk": mode == "hybrid",
+               "hybrid_hold_ms": 50}
+        if mode == "hold":
+            cfg["hotkey"], cfg["ptt_hotkey"] = "", hotkey
         self.m = HotkeyMachine(cfg, self.start, self.stop, self.cancel, lambda: self.rec)
 
     def start(self):
@@ -62,6 +66,38 @@ def test_modifier_chord_cancels():
     r = Rig("hold", hotkey="KEY_RIGHTCTRL")
     r.m.key("KEY_RIGHTCTRL", True); r.m.key("KEY_C", True); r.m.key("KEY_RIGHTCTRL", False)
     assert r.events == ["start", "cancel"]
+
+
+def test_separate_toggle_and_ptt_keys():
+    r = Rig("toggle", hotkey="KEY_F13", ptt="KEY_F14")
+    r.tap("KEY_F14", hold=0.01)
+    assert r.events == ["start", "stop"]            # PTT: release stops
+    r.tap("KEY_F13")
+    assert r.events[-1] == "start" and r.rec        # toggle latches
+    r.tap("KEY_F14")
+    assert r.rec and r.events[-1] == "start"        # PTT doesn't stop a toggled take
+    r.tap("KEY_F13")
+    assert r.events[-1] == "stop"
+
+
+def test_other_hotkey_ignored_while_one_is_held():
+    r = Rig("toggle", hotkey="KEY_F13", ptt="KEY_F14")
+    r.m.key("KEY_F14", True); r.m.key("KEY_F13", True); r.m.key("KEY_F13", False)
+    r.m.key("KEY_F14", False)
+    assert r.events == ["start", "stop"]
+
+
+def test_unset_keys_do_nothing():
+    r = Rig("toggle", hotkey="", ptt="")
+    r.tap(""); r.tap("KEY_F13")
+    assert r.events == []
+
+
+def test_upgrade_old_modes():
+    from hebrish.config import upgrade
+    assert upgrade({"mode": "hold", "hotkey": "KEY_F9"}) == {"hotkey": "", "ptt_hotkey": "KEY_F9"}
+    assert upgrade({"mode": "toggle"}) == {"hold_to_talk": False}
+    assert upgrade({"mode": "hybrid", "hotkey": "KEY_F9"}) == {"hotkey": "KEY_F9"}
 
 
 def test_capture_takes_next_key():

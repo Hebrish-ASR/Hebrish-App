@@ -10,10 +10,19 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
 ## Two ways to work
 
 **Dictate** (hotkey, anywhere):
-- The hotkey can be any key on any keyboard, or a foot pedal (default F14). There are three modes:
-  - *hybrid* (the default): a tap starts and a second tap stops; holding the key is push-to-talk.
-  - *toggle*: tap to start, tap to stop.
-  - *hold*: push-to-talk.
+- Two hotkeys, each any key on any keyboard or a foot pedal, and each optional (Settings →
+  Dictation):
+  - **Toggle key** (default F14): tap to start, tap again to stop. With *Holding it is
+    push-to-talk too* (on by default) a long press works as push-to-talk instead.
+  - **Push-to-talk key** (not set by default): hold it while you talk, release to stop.
+  0.2.x settings carry over: *hold* mode becomes the push-to-talk key, *toggle* mode turns
+  the hold option off.
+- **Floating overlay** (optional, Settings → Floating overlay, or the tray's *Show overlay*):
+  a small bar over every app, like the Android floating mic. While you dictate, the mic turns
+  red (click it to stop) and the bar shows a timer, a level meter, **Pause/Resume**, **Retake**
+  and **Discard**, then *Transcribing…* and *Inserted*. Show it *while dictating* or *always*
+  (an idle mic button that starts a take, with its own opacity). Drag it anywhere; it opens
+  towards the middle of the screen and never takes the keyboard focus.
 - The text is pasted at the cursor: the app puts it on the clipboard and sends Ctrl+V, so
   it works whatever keyboard layout is active, Hebrew included. Clipboard-only is an option.
 - Recent transcripts are listed with Copy buttons, plus **Copy all** and **Clear history**.
@@ -27,6 +36,7 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
 - Copy the text, save it as .txt or .md, or save the recording as WAV.
 
 **Also included:**
+- **Start-up screen** while the model loads (not when started in the tray at login).
 - **Tray icon:** closing the window leaves the app in the tray. Middle-click the tray icon to start or stop dictation.
 - **Model choice** (Model tab): stock Parakeet, or the English-Hebrew code-switching
   fine-tune. Those are the only two; the other fine-tunes are in Parlance
@@ -37,7 +47,7 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
     models* frees the space.
   - It checks the selected model for new versions on a schedule, and installs them
     automatically or after you confirm. It can keep previous versions so you can switch back.
-- **About tab:** the models, and the code-switching model's training data and benchmarks.
+- **About tab:** versions, the main links, the models, and Jachnun's benchmarks and training data.
 - **Hebrish links:** [hebrish.app](https://hebrish.app), the code-switching model's website,
   email to feedback@hebrish.app (report a bug, request a feature, send feedback; your mail
   client opens with the app and OS version filled in), and the site's contact form (suggest a
@@ -56,7 +66,8 @@ sudo usermod -aG input $USER     # for the hotkey; log in again afterwards
 ```
 
 The .deb bundles sherpa-onnx (Ubuntu doesn't ship it) and is pinned to Ubuntu 26.04's
-python3 (3.14). It replaces the predecessor apps `voice-to-hebrish`, `codeswitch-dictation`
+python3 (3.14). It runs natively on Wayland (GNOME and KDE) and on X11; see
+[`docs/maintaining.md`](docs/maintaining.md), "Wayland", for how each part works there. It replaces the predecessor apps `voice-to-hebrish`, `codeswitch-dictation`
 and `parakeet-dictation` (Parakeet-Type-Ubuntu), so only one dictation app is installed, and
 on first start it adopts Voice To Hebrish's settings and downloaded model. On
 other Ubuntu releases, run `./install.sh` (a per-user venv; needs uv) or rebuild with

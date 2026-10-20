@@ -10,11 +10,13 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | `model_store.py` | HF check, download/verify, installed versions. No Qt import, so it is testable and also a CLI |
 | `engine.py` | sherpa-onnx `OfflineRecognizer` (nemo_transducer): normalise, chunk, pad, `transcribe_chunks` generator |
 | `audio.py` | sounddevice capture (pause/resume, level meter), file decoding (ffmpeg, else soundfile), WAV save, beeps |
-| `hotkey.py` | the shared hold / toggle / hybrid state machine, on evdev-style key names |
+| `hotkey.py` | the shared state machine for the two keys (toggle, push-to-talk), on evdev-style key names |
 | `hotkey_evdev.py` / `hotkey_win.py` | per-OS key sources: `/dev/input` on Linux, a pynput low-level hook on Windows |
 | `inserter.py` + `inserter_linux.py` / `inserter_win.py` | clipboard, then a paste chord (uinput / SendInput) |
 | `autostart.py` | XDG autostart entry / HKCU `Run` key |
 | `ui/app.py` | `Controller`, tray, single instance + `--toggle` over `QLocalServer`, `--selftest`, `main()` |
+| `ui/overlay.py` | the floating overlay widget, `OverlayHost` (in-process or an XWayland child), and the child's `__main__` |
+| `ui/splash.py` | the start-up screen |
 | `ui/window.py`, `ui/transcribe.py`, `ui/about.py`, `ui/style.py` | window, tabs, About copy and numbers, QSS. `about.HEBRISH_LINKS` is the one list of hebrish.app URLs (site, `contact?topic=word/samples/involved`, and `mailto:feedback@hebrish.app` links for bug / feature / feedback with app and OS version in the body; since 0.1.1). The app icon `data/icons/hebrish.svg` is the Hebrish mark, copied from `Hebrish-Mgmt/brand/logo/mark.svg`, read by the About tab, the Model tab and the tray submenu |
 
 Threads: the hotkey source, decoding, the HF check and downloads run off the GUI thread.
@@ -41,6 +43,67 @@ Verified live 2026-10-18 (V):
 
 The update branch (old version installed, new weights published) is covered only by
 `tests/test_model_store.py` (I for the live path; v5 will be the first real one).
+
+## Two hotkeys (0.3.0, 2026-10-20)
+
+Daniel asked for separate shortcuts for tap-tap and push-to-talk. Config: `hotkey` (toggle;
+`hold_to_talk` keeps the old hybrid behaviour, on by default), `ptt_hotkey` (hold only), either
+`""` = off. The old `mode` key is mapped by `config.upgrade()` (hold → the key moves to
+`ptt_hotkey`; toggle → `hold_to_talk: false`; hybrid → nothing), applied when loading the config
+and in both imports. Rules in `HotkeyMachine.key`: while one hotkey is down the other is ignored;
+the PTT key never stops a take the toggle key started; Settings won't let one key be both (the
+other slot is cleared). The Parlance import skips both key fields. Tests: `tests/test_hotkey.py`.
+
+## Floating overlay (0.3.0, 2026-10-20)
+
+Daniel: "an optional overlay to match the android app". `ui/overlay.py`. Config `overlay`
+(`off` default | `active` = while a take is open, busy or just inserted | `always` = also an idle
+mic button), `overlay_pos` (the mic square's top-left in screen coordinates; `None` = bottom
+centre, 72 px above the work area), `overlay_opacity` (idle only). The Controller pushes one dict
+(`_overlay_push`) on every state change and at 15 Hz while recording (level, seconds). Model
+loading counts as idle for the overlay, so start-up doesn't show "Transcribing…". Overlay
+actions: `toggle`, `pause` (`Recorder.pause/resume`, which closes the mic stream), `retake`
+(cancel + start), `discard` (cancel). It is painted by hand (no child widgets), so nothing in
+it can take focus.
+
+**Why a child process on Wayland.** The overlay must never take keyboard focus: the paste goes to
+the focused window. xdg-shell lets a client neither position a toplevel, nor keep it above other
+windows, nor map it without focus (Mutter focuses new windows; Qt's
+`WindowDoesNotAcceptFocus` has no Wayland equivalent). wlr-layer-shell would do it but GNOME
+doesn't implement it and PySide6 has no LayerShellQt binding. So on a Wayland session
+`OverlayHost` starts `python -m hebrish.ui.overlay` with `QT_QPA_PLATFORM=xcb` and
+`PYTHONPATH` = the parent's `sys.path` (the .deb's `/usr/lib/hebrish` is only on the path via
+the launcher script). There the window has `X11BypassWindowManagerHint`, i.e. override-redirect:
+XWayland compositors map those where they ask, above managed windows, and never focus them. The
+main window stays native Wayland. Protocol: JSON lines; the parent sends only changed keys (the
+full state on a (re)start), the child sends `{"action": …}` and `{"pos": [x, y]}`; EOF on stdin
+quits it; it is restarted up to 3 times. On Windows and X11 sessions it runs in-process
+(Windows: `WindowDoesNotAcceptFocus` = `WS_EX_NOACTIVATE`). With Wayland and no `$DISPLAY` the
+overlay is unavailable and Settings says why.
+
+Verified 2026-10-20 (V): all states render off-screen (`QT_QPA_PLATFORM=offscreen`); clicks and
+drags map to actions and positions, and the child protocol round-trips (`tests/test_overlay.py`,
+skipped on Linux CI, which has no PySide6); the child starts on xcb under KDE Plasma Wayland
+with the bypass flag set (no window mapped). **Not yet verified live (I):** placement, stacking
+and no-focus on KWin and Mutter, and how it scales under GNOME fractional scaling (XWayland
+windows may be blurry or sized at 1x there). Run it once on each before relying on it.
+
+## Wayland (0.3.0, 2026-10-20)
+
+Ubuntu 26.04 defaults to GNOME on Wayland; Daniel's machine is KDE Plasma on Wayland. How
+each part works there:
+
+| Part | Wayland route | Status |
+| --- | --- | --- |
+| Main window | native Wayland (Qt `wayland` plugin). The .deb now Depends on `qt6-wayland`: without it Qt silently falls back to XWayland | (V) KDE |
+| Window icon / grouping | `app.setDesktopFileName("hebrish")` = the xdg app_id, matching `hebrish.desktop` | (V) KDE |
+| Raising the window from a second launch | the second instance forwards its `XDG_ACTIVATION_TOKEN` over the local socket (`show <token>`); the first puts it in its environment, where Qt's Wayland plugin uses it once for xdg-activation. Without a token, compositors refuse to raise and may only flash the taskbar entry | (I) |
+| Hotkeys | evdev from `/dev/input` (needs the `input` group): compositor-independent, reports release | (V) KDE; (I) GNOME, same kernel path |
+| Paste | Ctrl+V through a uinput device | (V) KWin; (I) Mutter, same kernel path |
+| Clipboard while unfocused | `inserter_linux.clipboard_command()`: `wl-copy` where the compositor has data-control (KWin, wlroots, Hyprland); on GNOME `xclip` first, because Mutter has no data-control and wl-copy's fallback grabs focus with a temporary surface. The .deb Depends on both | (V) KDE; (I) GNOME |
+| Overlay | XWayland override-redirect child, above | (I) live |
+| Splash | a normal toplevel; the compositor places it (usually centred) | (V) KDE |
+| Tray | StatusNotifierItem over D-Bus. Ubuntu's GNOME shows it through its default-enabled AppIndicator extension; stock GNOME without that extension has no tray (close leaves the app running: start it again or use `hebrish --toggle`) | (V) KDE; (I) Ubuntu GNOME |
 
 ## Findings
 
@@ -163,7 +226,8 @@ libs in the bundled .so files, and `--toggle` record → transcribe ran from `/u
 ## Testing
 
 - `.venv/bin/python -m pytest tests`: offline tests of the update logic, the hotkey state
-  machine, chord parsing, and drift from `shared/models.json`.
+  machine and config upgrade, chord parsing, the overlay (off-screen), and drift from
+  `shared/models.json`.
 - UI: render the tabs off-screen with `QT_QPA_PLATFORM=offscreen` and `window.grab()`.
   Drive the Transcribe tab with `win.transcribe.transcribe_file(path)`.
 - To smoke-test without touching real settings or colliding with another dictation tool,

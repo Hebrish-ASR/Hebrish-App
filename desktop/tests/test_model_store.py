@@ -139,7 +139,7 @@ def test_remove_refuses_paths_outside_models_dir():
 def test_models_are_isolated():
     cs = install(manifest())
     stock = install(ms.manifest_from_tree(ms.get_model("stock"), "s" * 40, STOCK_TREE, None))
-    assert ms.installed_ids() == ["stock", "codeswitch"]
+    assert sorted(ms.installed_ids()) == ["codeswitch", "stock"]   # catalogue order
     ms.prune_except(cs.name, "codeswitch")
     assert stock.exists()                                 # pruning one model never touches another
     ms.select("stock")

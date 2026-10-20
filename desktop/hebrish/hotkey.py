@@ -1,12 +1,14 @@
-"""Global hotkey: one state machine, fed by a per-OS key source.
+"""Global hotkeys: one state machine, fed by a per-OS key source.
 
 Key names are evdev-style on every OS ("KEY_F13", "KEY_RIGHTCTRL"), so a config file
 means the same key on Linux and Windows.
 
-Modes:
-  hold    press = start, release = stop
-  toggle  press = start, next press = stop            ("tap, tap")
-  hybrid  a short tap latches like toggle; holding past hybrid_hold_ms is push-to-talk
+Two keys, either may be "" (off):
+  hotkey      toggle: press = start, next press = stop ("tap, tap"). With hold_to_talk,
+              holding it past hybrid_hold_ms is push-to-talk instead (release = stop).
+  ptt_hotkey  push-to-talk only: press = start, release = stop.
+While one hotkey is held the other is ignored. Up to 0.2.x there was one key and a `mode`;
+config.upgrade() maps old files.
 """
 
 import sys
@@ -17,12 +19,26 @@ MODIFIERS = {"KEY_LEFTCTRL", "KEY_RIGHTCTRL", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT",
 
 
 def pretty(name: str) -> str:
-    """KEY_RIGHTCTRL -> Right Ctrl, KEY_F13 -> F13."""
+    """KEY_RIGHTCTRL -> Right Ctrl, KEY_F13 -> F13, "" -> Not set."""
+    if not name:
+        return "Not set"
     n = name.removeprefix("KEY_")
     for side in ("LEFT", "RIGHT"):
         if n.startswith(side) and len(n) > len(side):
             return f"{side.title()} {n[len(side):].title().replace('Meta', 'Super')}"
     return n if len(n) <= 3 else n.title()
+
+
+def describe(cfg) -> str:
+    """One line for the Dictate tab: how the configured keys work."""
+    toggle, ptt = cfg["hotkey"], cfg["ptt_hotkey"]
+    parts = []
+    if toggle:
+        parts.append(f"Tap {pretty(toggle)} to start and stop"
+                     + (", or hold it while you talk" if cfg["hold_to_talk"] else ""))
+    if ptt:
+        parts.append(f"Hold {pretty(ptt)} while you talk")
+    return ". ".join(parts) or "No hotkey set: use the button, the tray or the overlay"
 
 
 class HotkeyMachine:
@@ -34,7 +50,8 @@ class HotkeyMachine:
         self._start, self._stop, self._cancel = start, stop, cancel
         self._is_recording = is_recording
         self._capture = None
-        self._down_at = None
+        self._held = None                 # the hotkey currently down, if any
+        self._down_at = 0.0
         self._started_this_press = False
         self._chorded = False
         self.problem = ""               # shown in the window when the source can't run
@@ -48,33 +65,33 @@ class HotkeyMachine:
             cb, self._capture = self._capture, None
             cb(name)
             return
-        hot = self._cfg["hotkey"]
-        if name != hot:
-            if down and self._down_at is not None and hot in MODIFIERS:
+        toggle, ptt = self._cfg["hotkey"], self._cfg["ptt_hotkey"]
+        if not name or name not in (toggle, ptt):
+            if down and self._held in MODIFIERS:
                 self._chorded = True              # Right-Ctrl+C is a shortcut, not dictation
                 if self._started_this_press:
                     self._started_this_press = False
                     self._cancel()
             return
 
-        mode = self._cfg["mode"]
         if down:
-            if self._down_at is not None:         # Windows autorepeat arrives as more downs
+            if self._held is not None:            # autorepeat (Windows), or the other hotkey
                 return
-            self._down_at = time.monotonic()
+            self._held, self._down_at = name, time.monotonic()
             self._chorded = False
             self._started_this_press = False
-            if mode != "hold" and self._is_recording():
-                self._stop()
+            if self._is_recording():
+                if name == toggle:                # the PTT key never stops a toggled take
+                    self._stop()
             else:
                 self._started_this_press = True
                 self._start()
-        else:
-            held_ms = (time.monotonic() - (self._down_at or time.monotonic())) * 1000
-            self._down_at = None
+        elif name == self._held:
+            held_ms = (time.monotonic() - self._down_at) * 1000
+            self._held = None
             if self._chorded or not self._started_this_press:
                 return
-            if mode == "hold" or (mode == "hybrid" and held_ms >= self._cfg["hybrid_hold_ms"]):
+            if name != toggle or (self._cfg["hold_to_talk"] and held_ms >= self._cfg["hybrid_hold_ms"]):
                 self._stop()
 
 

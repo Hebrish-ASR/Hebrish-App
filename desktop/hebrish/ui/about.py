@@ -1,4 +1,5 @@
-"""The About tab: what the app is, the models it offers, and how the code-switching model scores.
+"""The About tab: a hero (mark, name, versions, main links), then cards: privacy, models, how
+well Jachnun works, how it was trained, how to help, terms.
 
 Code-switching numbers come from the project hub, github.com/Hebrish-ASR/English-Hebrew-Codeswitching-Parakeet-Finetune
 (sections "Results" and "Training data"). Update BENCH and TRAINING when a new version is
@@ -9,10 +10,15 @@ benchmarked. v1.0 was benchmarked on 2026-10-19 on its own test split (dataset r
 import platform
 from urllib.parse import quote, urlencode
 
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget
+
 from .. import __version__, model_store
+from .style import BLUE, BRAND_GREEN, GOLD, INK, MUTED, PAPER, display_font
 
 HUB = "https://github.com/Hebrish-ASR/English-Hebrew-Codeswitching-Parakeet-Finetune"
-MODEL = "https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching"
+MODEL = "https://huggingface.co/Hebrish/Jachnun"       # the HF home since 2026-10-20 (gated)
 LEADERBOARD = "https://huggingface.co/spaces/danielrosehill/English-Hebrew-Codeswitching-ASR-Leaderboard"
 DEMO = "https://huggingface.co/spaces/danielrosehill/English-Hebrew-Codeswitching-Parakeet-Demo"
 SOURCE = "https://github.com/Hebrish-ASR/Hebrish-App"
@@ -44,7 +50,7 @@ HEBRISH_LINKS = [
     ("Get involved", f"{HEBRISH}/contact?topic=involved"),
 ]
 
-BENCH_VERSION = "v1.0"        # latest benchmarked (2026-10-19)
+BENCH_VERSION = "Jachnun v1.0"        # latest benchmarked (2026-10-19)
 # (test, stock Parakeet v2, fine-tune, lower_is_better)
 BENCH = [
     ("Word error rate, English with Hebrew words (held-out)", "11.3%", "5.1%", True),
@@ -54,85 +60,188 @@ BENCH = [
     ("Word error rate, LibriSpeech test-clean", "1.2%", "1.2%", True),
     ("Word error rate, ~3-minute recordings", "9.6%", "5.0%", True),
 ]
-LEADER = [("Code-switching fine-tune (v1.0)", "73.3%"), ("Its PoC-3", "67.4%"),
+LEADER = [("Jachnun v1.0", "73.3%"), ("Jachnun PoC-3", "67.4%"),
           ("Whisper Large V3", "45.9%"), ("Stock Parakeet v2", "32.6%")]
 TRAINING = {  # v1.0, the version this app downloads as of 2026-10-19
-    "version": "v1.0", "cs_min": 339, "cs_clips": "3,224", "own_en_min": 95, "replay_min": 49,
+    "version": "Jachnun v1.0", "cs_min": 339, "cs_clips": "3,224", "own_en_min": 95, "replay_min": 49,
     "mix": "70.2% / 19.7% / 10.0%", "gpu": "one L40S", "minutes": 41, "epochs": 20,
 }
 
 
-def html(model_label: str, accent: str) -> str:
-    t = TRAINING
-    rows = "".join(
-        f"<tr><td>{name}</td><td align='center'>{stock}</td>"
-        f"<td align='center'><b style='color:{accent}'>{ft}</b></td></tr>"
-        for name, stock, ft, _ in BENCH)
-    hebrish = " · ".join(f"<a href='{u}'>{n}</a>" for n, u in HEBRISH_LINKS)
-    leader = "".join(f"<tr><td>{n}</td><td align='center'>{v}</td></tr>" for n, v in LEADER)
-    catalogue = "".join(
-        f"<li><b>{m.name}</b>{'' if m.available else ' <i>(coming soon)</i>'}: {m.summary}"
-        + (f" <a href='{m.card}'>Model card</a>" if m.card else "") + "</li>"
-        for m in model_store.models())
-    return f"""
-<h2 style="margin-bottom:0">Hebrish</h2>
-<p style="margin-top:2px">app v{__version__} · model {model_label}</p>
+def _link_button(text: str, url: str, primary=False) -> QPushButton:
+    b = QPushButton(text, objectName="primary" if primary else "")
+    b.setCursor(Qt.PointingHandCursor)
+    b.setToolTip(url.split("?")[0])
+    b.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
+    return b
 
-<p>Dictation that runs on your own computer. Press a hotkey, talk, and the text is pasted
-where your cursor is. Every model is NVIDIA's <b>Parakeet TDT 0.6B v2</b> (600 million
-parameters), either as released or fine-tuned for a particular kind of speech. Nothing you
-say leaves the machine; the only network traffic is the model download and the update
-check.</p>
 
-<h3>Models</h3>
-<ul>{catalogue}</ul>
-<p>The code-switching model is trained on one speaker's voice, so it works best for voices
-like that one. Stock Parakeet is the right choice for anyone else.</p>
+def _rich(html: str) -> QLabel:
+    lbl = QLabel(html)
+    lbl.setWordWrap(True)
+    lbl.setTextFormat(Qt.RichText)
+    lbl.setOpenExternalLinks(True)
+    lbl.setTextInteractionFlags(Qt.TextBrowserInteraction)
+    return lbl
 
-<h3>English-Hebrew code-switching: how {t['version']} was trained</h3>
-<p>English with Hebrew words in it, written in Latin letters: <i>teudat zehut</i>,
-<i>bituach leumi</i>, <i>rishayon iski</i>. Parakeet's alphabet has no Hebrew letters, so
-the model learns one consistent Latin spelling for each Hebrew word.</p>
-<ul>
-<li><b>{t['cs_min']} minutes</b> ({t['cs_clips']} clips) of English sentences with Hebrew
-words, read aloud on a phone;</li>
-<li><b>{t['own_en_min']} minutes</b> of the same speaker's plain English, so the model
-keeps its English;</li>
-<li><b>{t['replay_min']} minutes</b> of LibriSpeech audiobook English, as a general-English
-anchor.</li>
-</ul>
-<p>That is a {t['mix']} mix, because fine-tuning on code-switched speech alone is known to
-damage a model's English. Training took {t['minutes']} minutes on {t['gpu']}
-({t['epochs']} epochs).</p>
 
-<h3>How well it works ({BENCH_VERSION}, the latest benchmarked version)</h3>
-<table cellpadding="5" cellspacing="0" border="0" width="100%">
-<tr><th align="left">Test</th><th>Stock Parakeet v2</th><th>Code-switching fine-tune</th></tr>
-{rows}
-</table>
-<p>Error rates roughly halved, and plain English got better, not worse. Scored on
-2026-10-19 on recordings it was never trained on.</p>
+class AboutPage(QScrollArea):
+    """card(title) and muted(text) are window.py's helpers (passed in: window imports us)."""
 
-<p><b>Public leaderboard</b> (Hebrew-word recall on a frozen test set):</p>
-<table cellpadding="4" cellspacing="0">{leader}</table>
+    def __init__(self, icon, card, muted):
+        super().__init__()
+        self.setWidgetResizable(True)
+        self.setFrameShape(QFrame.NoFrame)
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(16, 14, 16, 16)
+        lay.setSpacing(12)
+        lay.addWidget(self._hero(icon))
 
-<h3>Hebrish: help improve it</h3>
-<p>The code-switching model has its own website, <a href="{HEBRISH}">hebrish.app</a>, with
-the results and every model, dataset and demo. Report a bug, ask for a feature or send
-feedback by email to <a href="mailto:{FEEDBACK}">{FEEDBACK}</a>, suggest a Hebrew word it gets
-wrong, or send voice samples to help it learn more voices:</p>
-<p>{hebrish}</p>
+        box, b = card("Private by design")
+        b.addWidget(_rich(
+            "Everything runs on this computer: NVIDIA's <b>Parakeet TDT 0.6B v2</b> (600 million "
+            "parameters) on your CPU, through sherpa-onnx. Nothing you say leaves the machine. "
+            "The only network traffic is the model download and the check for a newer version."))
+        lay.addWidget(box)
 
-<h3>Terms of use</h3>
-<p>The Hebrish models are free for personal, research, education and non-profit use.
-Commercial use, including telephony and call centres, needs a commercial licence:
-<a href="mailto:{ACCESS}">{ACCESS}</a>. Full terms: <a href="{TERMS}">hebrish.app/terms</a>.
-Hebrish is experimental and trained on one speaker's voice: transcripts can be wrong, so check
-them before relying on them. It is provided as is, without warranty.</p>
-<p>Versions up to v1.0 of the code-switching model are CC-BY-4.0, stock Parakeet is CC-BY-4.0
-(NVIDIA), and the app is MIT.</p>
+        box, b = card("Models")
+        b.addWidget(_rich("".join(
+            f"<p style='margin:0 0 6px 0'><b>{m.name}</b>"
+            f"{'' if m.available else ' <i>(coming soon)</i>'}: {m.summary}"
+            + (f" <a href='{m.card}'>Model card</a>" if m.card else "") + "</p>"
+            for m in model_store.models())))
+        lay.addWidget(box)
 
-<p><a href="{HUB}">Code-switching project</a> · <a href="{MODEL}">Model on Hugging Face</a> ·
-<a href="{DEMO}">Demo</a> · <a href="{LEADERBOARD}">Leaderboard</a> ·
-<a href="{SOURCE}">Source code</a></p>
-"""
+        box, b = card(f"How well it works ({BENCH_VERSION})")
+        rows = "".join(
+            f"<tr><td style='padding:5px 8px 5px 0'>{name}</td>"
+            f"<td align='center' style='padding:5px 8px'>{stock}</td>"
+            f"<td align='center' style='padding:5px 8px'><b style='color:{BLUE}'>{ft}</b></td></tr>"
+            for name, stock, ft, _ in BENCH)
+        b.addWidget(_rich(
+            "<table width='100%' cellspacing='0'>"
+            "<tr><th align='left' style='padding:0 8px 6px 0'>Test</th>"
+            "<th style='padding:0 8px 6px'>Stock Parakeet v2</th>"
+            f"<th style='padding:0 8px 6px'>{BENCH_VERSION}</th></tr>{rows}</table>"))
+        b.addWidget(muted(
+            "Error rates roughly halved, and plain English got better, not worse. Scored on "
+            "2026-10-19 on recordings it was never trained on. Jachnun is trained on one "
+            "speaker's voice; stock Parakeet is the better choice for voices far from it."))
+        leader = " · ".join(f"{n} <b>{v}</b>" for n, v in LEADER)
+        b.addWidget(_rich(f"<small>Public leaderboard, Hebrew-word recall on a frozen test set: "
+                          f"{leader}. <a href='{LEADERBOARD}'>Leaderboard</a></small>"))
+        lay.addWidget(box)
+
+        t = TRAINING
+        box, b = card(f"How {t['version']} was trained")
+        b.addWidget(_rich(
+            "English with Hebrew words in it, written in Latin letters: <i>teudat zehut</i>, "
+            "<i>bituach leumi</i>, <i>rishayon iski</i>. Parakeet's alphabet has no Hebrew "
+            "letters, so the model learns one consistent Latin spelling for each Hebrew word."
+            f"<ul style='margin-left:-20px'><li><b>{t['cs_min']} minutes</b> ({t['cs_clips']} clips) "
+            "of English sentences with Hebrew words, read aloud on a phone;</li>"
+            f"<li><b>{t['own_en_min']} minutes</b> of the same speaker's plain English, so the "
+            "model keeps its English;</li>"
+            f"<li><b>{t['replay_min']} minutes</b> of LibriSpeech audiobook English, as a "
+            "general-English anchor.</li></ul>"
+            f"A {t['mix']} mix, because fine-tuning on code-switched speech alone is known to "
+            f"damage a model's English. Training took {t['minutes']} minutes on {t['gpu']} "
+            f"({t['epochs']} epochs)."))
+        lay.addWidget(box)
+
+        box, b = card("Help improve it")
+        b.addWidget(muted("Want it to learn your voice, or a word it gets wrong? Send recordings "
+                          "or suggest the word. Bugs and ideas go to "
+                          f"{FEEDBACK}; your mail client opens with the app and OS version filled in."))
+        grid = QHBoxLayout()
+        grid.setSpacing(6)
+        for label, url in HEBRISH_LINKS[4:]:
+            grid.addWidget(_link_button(label, url))
+        grid.addStretch(1)
+        b.addLayout(grid)
+        row = QHBoxLayout()
+        row.setSpacing(6)
+        for label, url in HEBRISH_LINKS[1:4]:
+            row.addWidget(_link_button(label, url))
+        row.addStretch(1)
+        b.addLayout(row)
+        lay.addWidget(box)
+
+        box, b = card("Terms and licences")
+        b.addWidget(_rich(
+            "The Hebrish models are free for personal, research, education and non-profit use. "
+            "Commercial use, including telephony and call centres, needs a commercial licence: "
+            f"<a href='mailto:{ACCESS}'>{ACCESS}</a>. Full terms: <a href='{TERMS}'>hebrish.app/terms</a>. "
+            "Hebrish is experimental: check transcripts before relying on them. It is provided as "
+            "is, without warranty.<br><br>Versions up to v1.0 of Jachnun are CC-BY-4.0, stock "
+            "Parakeet is CC-BY-4.0 (NVIDIA), and the app is MIT."))
+        lay.addWidget(box)
+
+        foot = muted(f"<a href='{HUB}'>Code-switching project</a> · <a href='{MODEL}'>Jachnun on "
+                     f"Hugging Face</a> · <a href='{DEMO}'>Demo</a> · <a href='{SOURCE}'>Source code</a>"
+                     "<br>Made by Daniel Rosehill")
+        foot.setTextFormat(Qt.RichText)
+        foot.setOpenExternalLinks(True)
+        foot.setAlignment(Qt.AlignCenter)
+        lay.addWidget(foot)
+        lay.addStretch(1)
+        self.setWidget(page)
+
+    def _hero(self, icon) -> QFrame:
+        hero = QFrame(objectName="aboutHero")
+        hero.setStyleSheet(
+            f"#aboutHero {{ background: {PAPER}; border: 1px solid #e2dccf; border-radius: 12px; }}"
+            f"#aboutHero QLabel {{ color: {INK}; background: transparent; border: none; }}"
+            f"#aboutHero #heroMuted {{ color: {MUTED}; }}"
+            f"#aboutHero #chip {{ background: #f1ece1; color: {INK}; border-radius: 10px;"
+            "  padding: 2px 9px; font-size: 11px; }"
+            f"#aboutHero #chipGold {{ background: transparent; color: {GOLD}; border: 1px solid {GOLD};"
+            "  border-radius: 10px; padding: 1px 8px; font-size: 11px; }"
+            f"#aboutHero QPushButton {{ background: white; color: {INK}; border: 1px solid #e2dccf;"
+            "  border-radius: 6px; padding: 5px 12px; }"
+            "#aboutHero QPushButton:hover { background: #f1ece1; }"
+            f"#aboutHero QPushButton#primary {{ background: {BRAND_GREEN}; color: white; border: none;"
+            "  font-weight: 600; }"
+            f"#aboutHero QPushButton#primary:hover {{ background: #0c5a4d; }}")
+        lay = QVBoxLayout(hero)
+        lay.setContentsMargins(20, 18, 20, 16)
+        lay.setSpacing(10)
+        top = QHBoxLayout()
+        top.setSpacing(16)
+        logo = QLabel()
+        logo.setPixmap(icon.pixmap(72, 72))
+        top.addWidget(logo, 0, Qt.AlignTop)
+        col = QVBoxLayout()
+        col.setSpacing(2)
+        title = QLabel("Hebrish")
+        title.setFont(display_font(30))
+        col.addWidget(title)
+        tag = QLabel("Dictation that gets the Hebrew words right.", objectName="heroMuted")
+        tag.setWordWrap(True)
+        col.addWidget(tag)
+        chips = QHBoxLayout()
+        chips.setSpacing(6)
+        chips.setContentsMargins(0, 6, 0, 0)
+        chips.addWidget(QLabel(f"App v{__version__}", objectName="chip"))
+        self.model_chip = QLabel(objectName="chip")
+        chips.addWidget(self.model_chip)
+        chips.addWidget(QLabel("On-device", objectName="chipGold"))
+        chips.addStretch(1)
+        col.addLayout(chips)
+        top.addLayout(col, 1)
+        lay.addLayout(top)
+        row = QHBoxLayout()
+        row.setSpacing(6)
+        row.addWidget(_link_button("hebrish.app", HEBRISH, primary=True))
+        row.addWidget(_link_button("Report a bug", HEBRISH_LINKS[1][1]))
+        row.addWidget(_link_button("Send feedback", HEBRISH_LINKS[3][1]))
+        row.addWidget(_link_button("Source code", SOURCE))
+        row.addStretch(1)
+        lay.addLayout(row)
+        self.refresh()
+        return hero
+
+    def refresh(self):
+        cur = model_store.active()
+        self.model_chip.setText(f"Model: {cur[1].full_label}" if cur else "No model yet")

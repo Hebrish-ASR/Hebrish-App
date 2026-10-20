@@ -28,4 +28,4 @@ version = {attr = "hebrish.__version__"}
 include = ["hebrish*"]
 
 [tool.setuptools.package-data]
-hebrish = ["data/icons/*.svg", "data/models.json"]
+hebrish = ["data/icons/*.svg", "data/fonts/*", "data/models.json"]

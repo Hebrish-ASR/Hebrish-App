@@ -52,7 +52,7 @@ Priority: optional
 Installed-Size: $(du -sk "$ROOT/usr" | cut -f1)
 Maintainer: Daniel Rosehill <daniel@danielrosehill.co.il>
 Homepage: https://github.com/Hebrish-ASR/Hebrish-App
-Depends: python3 (>= $PYVER), python3 (<< $PYNEXT), python3-pyside6.qtwidgets, python3-pyside6.qtnetwork, qt6-svg-plugins, python3-numpy, python3-sounddevice, python3-evdev, libportaudio2, wl-clipboard | xclip
+Depends: python3 (>= $PYVER), python3 (<< $PYNEXT), python3-pyside6.qtwidgets, python3-pyside6.qtnetwork, qt6-svg-plugins, python3-numpy, python3-sounddevice, python3-evdev, libportaudio2, wl-clipboard, xclip, qt6-wayland
 Recommends: ffmpeg
 Conflicts: parakeet-dictation, codeswitch-dictation, voice-to-hebrish
 Replaces: codeswitch-dictation, voice-to-hebrish

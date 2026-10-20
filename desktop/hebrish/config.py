@@ -30,9 +30,14 @@ CATALOGUE_CACHE = DATA_DIR / "catalogue.json"   # last models.json fetched from 
 _LEGACY = ("voice-to-hebrish", "codeswitch-dictation") if sys.platform != "win32" else ("VoiceToHebrish",)
 
 DEFAULTS = {
-    "hotkey": "KEY_F14",          # evdev key name; any key. Not F13: Parlance's default
-    "mode": "hybrid",             # hold | toggle | hybrid (tap = toggle, hold = push-to-talk)
-    "hybrid_hold_ms": 350,        # in hybrid, held longer than this = push-to-talk
+    "hotkey": "KEY_F14",          # toggle key (tap to start, tap to stop); evdev name, "" = none.
+                                  # Not F13: Parlance's default
+    "hold_to_talk": True,         # holding the toggle key past hybrid_hold_ms is push-to-talk
+    "hybrid_hold_ms": 350,
+    "ptt_hotkey": "",             # a second, push-to-talk-only key; "" = none
+    "overlay": "off",             # off | active (while dictating) | always
+    "overlay_pos": None,          # [x, y] of the overlay's top-left; None = bottom centre
+    "overlay_opacity": 85,        # idle opacity %, "always" mode
     "insert": "paste",            # paste | clipboard
     "paste_chord": "ctrl+v",      # e.g. ctrl+shift+v if you dictate mostly into terminals
     "trailing_space": True,
@@ -55,7 +60,7 @@ DEFAULTS = {
 # Both apps write models as <file>.part then rename, and prune by unlinking, so sharing inodes
 # between the two trees is safe.
 PARLANCE = "Parlance" if sys.platform == "win32" else "parlance"
-_NOT_IMPORTED = ("hotkey",)     # Parlance keeps F13; the same key would fire both apps
+_NOT_IMPORTED = ("hotkey", "ptt_hotkey")     # Parlance keeps F13; the same key would fire both apps
 
 
 def _link_or_copy(src, dst):
@@ -74,7 +79,7 @@ def import_parlance() -> bool:
     imported = False
     old_cfg = CONFIG_DIR.with_name(PARLANCE) / "config.json"
     if old_cfg.is_file() and not CONFIG_PATH.exists():
-        stored = load_json(old_cfg)
+        stored = upgrade(load_json(old_cfg))
         save_json(CONFIG_PATH, {k: v for k, v in stored.items()
                                 if k in DEFAULTS and k not in _NOT_IMPORTED})
         imported = True
@@ -102,7 +107,7 @@ def migrate_legacy():
         old_models = DATA_DIR.with_name(name) / "models"
         if not (old_cfg.is_file() or old_models.is_dir()):
             continue
-        stored = load_json(old_cfg)
+        stored = upgrade(load_json(old_cfg))
         save_json(CONFIG_PATH, {k: v for k, v in stored.items() if k in DEFAULTS})
         old_history = DATA_DIR.with_name(name) / "history.json"
         if old_history.is_file() and not HISTORY_PATH.exists():
@@ -118,6 +123,18 @@ def migrate_legacy():
                 state["model"] = "codeswitch"
                 save_json(STATE_PATH, state)
         return
+
+
+def upgrade(stored: dict) -> dict:
+    """0.2.x had one key and a `mode` (hold | toggle | hybrid). From 0.3.0 there are two keys:
+    `hotkey` toggles (hybrid when `hold_to_talk`), `ptt_hotkey` is push-to-talk only."""
+    mode = stored.pop("mode", None)
+    if mode == "hold":
+        stored["ptt_hotkey"] = stored.get("hotkey", DEFAULTS["hotkey"])
+        stored["hotkey"] = ""
+    elif mode == "toggle":
+        stored["hold_to_talk"] = False
+    return stored
 
 
 def load_json(path: Path, default=None):
@@ -138,8 +155,9 @@ class Config(dict):
     def __init__(self):
         super().__init__(DEFAULTS)
         stored = load_json(CONFIG_PATH)
-        self.update({k: v for k, v in stored.items() if k in DEFAULTS})
-        if not CONFIG_PATH.exists():
+        old = "mode" in stored
+        self.update({k: v for k, v in upgrade(stored).items() if k in DEFAULTS})
+        if old or not CONFIG_PATH.exists():
             self.save()
 
     def save(self):

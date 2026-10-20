@@ -6,6 +6,31 @@ BLUE_HOVER = "#1a4fd0"
 RED = "#D62828"
 RED_PULSE = "#ef4b4b"
 AMBER = "#E8A317"
+# The Hebrish brand (Hebrish-Mgmt/brand/tokens.json, light): used by the splash and the About
+# hero, where the green mark has to sit on paper rather than on the blue.
+BRAND_GREEN = "#0f6b5c"
+PAPER = "#fbf8f2"
+INK = "#1d2422"
+MUTED = "#5b6662"
+GOLD = "#c8901c"
+_display_family = None
+
+
+def display_font(px: int, bold: bool = True):
+    """Fraunces (brand display face, bundled from Hebrish-Mgmt/brand/fonts), else a serif."""
+    global _display_family
+    from pathlib import Path
+    from PySide6.QtGui import QFont, QFontDatabase
+    if _display_family is None:
+        fid = QFontDatabase.addApplicationFont(
+            str(Path(__file__).resolve().parent.parent / "data" / "fonts" / "Fraunces.ttf"))
+        fams = QFontDatabase.applicationFontFamilies(fid) if fid >= 0 else []
+        _display_family = fams[0] if fams else "serif"
+    f = QFont(_display_family)
+    f.setStyleHint(QFont.Serif)
+    f.setPixelSize(px)
+    f.setWeight(QFont.Bold if bold else QFont.DemiBold)
+    return f
 
 QSS = f"""
 #header {{ background: {BLUE}; }}

@@ -6,20 +6,18 @@ from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFormLayout, QFrame, QHBoxLayout, QLabel,
                                QLineEdit, QMainWindow, QMessageBox, QProgressBar, QPushButton,
-                               QScrollArea, QSpinBox, QTabWidget, QTextBrowser, QToolButton,
+                               QScrollArea, QSpinBox, QTabWidget, QToolButton,
                                QVBoxLayout, QWidget)
 
 from .. import __version__, audio, autostart, model_store
 from ..config import APP_NAME, CONFIG_PATH, STATE_PATH, TAGLINE, load_json
-from ..hotkey import pretty
+from ..hotkey import describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
 from . import about
 from .app import icon
 from .style import BLUE
 
-MODES = [("hybrid", "Tap to toggle, hold for push-to-talk"),
-         ("toggle", "Tap to start, tap to stop"),
-         ("hold", "Push-to-talk (hold)")]
+OVERLAY = [("off", "Off"), ("active", "While dictating"), ("always", "Always (a mic button)")]
 
 
 def card(title: str = "") -> tuple[QFrame, QVBoxLayout]:
@@ -227,15 +225,11 @@ class MainWindow(QMainWindow):
         self.rec.style().unpolish(self.rec)
         self.rec.style().polish(self.rec)
         self._pulse.start() if st == "recording" else self._pulse.stop()
-        key = pretty(self.cfg["hotkey"])
-        how = {"hold": f"Hold {key} while you talk",
-               "toggle": f"Tap {key} to start, tap again to stop",
-               "hybrid": f"Tap {key} to start and stop, or hold it while you talk"}[self.cfg["mode"]]
         self.state_label.setText({"idle": "Ready", "recording": "Listening…",
                                   "busy": "Working…"}[st])
-        self.hint_label.setText(how)
-        if hasattr(self, "hk_label"):
-            self.hk_label.setText(key)
+        self.hint_label.setText(describe(self.cfg))
+        for slot, lbl in getattr(self, "hk_labels", {}).items():
+            lbl.setText(pretty(self.cfg[slot]))
         self.update_model()
 
     # -- model ---------------------------------------------------------------------
@@ -420,17 +414,15 @@ class MainWindow(QMainWindow):
         box, b = card("Dictation")
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignRight)
-        hk = QHBoxLayout()
-        self.hk_label = QLabel(pretty(self.cfg["hotkey"]))
-        self.hk_label.setStyleSheet("font-weight: 600;")
-        self.hk_btn = QPushButton("Change…")
-        self.hk_btn.clicked.connect(self._capture_hotkey)
-        hk.addWidget(self.hk_label, 1)
-        hk.addWidget(self.hk_btn)
-        form.addRow("Hotkey", hk)
-        form.addRow("", muted("Any key on any keyboard or foot pedal. Pick one nothing else "
-                              "uses: F13–F24 are ideal."))
-        form.addRow("Mode", self._combo("mode", MODES))
+        self.hk_labels, self.hk_btns = {}, {}
+        for slot, label in (("hotkey", "Toggle key"), ("ptt_hotkey", "Push-to-talk key")):
+            form.addRow(label, self._hotkey_row(slot))
+            if slot == "hotkey":
+                form.addRow("", self._check("hold_to_talk", "Holding it is push-to-talk too",
+                                            self.update_state))
+        form.addRow("", muted("Tap the toggle key to start, tap again to stop. Hold the "
+                              "push-to-talk key while you talk. Any key on any keyboard or foot "
+                              "pedal: pick ones nothing else uses (F13–F24 are ideal)."))
         form.addRow("Output", self._combo("insert", [("paste", "Paste at the cursor"),
                                                      ("clipboard", "Clipboard only")]))
         chord = QLineEdit(self.cfg["paste_chord"])
@@ -449,6 +441,28 @@ class MainWindow(QMainWindow):
                            ("trailing_space", "Add a space after each transcript"),
                            ("keep_history", "Remember recent transcripts between sessions")):
             b.addWidget(self._check(key, label))
+        lay.addWidget(box)
+
+        box, b = card("Floating overlay")
+        b.addWidget(muted("A small bar over every app, like the Android floating mic: the timer, "
+                          "a level meter, Pause, Retake and Discard. Drag it anywhere. It never "
+                          "takes the keyboard focus, so the text still goes where your cursor is."))
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignRight)
+        ov = self._combo("overlay", OVERLAY, self.ctl.overlay_changed)
+        form.addRow("Show", ov)
+        op = QSpinBox(minimum=25, maximum=100, suffix=" %", value=self.cfg["overlay_opacity"])
+        op.valueChanged.connect(lambda v: (self.cfg.set("overlay_opacity", v), self.ctl.overlay_changed()))
+        form.addRow("Idle opacity", op)
+        b.addLayout(form)
+        reset = QPushButton("Reset position")
+        reset.clicked.connect(lambda: (self.cfg.set("overlay_pos", None), self.ctl.overlay_changed()))
+        b.addWidget(reset, 0, Qt.AlignLeft)
+        if not self.ctl.overlay.available:
+            ov.setEnabled(False)
+            op.setEnabled(False)
+            reset.setEnabled(False)
+            b.addWidget(muted(self.ctl.overlay.reason))
         lay.addWidget(box)
 
         box, b = card("Model updates")
@@ -473,12 +487,12 @@ class MainWindow(QMainWindow):
         lay.addStretch(1)
         return page
 
-    def _check(self, key, label):
+    def _check(self, key, label, then=None):
         c = QCheckBox(label, checked=self.cfg[key])
-        c.toggled.connect(lambda v: self.cfg.set(key, v))
+        c.toggled.connect(lambda v: (self.cfg.set(key, v), then and then()))
         return c
 
-    def _combo(self, key, options):
+    def _combo(self, key, options, then=None):
         c = QComboBox()
         for val, label in options:
             c.addItem(label, val)
@@ -487,6 +501,8 @@ class MainWindow(QMainWindow):
         def changed(_i):
             self.cfg.set(key, c.currentData())
             self.update_state()
+            if then:
+                then()
         c.currentIndexChanged.connect(changed)
         return c
 
@@ -498,32 +514,44 @@ class MainWindow(QMainWindow):
         except ValueError:
             entry.setStyleSheet("border: 1px solid #D62828;")
 
-    def _capture_hotkey(self):
-        self.hk_btn.setEnabled(False)
-        self.hk_label.setText("Press the key you want…")
+    def _hotkey_row(self, slot):
+        row = QHBoxLayout()
+        lbl = QLabel(pretty(self.cfg[slot]))
+        lbl.setStyleSheet("font-weight: 600;")
+        change = QPushButton("Change…")
+        change.clicked.connect(lambda: self._capture_hotkey(slot))
+        clear = QPushButton("Clear")
+        clear.clicked.connect(lambda: (self.cfg.set(slot, ""), self.update_state()))
+        row.addWidget(lbl, 1)
+        row.addWidget(change)
+        row.addWidget(clear)
+        self.hk_labels[slot], self.hk_btns[slot] = lbl, change
+        return row
+
+    def _capture_hotkey(self, slot):
+        for b in self.hk_btns.values():
+            b.setEnabled(False)
+        self.hk_labels[slot].setText("Press the key you want…")
+        self._capture_slot = slot
         self.ctl.sig.captured.connect(self._captured)
         self.ctl.hotkeys.capture_next_key(self.ctl.sig.captured.emit)
 
     def _captured(self, name):
         self.ctl.sig.captured.disconnect(self._captured)
-        self.cfg.set("hotkey", name)
-        self.hk_btn.setEnabled(True)
+        slot = self._capture_slot
+        other = "ptt_hotkey" if slot == "hotkey" else "hotkey"
+        if self.cfg[other] == name:            # one key can't be both: move it
+            self.cfg.set(other, "")
+        self.cfg.set(slot, name)
+        for b in self.hk_btns.values():
+            b.setEnabled(True)
         self.update_state()
 
     # -- about ---------------------------------------------------------------------
     def _about_page(self):
-        tb = QTextBrowser()
-        tb.setOpenExternalLinks(True)
-        tb.setFrameShape(QFrame.NoFrame)
-        tb.document().setDocumentMargin(18)
-        self._about = tb
-        self._refresh_about()
-        self.tabs.currentChanged.connect(lambda i: self.tabs.widget(i) is self._about and self._refresh_about())
-        return tb
-
-    def _refresh_about(self):
-        cur = model_store.active()
-        self._about.setHtml(about.html(cur[1].full_label if cur else "not downloaded yet", BLUE))
+        self._about = about.AboutPage(icon("hebrish"), card, muted)
+        self.tabs.currentChanged.connect(lambda i: self.tabs.widget(i) is self._about and self._about.refresh())
+        return self._about
 
     # -- misc ----------------------------------------------------------------------
     def status(self, text):

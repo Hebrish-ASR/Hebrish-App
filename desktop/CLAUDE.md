@@ -11,6 +11,8 @@ byte-identical copy, re-copy after editing) and
 - Tests: `.venv/bin/python -m pytest tests`.
 - Per-OS code lives only in `hotkey_evdev.py` / `hotkey_win.py`,
   `inserter_linux.py` / `inserter_win.py` and `autostart.py`. Everything else is shared.
+  `ui/overlay.py` picks in-process or an XWayland child by Qt platform, not by OS: keep the
+  overlay unable to take focus on every route (`docs/maintaining.md`, "Floating overlay").
 - Don't run live record-and-paste tests on Daniel's desktop. Render the UI off-screen
   (`QT_QPA_PLATFORM=offscreen`) and drive the controller from a script.
 - Hebrish runs alongside the separate Parlance app (`../../Parlance-Dictation`, same code

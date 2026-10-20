@@ -65,8 +65,9 @@ build and the Android app have not yet been tried on real hardware.
 ## Desktop app (Linux and Windows)
 
 - **Dictate**: press a hotkey anywhere, talk, and the text is pasted where your cursor is.
-  The hotkey can be any key or a foot pedal. Tap it to start and stop, or hold it while you
-  talk.
+  Two hotkeys, any key or a foot pedal: a toggle key (tap to start, tap to stop; holding it
+  is push-to-talk too, unless you turn that off) and an optional push-to-talk key. An optional
+  floating overlay, like the Android floating mic, shows the take with Pause, Retake and Discard.
 - **Transcribe**: record with a level meter, a timer and pause, or open or drop an audio
   file. The transcript fills an editable text box piece by piece; save it as .txt or .md.
 - **Model**: choose the model, download it, switch between downloaded ones, keep or delete
