@@ -218,7 +218,7 @@ everything below that describes runtime behaviour).
   x measured from that side, minus the 4 dp window padding), so the WRAP_CONTENT bar grows
   inwards (children reversed when anchored right). A drag on an edge side saves the nearer
   side; on `free` it saves `bubbleX`.
-- **Drag and look (after 0.4.0, Daniel, 2026-10-20: "drag it around while you're doing it",
+- **Drag and look (0.5.0, Daniel, 2026-10-20: "drag it around while you're doing it",
   opacity, background opacity, colour):** every part of the bubble has a `Drag` touch listener:
   the mic, the timer, each bar button and the root (the bar's padding). `Drag(tap, hold)`:
   a move past the touch slop is a drag; buttons pass `performClick` as `tap` (and keep their

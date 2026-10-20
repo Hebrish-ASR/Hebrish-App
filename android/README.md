@@ -1,4 +1,4 @@
-# Hebrish for Android: on-device voice keyboard
+[![Download APK v0.5.0](https://img.shields.io/badge/Download_APK-v0.5.0-24527A?logo=android)](https://cdn.hebrish.app/downloads/android/Hebrish-v0.5.0.apk)
 
 [![Download APK v0.4.0](https://img.shields.io/badge/Download_APK-v0.4.0-24527A?logo=android)](https://cdn.hebrish.app/downloads/android/Hebrish-v0.4.0.apk)
 [![Website: hebrish.app](https://img.shields.io/badge/Website-hebrish.app-1F6FEB?logo=googlechrome&logoColor=white)](https://hebrish.app)
@@ -49,7 +49,7 @@ form.
 1. Install **[HeliBoard](https://github.com/Helium314/HeliBoard/releases)** and make it your
    main keyboard.
 2. Download the APK from the
-   [APK (v0.4.0)](https://cdn.hebrish.app/downloads/android/Hebrish-v0.4.0.apk)
+   [APK (v0.5.0)](https://cdn.hebrish.app/downloads/android/Hebrish-v0.5.0.apk)
    and install it. You will need to allow installs from your browser or file manager.
 3. Open **Hebrish** and work through it:
    - **Models**: **Download** a model (or **Download all**). It is about 660 MB, downloaded once; use Wi-Fi.
