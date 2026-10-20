@@ -31,6 +31,10 @@ class VoiceImeService : InputMethodService() {
     private val main = Handler(Looper.getMainLooper())
     private var state = State.IDLE
     private var recorder: Recorder? = null
+    /** Decodes the take's segments while it is recorded, so Stop only waits for the tail. */
+    private var decoder: TakeDecoder? = null
+    /** The take's text that went in already (type as you go), for Prefs.lastTranscript. */
+    private val takeText = StringBuilder()
     /** Set when the user asked to leave while a take was being transcribed: insert, then switch. */
     private var switchWhenDone = false
     private var shownSeconds = -1
@@ -83,8 +87,7 @@ class VoiceImeService : InputMethodService() {
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         if (state == State.RECORDING || state == State.PAUSED) {
-            recorder?.cancel()
-            recorder = null
+            dropTake()
             state = State.IDLE
             renderTake()
         }
@@ -118,24 +121,26 @@ class VoiceImeService : InputMethodService() {
         }
     }
 
-    private fun preload() {
-        if (Transcriber.isLoaded(this)) return
-        Thread { runCatching { Transcriber.load(this) } }.start()
-    }
+    private fun preload() = Transcriber.preload(this)
 
     private fun startRecording() {
         preload()
+        takeText.setLength(0)
+        val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { commitPart(text) } } else null)
         val r = Recorder(
             onLevel = { l -> main.post { setLevel(l) } },
             onLimit = { main.post { if (state == State.RECORDING) stopAndTranscribe() } },
+            onSegment = { d.add(it) },
         )
         try {
             r.start()
         } catch (e: Exception) {
+            d.cancel()
             show(getString(R.string.ime_mic_error, e.message ?: ""), busy = false)
             return
         }
         recorder = r
+        decoder = d
         state = State.RECORDING
         shownSeconds = -1
         mic.setImageResource(R.drawable.ic_stop)
@@ -168,19 +173,24 @@ class VoiceImeService : InputMethodService() {
         renderTake()
     }
 
+    private fun dropTake() {
+        recorder?.cancel()
+        recorder = null
+        decoder?.cancel()
+        decoder = null
+    }
+
     /** Throws the take away and starts a fresh one at once. */
     private fun restart() {
         if (state != State.RECORDING && state != State.PAUSED) return
-        recorder?.cancel()
-        recorder = null
+        dropTake()
         state = State.IDLE
         startRecording()
     }
 
     private fun discard() {
         if (state != State.RECORDING && state != State.PAUSED) return
-        recorder?.cancel()
-        recorder = null
+        dropTake()
         state = State.IDLE
         setLevel(0f)
         mic.setImageResource(R.drawable.ic_mic)
@@ -190,11 +200,14 @@ class VoiceImeService : InputMethodService() {
 
     private fun stopAndTranscribe() {
         val r = recorder ?: return
+        val d = decoder ?: return
         recorder = null
+        decoder = null
         val samples = r.stop()
         setLevel(0f)
         mic.setImageResource(R.drawable.ic_mic)
-        if (samples.size < Transcriber.SAMPLE_RATE / 4) {
+        if (samples.size < Transcriber.SAMPLE_RATE / 4 && d.segmentsQueued == 0) {
+            d.cancel()
             state = State.IDLE
             renderTake()
             show(getString(R.string.ime_too_short), busy = false)
@@ -204,19 +217,19 @@ class VoiceImeService : InputMethodService() {
         state = if (Transcriber.isLoaded(this)) State.TRANSCRIBING else State.LOADING
         renderTake()
         show(getString(if (state == State.LOADING) R.string.ime_loading else R.string.ime_transcribing), busy = true)
-        Thread {
-            val result = runCatching { Transcriber.transcribe(this, samples) }
+        d.finish(samples) { result ->
             main.post {
                 state = State.IDLE
                 val leave = switchWhenDone
                 switchWhenDone = false
                 result.onSuccess { text ->
-                    if (text.isEmpty()) {
+                    val inserted = text.isEmpty() || commitPart(text)
+                    if (takeText.isEmpty()) {
                         show(getString(R.string.ime_nothing_heard), busy = false)
                         if (leave) switchBack()
                     } else {
-                        Prefs.setLastTranscript(this, text)
-                        if (commit(text)) {
+                        Prefs.setLastTranscript(this, takeText.toString())
+                        if (inserted) {
                             show(getString(R.string.ime_tap_to_speak), busy = false)
                             if (leave || Prefs.autoReturn(this)) switchBack()
                         } else {
@@ -231,7 +244,14 @@ class VoiceImeService : InputMethodService() {
                     if (leave) switchBack()
                 }
             }
-        }.start()
+        }
+    }
+
+    /** One piece of the take: typed in at the cursor and added to [takeText]. False if no field took it. */
+    private fun commitPart(text: String): Boolean {
+        if (takeText.isNotEmpty()) takeText.append(' ')
+        takeText.append(text)
+        return commit(text)
     }
 
     /**
@@ -336,7 +356,7 @@ class VoiceImeService : InputMethodService() {
         val secs = recorder?.seconds ?: return
         if (state == State.RECORDING && secs != shownSeconds) {
             shownSeconds = secs
-            status.text = getString(R.string.ime_listening_time, secs / 60, secs % 60, Recorder.MAX_SECONDS)
+            status.text = getString(R.string.ime_listening_time, secs / 60, secs % 60)
         }
     }
 

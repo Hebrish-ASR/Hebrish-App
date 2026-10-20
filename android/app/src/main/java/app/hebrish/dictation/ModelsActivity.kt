@@ -1,0 +1,224 @@
+package app.hebrish.dictation
+
+import app.hebrish.core.*
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.DocumentsContract
+import android.provider.Settings
+import android.view.View
+import android.view.WindowManager
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.TextView
+import java.io.File
+
+/**
+ * Models: download any model whether or not it is the one in use, all of them with one button,
+ * choose which one the keyboard and floating mic use, update, delete, and where they are kept.
+ * Downloads run one at a time; the rest wait in ModelDownload's queue.
+ */
+class ModelsActivity : Page() {
+    private lateinit var allBtn: Button
+    private lateinit var list: LinearLayout
+    private lateinit var checkStatus: TextView
+    private lateinit var checkBtn: Button
+    private lateinit var locationStatus: TextView
+    private lateinit var resetLocationBtn: Button
+    /** Set while the user is away granting storage access, so the folder picker opens on return. */
+    private var pickAfterGrant = false
+
+    override fun build() {
+        text(R.string.models_intro)
+        allBtn = button(R.string.models_download_all) {
+            if (ModelDownload.status is ModelDownload.Status.Running) ModelDownload.cancel() else ModelDownload.downloadAll(this)
+        }
+        small(R.string.download_terms)
+        list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(list)
+
+        heading(R.string.models_updates)
+        checkStatus = text()
+        checkBtn = button(R.string.check_update) { ModelDownload.check(this, force = true) }
+
+        heading(R.string.location_title)
+        locationStatus = text()
+        val r = row()
+        button(R.string.choose_location, r) { chooseLocation() }
+        resetLocationBtn = button(R.string.reset_location, r) { ModelDownload.relocate(this, null); render() }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ModelDownload.listener = { render() }
+        if (pickAfterGrant && hasStorageAccess()) openFolderPicker()
+        pickAfterGrant = false
+        ModelDownload.check(this)
+        render()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        ModelDownload.listener = null
+    }
+
+    private fun mb(bytes: Long) = bytes / 1_000_000
+
+    /** Expected size of [m] before it is downloaded: its known manifest, else the usual ~660 MB. */
+    private fun size(m: Catalogue.Model) =
+        (ModelDownload.latest(m.id) ?: ModelStore.installed(this, m) ?: ModelStore.BUNDLED.values.first()).totalBytes
+
+    private fun render() {
+        val s = ModelDownload.status
+        val running = s is ModelDownload.Status.Running
+        val models = Catalogue.get(this).models
+        val missing = models.filter { it.available && !ModelStore.isReady(this, model = it) }
+        allBtn.isEnabled = running || missing.isNotEmpty()
+        allBtn.text = when {
+            running -> getString(R.string.models_cancel_all)
+            missing.isEmpty() -> getString(R.string.models_all_downloaded)
+            else -> getString(R.string.models_download_all_size, missing.size, mb(missing.sumOf { size(it) }))
+        }
+        if (running) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        list.removeAllViews()
+        val selected = Catalogue.selected(this)
+        for (m in models) card(m, m.id == selected.id, s)
+
+        checkBtn.visibility = if (ModelDownload.checking) View.GONE else View.VISIBLE
+        checkStatus.text = when {
+            ModelDownload.checking -> getString(R.string.update_checking)
+            ModelDownload.checkError != null -> getString(R.string.update_check_failed, ModelDownload.checkError)
+            else -> getString(R.string.models_updates_hint)
+        }
+
+        val root = ModelPrefs.modelRoot(this)
+        locationStatus.text = when {
+            running && ModelDownload.moving -> getString(R.string.model_moving, mb((s as ModelDownload.Status.Running).done), mb(s.total))
+            root == null -> getString(R.string.location_private)
+            else -> getString(R.string.location_shared, root)
+        }
+        resetLocationBtn.visibility = if (root == null) View.GONE else View.VISIBLE
+    }
+
+    /** One model: name, what it is, its state, and the actions that make sense for it now. */
+    private fun card(m: Catalogue.Model, inUse: Boolean, s: ModelDownload.Status) {
+        heading(if (inUse) getString(R.string.models_in_use, m.name) else m.name, list)
+        text(m.summary, list)
+        val ready = ModelStore.isReady(this, model = m)
+        val installed = ModelStore.installed(this, m)
+        val update = ModelDownload.updateAvailable(this, m)
+        val active = s is ModelDownload.Status.Running && !ModelDownload.moving && ModelDownload.target?.first?.id == m.id
+        val state = text("", list)
+        state.text = when {
+            !m.available -> getString(R.string.model_coming_soon_long)
+            active -> {
+                s as ModelDownload.Status.Running
+                getString(R.string.model_downloading_version,
+                    listOfNotNull(m.name, ModelDownload.target?.second?.version).joinToString(" "), mb(s.done), mb(s.total))
+            }
+            ModelDownload.queued(m.id) -> getString(R.string.models_queued)
+            s is ModelDownload.Status.Failed && ModelDownload.failedId == m.id -> getString(R.string.model_failed, s.message)
+            ready && update != null -> getString(R.string.update_available, update.version, mb(update.totalBytes), installed!!.version)
+            ready -> getString(R.string.models_downloaded, installed!!.version, mb(installed.totalBytes))
+            else -> getString(R.string.models_not_downloaded, mb(size(m)))
+        }
+        if (active) {
+            s as ModelDownload.Status.Running
+            list.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                max = 1000
+                progress = (s.done * 1000 / s.total.coerceAtLeast(1)).toInt()
+            })
+        }
+        if (!m.available) return
+        val r = row(list)
+        when {
+            active -> button(R.string.cancel, r) { ModelDownload.cancel() }
+            ModelDownload.queued(m.id) -> button(R.string.models_unqueue, r) { ModelDownload.unqueue(m) }
+            !ready -> button(R.string.download, r) { ModelDownload.download(this, m); render() }
+        }
+        if (ready && !inUse) button(R.string.models_use, r) { use(m) }
+        if (ready && update != null && s !is ModelDownload.Status.Running) button(getString(R.string.update_button, update.version), r) {
+            ModelDownload.update(this, m)
+        }
+        if (ready && !inUse && !active) button(R.string.delete, r) { confirmDelete(m) }
+    }
+
+    private fun button(label: String, parent: LinearLayout, onClick: () -> Unit) = Button(this).apply {
+        text = label
+        setOnClickListener { onClick() }
+        parent.addView(this)
+    }
+
+    /** Makes [m] the model the keyboard and floating mic use. */
+    private fun use(m: Catalogue.Model) {
+        ModelPrefs.setSelectedModel(this, m.id)
+        Transcriber.unload()
+        Transcriber.preload(this)
+        ModelDownload.clearFailure()
+        ModelDownload.check(this)
+        render()
+    }
+
+    private fun confirmDelete(m: Catalogue.Model) {
+        android.app.AlertDialog.Builder(this)
+            .setMessage(getString(R.string.manage_confirm, m.name))
+            .setPositiveButton(R.string.delete) { _, _ -> ModelStore.delete(this, m); render() }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        if (requestCode == REQ_STORAGE && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) openFolderPicker()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_FOLDER || resultCode != RESULT_OK) return
+        val path = data?.data?.let(::treeToPath)
+        val dir = path?.let { File(it, ModelStore.sharedFolder(Catalogue.selected(this))) }
+        if (dir == null || !(dir.isDirectory || dir.mkdirs()) || !dir.canWrite()) {
+            locationStatus.text = getString(R.string.location_unusable)
+            return
+        }
+        ModelDownload.relocate(this, path)
+        render()
+    }
+
+    /** Shared storage needs a real file path (sherpa-onnx opens files by path), hence all-files access. */
+    private fun chooseLocation() {
+        if (hasStorageAccess()) return openFolderPicker()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            pickAfterGrant = true
+            startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:$packageName")))
+        } else {
+            requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), REQ_STORAGE)
+        }
+    }
+
+    private fun hasStorageAccess() =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Environment.isExternalStorageManager()
+        else checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+
+    private fun openFolderPicker() = startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), REQ_FOLDER)
+
+    /** "primary:Models" -> /storage/emulated/0/Models; "1234-ABCD:x" -> /storage/1234-ABCD/x (SD card). */
+    private fun treeToPath(uri: Uri): String? {
+        if (uri.authority != "com.android.externalstorage.documents") return null
+        val id = DocumentsContract.getTreeDocumentId(uri)
+        val volume = id.substringBefore(':')
+        val rel = id.substringAfter(':', "")
+        val root = if (volume == "primary") Environment.getExternalStorageDirectory().path else "/storage/$volume"
+        return if (rel.isEmpty()) root else "$root/$rel"
+    }
+
+    private companion object {
+        const val REQ_STORAGE = 2
+        const val REQ_FOLDER = 3
+    }
+}

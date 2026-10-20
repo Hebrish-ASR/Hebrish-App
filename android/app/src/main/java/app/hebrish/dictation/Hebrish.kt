@@ -12,6 +12,15 @@ import android.net.Uri
 object Hebrish {
     const val SITE = "https://hebrish.app"
     const val FEEDBACK = "feedback@hebrish.app"
+    /** Always the newest APK (follows cdn.hebrish.app/downloads/latest.json). */
+    const val APK = "$SITE/get/android"
+    const val DOWNLOAD_PAGE = "$SITE/download#fdroid"
+
+    // The Hebrish F-Droid repository (Hebrish-ASR/Hebrish-FDroid). The fingerprint is the repo
+    // signing key's SHA-256; it never changes (every user who added the repo pinned it).
+    const val FDROID_APP = "https://f-droid.org/"
+    const val FDROID_REPO = "https://fdroid.hebrish.app/repo"
+    const val FDROID_FINGERPRINT = "EF8C2D63D994A10CD489A978585510B47E47452EC09248591CB2C0F39C2BC1FA"
 
     private fun mail(subject: String) = "mailto:$FEEDBACK?subject=" + Uri.encode("$subject (Hebrish for Android)")
 

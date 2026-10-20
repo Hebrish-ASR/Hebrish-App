@@ -23,8 +23,9 @@ import android.widget.Toast
 
 /**
  * "Try it": a notepad with a mic button, so people can hear what the model does before
- * setting it up as a keyboard. Records with [Recorder] and decodes with [Transcriber]
- * directly; no input method is involved.
+ * setting it up as a keyboard. Records with [Recorder] and decodes with [TakeDecoder]
+ * directly; no input method is involved. Text appears segment by segment while you talk
+ * (always "type as you go" here), and the status line reports the wait after Stop.
  */
 class TryActivity : Activity() {
     private enum class State { LOADING, IDLE, RECORDING, BUSY }
@@ -36,17 +37,19 @@ class TryActivity : Activity() {
     private val ui = Handler(Looper.getMainLooper())
     private var state = State.LOADING
     private var startedAt = 0L
+    private var decoder: TakeDecoder? = null
 
     private val recorder = Recorder(
         onLevel = { v -> ui.post { level.progress = (v * 100).toInt() } },
         onLimit = { ui.post { if (state == State.RECORDING) stopAndTranscribe() } },
+        onSegment = { decoder?.add(it) },
     )
 
     private val tick = object : Runnable {
         override fun run() {
             if (state != State.RECORDING) return
             val s = recorder.seconds
-            status.text = getString(R.string.try_listening, s / 60, s % 60, Recorder.MAX_SECONDS)
+            status.text = getString(R.string.try_listening, s / 60, s % 60)
             ui.postDelayed(this, 250)
         }
     }
@@ -88,6 +91,11 @@ class TryActivity : Activity() {
         if (state == State.RECORDING) stopAndTranscribe()   // never leave the mic open off-screen
     }
 
+    override fun onDestroy() {
+        decoder?.cancel()
+        super.onDestroy()
+    }
+
     /** The first load reads 650 MB and takes a few seconds; do it before the first tap. */
     private fun preload() {
         if (Transcriber.isLoaded(this)) return setState(State.IDLE, getString(R.string.try_ready))
@@ -114,37 +122,39 @@ class TryActivity : Activity() {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
             return
         }
+        decoder = TakeDecoder(this) { said -> ui.post { insert(said) } }
         recorder.start()
         startedAt = SystemClock.elapsedRealtime()
-        setState(State.RECORDING, getString(R.string.try_listening, 0, 0, Recorder.MAX_SECONDS))
+        setState(State.RECORDING, getString(R.string.try_listening, 0, 0))
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         ui.post(tick)
     }
 
     private fun stopAndTranscribe() {
+        val audio = recorder.samples / Transcriber.SAMPLE_RATE.toFloat()
         val samples = recorder.stop()
+        val d = decoder ?: return
+        decoder = null
         level.progress = 0
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        if (samples.size < Transcriber.SAMPLE_RATE / 3) {
+        if (samples.size < Transcriber.SAMPLE_RATE / 3 && d.segmentsQueued == 0) {
+            d.cancel()
             setState(State.IDLE, getString(R.string.try_too_short))
             return
         }
         setState(State.BUSY, getString(R.string.try_transcribing))
         val t0 = SystemClock.elapsedRealtime()
-        Thread {
-            val result = runCatching { Transcriber.transcribe(this, samples) }
+        val before = text.text.length
+        d.finish(samples) { result ->
             val took = (SystemClock.elapsedRealtime() - t0) / 1000f
-            val audio = samples.size / Transcriber.SAMPLE_RATE.toFloat()
             ui.post {
                 result.onSuccess { said ->
-                    if (said.isBlank()) setState(State.IDLE, getString(R.string.try_nothing))
-                    else {
-                        insert(said)
-                        setState(State.IDLE, getString(R.string.try_done, audio, took))
-                    }
+                    if (said.isNotBlank()) insert(said)
+                    if (said.isBlank() && d.segmentsQueued == 0 && text.text.length == before) setState(State.IDLE, getString(R.string.try_nothing))
+                    else setState(State.IDLE, getString(R.string.try_done, audio, took))
                 }.onFailure { setState(State.IDLE, getString(R.string.try_failed, it.message ?: "?")) }
             }
-        }.start()
+        }
     }
 
     /** At the cursor, with a space before it unless the cursor starts a line. */

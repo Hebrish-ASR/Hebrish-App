@@ -35,12 +35,26 @@ Per model (`ModelStore`, every function takes a `Catalogue.Model`, default `Cata
 - `subdir` may be empty (the stock repo has its files at the root). URLs are built with
   `ModelStore.path`, which skips empty parts, so there is no `//`.
 - `pruneOld` deletes old versions of one model only. Other models' downloads stay until the
-  user deletes them (**Delete other models…** → `ModelStore.delete`).
-- Switching model (`MainActivity.renderPicker`) sets `Prefs.selectedModel`, unloads the
-  recognizer, clears a stale download failure and checks HF for that model. `Transcriber`
+  user deletes them (Models screen → **Delete** → `ModelStore.delete`; not offered for the model in use).
+- Switching model (`ModelsActivity.use`, **Use this model**, only for a downloaded model) sets
+  `Prefs.selectedModel`, unloads the recognizer, preloads the new one, clears a stale download
+  failure and checks for updates. `Transcriber`
   also remembers which folder it loaded and reloads if the selected model's folder differs,
   so the IME can't keep transcribing with the previous model.
 - Relocation (`ModelDownload.relocate`) moves every ready model, not just the selected one.
+
+## Downloading any model (0.4.0, 2026-10-20)
+
+`ModelDownload.download(ctx, model)` downloads any available model, selected or not;
+`start(ctx)` is the selected-model shortcut the HeliBoard fork still calls. Only one job runs at a
+time; a download asked for while one runs goes into `ModelDownload.queue` and starts when the
+current job ends with `Done` (posted to the main thread). `downloadAll` queues every available
+model that isn't ready. Cancel and failure both clear the queue; `failedId` names the model a
+`Failed` status belongs to, so the Models screen shows it on the right card. `install` unloads the
+recognizer only when the model it just installed is the selected one. `check` now also checks
+every downloaded model (one manifest GET each), so updates show on every card; the
+`updateAvailable` / `update` functions take the model (default: selected). (I: compiled
+2026-10-20, not run on a device.)
 
 ## Model updates
 
@@ -70,7 +84,7 @@ selected model only:
    `.part` files resume on the next tap. A free-space check runs first, because for a moment
    both versions (~1.3 GB) are on disk.
 
-Checks run when the setup screen opens, at most every 6 h (`Prefs.lastCheck`), when the
+Checks run when the home or Models screen opens, at most every 6 h (`Prefs.lastCheck`), when the
 model is switched, and on **Check for update**. The IME never checks; it loads whatever is
 installed for the selected model.
 
@@ -177,7 +191,7 @@ URL, or (since 0.1.1) a `mailto:feedback@hebrish.app?subject=…` link for bug r
 requests and feedback. `MainActivity.open()` sends `mailto:` links as `ACTION_SENDTO` and appends
 the app version, Android release and device model to the body; with no email app it shows a
 toast naming the address. `MainActivity` builds the buttons of the **Hebrish** section (`@id/hebrish_links`, last on
-the setup screen) from that list, so adding or retiring a link touches only `Hebrish.kt` and
+the Help and contact screen, `ContactActivity`) from that list, so adding or retiring a link touches only `Hebrish.kt` and
 its label string. Checked with `./gradlew --offline compileDebugKotlin` (V, 2026-10-19, JDK 17
 at `/usr/lib/jvm/java-17-openjdk-amd64`; daniellaptop's shell `JAVA_HOME` points at a
 non-existent `/usr/lib64/jvm/java-17-openjdk`, so set it per command). Not yet seen on a device.
@@ -193,12 +207,22 @@ everything below that describes runtime behaviour).
 - **Controls:** idle mic → tap starts a take. Open take: mic = Stop (transcribe + insert), and a
   bar with timer, Pause/Resume (`Recorder.pause`/`start`, as in the IME), Retake (cancel + new
   take into the same target field), Discard. Idle long-press = insert `Prefs.lastTranscript`.
-- **Position:** `Prefs.bubbleSide` (`left`/`right`), `bubbleY` (0–1 of `displayMetrics.heightPixels`
-  minus the mic), `bubbleSize` (dp, 44/56/68), `bubbleOnlyTyping`. All keys start `bubble_`;
-  the service listens to the prefs file and re-places itself on any `bubble_*` change, so the
-  setup screen's controls move it live. Drag snaps to the side of the mic's centre and writes
-  the prefs. The window uses gravity LEFT or RIGHT with x = 6 dp, so the WRAP_CONTENT bar
-  grows inwards and the mic stays on the edge (children are reversed on the right side).
+- **Position (0.4.0):** `Prefs.bubbleSide` (`left`/`right`/`free`), `bubbleY` (0–1 of
+  `displayMetrics.heightPixels` minus the mic), `bubbleX` (0–1 of width minus the mic; `free`
+  only), `bubbleEdge` (dp gap, 0–48, default 6), `bubbleSize` (dp, 36–96; 0.3.0 stored one of
+  44/56/68, still valid), `bubbleAlpha` (idle opacity %, 25–100), `bubbleOnlyTyping`. All keys
+  start `bubble_`; the service listens to the prefs file and re-places itself on any `bubble_*`
+  change, so the Floating mic screen's controls move it live, and that screen listens too, so
+  a drag updates its sliders. `place()` works out the mic's left edge (`micLeft`), then anchors
+  the window to whichever half of the screen the mic's centre is in (gravity LEFT or RIGHT,
+  x measured from that side, minus the 4 dp window padding), so the WRAP_CONTENT bar grows
+  inwards (children reversed when anchored right). A drag on an edge side saves the nearer
+  side; on `free` it saves `bubbleX`.
+- **Missed field (0.4.0):** when `deliver` finds no editable focused node, or the node refuses
+  both SET_TEXT and PASTE, the text goes into `pending` (appended if something is already
+  waiting) and onto the clipboard, and the bar shows **Insert** + ×. Insert runs the same
+  `insertInto` on whatever has input focus at that moment; × drops it. The bar is shown while
+  something is pending even with *only while typing* on.
 - **Insertion** (`deliver`): target = `findFocus(FOCUS_INPUT)` captured when the take starts
   (re-checked with `refresh()`), else the focus at insert time. `ACTION_SET_TEXT` replaces the
   whole field, so it builds `before + [space] + text + after` from `text` and
@@ -216,9 +240,66 @@ everything below that describes runtime behaviour).
   (targetSdk 30+) classify the service as INVISIBLE_TOGGLE and tie its enabled state to its
   shortcut: turning the shortcut off turns the service off. Ramblr ships that as a separate,
   disabled-by-default service component; do the same if the button is ever wanted.
-- **Restricted settings:** on Android 13+ the setup screen shows the App info → *Allow
-  restricted settings* hint and button while the service is off.
+- **Restricted settings:** `FloatingMicGuideActivity` walks through it with a button per
+  settings page (Accessibility settings, App info). On Android 13+ the ⋮ → *Allow restricted
+  settings* item only appears after the user has tried the switch once, so the guide says to
+  try first. Daniel's own setup on the Nord 3 (2026-10-20): allow restricted settings, then
+  Accessibility → Downloaded apps → Hebrish floating mic.
 - Ramblr (GPL-3.0) was read for design only; no code was copied (this app is MIT).
+
+## Inference speed (0.4.0, 2026-10-20)
+
+What makes the wait after Stop short, in order of effect (I: none of it timed on a device yet;
+measure with Try it, whose status line reports the seconds from Stop to text):
+
+1. **Decoding during the take.** `Recorder(onSegment = …)` cuts the take at pauses while it is
+   recorded and hands each segment to a `TakeDecoder`, which decodes it on one worker thread.
+   At Stop only the audio since the last cut is decoded. Cut rules (`Recorder.Segmenting`): no
+   cut before 8 s of audio; then a cut once 0.6 s of silence has passed (the silence stays at the
+   end of the segment, which the model needs); a hard cut at 28 s at the quietest 100 ms chunk of
+   the last 4 s. "Silence" is a chunk's RMS under max(0.004, 3 × a slowly tracked noise floor).
+   Short takes (< 8 s) are one segment, exactly as before.
+2. **No 90 s cap.** Each decode is at most ~28 s, so the full-attention memory growth that set
+   the 90 s cap no longer applies; segmented takes stop at `MAX_SEGMENTED_SECONDS` (20 min), a
+   battery guard for a forgotten mic. Audio already decoded is dropped, so memory stays flat.
+   `MAX_SECONDS` (90) still applies to a `Recorder` without `onSegment` (the HeliBoard fork).
+3. **Silence trim.** `Transcriber.trim` drops audio before the first and after the last speech
+   (20 ms frames above noise + 10 % of the take's loud level), keeping 0.35 s each side, then
+   0.8 s of zeros is appended (was a flat 1 s on untrimmed audio). Audio with no clear speech is
+   decoded whole. The encoder's cost grows with input length, so this saves the 1–2 s of
+   reach-for-the-button silence most takes have.
+4. **Warm-up.** `Transcriber.load` decodes 0.5 s of zeros right after creating the recognizer,
+   so ONNX Runtime's first-run allocations happen during the preload, not on the first take.
+5. **Preload earlier.** The floating mic loads the model when the service connects and on any
+   editable field getting focus (`Transcriber.preload`, a no-op when loaded). The service's
+   process has foreground importance, so the model normally stays resident (~0.7 GB RAM) while
+   the floating mic is on.
+
+Text joins: segment texts are joined with a space. A cut lands in a pause, which is usually a
+sentence or clause boundary, so the model's per-segment casing and full stop mostly fit; a
+mid-sentence pause can produce an extra full stop and capital. *Type as you go*
+(`Prefs.typeAsYouGo`) inserts each segment when decoded (keyboard: `commitText`; floating mic:
+`deliver` into the take's field), and Discard then drops only what isn't in yet.
+
+Considered and not done: NNAPI (`provider = "nnapi"`; the AAR's ONNX Runtime has the NNAPI EP)
+is unlikely to help the dynamically quantised int8 graph (MatMulInteger / DynamicQuantizeLinear
+are poorly supported by NNAPI and would fall back to CPU with copy overhead); untested. More
+than 4 threads: the Nord 3's Dimensity 9000 has 4 big cores, and the little cores slow a
+parallel op down. A true streaming model would show text while you speak; the Nemotron
+streaming fine-tune (no name yet) is the candidate.
+
+## App screens (0.4.0, 2026-10-20)
+
+The single setup screen (`activity_main.xml`, removed) became a home screen plus one screen
+per area, all `Page` subclasses built in code (`Page.kt`: headings, text, buttons, switches,
+sliders, nav rows, the `mailto:`-aware `open`): `MainActivity` (home: status, Try it, mic
+grant, links to the rest), `ModelsActivity`, `KeyboardActivity`, `FloatingMicActivity`,
+`FloatingMicGuideActivity`, `DictationActivity`, `InstallActivity` (F-Droid repository, values
+in `Hebrish.kt`: `FDROID_REPO`, `FDROID_FINGERPRINT`, same as hebrish.app/download#fdroid;
+**Add the Hebrish repository** opens `fdroidrepos://…?fingerprint=…`, which F-Droid clients
+register, and falls back to the https link) and `ContactActivity`. Setup checks shared by
+screens are in `Setup` (MainActivity.kt). Every screen but home has `parentActivityName`
+`.MainActivity` and an Up arrow. Prefs keys did not change, so 0.3.0 settings carry over.
 
 ## Signing
 
@@ -230,6 +311,10 @@ unchanged). The secrets must be set on the Hebrish-Dictation repo too. Daniel's 
 to it. Losing it means users must uninstall before installing a newer APK.
 
 ## Not yet verified (as of 2026-10-20)
+
+- 0.4.0 on a device: segment cuts and joins, the trim on quiet speakers, the Stop-to-text time,
+  the download queue, the new screens, Insert after a missed field, `fdroidrepos://` opening
+  F-Droid.
 
 - The floating mic (0.3.0) on any device: recording from the service, insertion in Gmail,
   WhatsApp, Chrome and a Compose app, the paste fallback, drag and snap, rotation.

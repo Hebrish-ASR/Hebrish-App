@@ -8,7 +8,9 @@ The on-device dictation engine, shared as **source** by two apps:
 | Hebrish Keyboard (`Hebrish-ASR/Hebrish-Keyboard`, HeliBoard fork) | This repo is a git submodule at `hebrish/`; its `app/build.gradle.kts` adds `../hebrish/android/core/src/main/java` the same way |
 
 Package `app.hebrish.core`: `Catalogue`, `ModelStore`, `ModelDownload`, `ModelPrefs`, `Recorder`,
-`Transcriber`. Split out of the voice keyboard on 2026-10-19.
+`Transcriber`, `TakeDecoder` (0.4.0: decodes a take's segments while it is recorded). Split out of
+the voice keyboard on 2026-10-19. 0.4.0's changes here are additive (new optional `Recorder`
+parameter, new `ModelDownload` functions with defaults), so the HeliBoard fork builds unchanged.
 
 Why a source folder and not a Gradle library module: the two apps use different Android Gradle
 Plugin generations (this repo AGP 8.9 with the Kotlin plugin; HeliBoard AGP 9.1 with built-in
