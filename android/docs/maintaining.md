@@ -182,6 +182,44 @@ its label string. Checked with `./gradlew --offline compileDebugKotlin` (V, 2026
 at `/usr/lib/jvm/java-17-openjdk-amd64`; daniellaptop's shell `JAVA_HOME` points at a
 non-existent `/usr/lib64/jvm/java-17-openjdk`, so set it per command). Not yet seen on a device.
 
+## Floating mic (0.3.0, 2026-10-20)
+
+`FloatingMicService` (AccessibilityService, config `res/xml/floating_mic.xml`) puts a mic over
+every app in a `TYPE_ACCESSIBILITY_OVERLAY` window (no `SYSTEM_ALERT_WINDOW` needed), not
+focusable, so the field keeps input focus. Built from `docs/plans/accessibility-overlay.md`.
+Compiled with `assembleDebug` (V, 2026-10-20, JDK 21); **not yet run on a device** (I for
+everything below that describes runtime behaviour).
+
+- **Controls:** idle mic → tap starts a take. Open take: mic = Stop (transcribe + insert), and a
+  bar with timer, Pause/Resume (`Recorder.pause`/`start`, as in the IME), Retake (cancel + new
+  take into the same target field), Discard. Idle long-press = insert `Prefs.lastTranscript`.
+- **Position:** `Prefs.bubbleSide` (`left`/`right`), `bubbleY` (0–1 of `displayMetrics.heightPixels`
+  minus the mic), `bubbleSize` (dp, 44/56/68), `bubbleOnlyTyping`. All keys start `bubble_`;
+  the service listens to the prefs file and re-places itself on any `bubble_*` change, so the
+  setup screen's controls move it live. Drag snaps to the side of the mic's centre and writes
+  the prefs. The window uses gravity LEFT or RIGHT with x = 6 dp, so the WRAP_CONTENT bar
+  grows inwards and the mic stays on the edge (children are reversed on the right side).
+- **Insertion** (`deliver`): target = `findFocus(FOCUS_INPUT)` captured when the take starts
+  (re-checked with `refresh()`), else the focus at insert time. `ACTION_SET_TEXT` replaces the
+  whole field, so it builds `before + [space] + text + after` from `text` and
+  `textSelectionStart/End` (an empty field's hint is excluded via `isShowingHintText`), then
+  `ACTION_SET_SELECTION` to the end of the insert. Fallback: clipboard + `ACTION_PASTE`; the
+  old clip is not restored because a background service can't read the clipboard on Android
+  10+. Password nodes are skipped.
+- **No foreground service for the mic.** The system binds every enabled accessibility service
+  with `BIND_FOREGROUND_SERVICE_WHILE_AWAKE | BIND_INCLUDE_CAPABILITIES`
+  (AOSP `AccessibilityServiceConnection.bindLocked()`), which gives the process foreground
+  importance and the while-in-use capabilities, microphone included. Source: Ramblr's
+  `docs/adr/0002-background-transcription.md` (trevornk/ramblr, read 2026-10-20), which records
+  from its accessibility service the same way. (I) until tried on the Nord 3.
+- **No system accessibility button on purpose.** `flagRequestAccessibilityButton` makes Android
+  (targetSdk 30+) classify the service as INVISIBLE_TOGGLE and tie its enabled state to its
+  shortcut: turning the shortcut off turns the service off. Ramblr ships that as a separate,
+  disabled-by-default service component; do the same if the button is ever wanted.
+- **Restricted settings:** on Android 13+ the setup screen shows the App info → *Allow
+  restricted settings* hint and button while the service is off.
+- Ramblr (GPL-3.0) was read for design only; no code was copied (this app is MIT).
+
 ## Signing
 
 The release key is **not** in the repo. GitHub Actions secrets: `RELEASE_KEYSTORE_B64`
@@ -191,7 +229,10 @@ unchanged). The secrets must be set on the Hebrish-Dictation repo too. Daniel's 
 `~/.android/keystores/codeswitch-voice-release.jks`, with its password in the `.txt` next
 to it. Losing it means users must uninstall before installing a newer APK.
 
-## Not yet verified (as of 2026-10-19)
+## Not yet verified (as of 2026-10-20)
+
+- The floating mic (0.3.0) on any device: recording from the service, insertion in Gmail,
+  WhatsApp, Chrome and a Compose app, the paste fallback, drag and snap, rotation.
 
 - The update flow and the model picker on a device; the remote catalogue fetch.
 - Back with gesture navigation; `switchInputMethod(id)` on OxygenOS; pause/resume on device.

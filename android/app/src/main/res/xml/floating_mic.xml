@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FloatingMicService. Focus events are only used for "show only while a text field is focused";
+     window content is read only to find the focused field and put the transcript in it.
+     flagRetrieveInteractiveWindows lets findFocus see fields in dialogs and popups.
+     No flagRequestAccessibilityButton on purpose: on targetSdk 30+ it makes Android tie the
+     service's on/off switch to its shortcut, so turning the shortcut off silently turns the
+     service off (found by Ramblr, its accessibility_service_config.xml, read 2026-10-20). -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeViewFocused|typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows"
+    android:canRetrieveWindowContent="true"
+    android:notificationTimeout="100"
+    android:description="@string/a11y_description" />

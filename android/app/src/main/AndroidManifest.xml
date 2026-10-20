@@ -47,5 +47,19 @@
                 android:name="android.view.im"
                 android:resource="@xml/method" />
         </service>
+
+        <!-- The floating mic. Enabled by the user in Accessibility settings; nothing else can bind it. -->
+        <service
+            android:name=".FloatingMicService"
+            android:exported="false"
+            android:label="@string/a11y_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/floating_mic" />
+        </service>
     </application>
 </manifest>

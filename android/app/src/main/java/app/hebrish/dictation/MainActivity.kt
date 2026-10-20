@@ -13,12 +13,14 @@ import android.provider.DocumentsContract
 import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
+import android.view.accessibility.AccessibilityManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.RadioButton
 import android.widget.RadioGroup
+import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.Toast
 import android.widget.TextView
@@ -40,6 +42,7 @@ class MainActivity : Activity() {
     private lateinit var locationStatus: TextView
     private lateinit var resetLocationBtn: Button
     private lateinit var returnStatus: TextView
+    private lateinit var bubbleStatus: TextView
     /** Set while the user is away granting storage access, so the folder picker opens on return. */
     private var pickAfterGrant = false
 
@@ -102,6 +105,50 @@ class MainActivity : Activity() {
             isChecked = Prefs.backSwitches(this@MainActivity)
             setOnCheckedChangeListener { _, v -> Prefs.setBackSwitches(this@MainActivity, v) }
         }
+        setupBubble()
+    }
+
+    /** Floating mic controls. Each one writes Prefs; FloatingMicService moves the mic live. */
+    private fun setupBubble() {
+        bubbleStatus = findViewById(R.id.bubble_status)
+        findViewById<Button>(R.id.bubble_enable).setOnClickListener { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        findViewById<Button>(R.id.bubble_app_info).setOnClickListener {
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+        }
+        findViewById<RadioGroup>(R.id.bubble_side).setOnCheckedChangeListener { _, id ->
+            Prefs.setBubbleSide(this, if (id == R.id.bubble_left) Prefs.SIDE_LEFT else Prefs.SIDE_RIGHT)
+        }
+        val label = findViewById<TextView>(R.id.bubble_height_label)
+        findViewById<SeekBar>(R.id.bubble_height).setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar, p: Int, fromUser: Boolean) {
+                label.text = getString(R.string.bubble_height, p)
+                if (fromUser) Prefs.setBubbleY(this@MainActivity, p / 100f)
+            }
+            override fun onStartTrackingTouch(bar: SeekBar) = Unit
+            override fun onStopTrackingTouch(bar: SeekBar) = Unit
+        })
+        val sizes = listOf(R.id.bubble_small, R.id.bubble_medium, R.id.bubble_large)
+        findViewById<RadioGroup>(R.id.bubble_size).setOnCheckedChangeListener { _, id ->
+            sizes.indexOf(id).takeIf { it >= 0 }?.let { Prefs.setBubbleSize(this, Prefs.BUBBLE_SIZES[it]) }
+        }
+        findViewById<Switch>(R.id.bubble_only_typing).setOnCheckedChangeListener { _, v -> Prefs.setBubbleOnlyTyping(this, v) }
+    }
+
+    /** Reads the controls back from Prefs, since dragging the mic changes side and height. */
+    private fun renderBubble() {
+        val on = (getSystemService(ACCESSIBILITY_SERVICE) as AccessibilityManager)
+            .getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            .any { it.resolveInfo.serviceInfo.packageName == packageName && it.resolveInfo.serviceInfo.name == FloatingMicService::class.java.name }
+        bubbleStatus.setText(if (on) R.string.bubble_on else R.string.bubble_off)
+        val restricted = !on && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        findViewById<View>(R.id.bubble_restricted).visibility = if (restricted) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.bubble_app_info).visibility = if (restricted) View.VISIBLE else View.GONE
+        findViewById<RadioGroup>(R.id.bubble_side).check(if (Prefs.bubbleSide(this) == Prefs.SIDE_LEFT) R.id.bubble_left else R.id.bubble_right)
+        findViewById<SeekBar>(R.id.bubble_height).progress = (Prefs.bubbleY(this) * 100).toInt()
+        findViewById<TextView>(R.id.bubble_height_label).text = getString(R.string.bubble_height, (Prefs.bubbleY(this) * 100).toInt())
+        val size = Prefs.BUBBLE_SIZES.indexOf(Prefs.bubbleSize(this)).let { if (it < 0) 1 else it }
+        findViewById<RadioGroup>(R.id.bubble_size).check(listOf(R.id.bubble_small, R.id.bubble_medium, R.id.bubble_large)[size])
+        findViewById<Switch>(R.id.bubble_only_typing).isChecked = Prefs.bubbleOnlyTyping(this)
     }
 
     override fun onResume() {
@@ -290,6 +337,7 @@ class MainActivity : Activity() {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         val enabled = imm.enabledInputMethodList.any { it.packageName == packageName }
         imeStatus.setText(if (enabled) R.string.ime_enabled else R.string.ime_disabled)
+        renderBubble()
     }
 
     /** Only once a model is installed; before that, Download already fetches the newest one. */

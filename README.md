@@ -54,7 +54,7 @@ app and OS version filled in, and link to hebrish.app's contact form to
 
 | Platform | What it is |
 | --- | --- |
-| **Android** | A voice keyboard (IME), the companion voice input for HeliBoard or any keyboard. Android 9+, arm64. For a full keyboard with dictation built in, see [Hebrish Keyboard](https://github.com/Hebrish-ASR/Hebrish-Keyboard), a HeliBoard fork |
+| **Android** | A voice keyboard (IME), the companion voice input for HeliBoard or any keyboard, plus an optional floating mic that dictates into any app without switching keyboards (0.3.0+). Android 9+, arm64. For a full keyboard with dictation built in, see [Hebrish Keyboard](https://github.com/Hebrish-ASR/Hebrish-Keyboard), a HeliBoard fork |
 | **Ubuntu** | A tray app for Ubuntu 26.04 amd64 (.deb) |
 | **Windows** | A portable tray app (.zip): unzip and run `Hebrish.exe` |
 

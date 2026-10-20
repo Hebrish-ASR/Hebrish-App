@@ -1,6 +1,6 @@
 # Hebrish for Android: on-device voice keyboard
 
-[![Download APK v0.2.2](https://img.shields.io/badge/Download_APK-v0.2.2-24527A?logo=android)](https://cdn.hebrish.app/downloads/android/Hebrish-v0.2.2.apk)
+[![Download APK v0.2.2](https://img.shields.io/badge/Download_APK-v0.3.0-24527A?logo=android)](https://cdn.hebrish.app/downloads/android/Hebrish-v0.3.0.apk)
 [![Website: hebrish.app](https://img.shields.io/badge/Website-hebrish.app-1F6FEB?logo=googlechrome&logoColor=white)](https://hebrish.app)
 
 **Website for the English-Hebrew code-switching model: [hebrish.app](https://hebrish.app)**: get the Hebrish keyboard for Android and the desktop apps, see the results, and find every model, dataset and demo in one place.
@@ -8,7 +8,7 @@
 > **Early testing build.** Not yet run on a device under this name; see
 > [`docs/maintaining.md`](docs/maintaining.md) for what is verified.
 
-**What it does.** An Android voice input method (IME) running NVIDIA **Parakeet TDT 0.6B v2**
+**What it does.** An Android voice input method (IME), plus an optional floating mic for any app, running NVIDIA **Parakeet TDT 0.6B v2**
 **fully on the phone**. You choose which model it uses (below). Nothing you say is sent
 anywhere; the only network use is downloading a model from Hugging Face and checking for a
 newer version of it.
@@ -45,7 +45,7 @@ a word, Send voice samples and Get involved open the site's contact form.
 1. Install **[HeliBoard](https://github.com/Helium314/HeliBoard/releases)** and make it your
    main keyboard.
 2. Download the APK from the
-   [APK (v0.2.2)](https://cdn.hebrish.app/downloads/android/Hebrish-v0.2.2.apk)
+   [APK (v0.3.0)](https://cdn.hebrish.app/downloads/android/Hebrish-v0.3.0.apk)
    and install it. You will need to allow installs from your browser or file manager.
 3. Open **Hebrish** and work through it:
    - **Pick a model** and **Download** it. It is about 660 MB, downloaded once; use Wi-Fi.
@@ -84,6 +84,31 @@ Voice keyboard keys: previous keyboard · delete · **mic** · space · enter.
   **Discard**.
 - **Insert last transcript:** if no text field had focus when the transcript came back, it
   is kept, and this button types it in once you tap a field.
+
+## Floating mic (optional, since 0.3.0)
+
+A mic button that floats over every app, so you can dictate without switching keyboards at
+all: your regular keyboard stays up and the text goes straight into the field.
+
+- **Turn it on:** setup screen → **4. Floating mic** → **Accessibility settings** → *Hebrish
+  floating mic*. On Android 13+ a sideloaded app's switch is greyed out until you open **App
+  info** → ⋮ → *Allow restricted settings*; the setup screen links there.
+- **Dictate:** tap a text field, tap the mic and talk. While a take is open the mic turns red
+  (it is now **Stop**) and a bar opens beside it with a timer, **Pause / Resume**, **Retake**
+  (throw the take away and start again) and **Discard**. **Stop** transcribes and puts the text
+  in at the cursor, with a space before it if needed. Takes stop by themselves at 90 s.
+- **Where it sits:** drag the mic anywhere; when you let go it snaps to the nearer edge and
+  remembers the side and height. The setup screen sets the same things directly (left or right
+  edge, height as a percentage of the screen, small / medium / large), and moves the mic live.
+  The bar always opens towards the middle of the screen. *Show only while a text field is
+  focused* hides the mic the rest of the time.
+- **Long-press the idle mic** to insert the last transcript again (e.g. if no field had focus).
+- **Fields that refuse it** (some web pages and custom editors): the text is pasted from the
+  clipboard instead, and if that fails too it is left on the clipboard. Password fields are
+  never touched.
+
+It uses the same model and the same process as the voice keyboard; the two can be used side by
+side.
 
 ## Model details
 

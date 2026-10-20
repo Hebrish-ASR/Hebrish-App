@@ -1,6 +1,7 @@
 package app.hebrish.dictation
 
 import android.content.Context
+import android.content.SharedPreferences
 
 object Prefs {
     private fun sp(ctx: Context) = ctx.getSharedPreferences("prefs", Context.MODE_PRIVATE)
@@ -28,4 +29,28 @@ object Prefs {
     /** The most recent transcript, for Insert last when it could not be typed into a field. */
     fun lastTranscript(ctx: Context): String? = sp(ctx).getString("last_transcript", null)
     fun setLastTranscript(ctx: Context, v: String) = sp(ctx).edit().putString("last_transcript", v).apply()
+
+    // Floating mic (FloatingMicService). Keys start with "bubble_": the service re-places itself on any change.
+    const val SIDE_LEFT = "left"
+    const val SIDE_RIGHT = "right"
+
+    /** Screen edge the floating mic is parked on. */
+    fun bubbleSide(ctx: Context): String = sp(ctx).getString("bubble_side", SIDE_RIGHT) ?: SIDE_RIGHT
+    fun setBubbleSide(ctx: Context, v: String) = sp(ctx).edit().putString("bubble_side", v).apply()
+
+    /** Height of the floating mic: 0 = top of the screen, 1 = bottom. */
+    fun bubbleY(ctx: Context) = sp(ctx).getFloat("bubble_y", 0.6f)
+    fun setBubbleY(ctx: Context, v: Float) = sp(ctx).edit().putFloat("bubble_y", v).apply()
+
+    /** Diameter of the floating mic in dp (one of [BUBBLE_SIZES]). */
+    fun bubbleSize(ctx: Context) = sp(ctx).getInt("bubble_size", BUBBLE_SIZES[1])
+    fun setBubbleSize(ctx: Context, v: Int) = sp(ctx).edit().putInt("bubble_size", v).apply()
+    val BUBBLE_SIZES = intArrayOf(44, 56, 68)
+
+    /** Show the floating mic only while a text field has focus (otherwise always, and during a take). */
+    fun bubbleOnlyTyping(ctx: Context) = sp(ctx).getBoolean("bubble_only_typing", false)
+    fun setBubbleOnlyTyping(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("bubble_only_typing", v).apply()
+
+    fun listen(ctx: Context, l: SharedPreferences.OnSharedPreferenceChangeListener) = sp(ctx).registerOnSharedPreferenceChangeListener(l)
+    fun unlisten(ctx: Context, l: SharedPreferences.OnSharedPreferenceChangeListener) = sp(ctx).unregisterOnSharedPreferenceChangeListener(l)
 }

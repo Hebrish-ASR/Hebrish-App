@@ -5,4 +5,6 @@
     <color name="ime_bg">#1F2124</color>
     <color name="ime_key">#33363B</color>
     <color name="ime_text">#E8EAED</color>
+    <!-- Floating mic while a take is open. -->
+    <color name="bubble_recording">#C62828</color>
 </resources>

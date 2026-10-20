@@ -118,6 +118,32 @@
     <string name="cd_backspace">Delete</string>
     <string name="cd_space">Space</string>
     <string name="cd_enter">Enter</string>
+    <!-- Floating mic (FloatingMicService) -->
+    <string name="a11y_label">Hebrish floating mic</string>
+    <string name="a11y_description">Shows a floating microphone over other apps. Tap it to dictate into the text field you are in, without switching keyboards. Hebrish reads the focused text field only to put your transcript in at the cursor, and it never reads password fields. Audio and text stay on this phone.</string>
+    <string name="step_bubble">4. Floating mic (optional)</string>
+    <string name="bubble_body">A mic button that floats over every app. Tap it in any text field, talk, and tap Stop: the text goes in at the cursor and your keyboard stays as it is. While you talk it shows Pause, Retake and Discard. Long-press the idle mic to insert the last transcript again. It runs as an accessibility service.</string>
+    <string name="bubble_on">On. Drag the mic to move it, or set its place below.</string>
+    <string name="bubble_off">Off. Turn on “Hebrish floating mic” in Accessibility settings (under Downloaded or Installed apps).</string>
+    <string name="bubble_enable">Accessibility settings</string>
+    <string name="bubble_restricted">Is the switch greyed out? Android 13+ blocks accessibility for apps installed from outside a store until you allow it: App info → ⋮ (top right) → Allow restricted settings, then try again.</string>
+    <string name="bubble_app_info">App info</string>
+    <string name="bubble_position">Position</string>
+    <string name="bubble_left">Left edge</string>
+    <string name="bubble_right">Right edge</string>
+    <string name="bubble_height">Height on screen: %1$d%%</string>
+    <string name="bubble_size">Size</string>
+    <string name="bubble_small">Small</string>
+    <string name="bubble_medium">Medium</string>
+    <string name="bubble_large">Large</string>
+    <string name="bubble_only_typing">Show only while a text field is focused</string>
+    <string name="bubble_time">%1$d:%2$02d</string>
+    <string name="bubble_paused_time">Paused %1$d:%2$02d</string>
+    <string name="bubble_retake">Retake</string>
+    <string name="bubble_discarded">Take discarded.</string>
+    <string name="bubble_no_last">No transcript yet.</string>
+    <string name="bubble_no_field">No text field to type into. Tap a field, then long-press the mic to insert it.</string>
+    <string name="bubble_on_clipboard">This field doesn\'t accept dictation; the text is on the clipboard.</string>
     <!-- Try it (TryActivity) -->
     <string name="try_open">Try it now: no setup needed</string>
     <string name="try_open_hint">Hear what it does before you set it up as a keyboard.</string>

@@ -1,6 +1,7 @@
 # Plan: accessibility overlay (floating mic)
 
-Status: **plan only**, not started. Written 2026-10-18 at Daniel's request ("save that as a plan").
+Status: **built in 0.3.0** (2026-10-20) as `FloatingMicService`; see `docs/maintaining.md`, "Floating mic", for what
+was built and what differs from this plan. Written 2026-10-18 at Daniel's request ("save that as a plan").
 Statements marked (I) are inferred from Android docs and behaviour, not tested.
 
 ## Why
