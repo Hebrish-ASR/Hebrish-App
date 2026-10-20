@@ -11,7 +11,7 @@
     <string name="terms_body">The Hebrish models are free for personal, research, education and non-profit use. Commercial use, including telephony and call centres, needs a commercial licence: access-requests@hebrish.app. Hebrish is experimental and trained on one speaker\'s voice; transcripts can be wrong, so check them before relying on them. It is provided as is, without warranty. Your audio stays on this phone.</string>
     <string name="open_terms">Read the terms of use</string>
 
-    <string name="intro">On-device voice typing with NVIDIA Parakeet TDT 0.6B v2. Choose the stock model or a fine-tune. Recognition runs on the phone; audio never leaves it.</string>
+    <string name="intro">On-device voice typing with NVIDIA Parakeet TDT 0.6B v2. Made for the English-Hebrew code-switching model; stock Parakeet is there too. Recognition runs on the phone; audio never leaves it.</string>
     <string name="version_line">App %1$s · %2$s %3$s (HF rev %4$s) · sherpa-onnx int8</string>
     <string name="version_line_none">App %1$s · %2$s · sherpa-onnx int8</string>
 

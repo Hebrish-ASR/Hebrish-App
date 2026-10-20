@@ -23,12 +23,11 @@ setup is needed.
 | --- | --- | --- |
 | **Parakeet (stock)** | available | NVIDIA's release, unchanged. General English, any speaker. The default |
 | **English-Hebrew code-switching** | available | Fine-tuned on English with Hebrew words in it, written in Latin letters. One speaker's voice |
-| **Technical vocabulary** | coming soon | Software, AI and infrastructure terms |
-| **Personal (general)** | coming soon | General English in one speaker's (Irish-accented) voice |
 
 The list comes from [`../shared/models.json`](../shared/models.json). The APK carries a copy,
 and every update check fetches the current one from GitHub, so a model published later
-shows up without installing a new APK. "Coming soon" models are listed but can't be picked.
+shows up without installing a new APK. Hebrish ships only these two; the other fine-tunes are in
+[Parlance](https://github.com/danielrosehill/Parlance-Dictation).
 
 The app is a home screen with one screen per area (since 0.4.0): **Models**, **Voice keyboard**,
 **Floating mic** (with a step-by-step guide to turning it on), **Dictation**, **Install and
@@ -137,7 +136,7 @@ side.
 | Offline fallback (`ModelStore.BUNDLED`) | stock v2 at rev `1ab9323565dd`; code-switching v1.0 at rev `bb137e504b97` of the mirror (since 0.2.1). Used only when HF can't be reached on a first download |
 | Runtime | [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8 Android AAR, CPU, greedy search |
 
-The fine-tunes are trained on a single speaker's voice, so expect them to work best for that
+The code-switching model is trained on a single speaker's voice, so expect it to work best for that
 voice. Output is punctuated and cased, numbers come out as digits, and Hebrew words are
 written in Latin script (the v2 tokenizer has no Hebrew characters).
 

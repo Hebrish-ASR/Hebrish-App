@@ -149,12 +149,13 @@ def test_models_are_isolated():
 
 
 def test_planned_models_cannot_be_selected_or_fetched():
-    planned = [m for m in ms.models() if not m.available]
-    assert {m.id for m in planned} >= {"tech", "personal"}
+    # Hebrish's catalogue lists no planned model, so use a made-up one.
+    planned = ms.Model("planned-test", "Planned", "", "planned")
+    assert not planned.available
     with pytest.raises(ValueError):
-        ms.select(planned[0].id)
+        ms.select(planned.id)
     with pytest.raises(RuntimeError):
-        ms.fetch_latest(planned[0].id)
+        ms.fetch_latest(planned.id)
 
 
 def test_bad_cached_catalogue_falls_back_to_bundled():

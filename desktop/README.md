@@ -1,7 +1,7 @@
 # Hebrish: desktop (Linux and Windows)
 
 The desktop app of [Hebrish](../README.md): on-device dictation with NVIDIA Parakeet,
-stock or one of the fine-tunes, running on your CPU with sherpa-onnx.
+stock or the English-Hebrew code-switching fine-tune, running on your CPU with sherpa-onnx.
 
 **Website for the English-Hebrew code-switching model: [hebrish.app](https://hebrish.app)**: get the Hebrish keyboard for Android and the desktop apps, see the results, and find every model, dataset and demo in one place.
 
@@ -29,8 +29,9 @@ stock or one of the fine-tunes, running on your CPU with sherpa-onnx.
 **Also included:**
 - **Tray icon:** closing the window leaves the app in the tray. Middle-click the tray icon to start or stop dictation.
 - **Model choice** (Model tab): stock Parakeet, or the English-Hebrew code-switching
-  fine-tune. The technical and personal-voice fine-tunes are listed as *coming soon* and
-  appear by themselves once published (the app re-reads the catalogue from this repo).
+  fine-tune. Those are the only two; the other fine-tunes are in Parlance
+  (danielrosehill/Parlance-Dictation). A new code-switching version appears by itself (the app
+  re-reads the catalogue from this repo).
   - Each model (~630 MB) downloads once, on request, with its SHA-256 checked.
   - Models you've downloaded stay on disk, so switching back is instant; *Delete the other
     models* frees the space.

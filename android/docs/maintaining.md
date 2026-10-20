@@ -19,7 +19,9 @@ desktop app (`Catalogue.kt`):
   lists at least one available model, it is cached in `Prefs.catalogueJson` and used from
   then on. Otherwise the current one stays. So publishing a model = add its repo to
   `models.json` with `status: "available"` and push; no APK release (I: not yet run on a device).
-- A model with `status: "planned"` (tech, personal) is shown disabled as "coming soon".
+- A model with `status: "planned"` is shown disabled as "coming soon". Hebrish lists none: the
+  technical and personal fine-tunes were removed from its catalogue on 2026-10-20 (they belong to
+  Parlance only; `test_shared.py::test_hebrish_ships_only_stock_and_codeswitch` guards it).
 - `version_label` (stock: `v2`) is the label for a repo without `version.json`.
 - A schema change that old apps can't read must bump `schema`; old apps then ignore the
   remote copy and keep their cached or bundled one.

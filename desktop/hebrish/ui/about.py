@@ -86,8 +86,8 @@ check.</p>
 
 <h3>Models</h3>
 <ul>{catalogue}</ul>
-<p>The fine-tunes are trained on one speaker's voice, so they work best for voices like
-that one. Stock Parakeet is the right choice for anyone else.</p>
+<p>The code-switching model is trained on one speaker's voice, so it works best for voices
+like that one. Stock Parakeet is the right choice for anyone else.</p>
 
 <h3>English-Hebrew code-switching: how {t['version']} was trained</h3>
 <p>English with Hebrew words in it, written in Latin letters: <i>teudat zehut</i>,

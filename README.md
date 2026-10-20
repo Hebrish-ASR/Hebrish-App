@@ -1,9 +1,9 @@
 # Hebrish Dictation
 
-**On-device dictation with NVIDIA Parakeet, for Android, Linux and Windows.** Pick the model
-that suits how you talk: stock Parakeet, or a fine-tune of it.
+**On-device dictation with NVIDIA Parakeet, for Android, Linux and Windows.** Made for the
+English-Hebrew code-switching model; stock Parakeet is there too.
 
-![Hebrish on Linux: the Model tab, choosing between stock Parakeet and the fine-tunes](docs/screenshots/desktop-model.png)
+![Hebrish on Linux: the Model tab, choosing between stock Parakeet and the code-switching model](docs/screenshots/desktop-model.png)
 
 Everything runs **on your device**. The only network traffic is downloading the model you
 pick (~630 MB, once) and a periodic check for a newer version.
@@ -28,13 +28,12 @@ run with sherpa-onnx (int8).
 | --- | --- | --- |
 | **Parakeet (stock)** | available | General English, any speaker. NVIDIA's release, unchanged |
 | **English-Hebrew code-switching** | available | English with Hebrew words in it (*teudat zehut*, *arnona*, *bituach leumi*), written in Latin letters. [Model card](https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching) · website: [hebrish.app](https://hebrish.app) |
-| **Technical vocabulary** | coming soon | Software, AI and infrastructure terms |
-| **Personal (general)** | coming soon | General English in the author's voice (Irish-accented), for slightly higher everyday accuracy |
 
-The fine-tunes are trained on **one speaker's voice**, so they work best for voices like that
-one; stock Parakeet is the better choice for anyone else. Models marked *coming soon* appear
-in the apps by themselves once published: both apps re-read the catalogue
-([`shared/models.json`](shared/models.json)) from this repo when they check for updates.
+The code-switching model is trained on **one speaker's voice**, so it works best for voices like
+that one; stock Parakeet is the better choice for anyone else. Those are the only two models
+Hebrish ships. The other Parakeet fine-tunes (technical vocabulary, personal voice) are in
+[Parlance](https://github.com/danielrosehill/Parlance-Dictation), the general-purpose twin of this
+app; `desktop/tests/test_shared.py` fails if any other model appears in this catalogue.
 
 On held-out recordings, the code-switching model (v3, the latest benchmarked version) cut
 word error rate on code-switched English from 10.9% to 5.3%, and plain English got slightly

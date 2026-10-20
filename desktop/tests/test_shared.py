@@ -35,3 +35,10 @@ def test_android_offline_fallbacks_are_available_models():
     ids = set(re.findall(r'"(\w+)" to Manifest\(', open(os.path.join(KT, "ModelStore.kt")).read()))
     available = {m["id"] for m in json.load(open(SHARED))["models"] if m["status"] == "available"}
     assert ids and ids <= available
+
+
+def test_hebrish_ships_only_stock_and_codeswitch():
+    """Hebrish is the code-switching app: stock Parakeet and the code-switching model, nothing else.
+    The other fine-tunes (tech, personal) belong to Parlance (danielrosehill/Parlance-Dictation)."""
+    with open(SHARED) as f:
+        assert [m["id"] for m in json.load(f)["models"]] == ["stock", "codeswitch"]
