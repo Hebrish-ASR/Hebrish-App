@@ -50,7 +50,7 @@ commit and docs unless Daniel has tested it.
 
 ## 4. CDN and latest.json
 
-Follow the r2-upload skill (`../Parakeet-V2-Personal-Finetune-Skills/skills/r2-upload/SKILL.md`):
+Follow the r2-upload skill (`../ASR-Training-Skills/skills/r2-upload/SKILL.md`):
 download the release APK, upload to `downloads/android/Hebrish-vX.Y.Z.apk` with
 `application/vnd.android.package-archive` and an attachment disposition, then rewrite
 `downloads/latest.json` from the live copy: `files.android` = {url, name, platform, size, sha256,
