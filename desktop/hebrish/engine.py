@@ -1,6 +1,8 @@
 """sherpa-onnx offline recognizer for the installed fine-tune."""
 
 import threading
+import time
+from collections import deque
 from pathlib import Path
 
 import numpy as np
@@ -170,6 +172,11 @@ class Engine:
         self._dir: Path | None = None
         self._lock = threading.Lock()
         self.last_progress = (0, 1)       # (samples done, total) of the current transcribe_chunks
+        # Diagnostics tab: one record per decoded piece, newest last. audio_s excludes the
+        # tail pad; decode_s is the sherpa-onnx accept + decode time; tokens = output tokens.
+        self.stats: deque[dict] = deque(maxlen=200)
+        self.load_s = 0.0
+        self.threads = 0
 
     @property
     def loaded_dir(self) -> Path | None:
@@ -177,6 +184,7 @@ class Engine:
 
     def load(self, model_dir: Path, num_threads: int = 4):
         import sherpa_onnx
+        t0 = time.monotonic()
         rec = sherpa_onnx.OfflineRecognizer.from_transducer(
             encoder=str(model_dir / "encoder.int8.onnx"),
             decoder=str(model_dir / "decoder.int8.onnx"),
@@ -188,16 +196,18 @@ class Engine:
         )
         with self._lock:
             self._rec, self._dir = rec, model_dir
-        self.transcribe(np.zeros(SAMPLE_RATE, np.float32))      # warm-up
+        self.threads = num_threads
+        self.transcribe(np.zeros(SAMPLE_RATE, np.float32), record=False)      # warm-up
+        self.load_s = time.monotonic() - t0
 
     def unload(self):
         with self._lock:
             self._rec, self._dir = None, None
 
-    def transcribe(self, samples: np.ndarray, vad: bool = False) -> str:
-        return " ".join(self.transcribe_chunks(samples, vad=vad))
+    def transcribe(self, samples: np.ndarray, vad: bool = False, record: bool = True) -> str:
+        return " ".join(self.transcribe_chunks(samples, vad=vad, record=record))
 
-    def transcribe_chunks(self, samples: np.ndarray, cancel=None, vad: bool = False):
+    def transcribe_chunks(self, samples: np.ndarray, cancel=None, vad: bool = False, record: bool = True):
         """Yield the text of each piece (split_points) as it is decoded. The lock is taken per
         piece, so a hotkey dictation can slip in between pieces of a long file. With vad, a
         take without speech yields nothing and long silences are shortened first."""
@@ -216,10 +226,16 @@ class Engine:
             with self._lock:
                 if self._rec is None:
                     raise RuntimeError("Model not loaded")
+                t0 = time.monotonic()
                 s = self._rec.create_stream()
                 s.accept_waveform(SAMPLE_RATE, np.concatenate([samples[a:b], pad]))
                 self._rec.decode_stream(s)
                 text = s.result.text.strip()
+                took = time.monotonic() - t0
+            if record:
+                self.stats.append({"at": time.time(), "audio_s": (b - a) / SAMPLE_RATE,
+                                   "decode_s": took, "tokens": len(s.result.tokens),
+                                   "words": len(text.split()), "threads": self.threads})
             self.last_progress = (b, len(samples))
             if text:
                 yield text

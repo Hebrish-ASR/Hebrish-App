@@ -22,6 +22,7 @@ PHRASES = {   # keys are audio.VOICE_PROMPTS
     "resumed": "Resumed",
     "transcribing": "Transcribing",
     "discarded": "Discarded",
+    "retake": "Starting again",
     "copied": "Copied",
     "no_speech": "No speech heard",
     "failed": "Transcription failed",

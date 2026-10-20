@@ -29,8 +29,8 @@ def input_devices() -> list[str]:
 
 
 VOICE_DIR = Path(__file__).resolve().parent / "data" / "voice"
-VOICE_PROMPTS = ("recording", "paused", "resumed", "transcribing", "discarded", "copied",
-                 "no_speech", "failed")      # data/voice/<key>.wav, made by scripts/make_voice.py
+VOICE_PROMPTS = ("recording", "paused", "resumed", "transcribing", "discarded", "retake",
+                 "copied", "no_speech", "failed")      # data/voice/<key>.wav, made by scripts/make_voice.py
 # Level zones for the meter, in dBFS of the block RMS (speech guidance from Voice Notepad's mic
 # test: aim for -30 to -12) and of the block peak (clipping).
 QUIET_DB, LOUD_DB, CLIP_PEAK = -40.0, -12.0, 0.98
@@ -70,16 +70,25 @@ def default_input_name() -> str:
         return ""
 
 
-def beep(freq: float, ms: int = 110, volume: float = 0.25):
-    """A soft pip: sine plus a quiet octave, raised-cosine attack (12 ms) and release (45 ms).
-    Up to 0.4.0 it was a 70 ms bare sine with 10 ms linear fades."""
-    sr = 48000
+def _pip(freq: float, ms: int, volume: float, sr: int) -> np.ndarray:
     t = np.arange(int(sr * ms / 1000)) / sr
     tone = (np.sin(2 * np.pi * freq * t) + 0.2 * np.sin(4 * np.pi * freq * t)) * volume / 1.2
     a, r = int(sr * 0.012), int(sr * 0.045)
     tone[:a] *= 0.5 - 0.5 * np.cos(np.linspace(0, np.pi, a))
     tone[-r:] *= 0.5 + 0.5 * np.cos(np.linspace(0, np.pi, r))
-    _play(tone, sr)
+    return tone
+
+
+def beep(freq: float | tuple, ms: int = 110, volume: float = 0.25):
+    """A soft pip: sine plus a quiet octave, raised-cosine attack (12 ms) and release (45 ms).
+    A tuple of frequencies plays them in turn, 40 ms apart (discard's falling "doo-doo").
+    Up to 0.4.0 it was a 70 ms bare sine with 10 ms linear fades."""
+    sr = 48000
+    gap = np.zeros(int(sr * 0.04))
+    parts = []
+    for f in (freq if isinstance(freq, tuple) else (freq,)):
+        parts += [_pip(f, ms, volume, sr), gap]
+    _play(np.concatenate(parts[:-1]), sr)
 
 
 def say(key: str, volume: float = 0.5):

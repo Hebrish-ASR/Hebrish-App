@@ -41,6 +41,9 @@ DEFAULTS = {
     "key_pause": "",              # pause / resume
     "key_retake": "",
     "key_discard": "",
+    "double_tap_retake": True,    # double tap of the toggle key while recording = Retake
+    "double_tap_ms": 300,         # how long a stopping tap waits for the second tap
+    "escape_discards": True,      # Esc while recording discards the take
     "live_insert_s": 10,          # decode while recording and insert every ~N s, at a pause; 0 = off
     "overlay": "off",             # off | active (while dictating) | always
     "overlay_pos": None,          # [x, y] of the overlay's top-left; None = bottom centre

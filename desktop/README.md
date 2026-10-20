@@ -44,6 +44,11 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
 - **Microphone** (Dictate tab): the mic in use (for *System default*, which device that is right
   now), a switcher with rescan, and a level meter: too quiet / good / loud zones, the peak, and a
   CLIP lamp. *Test mic* shows the level without recording.
+- **Built-in keys:** Esc discards a take while dictating; double-tapping the toggle key starts
+  again (Retake). Both can be turned off in Settings → Dictation.
+- **Diagnostics tab:** inference speed on this computer (tokens per second, × real time, stop →
+  text latency, averaged over the last decodes), CPU, threads, model and memory, a benchmark
+  button, and Copy as JSON.
 - **History** is optional (Settings → *Keep a history*, off by default since 0.5.0): when on, a
   History tab lists the last 50 transcripts, saved on this computer.
 - `hebrish --toggle` starts or stops the running app, for a desktop shortcut.

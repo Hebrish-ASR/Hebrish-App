@@ -83,9 +83,12 @@ class MainWindow(QMainWindow):
         self.pages["history"] = self._history_page()
         self.pages["model"] = self._scroll(self._model_page())
         self.pages["settings"] = self._scroll(self._settings_page())
+        from .diagnostics import DiagnosticsPage
+        self.pages["diagnostics"] = DiagnosticsPage(ctl, card, muted)
         self.pages["about"] = self._about_page()
         for key, label in (("dictate", "Dictate"), ("file", "File"), ("history", "History"),
-                           ("model", "Models"), ("settings", "Settings"), ("about", "About")):
+                           ("model", "Models"), ("settings", "Settings"),
+                           ("diagnostics", "Diagnostics"), ("about", "About")):
             self.tabs.addTab(self.pages[key], label)
         self.tabs.setTabVisible(self.tabs.indexOf(self.pages["history"]), self.cfg["keep_history"])
         self.ctl.sig.piece.connect(self._append_piece)
@@ -723,9 +726,16 @@ class MainWindow(QMainWindow):
             if slot == "hotkey":
                 form.addRow("", self._check("hold_to_talk", "Holding it is push-to-talk too",
                                             self.update_state))
+        form.addRow("", self._check("double_tap_retake", "Double-tap it while dictating to start "
+                                                         "again (Retake)", self.update_state))
         form.addRow("", muted("Tap the toggle key to start, tap again to stop. Hold the "
                               "push-to-talk key while you talk. Any key on any keyboard or foot "
-                              "pedal: pick ones nothing else uses (F13–F24 are ideal)."))
+                              "pedal: pick ones nothing else uses (F13–F24 are ideal). With "
+                              "double-tap on, a single tap stops ~0.3 s later, while it waits "
+                              "for a second tap."))
+        form.addRow("", self._check("escape_discards", "Esc discards the take while dictating "
+                                                       "(Esc also reaches the app you're in)",
+                                    self.update_state))
         chord = QLineEdit(self.cfg["paste_chord"])
         chord.setToolTip("ctrl+v for most apps; ctrl+shift+v for terminals")
         chord.textChanged.connect(lambda t: self._on_chord(chord, t))

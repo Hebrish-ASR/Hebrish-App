@@ -417,3 +417,40 @@ from his Voice Notepad app (`AI-Transcription-Notepad`: `tts_announcer.py`, `mic
   names, not paths, so it stays valid after a move. The Parlance import and legacy migration
   still write to the default folder (they run on first start, before anyone could choose one).
 
+### 0.5.0 additions (Daniel, 2026-10-21, same day)
+
+- **Esc discards** a recording take (`escape_discards`, default on) and a **double tap of the
+  toggle key is Retake** (`double_tap_retake`, `double_tap_ms` 300). Both in `HotkeyMachine.key`.
+  Key sources never grab keys, so Esc also reaches the focused app (said in Settings). A tap that
+  would stop a take now arms a `threading.Timer` for `double_tap_ms`; a second press of the toggle
+  key before it fires cancels it and fires `action("retake")`, else the timer stops the take.
+  Cost: stopping by tap is 0.3 s later (the mic keeps recording meanwhile, so nothing is lost).
+  Hold-to-talk release and the PTT key are unchanged. The double tap needs the action callback,
+  so a machine without one (the old tests' `Rig`) stops at once as before.
+  Tests: `test_double_tap_while_recording_is_retake`, `test_single_tap_stops_after_the_double_tap_window`,
+  `test_escape_discards_only_while_recording`.
+- **Distinct sounds:** beeps mode plays a falling two-note "doo-doo" (660 then 440 Hz) for
+  discard and a rising pair (523, 880) for retake; voice mode says "Discarded" and "Starting
+  again" (`retake.wav`). `Controller.start(cue=)` lets retake replace the start cue.
+- **Diagnostics tab** (`ui/diagnostics.py`): `Engine.stats` gets one record per decoded piece
+  (`audio_s`, which includes the stretched inner pauses but not the tail pad; `decode_s` =
+  `create_stream` + `accept_waveform` + `decode_stream`; `tokens` = `len(result.tokens)`);
+  `Controller.latencies` has stop → final text. Averages over the last 10/20/50/all are totals over
+  totals. Run benchmark decodes the voice prompts joined with 0.5 s gaps (10.6 s) three times.
+  Copy as JSON gives summary, system and records. Nothing is saved to disk.
+
+Measured 2026-10-21 (V), Run benchmark off-screen on daniellaptop (AMD Ryzen 7 5700U, 16
+logical CPUs, auto = 8 threads), Jachnun v1.0 int8, sherpa-onnx 1.13.8 CPU: 0.74-0.95 s per
+10.6 s piece, 12.9× real time, 61 tokens/s, model load 5.35 s, app memory 1361 MB.
+
+**GPU (checked 2026-10-21):** the sherpa-onnx wheel the app uses ships a CPU-only
+`libonnxruntime.so`; its binary names providers cpu, cuda, coreml, directml, openvino, tensorrt,
+xnnpack, qnn and rknn, and prints "Please compile with -DSHERPA_ONNX_ENABLE_GPU=ON" for GPU
+ones. There is no ROCm or MIGraphX provider in sherpa-onnx, so AMD GPUs on Linux are not a
+`provider=` switch away: it would take a custom onnxruntime build plus a sherpa-onnx patch.
+On Windows, DirectML (any DX12 GPU, AMD included) is a provider sherpa-onnx knows, but needs a
+DirectML build of sherpa-onnx in the freeze. GPUs also want fp16/fp32 graphs, not these int8
+ones (`Hebrish/Jachnun-ONNX` has fp32). (I) At 13× real time on a mid laptop CPU, a GPU would
+save well under a second per take; it matters more on old 2-4 core laptops, which are not
+measured yet (the Diagnostics tab is how to find out).
+

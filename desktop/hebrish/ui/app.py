@@ -11,6 +11,7 @@ import logging
 import os
 import queue
 import sys
+from collections import deque
 import threading
 import time
 from pathlib import Path
@@ -33,7 +34,8 @@ log = logging.getLogger("hebrish")
 ICONS = Path(__file__).resolve().parent.parent / "data" / "icons"
 HISTORY_MAX = 50
 NO_SPEECH = "no speech"        # _worker -> _done: the take had audio but no speech (engine VAD)
-BEEPS = {"recording": 880, "transcribing": 620}    # the beeps mode cues only start and stop
+# The beeps mode: start, stop, a falling "doo-doo" for discard, a rising pair for retake
+BEEPS = {"recording": 880, "transcribing": 620, "discarded": (660, 440), "retake": (523, 880)}
 
 
 def icon(name: str) -> QIcon:
@@ -71,6 +73,8 @@ class Controller(QObject):
         self.downloading_id: str | None = None     # the model being downloaded
         self.reload_pending = False
         self.loading = False
+        self._stopped_at = 0.0
+        self.latencies: deque[float] = deque(maxlen=200)   # stop -> text inserted, seconds
         self.splash = splash
         self._overlay_done = False
         self.history: list[dict] = (load_json(HISTORY_PATH, []) if self.cfg["keep_history"] else [])
@@ -141,7 +145,7 @@ class Controller(QObject):
     def toggle(self):
         self.stop() if self.state == "recording" else self.start()
 
-    def start(self):
+    def start(self, cue="recording"):
         if self.state != "idle":
             return
         if self.engine.loaded_dir is None and not model_store.active():
@@ -155,7 +159,7 @@ class Controller(QObject):
             self.notify("Microphone error", str(e))
             return
         self._take += 1
-        self.cue("recording")
+        self.cue(cue)
         self.set_state("recording")
 
     def cue(self, event: str):
@@ -212,7 +216,7 @@ class Controller(QObject):
             self.cancel()
         elif action == "retake":
             self.cancel(quiet=True)
-            self.start()
+            self.start(cue="retake")
 
     def overlay_changed(self):
         self._overlay_push()
@@ -234,6 +238,7 @@ class Controller(QObject):
         if self.state != "recording":
             return
         samples = self.recorder.stop()
+        self._stopped_at = time.monotonic()
         self.cue("transcribing")
         self.set_state("busy")
         self._jobs.put((self._take, samples, True))
@@ -284,6 +289,8 @@ class Controller(QObject):
             self.cue("failed")
             self.notify("Transcription failed", str(err))
         elif text:
+            if self._stopped_at:
+                self.latencies.append(time.monotonic() - self._stopped_at)
             self._overlay_done = True              # "Inserted" for a moment
             QTimer.singleShot(1100, self._overlay_clear_done)
             if self.cfg["insert"] == "clipboard":
@@ -293,6 +300,7 @@ class Controller(QObject):
                 del self.history[HISTORY_MAX:]
                 self._save_history()
                 self.win.show_history()
+        self._stopped_at = 0.0
         self.set_state("idle")
         if self.reload_pending:
             self.load_model()

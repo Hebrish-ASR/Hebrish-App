@@ -12,9 +12,16 @@ config.upgrade() maps old files.
 
 Action keys (0.4.0), each "" = off, for a macropad or pedals: key_start, key_stop, key_pause
 (pause / resume), key_retake, key_discard. They act on press, independently of the two above.
+
+Built in (0.5.0, both on by default): Esc while a take is recording discards it
+(`escape_discards`; the Esc still reaches the focused app, key sources never grab), and a
+double tap of the toggle key while recording is Retake (`double_tap_retake`): the tap that
+would stop the take waits `double_tap_ms` for a second press first, so stopping by tap is
+that much later. Holding the key (push-to-talk) is unaffected.
 """
 
 import sys
+import threading
 import time
 
 MODIFIERS = {"KEY_LEFTCTRL", "KEY_RIGHTCTRL", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT",
@@ -45,6 +52,10 @@ def describe(cfg) -> str:
     if ptt:
         parts.append(f"Hold {pretty(ptt)} while you talk")
     keys = [f"{label} {pretty(cfg[f'key_{a}'])}" for a, label in ACTIONS if cfg[f"key_{a}"]]
+    if toggle and cfg.get("double_tap_retake"):
+        parts.append(f"Double-tap {pretty(toggle)} to start again")
+    if cfg.get("escape_discards"):
+        parts.append("Esc discards")
     if keys:
         parts.append("Keys: " + ", ".join(keys))
     return ". ".join(parts) or "No hotkey set: use the button, the tray or the overlay"
@@ -64,6 +75,7 @@ class HotkeyMachine:
         self._down_at = 0.0
         self._started_this_press = False
         self._chorded = False
+        self._pending_stop: threading.Timer | None = None   # a tap's stop, waiting for a double tap
         self.problem = ""               # shown in the window when the source can't run
 
     def capture_next_key(self, callback):
@@ -81,6 +93,12 @@ class HotkeyMachine:
                 self._action(action)
             return
         toggle, ptt = self._cfg["hotkey"], self._cfg["ptt_hotkey"]
+        if (name == "KEY_ESC" and down and self._cfg.get("escape_discards") and name not in (toggle, ptt)
+                and self._is_recording()):
+            self._drop_pending()
+            self._held = None
+            self._cancel()
+            return
         if not name or name not in (toggle, ptt):
             if down and self._held in MODIFIERS:
                 self._chorded = True              # Right-Ctrl+C is a shortcut, not dictation
@@ -95,9 +113,20 @@ class HotkeyMachine:
             self._held, self._down_at = name, time.monotonic()
             self._chorded = False
             self._started_this_press = False
+            if self._pending_stop is not None and name == toggle:     # second tap: retake
+                self._drop_pending()
+                self._held = None                 # its release must not stop the new take
+                (self._action or (lambda a: None))("retake")
+                return
             if self._is_recording():
                 if name == toggle:                # the PTT key never stops a toggled take
-                    self._stop()
+                    if self._cfg.get("double_tap_retake") and self._action:
+                        self._pending_stop = threading.Timer(
+                            self._cfg.get("double_tap_ms", 300) / 1000, self._fire_stop)
+                        self._pending_stop.daemon = True
+                        self._pending_stop.start()
+                    else:
+                        self._stop()
             else:
                 self._started_this_press = True
                 self._start()
@@ -107,6 +136,17 @@ class HotkeyMachine:
             if self._chorded or not self._started_this_press:
                 return
             if name != toggle or (self._cfg["hold_to_talk"] and held_ms >= self._cfg["hybrid_hold_ms"]):
+                self._stop()
+
+    def _drop_pending(self):
+        t, self._pending_stop = self._pending_stop, None
+        if t:
+            t.cancel()
+
+    def _fire_stop(self):
+        if self._pending_stop is not None:
+            self._pending_stop = None
+            if self._is_recording():
                 self._stop()
 
 

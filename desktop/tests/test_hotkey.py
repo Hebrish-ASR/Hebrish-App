@@ -169,3 +169,38 @@ def test_action_key_does_not_cancel_a_modifier_take():
     r.m.key("KEY_RIGHTCTRL", True)
     r.tap("KEY_F15")
     assert r.events == ["start"]
+
+
+def _rig05():
+    """A toggle key with the 0.5.0 built-ins on (double tap = retake, Esc = discard)."""
+    r = Rig("hybrid")
+    r.m._cfg.update(double_tap_retake=True, double_tap_ms=80, escape_discards=True)
+    r.m._action = lambda a: r.events.append(a)
+    return r
+
+
+def test_double_tap_while_recording_is_retake():
+    r = _rig05()
+    r.tap()                                   # start
+    r.tap(); time.sleep(0.02); r.tap()        # double tap
+    time.sleep(0.15)
+    assert r.events == ["start", "retake"] and r.rec
+
+
+def test_single_tap_stops_after_the_double_tap_window():
+    r = _rig05()
+    r.tap(); r.tap()
+    assert r.events == ["start"]              # waiting for a possible second tap
+    time.sleep(0.15)
+    assert r.events == ["start", "stop"]
+
+
+def test_escape_discards_only_while_recording():
+    r = _rig05()
+    r.tap("KEY_ESC")
+    assert r.events == []
+    r.tap(); r.tap("KEY_ESC")
+    assert r.events == ["start", "cancel"]
+    r.m._cfg["escape_discards"] = False
+    r.tap(); r.tap("KEY_ESC")
+    assert r.events == ["start", "cancel", "start"]

@@ -32,9 +32,22 @@ Not verified: a live mic (meter, Test mic, VAD on real speech), the voice prompt
 beeps through real speakers, moving the model folder across disks, any of it on a real
 Windows machine.
 
-## Still to add
+## Added after the first push (2026-10-21)
 
-- (Daniel's next requests go here.)
+- Esc discards a recording take; double tap of the toggle key = Retake (both on by default,
+  toggles in Settings → Dictation). Distinct sounds for discard ("doo-doo") and retake.
+- Diagnostics tab: tokens per second, × real time, compute per audio second, stop → text
+  latency over the last N decodes; CPU, threads, model, memory; Run benchmark; Copy as JSON.
+  This laptop: 12.9× real time, 61 tokens/s (`maintaining.md`, "0.5.0 additions").
+- Training sentences for "hebrish.app" and the model names: in progress in `ASR-Training` (separate
+  repo, not part of this release).
+
+## Still to add / to decide
+
+- GPU inference: not supported today (CPU-only onnxruntime; no ROCm in sherpa-onnx; DirectML on
+  Windows would need a DirectML build). Decide whether it is worth it after measuring older
+  CPU-only laptops with the Diagnostics tab.
+- (Further requests go here.)
 
 ## Release (after the additions)
 
