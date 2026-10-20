@@ -17,6 +17,16 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
   - **Push-to-talk key** (not set by default): hold it while you talk, release to stop.
   0.2.x settings carry over: *hold* mode becomes the push-to-talk key, *toggle* mode turns
   the hold option off.
+- **Action keys** (optional, Settings → Action keys), for a macropad or foot pedals: one key
+  each for **Start** (also resumes a paused take), **Stop**, **Pause/Resume**, **Retake** and
+  **Discard**. A key can hold one job only; assigning it elsewhere moves it.
+- **Insert as you go** (Settings → Speed, off by default): the take is decoded while you are
+  still talking and the text is inserted every ~10–30 s, at a pause, so a long take on a CPU-only
+  computer shows up as you go and only the last few seconds are left when you stop. Text
+  already inserted stays if you then Discard or Retake. *CPU threads* defaults to Auto
+  (physical cores, at most 8).
+- **Beeps** (Settings → Beeps): on/off, volume, and quiet hours during which they stay silent.
+- Settings apply as you change them; a short *Settings saved* toast confirms it.
 - **Floating overlay** (optional, Settings → Floating overlay, or the tray's *Show overlay*):
   a small bar over every app, like the Android floating mic. While you dictate, the mic turns
   red (click it to stop) and the bar shows a timer, a level meter, **Pause/Resume**, **Retake**

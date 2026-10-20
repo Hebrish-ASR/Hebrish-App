@@ -1,23 +1,28 @@
 """Main window: header, then Dictate / Model / Settings / About tabs."""
 
+import os
 import time
 
-from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtCore import QSize, Qt, QTime, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFormLayout, QFrame, QHBoxLayout, QLabel,
                                QLineEdit, QMainWindow, QMessageBox, QProgressBar, QPushButton,
-                               QScrollArea, QSpinBox, QTabWidget, QToolButton,
+                               QScrollArea, QSlider, QSpinBox, QTabWidget, QTimeEdit, QToolButton,
                                QVBoxLayout, QWidget)
 
 from .. import __version__, audio, autostart, model_store
-from ..config import APP_NAME, CONFIG_PATH, STATE_PATH, TAGLINE, load_json
-from ..hotkey import describe, pretty
+from ..config import APP_NAME, CONFIG_PATH, STATE_PATH, TAGLINE, load_json, threads
+from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
 from . import about
 from .app import icon
 from .style import BLUE
 
 OVERLAY = [("off", "Off"), ("active", "While dictating"), ("always", "Always (a mic button)")]
+LIVE = [(0, "Off: everything when you stop"), (10, "Every ~10 seconds"), (15, "Every ~15 seconds"),
+        (20, "Every ~20 seconds"), (30, "Every ~30 seconds")]
+# Saved silently, so no toast: moving the overlay
+NO_TOAST = {"overlay_pos"}
 
 
 def card(title: str = "") -> tuple[QFrame, QVBoxLayout]:
@@ -81,6 +86,13 @@ class MainWindow(QMainWindow):
         self._pulse = QTimer(self, interval=550, timeout=self._do_pulse)
         self.update_state()
         self.show_history()
+
+        # Settings apply as they change; this says so.
+        self.toast_label = QLabel("Settings saved", root, objectName="toast")
+        self.toast_label.setAlignment(Qt.AlignCenter)
+        self.toast_label.hide()
+        self._toast_timer = QTimer(self, singleShot=True, interval=1600, timeout=self.toast_label.hide)
+        self.cfg.on_set = lambda key: key not in NO_TOAST and self.toast()
 
     # -- frame ---------------------------------------------------------------------
     def _header(self):
@@ -225,8 +237,8 @@ class MainWindow(QMainWindow):
         self.rec.style().unpolish(self.rec)
         self.rec.style().polish(self.rec)
         self._pulse.start() if st == "recording" else self._pulse.stop()
-        self.state_label.setText({"idle": "Ready", "recording": "Listening…",
-                                  "busy": "Working…"}[st])
+        self.state_label.setText("Paused" if st == "recording" and self.ctl.recorder.paused else
+                                 {"idle": "Ready", "recording": "Listening…", "busy": "Working…"}[st])
         self.hint_label.setText(describe(self.cfg))
         for slot, lbl in getattr(self, "hk_labels", {}).items():
             lbl.setText(pretty(self.cfg[slot]))
@@ -437,10 +449,64 @@ class MainWindow(QMainWindow):
         mics.currentIndexChanged.connect(lambda _i: self.cfg.set("audio_device", mics.currentData()))
         form.addRow("Microphone", mics)
         b.addLayout(form)
-        for key, label in (("beeps", "Start/stop beeps"),
-                           ("trailing_space", "Add a space after each transcript"),
+        for key, label in (("trailing_space", "Add a space after each transcript"),
                            ("keep_history", "Remember recent transcripts between sessions")):
             b.addWidget(self._check(key, label))
+        lay.addWidget(box)
+
+        box, b = card("Action keys")
+        b.addWidget(muted("Optional keys for a macropad or foot pedals, one per action. Each acts "
+                          "when pressed, alongside the toggle and push-to-talk keys. Start also "
+                          "resumes a paused take."))
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignRight)
+        for a, label in ACTIONS:
+            form.addRow(label, self._hotkey_row(f"key_{a}"))
+        b.addLayout(form)
+        lay.addWidget(box)
+
+        box, b = card("Speed")
+        b.addWidget(muted("On a computer without a GPU, a long take can take a few seconds to "
+                          "appear after you stop. Inserting as you go decodes the take while you "
+                          "are still talking, at a pause, so only the last few seconds are left "
+                          "when you stop. Text already inserted stays if you then Discard or "
+                          "Retake."))
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignRight)
+        form.addRow("Insert as you go", self._combo("live_insert_s", LIVE))
+        th = QSpinBox(minimum=0, maximum=os.cpu_count() or 16, value=self.cfg["num_threads"])
+        th.setSpecialValueText(f"Auto ({threads({'num_threads': 0})})")
+        reload = QTimer(self, singleShot=True, interval=900, timeout=self.ctl.load_model)   # once, after the last click
+        th.valueChanged.connect(lambda v: (self.cfg.set("num_threads", v), reload.start()))
+        form.addRow("CPU threads", th)
+        b.addLayout(form)
+        lay.addWidget(box)
+
+        box, b = card("Beeps")
+        b.addWidget(self._check("beeps", "Beep when dictation starts and stops"))
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignRight)
+        row = QHBoxLayout()
+        vol = QSlider(Qt.Horizontal, minimum=0, maximum=100, value=self.cfg["beep_volume"])
+        vol_lbl = QLabel(f"{self.cfg['beep_volume']} %")
+        vol_lbl.setMinimumWidth(44)
+        vol.valueChanged.connect(lambda v: vol_lbl.setText(f"{v} %"))
+        vol.sliderReleased.connect(lambda: (self.cfg.set("beep_volume", vol.value()),
+                                            audio.beep(880, volume=0.5 * vol.value() / 100)))
+        row.addWidget(vol, 1)
+        row.addWidget(vol_lbl)
+        form.addRow("Volume", row)
+        b.addLayout(form)
+        b.addWidget(self._check("quiet_hours", "Quiet hours: no beeps between"))
+        row = QHBoxLayout()
+        for key in ("quiet_from", "quiet_to"):
+            te = QTimeEdit(QTime.fromString(self.cfg[key], "HH:mm"), displayFormat="HH:mm")
+            te.timeChanged.connect(lambda t, k=key: self.cfg.set(k, t.toString("HH:mm")))
+            if key == "quiet_to":
+                row.addWidget(QLabel("and"))
+            row.addWidget(te)
+        row.addStretch(1)
+        b.addLayout(row)
         lay.addWidget(box)
 
         box, b = card("Floating overlay")
@@ -539,9 +605,9 @@ class MainWindow(QMainWindow):
     def _captured(self, name):
         self.ctl.sig.captured.disconnect(self._captured)
         slot = self._capture_slot
-        other = "ptt_hotkey" if slot == "hotkey" else "hotkey"
-        if self.cfg[other] == name:            # one key can't be both: move it
-            self.cfg.set(other, "")
+        for other in SLOTS:                    # one key, one job: move it
+            if other != slot and self.cfg[other] == name:
+                self.cfg[other] = ""
         self.cfg.set(slot, name)
         for b in self.hk_btns.values():
             b.setEnabled(True)
@@ -554,6 +620,19 @@ class MainWindow(QMainWindow):
         return self._about
 
     # -- misc ----------------------------------------------------------------------
+    def toast(self, text="Settings saved"):
+        if not self.isVisible():
+            return
+        t = self.toast_label
+        t.setText(f"✓  {text}")
+        t.adjustSize()
+        t.resize(t.width() + 28, t.height() + 12)
+        root = t.parentWidget()
+        t.move((root.width() - t.width()) // 2, root.height() - t.height() - 36)
+        t.raise_()
+        t.show()
+        self._toast_timer.start()
+
     def status(self, text):
         self.status_label.setText(text)
 

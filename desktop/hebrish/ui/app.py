@@ -9,6 +9,7 @@ import argparse
 import getpass
 import logging
 import os
+import queue
 import sys
 import threading
 import time
@@ -20,9 +21,9 @@ from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from .. import audio, model_store
-from ..config import (APP_NAME, HISTORY_PATH, STATE_PATH, Config, load_json, migrate_legacy,
-                      import_parlance, save_json)
-from ..engine import Engine
+from ..config import (APP_NAME, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
+                      migrate_legacy, import_parlance, save_json, threads)
+from ..engine import Engine, live_cut
 from ..hotkey import make_listener
 from ..inserter import make_inserter
 from . import about
@@ -41,6 +42,7 @@ class Signals(QObject):
     start = Signal()
     stop = Signal()
     cancel = Signal()
+    action = Signal(str)
     captured = Signal(str)
     transcribed = Signal(str, object)
     loaded = Signal(object)
@@ -70,6 +72,7 @@ class Controller(QObject):
         self.sig.start.connect(self.start)
         self.sig.stop.connect(self.stop)
         self.sig.cancel.connect(self.cancel)
+        self.sig.action.connect(self.do_action)
         self.sig.transcribed.connect(self._done)
         self.sig.loaded.connect(self._loaded)
         self.sig.checked.connect(self._checked)
@@ -77,11 +80,20 @@ class Controller(QObject):
 
         self.inserter = make_inserter()
         self.hotkeys = make_listener(self.cfg, self.sig.start.emit, self.sig.stop.emit,
-                                     self.sig.cancel.emit, lambda: self.state == "recording")
+                                     self.sig.cancel.emit, lambda: self.state == "recording",
+                                     self.sig.action.emit)
         self.hotkeys.start()
 
+        # Decoding runs on one worker, in order: (take, samples, final). Live insertion queues
+        # pieces of the take while it is still recording; stop() queues the rest as final.
+        # A discarded take bumps self._take, so its queued pieces are dropped.
+        self._take = 0
+        self._jobs: queue.Queue = queue.Queue()
+        threading.Thread(target=self._worker, daemon=True, name="decode").start()
+        self._live_timer = QTimer(self, interval=500, timeout=self._live_tick)
+
         self.overlay = OverlayHost(self)
-        self.overlay.action.connect(self._overlay_action)
+        self.overlay.action.connect(self.do_action)
         self.overlay.moved.connect(lambda x, y: self.cfg.set("overlay_pos", [x, y]))
         self._level_timer = QTimer(self, interval=66, timeout=self._overlay_push)
 
@@ -135,12 +147,18 @@ class Controller(QObject):
         except Exception as e:
             self.notify("Microphone error", str(e))
             return
-        if self.cfg["beeps"]:
-            audio.beep(880)
+        self._take += 1
+        self._beep(880)
         self.set_state("recording")
 
+    def _beep(self, freq):
+        if self.cfg["beeps"] and self.cfg["beep_volume"] and not in_quiet_hours(self.cfg):
+            audio.beep(freq, volume=0.5 * self.cfg["beep_volume"] / 100)
+
     def cancel(self):
+        """Discard the take. With live insertion, text already inserted stays."""
         if self.state == "recording":
+            self._take += 1
             self.recorder.stop()
             self.set_state("idle")
 
@@ -148,11 +166,16 @@ class Controller(QObject):
         if self.state == "recording":
             self.recorder.resume() if self.recorder.paused else self.recorder.pause()
             self._overlay_push()
+            self.win.update_state()
 
-    # -- overlay -------------------------------------------------------------------
-    def _overlay_action(self, action):
+    # -- actions: overlay buttons and action keys -------------------------------------
+    def do_action(self, action):
         if action == "toggle":
             self.toggle()
+        elif action == "start":
+            self.pause() if self.recorder.paused else self.start()   # a paused take resumes
+        elif action == "stop":
+            self.stop()
         elif action == "pause":
             self.pause()
         elif action == "discard":
@@ -181,20 +204,38 @@ class Controller(QObject):
         if self.state != "recording":
             return
         samples = self.recorder.stop()
-        if self.cfg["beeps"]:
-            audio.beep(620)
+        self._beep(620)
         self.set_state("busy")
-        threading.Thread(target=self._transcribe, args=(samples,), daemon=True).start()
+        self._jobs.put((self._take, samples, True))
 
-    def _transcribe(self, samples):
-        try:
-            text = self.engine.transcribe(samples)
-            if text:
-                self.inserter.insert(text + (" " if self.cfg["trailing_space"] else ""),
-                                     self.cfg["insert"], self.cfg["paste_chord"])
-            self.sig.transcribed.emit(text, None)
-        except Exception as e:
-            self.sig.transcribed.emit("", e)
+    def _live_tick(self):
+        """Live insertion: hand the take to the decoder in pieces, cut at a pause."""
+        interval = self.cfg["live_insert_s"]
+        if not interval or self.state != "recording" or self.recorder.paused:
+            return
+        cut = live_cut(self.recorder.peek(), interval)
+        if cut:
+            self._jobs.put((self._take, self.recorder.consume(cut), False))
+
+    def _worker(self):
+        take, parts = None, []
+        while True:
+            job, samples, final = self._jobs.get()
+            if job != take:
+                take, parts = job, []
+            try:
+                text = self.engine.transcribe(samples) if job == self._take else ""
+                if text:
+                    parts.append(text)
+                    space = " " if not final or self.cfg["trailing_space"] else ""
+                    self.inserter.insert(text + space, self.cfg["insert"], self.cfg["paste_chord"])
+                if final:
+                    self.sig.transcribed.emit(" ".join(parts), None)
+            except Exception as e:
+                if final:
+                    self.sig.transcribed.emit(" ".join(parts), e)
+                else:
+                    log.exception("live piece failed")
 
     def _done(self, text, err):
         log.info("transcript %r err=%r", text, err)
@@ -226,7 +267,8 @@ class Controller(QObject):
         self.state = state
         self._update_tray()
         self.win.update_state()
-        self._level_timer.start() if state == "recording" else self._level_timer.stop()
+        for t in (self._level_timer, self._live_timer):
+            t.start() if state == "recording" else t.stop()
         self._overlay_push()
 
     # -- model ---------------------------------------------------------------------
@@ -250,7 +292,7 @@ class Controller(QObject):
 
         def work():
             try:
-                self.engine.load(cur[0], self.cfg["num_threads"])
+                self.engine.load(cur[0], threads(self.cfg))
                 self.sig.loaded.emit(None)
             except Exception as e:
                 self.sig.loaded.emit(e)

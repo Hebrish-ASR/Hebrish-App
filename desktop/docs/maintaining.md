@@ -8,9 +8,9 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | Module | Role |
 | --- | --- |
 | `model_store.py` | HF check, download/verify, installed versions. No Qt import, so it is testable and also a CLI |
-| `engine.py` | sherpa-onnx `OfflineRecognizer` (nemo_transducer): normalise, chunk, pad, `transcribe_chunks` generator |
-| `audio.py` | sounddevice capture (pause/resume, level meter), file decoding (ffmpeg, else soundfile), WAV save, beeps |
-| `hotkey.py` | the shared state machine for the two keys (toggle, push-to-talk), on evdev-style key names |
+| `engine.py` | sherpa-onnx `OfflineRecognizer` (nemo_transducer): normalise, cut at pauses (`live_cut`, `split_points`), pad, `transcribe_chunks` generator |
+| `audio.py` | sounddevice capture (pause/resume, level meter, `peek`/`consume` for live insertion), file decoding (ffmpeg, else soundfile), WAV save, beeps |
+| `hotkey.py` | the shared state machine for the two keys (toggle, push-to-talk) and the action keys, on evdev-style key names |
 | `hotkey_evdev.py` / `hotkey_win.py` | per-OS key sources: `/dev/input` on Linux, a pynput low-level hook on Windows |
 | `inserter.py` + `inserter_linux.py` / `inserter_win.py` | clipboard, then a paste chord (uinput / SendInput) |
 | `autostart.py` | XDG autostart entry / HKCU `Run` key |
@@ -53,6 +53,74 @@ Daniel asked for separate shortcuts for tap-tap and push-to-talk. Config: `hotke
 and in both imports. Rules in `HotkeyMachine.key`: while one hotkey is down the other is ignored;
 the PTT key never stops a take the toggle key started; Settings won't let one key be both (the
 other slot is cleared). The Parlance import skips both key fields. Tests: `tests/test_hotkey.py`.
+
+## Action keys, live insertion, beeps (0.4.0, 2026-10-21)
+
+Daniel asked (2026-10-21) for one key per action for a macropad, for text to appear during long
+takes on CPU-only machines, for quiet hours and a beep volume, and for a sign that a setting was
+saved.
+
+- **Action keys:** config `key_start`, `key_stop`, `key_pause`, `key_retake`, `key_discard`
+  (`""` = off; list in `hotkey.ACTIONS`, every key slot in `hotkey.SLOTS`). `HotkeyMachine.key`
+  handles them first, on press only, and returns. So they never count as a chord and never
+  cancel a modifier take. They go through `Signals.action` to `Controller.do_action`, which the
+  overlay buttons also use. *Start* while paused resumes. Assigning a key to a slot clears it
+  from every other slot. The Parlance import skips them like the other keys.
+- **Decode worker:** every decode is a job `(take, samples, final)` on one queue, handled in
+  order by one thread (`Controller._worker`). `start()` and `cancel()` bump `_take`; jobs from an
+  older take are decoded as empty (dropped). The final job emits `transcribed` with all of the
+  take's pieces joined, for the history. Pieces before the final one are inserted with a
+  trailing space whatever `trailing_space` says.
+- **Live insertion** (`live_insert_s`, 0 = off, the default): a 500 ms timer while recording
+  calls `engine.live_cut(recorder.peek(), interval)`. Once the unconsumed audio is at least
+  `interval` long, it looks in the last 6 s (not the newest 0.3 s) for the longest quiet run. If
+  that run is at least 0.6 s, it cuts in its middle. With no such pause by interval + 15 s, it
+  cuts at the quietest 100 ms. `Recorder.consume(cut)` removes the piece and queues it. Discard
+  and Retake can't take back text already inserted (said in Settings).
+- **Pause cuts for whole takes too:** `split_points` now runs the same `live_cut` over a
+  finished take (grow by 0.5 s until it cuts, pieces ≥10 s; a remainder ≤25 s is one piece).
+  The Transcribe tab still starts a paragraph about every 30 s of audio (`PARAGRAPH_S`).
+- **Threads:** `num_threads` 0 = auto = `os.cpu_count() // 2`, between 1 and 8 (`config.threads`).
+  0.3.x configs all hold the old default 4, which had no UI. `upgrade()` turns a 4 into 0 in a file
+  without `live_insert_s`.
+- **Beeps:** `beep_volume` % (50 = the old amplitude 0.25), `quiet_hours` with `quiet_from` /
+  `quiet_to` "HH:MM", which may cross midnight (`config.in_quiet_hours`). Only
+  `Controller._beep` plays the dictation beeps. The volume slider plays a test beep on release.
+- **Toast:** `Config.on_set` is called after every `Config.set`. The window shows "Settings
+  saved" for 1.6 s, only while it is visible, and not for `overlay_pos` (dragging the overlay).
+
+Measured 2026-10-21 (V) on daniellaptop (Ryzen 7 5700U, 8 cores / 16 threads), Jachnun v1.0
+int8, with the six clips in `Parakeet-blends-wt/spaces/parakeet-demo/examples/` (references in
+`examples.json`) concatenated into ~50 s takes, in six random orders, with 0.25, 0.4 or 0.7 s
+gaps. Total: 786 reference words; the WER normalisation is lowercase with punctuation stripped:
+
+| Decode | Errors | WER |
+| --- | --- | --- |
+| 0.3.x: 30 s pieces, quietest-100 ms cut | 126 | 16.0% |
+| live, 10 s, pause ≥0.3 s | 10 | 1.3% |
+| live, 15 s, pause ≥0.3 s | 24 | 3.1% |
+| live, 10 s, pause ≥0.6 s | 9 | 1.1% |
+| live, 15 s, pause ≥0.6 s | 10 | 1.3% |
+| 0.4.0 whole take (pause-cut `split_points`) | 8 | 1.0% |
+
+The 0.3.x losses were whole sentences: a piece ending mid-sentence dropped that unfinished
+sentence (the same failure as "Tail padding" above, from the other side). With 0.3 s pauses,
+the cuts landed inside sentences and lost words the same way, hence 0.6 s. Speed is unchanged
+(4.75 s for a ~50 s take, whole). Threads, on 51 s of speech: 2 → 7.26 s, 4 → 4.94, 6 → 4.73,
+8 → 4.41, 12 → 5.29, 16 → 5.79.
+
+Live, end to end through the real `Controller`, with a fake recorder playing a 52 s take in
+real time and live insertion at 10 s: pieces were inserted at 11.6, 20.6, 29.3, 37.5 and 45.9 s.
+The last one landed 1.09 s after stop, where decoding the whole take took ~5 s. The history got
+one entry of 131 words. (I) Real speech has longer pauses between sentences than these
+back-to-back clips, so cuts should land at sentence ends more often. Not yet tried with a live mic.
+
+**VAD (not added; decided 2026-10-21).** `live_cut` and `stretch_pauses` already work as an
+energy VAD: quiet is relative to the take's own 10th/90th-percentile frame RMS. Silero VAD
+through `sherpa_onnx.VoiceActivityDetector` (~2 MB model) would be sturdier in steady noise
+(fans, cafés), but it would be one more download and the cut points above already measure at
+1% WER. Revisit if cuts misfire in noisy rooms. Trimming silence to save decode time isn't
+worth it: dictation is mostly speech, and the pauses have to stay (see "Short pauses").
 
 ## Floating overlay (0.3.0, 2026-10-20)
 
@@ -138,8 +206,9 @@ each part works there:
 - **Identical repeated audio collapses (V, harmless).** Six back-to-back copies of the same
   waveform decode as about two sentences even without chunking. It is a test-input artifact
   and has nothing to do with the splitter. Test long takes with *distinct* sentences.
-- Long takes are decoded in ≤30 s pieces, cut at the quietest 100 ms window in the last
-  5 s of each piece. The 56 s test decoded in 4.4 s on the laptop CPU (V).
+- Long takes were decoded in ≤30 s pieces, cut at the quietest 100 ms window in the last
+  5 s of each piece. The 56 s test decoded in 4.4 s on the laptop CPU (V). **Replaced in 0.4.0**
+  by pause cuts every ~10–25 s: see "Live insertion and pause cuts".
 - **The venv must use `/usr/bin/python3` (V).** `uv venv --system-site-packages` without
   `--python` picked a uv-managed 3.13, and then `gi` and `evdev` (distro packages built
   for 3.14) didn't import. `install.sh` pins the interpreter.

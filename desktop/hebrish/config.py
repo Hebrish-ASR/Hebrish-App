@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import sys
+import time
 from pathlib import Path
 
 APP_ID = "app.hebrish.Dictation"
@@ -35,6 +36,12 @@ DEFAULTS = {
     "hold_to_talk": True,         # holding the toggle key past hybrid_hold_ms is push-to-talk
     "hybrid_hold_ms": 350,
     "ptt_hotkey": "",             # a second, push-to-talk-only key; "" = none
+    "key_start": "",              # action keys (macropad, pedals), "" = none: see hotkey.ACTIONS
+    "key_stop": "",
+    "key_pause": "",              # pause / resume
+    "key_retake": "",
+    "key_discard": "",
+    "live_insert_s": 0,           # decode while recording and insert every ~N s, at a pause; 0 = off
     "overlay": "off",             # off | active (while dictating) | always
     "overlay_pos": None,          # [x, y] of the overlay's top-left; None = bottom centre
     "overlay_opacity": 85,        # idle opacity %, "always" mode
@@ -42,8 +49,12 @@ DEFAULTS = {
     "paste_chord": "ctrl+v",      # e.g. ctrl+shift+v if you dictate mostly into terminals
     "trailing_space": True,
     "beeps": True,
+    "beep_volume": 50,            # %; 50 = the 0.3.x level
+    "quiet_hours": False,         # no beeps between quiet_from and quiet_to (may cross midnight)
+    "quiet_from": "22:00",
+    "quiet_to": "07:00",
     "audio_device": "",           # "" = system default; else a sounddevice name
-    "num_threads": 4,
+    "num_threads": 0,             # decoder threads; 0 = auto (physical cores, at most 8)
     "keep_history": True,         # remember recent transcripts across restarts
     "update_check_hours": 24,     # 0 = never check automatically
     "auto_update": False,         # download a new version without asking
@@ -60,7 +71,8 @@ DEFAULTS = {
 # Both apps write models as <file>.part then rename, and prune by unlinking, so sharing inodes
 # between the two trees is safe.
 PARLANCE = "Parlance" if sys.platform == "win32" else "parlance"
-_NOT_IMPORTED = ("hotkey", "ptt_hotkey")     # Parlance keeps F13; the same key would fire both apps
+_NOT_IMPORTED = ("hotkey", "ptt_hotkey", "key_start", "key_stop", "key_pause", "key_retake",
+                 "key_discard")     # Parlance keeps F13; the same key would fire both apps
 
 
 def _link_or_copy(src, dst):
@@ -134,7 +146,30 @@ def upgrade(stored: dict) -> dict:
         stored["hotkey"] = ""
     elif mode == "toggle":
         stored["hold_to_talk"] = False
+    # Up to 0.3.x num_threads had no setting and every config was saved with the default 4.
+    # 0.4.0 adds "auto" (0); a 4 from a file without 0.4.0's keys is that old default.
+    if "live_insert_s" not in stored and stored.get("num_threads") == 4:
+        stored["num_threads"] = 0
     return stored
+
+
+def threads(cfg) -> int:
+    """Decoder threads. Auto = physical cores (logical / 2), at most 8: measured 2026-10-21 on a
+    Ryzen 7 5700U (8 cores / 16 threads), 51 s of speech took 4.94 s on 4 threads, 4.41 on 8,
+    5.29 on 12 and 5.79 on 16."""
+    return cfg["num_threads"] or max(1, min(8, (os.cpu_count() or 4) // 2))
+
+
+def in_quiet_hours(cfg, now: time.struct_time | None = None) -> bool:
+    if not cfg["quiet_hours"]:
+        return False
+    t = now or time.localtime()
+    cur = t.tm_hour * 60 + t.tm_min
+    try:
+        a, b = ((int(h) * 60 + int(m)) for h, m in (v.split(":") for v in (cfg["quiet_from"], cfg["quiet_to"])))
+    except ValueError:
+        return False
+    return a <= cur < b if a <= b else (cur >= a or cur < b)
 
 
 def load_json(path: Path, default=None):
@@ -152,6 +187,8 @@ def save_json(path: Path, data):
 
 
 class Config(dict):
+    on_set = None             # callback(key) after set(): the window's "Settings saved" toast
+
     def __init__(self):
         super().__init__(DEFAULTS)
         stored = load_json(CONFIG_PATH)
@@ -166,3 +203,5 @@ class Config(dict):
     def set(self, key, value):
         self[key] = value
         self.save()
+        if self.on_set:
+            self.on_set(key)

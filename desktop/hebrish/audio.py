@@ -59,6 +59,18 @@ class Recorder:
     def full(self) -> bool:
         return self._n >= self._max
 
+    def peek(self) -> np.ndarray:
+        """The audio not yet consumed, without stopping (live insertion)."""
+        with self._lock:
+            return np.concatenate(self._chunks) if self._chunks else np.zeros(0, np.float32)
+
+    def consume(self, n: int) -> np.ndarray:
+        """Remove and return the first n unconsumed samples. seconds still counts them."""
+        with self._lock:
+            buf = np.concatenate(self._chunks) if self._chunks else np.zeros(0, np.float32)
+            self._chunks = [buf[n:]] if len(buf) > n else []
+        return buf[:n]
+
     def start(self, device: str = ""):
         self._chunks, self._n, self.paused = [], 0, False
         self._open(device)

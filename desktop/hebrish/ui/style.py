@@ -59,6 +59,7 @@ QTabBar::tab:selected {{ border-bottom: 3px solid {BLUE}; font-weight: 600; }}
 #primary {{ background: {BLUE}; color: white; border: none; border-radius: 6px;
            padding: 6px 14px; font-weight: 600; }}
 #primary:hover {{ background: {BLUE_HOVER}; }}
+#toast {{ background: {BRAND_GREEN}; color: white; border-radius: 14px; font-weight: 600; }}
 #banner {{ background: #fff3cd; color: #5c4400; border-radius: 8px; padding: 8px; }}
 QProgressBar {{ border: 1px solid palette(mid); border-radius: 5px; text-align: center;
                height: 18px; }}

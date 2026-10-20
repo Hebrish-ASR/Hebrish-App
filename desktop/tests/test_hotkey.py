@@ -121,3 +121,22 @@ def test_stretch_pauses_only_inner_short_ones():
     y = stretch_pauses(x)
     # only the inner 0.2 s gap grows (to 0.6 s); leading/trailing and the 1 s gap stay
     assert abs((len(y) - len(x)) / sr - 0.4) < 0.03
+
+
+def test_action_keys_fire_on_press_only():
+    r = Rig("toggle")
+    acts = []
+    r.m._action = acts.append
+    r.m._cfg.update({"key_pause": "KEY_F15", "key_retake": "KEY_F16"})
+    r.tap("KEY_F15")
+    r.tap("KEY_F16")
+    assert acts == ["pause", "retake"] and r.events == []
+
+
+def test_action_key_does_not_cancel_a_modifier_take():
+    r = Rig("toggle", hotkey="KEY_RIGHTCTRL")
+    r.m._action = lambda a: None
+    r.m._cfg["key_stop"] = "KEY_F15"
+    r.m.key("KEY_RIGHTCTRL", True)
+    r.tap("KEY_F15")
+    assert r.events == ["start"]

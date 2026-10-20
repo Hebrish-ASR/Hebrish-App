@@ -7,8 +7,7 @@ import numpy as np
 
 from .audio import SAMPLE_RATE
 
-CHUNK_S = 30          # long takes are decoded in pieces, cut at the quietest moment
-SEARCH_S = 5          # ...within the last few seconds of each piece
+PIECE_S = 10          # long takes are decoded in pieces of ~10 s or more, cut at a pause (live_cut)
 MIN_TAKE_S = 0.3
 # Without trailing silence the model drops the end of the audio: with <0.6 s after the
 # last word it lost a whole final sentence (measured 2026-10-18, v4). Releasing
@@ -60,17 +59,61 @@ def stretch_pauses(x: np.ndarray) -> np.ndarray:
 
 
 def split_points(x: np.ndarray) -> list[tuple[int, int]]:
-    n, step = len(x), CHUNK_S * SAMPLE_RATE
-    win = SAMPLE_RATE // 10
+    """Cut a whole take the way live insertion cuts it while recording: grow the piece in
+    0.5 s steps until live_cut finds a pause. Up to 0.3.x this cut every 30 s at the quietest
+    100 ms, often inside a sentence, and lost 126 of 786 words on six 50 s test takes where
+    pause cuts lost 9 (2026-10-21, docs/maintaining.md, "Live insertion")."""
+    n, sr = len(x), SAMPLE_RATE
     out, start = [], 0
-    while n - start > step:
-        lo, hi = start + step - SEARCH_S * SAMPLE_RATE, start + step
-        frames = x[lo:hi][: (hi - lo) // win * win].reshape(-1, win)
-        cut = lo + int(np.argmin((frames ** 2).mean(axis=1))) * win + win // 2
-        out.append((start, cut))
-        start = cut
+    while n - start > (PIECE_S + LIVE_FORCE_S) * sr:
+        end = start + PIECE_S * sr
+        while (cut := live_cut(x[start:end], PIECE_S)) is None:
+            end += sr // 2
+        out.append((start, start + cut))
+        start += cut
     out.append((start, n))
     return out
+
+
+# Live insertion: cut the take while it is still being recorded, at a pause of at least
+# LIVE_PAUSE_S found in the last LIVE_SEARCH_S seconds (but not the newest LIVE_GUARD_S, which may
+# hold the start of a word). With no pause by interval + LIVE_FORCE_S, cut at the quietest 100 ms.
+LIVE_SEARCH_S = 6
+LIVE_GUARD_S = 0.3
+LIVE_PAUSE_S = 0.6      # 0.3 cut inside sentences: 24 vs 10 errors per 786 words at 15 s
+LIVE_FORCE_S = 15
+
+
+def live_cut(x: np.ndarray, interval_s: float) -> int | None:
+    """Sample index to cut a live take at, or None to keep listening. Quiet frames as in
+    stretch_pauses; the cut is the middle of the longest quiet run, so both halves keep some
+    silence."""
+    sr, n = SAMPLE_RATE, len(x)
+    if n < interval_s * sr:
+        return None
+    lo, hi = max(0, n - LIVE_SEARCH_S * sr), n - int(LIVE_GUARD_S * sr)
+    m = n // FRAME
+    rms = np.sqrt((x[: m * FRAME].reshape(m, FRAME) ** 2).mean(axis=1))
+    floor, speech = np.percentile(rms, 10), np.percentile(rms, 90)
+    quiet = rms < floor + 0.15 * (speech - floor)
+    best, i, a, b = 0, lo // FRAME, 0, 0
+    while i < hi // FRAME:
+        if quiet[i]:
+            j = i
+            while j < hi // FRAME and quiet[j]:
+                j += 1
+            if j - i > best:
+                best, a, b = j - i, i, j
+            i = j
+        else:
+            i += 1
+    if best * FRAME >= LIVE_PAUSE_S * sr:
+        return (a + b) // 2 * FRAME
+    if n >= (interval_s + LIVE_FORCE_S) * sr:
+        win = sr // 10
+        frames = x[lo:hi][: (hi - lo) // win * win].reshape(-1, win)
+        return lo + int(np.argmin((frames ** 2).mean(axis=1))) * win + win // 2
+    return None
 
 
 class Engine:
@@ -107,7 +150,7 @@ class Engine:
         return " ".join(self.transcribe_chunks(samples))
 
     def transcribe_chunks(self, samples: np.ndarray, cancel=None):
-        """Yield the text of each ≤30 s piece as it is decoded. The lock is taken per
+        """Yield the text of each piece (split_points) as it is decoded. The lock is taken per
         piece, so a hotkey dictation can slip in between pieces of a long file."""
         if len(samples) < MIN_TAKE_S * SAMPLE_RATE:
             return

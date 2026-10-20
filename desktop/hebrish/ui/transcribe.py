@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QLabel, QMes
 from .. import audio
 from ..inserter import copy_to_clipboard
 
+PARAGRAPH_S = 30
+
 
 class _Sig(QObject):
     chunk = Signal(str)
@@ -226,9 +228,12 @@ class TranscribePage(QWidget):
 
         def work():
             try:
+                para_at = None     # pieces are ~10-25 s; start a paragraph every ~30 s of audio
                 for text in self.ctl.engine.transcribe_chunks(samples, cancel):
-                    self.sig.chunk.emit(text)
                     done, total = self.ctl.engine.last_progress
+                    new = para_at is None or done - para_at >= PARAGRAPH_S * audio.SAMPLE_RATE
+                    para_at = done if new else para_at
+                    self.sig.chunk.emit(("\n\n" if new else " ") + text)
                     self.sig.progress.emit(done / total)
                 self.sig.done.emit((len(samples) / audio.SAMPLE_RATE, time.monotonic() - started,
                                     cancel.is_set()))
@@ -237,9 +242,10 @@ class TranscribePage(QWidget):
         threading.Thread(target=work, daemon=True).start()
 
     def _append(self, text):
-        sep = "\n\n" if self.text.toPlainText().strip() else ""
+        if not self.text.toPlainText().strip():
+            text = text.lstrip()
         self.text.moveCursor(self.text.textCursor().MoveOperation.End)
-        self.text.insertPlainText(sep + text)
+        self.text.insertPlainText(text)
         self.text.ensureCursorVisible()
 
     def _finished(self, result):

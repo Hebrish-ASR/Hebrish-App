@@ -9,6 +9,9 @@ Two keys, either may be "" (off):
   ptt_hotkey  push-to-talk only: press = start, release = stop.
 While one hotkey is held the other is ignored. Up to 0.2.x there was one key and a `mode`;
 config.upgrade() maps old files.
+
+Action keys (0.4.0), each "" = off, for a macropad or pedals: key_start, key_stop, key_pause
+(pause / resume), key_retake, key_discard. They act on press, independently of the two above.
 """
 
 import sys
@@ -16,6 +19,9 @@ import time
 
 MODIFIERS = {"KEY_LEFTCTRL", "KEY_RIGHTCTRL", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT",
              "KEY_LEFTALT", "KEY_RIGHTALT", "KEY_LEFTMETA", "KEY_RIGHTMETA"}
+ACTIONS = [("start", "Start"), ("stop", "Stop"), ("pause", "Pause / resume"),
+           ("retake", "Retake"), ("discard", "Discard")]
+SLOTS = ["hotkey", "ptt_hotkey"] + [f"key_{a}" for a, _ in ACTIONS]   # one key per slot, at most
 
 
 def pretty(name: str) -> str:
@@ -38,16 +44,20 @@ def describe(cfg) -> str:
                      + (", or hold it while you talk" if cfg["hold_to_talk"] else ""))
     if ptt:
         parts.append(f"Hold {pretty(ptt)} while you talk")
+    keys = [f"{label} {pretty(cfg[f'key_{a}'])}" for a, label in ACTIONS if cfg[f"key_{a}"]]
+    if keys:
+        parts.append("Keys: " + ", ".join(keys))
     return ". ".join(parts) or "No hotkey set: use the button, the tray or the overlay"
 
 
 class HotkeyMachine:
-    """Calls start() / stop() / cancel(); is_recording() is polled. Subclasses call
-    self.key(name, down) from their own thread and implement run()."""
+    """Calls start() / stop() / cancel() / action(name); is_recording() is polled. Subclasses
+    call self.key(name, down) from their own thread and implement run()."""
 
-    def __init__(self, config, start, stop, cancel, is_recording):
+    def __init__(self, config, start, stop, cancel, is_recording, action=None):
         self._cfg = config
         self._start, self._stop, self._cancel = start, stop, cancel
+        self._action = action
         self._is_recording = is_recording
         self._capture = None
         self._held = None                 # the hotkey currently down, if any
@@ -64,6 +74,11 @@ class HotkeyMachine:
         if self._capture and down:
             cb, self._capture = self._capture, None
             cb(name)
+            return
+        action = next((a for a, _ in ACTIONS if name and self._cfg.get(f"key_{a}") == name), None)
+        if action:
+            if down and self._action:
+                self._action(action)
             return
         toggle, ptt = self._cfg["hotkey"], self._cfg["ptt_hotkey"]
         if not name or name not in (toggle, ptt):
