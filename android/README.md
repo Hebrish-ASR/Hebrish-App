@@ -91,7 +91,7 @@ Voice keyboard keys: previous keyboard · delete · **mic** · space · enter.
 | --- | --- |
 | Base | [`nvidia/parakeet-tdt-0.6b-v2`](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2) (v2 on purpose, not v3) |
 | Stock | [`csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8`](https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8), files at the repo root |
-| Code-switching | [`Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8`](https://huggingface.co/Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8), files at the root (since 2026-10-19; the main repo is gated). The app downloads whatever version is on HF `main` |
+| Code-switching | [`Hebrish/Jachnun-sherpa-onnx-int8`](https://huggingface.co/Hebrish/Jachnun-sherpa-onnx-int8), files at the root (since 2026-10-19; the main repo is gated). The app downloads whatever version is on HF `main` |
 | Format | sherpa-onnx int8 (encoder, decoder, joiner, tokens), about 660 MB per model |
 | Offline fallback (`ModelStore.BUNDLED`) | stock v2 at rev `1ab9323565dd`; code-switching v1.0 at rev `bb137e504b97` of the mirror (since 0.2.1). Used only when HF can't be reached on a first download |
 | Runtime | [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8 Android AAR, CPU, greedy search |

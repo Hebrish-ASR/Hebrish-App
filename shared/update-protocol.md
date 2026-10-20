@@ -24,7 +24,7 @@ recognizer loads), `version_file`, `default` (the id selected on a fresh install
 | id | repo | subdir | label without version.json |
 | --- | --- | --- | --- |
 | `stock` | `csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8` (k2-fsa's int8 export of NVIDIA's release; static since 2025-08-16) | *(root)* | `v2` |
-| `codeswitch` | `Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8` (since 2026-10-19) | *(root)* | `rev <sha7>` |
+| `codeswitch` | `Hebrish/Jachnun-sherpa-onnx-int8` (since 2026-10-19; named `Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8` until 2026-10-20, which redirects with 307) | *(root)* | `rev <sha7>` |
 | `tech`, `personal` | not published yet | | |
 
 **Since 0.2.2 (2026-10-20): the Hebrish CDN.** A catalogue entry may carry `manifest_url`; apps
