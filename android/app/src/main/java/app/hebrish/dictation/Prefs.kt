@@ -61,6 +61,17 @@ object Prefs {
     fun setBubbleAlpha(ctx: Context, v: Int) = sp(ctx).edit().putInt("bubble_alpha", v.coerceIn(ALPHA_MIN, 100)).apply()
     const val ALPHA_MIN = 25
 
+    /** Opacity of the bar's background during a take, in percent; the mic and buttons stay opaque. */
+    fun bubbleBarAlpha(ctx: Context) = sp(ctx).getInt("bubble_bar_alpha", 100)
+    fun setBubbleBarAlpha(ctx: Context, v: Int) = sp(ctx).edit().putInt("bubble_bar_alpha", v.coerceIn(BAR_ALPHA_MIN, 100)).apply()
+    const val BAR_ALPHA_MIN = 20
+
+    /** Colour of the idle mic (ARGB), one of [BUBBLE_COLORS]; during a take it is always red. */
+    fun bubbleColor(ctx: Context) = sp(ctx).getInt("bubble_color", BUBBLE_COLORS[0])
+    fun setBubbleColor(ctx: Context, v: Int) = sp(ctx).edit().putInt("bubble_color", v).apply()
+    /** Hebrish blue (R.color.accent, the 0.4.0 colour), Hebrish green, purple, orange, slate, black. No red: that means recording. */
+    val BUBBLE_COLORS = listOf(0xFF24527A, 0xFF0F6B5C, 0xFF6A3FA0, 0xFFB35400, 0xFF4A4F57, 0xFF111214).map { it.toInt() }
+
     /** Height of the floating mic: 0 = top of the screen, 1 = bottom. */
     fun bubbleY(ctx: Context) = sp(ctx).getFloat("bubble_y", 0.6f)
     fun setBubbleY(ctx: Context, v: Float) = sp(ctx).edit().putFloat("bubble_y", v.coerceIn(0f, 1f)).apply()

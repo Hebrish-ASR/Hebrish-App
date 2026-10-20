@@ -218,6 +218,20 @@ everything below that describes runtime behaviour).
   x measured from that side, minus the 4 dp window padding), so the WRAP_CONTENT bar grows
   inwards (children reversed when anchored right). A drag on an edge side saves the nearer
   side; on `free` it saves `bubbleX`.
+- **Drag and look (after 0.4.0, Daniel, 2026-10-20: "drag it around while you're doing it",
+  opacity, background opacity, colour):** every part of the bubble has a `Drag` touch listener:
+  the mic, the timer, each bar button and the root (the bar's padding). `Drag(tap, hold)`:
+  a move past the touch slop is a drag; buttons pass `performClick` as `tap` (and keep their
+  click listener for TalkBack). On a long-press `hold()` runs; if it returns false (the mic
+  during a take, or any bar part) the bubble is "picked up": a haptic buzz, then any move drags
+  without the slop. Before this, only the mic dragged, and holding still past the long-press
+  timeout blocked the drag. The idle mic's long-press still inserts the last transcript and
+  does not drag. New prefs: `bubbleBarAlpha` (`bubble_bar_alpha`, 20–100 %, default 100: the
+  bar's `GradientDrawable` alpha only, so the mic and buttons stay opaque) and `bubbleColor`
+  (`bubble_color`, ARGB, one of `Prefs.BUBBLE_COLORS`: Hebrish blue `#24527A` = the old fixed
+  `R.color.accent`, green `#0F6B5C`, purple, orange, slate, black; no red, which means
+  recording). Compiled with `assembleDebug` (V, 2026-10-20, JDK 21: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`,
+  the shell's default `JAVA_HOME` points at a missing JDK 17 path); not run on a device (I).
 - **Missed field (0.4.0):** when `deliver` finds no editable focused node, or the node refuses
   both SET_TEXT and PASTE, the text goes into `pending` (appended if something is already
   waiting) and onto the clipboard, and the bar shows **Insert** + ×. Insert runs the same

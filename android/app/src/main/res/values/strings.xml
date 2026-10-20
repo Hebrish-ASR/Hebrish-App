@@ -106,7 +106,7 @@
     <string name="a11y_label">Hebrish floating mic</string>
     <string name="a11y_description">Shows a floating microphone over other apps. Tap it to dictate into the text field you are in, without switching keyboards. Hebrish reads the focused text field only to put your transcript in at the cursor, and it never reads password fields. Audio and text stay on this phone.</string>
     <string name="bubble_body">A mic button that floats over every app. Tap it in any text field, talk, and tap Stop: the text goes in at the cursor and your keyboard stays as it is. While you talk it shows Pause, Retake and Discard. If no text field had focus when the text was ready, the mic shows Insert: tap a field, then Insert. Long-press the idle mic to insert the last transcript again. It runs as an accessibility service.</string>
-    <string name="bubble_on">The floating mic is on. Drag it to move it, or set its place below.</string>
+    <string name="bubble_on">The floating mic is on. Drag it to move it, also while you talk (by the mic or the bar), or set its place below.</string>
     <string name="bubble_off">The floating mic is off. Turn on “Hebrish floating mic” in Accessibility settings, under Downloaded apps (or Installed apps). The guide below goes through it step by step.</string>
     <string name="bubble_enable">Accessibility settings</string>
     <string name="bubble_app_info">App info</string>
@@ -138,6 +138,10 @@
     <string name="bubble_edge">Gap from the edge: %1$d dp</string>
     <string name="bubble_size_dp">Size: %1$d dp</string>
     <string name="bubble_alpha">Opacity when idle: %1$d%%</string>
+    <string name="bubble_bar_alpha">Bar background while you talk: %1$d%% opaque</string>
+    <string name="bubble_colour">Mic colour</string>
+    <string name="bubble_colour_cd">Mic colour %1$d</string>
+    <string name="bubble_colour_hint">While you talk the mic is always red.</string>
     <string name="bubble_options_hint">Long takes, and whether text goes in while you talk, are set on the Dictation screen.</string>
     <string name="bubble_needs_mic">It also needs the microphone: see the guide.</string>
     <string name="bubble_on_clipboard">This field doesn\'t accept dictation; the text is on the clipboard.</string>

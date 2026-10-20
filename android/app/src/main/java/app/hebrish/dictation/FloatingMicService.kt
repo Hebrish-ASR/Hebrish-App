@@ -16,6 +16,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.ContextThemeWrapper
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -47,10 +48,12 @@ import android.widget.Toast
  * they are recorded (Recorder.onSegment + TakeDecoder), so after Stop only the last few seconds
  * remain to decode, and takes can run to Recorder.MAX_SEGMENTED_SECONDS.
  *
- * Where it sits: drag the mic anywhere. On release it snaps to the nearer side, or with the side
- * set to "free" it stays where it was dropped. The setup screen sets side, height, horizontal
- * place, edge gap, size and idle opacity (Prefs.bubble*). The bar always opens towards the
- * middle of the screen, so the mic stays where it was parked.
+ * Where it sits: drag it anywhere, by the mic or, while a take is open, by any part of the bar
+ * (a button still works as a tap). Holding still first works too: during a take a long-press
+ * on the mic or bar buzzes and "picks it up". On release it snaps to the nearer side, or with
+ * the side set to "free" it stays where it was dropped. The setup screen sets side, height,
+ * horizontal place, edge gap, size, idle opacity, bar opacity and mic colour (Prefs.bubble*).
+ * The bar always opens towards the middle of the screen, so the mic stays where it was parked.
  *
  * Same engine and process as the voice keyboard, so both share one loaded model. Recording needs
  * no foreground service: see docs/maintaining.md, "Floating mic".
@@ -187,12 +190,13 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             background = micBg
             elevation = dp(6).toFloat()
             contentDescription = getString(R.string.cd_mic)
-            setOnTouchListener(Drag())
+            setOnTouchListener(Drag(::onTap, ::onLongPress))
         }
         timer = TextView(themed).apply {
             setTextColor(getColor(R.color.ime_text))
             textSize = 14f
             setPadding(dp(8), 0, dp(4), 0)
+            setOnTouchListener(Drag())
         }
         fun button(drawable: Int, cd: Int, action: () -> Unit) = ImageButton(themed).apply {
             setImageResource(drawable)
@@ -200,6 +204,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             background = null
             setPadding(dp(10), dp(10), dp(10), dp(10))
             setOnClickListener { action() }
+            setOnTouchListener(Drag({ performClick() }))
         }
         pauseBtn = button(R.drawable.ic_pause, R.string.pause) { togglePause() }
         takeControls = listOf(
@@ -218,6 +223,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             setPadding(dp(10), dp(10), dp(10), dp(10))
             contentDescription = getString(R.string.bubble_insert_cd)
             setOnClickListener { insertPending() }
+            setOnTouchListener(Drag({ performClick() }))
         }
         pendingControls = listOf(insert, button(R.drawable.ic_close, R.string.bubble_dismiss) { dismissPending() })
         barBg.setColor(getColor(R.color.ime_bg))
@@ -225,6 +231,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(PAD_DP), dp(PAD_DP), dp(PAD_DP), dp(PAD_DP))
+            setOnTouchListener(Drag())
         }
         // TYPE_ACCESSIBILITY_OVERLAY needs no "draw over other apps" permission. Not focusable,
         // so tapping it leaves input focus (and the keyboard) on the field being dictated into.
@@ -297,8 +304,13 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         place()
     }
 
-    /** Tap, long-press and drag on the mic; a move past the touch slop makes it a drag. */
-    private inner class Drag : View.OnTouchListener {
+    /**
+     * Tap, long-press and drag on any part of the bubble; a move past the touch slop makes it a
+     * drag. [hold] runs on a long-press and says whether it did something; if not (a take is
+     * open, or this is the bar), the long-press "picks up" the bubble instead: a buzz, then any
+     * move drags it. Buttons pass performClick as [tap], so they still click.
+     */
+    private inner class Drag(private val tap: () -> Unit = {}, private val hold: () -> Boolean = { false }) : View.OnTouchListener {
         private val slop = ViewConfiguration.get(this@FloatingMicService).scaledTouchSlop
         private var downX = 0f
         private var downY = 0f
@@ -306,7 +318,15 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         private var startY = 0
         private var dragging = false
         private var longPressed = false
-        private val longPress = Runnable { longPressed = true; onLongPress() }
+        private var grabbed = false
+        private var view: View? = null
+        private val longPress = Runnable {
+            longPressed = hold()
+            if (!longPressed) {
+                grabbed = true
+                view?.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            }
+        }
 
         override fun onTouch(v: View, e: MotionEvent): Boolean {
             val r = root ?: return false
@@ -314,13 +334,14 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
                 MotionEvent.ACTION_DOWN -> {
                     downX = e.rawX; downY = e.rawY
                     startX = params.x; startY = params.y
-                    dragging = false; longPressed = false
+                    dragging = false; longPressed = false; grabbed = false
+                    view = v
                     main.postDelayed(longPress, ViewConfiguration.getLongPressTimeout().toLong())
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = e.rawX - downX
                     val dy = e.rawY - downY
-                    if (!dragging && !longPressed && dx * dx + dy * dy > slop * slop) {
+                    if (!dragging && !longPressed && (grabbed || dx * dx + dy * dy > slop * slop)) {
                         dragging = true
                         main.removeCallbacks(longPress)
                     }
@@ -333,7 +354,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
                 }
                 MotionEvent.ACTION_UP -> {
                     main.removeCallbacks(longPress)
-                    if (dragging) savePosition() else if (!longPressed) onTap()
+                    if (dragging) savePosition() else if (!longPressed && !grabbed) tap()
                 }
                 MotionEvent.ACTION_CANCEL -> {
                     main.removeCallbacks(longPress)
@@ -358,12 +379,15 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         }
     }
 
-    /** Idle: insert the last transcript again (it is kept in Prefs). */
-    private fun onLongPress() {
-        if (state != State.IDLE) return
-        val text = Prefs.lastTranscript(this) ?: return toast(getString(R.string.bubble_no_last))
-        target = null
-        deliver(text)
+    /** Idle: insert the last transcript again (it is kept in Prefs). False during a take: nothing to do. */
+    private fun onLongPress(): Boolean {
+        if (state != State.IDLE) return false
+        val text = Prefs.lastTranscript(this)
+        if (text == null) toast(getString(R.string.bubble_no_last)) else {
+            target = null
+            deliver(text)
+        }
+        return true
     }
 
     private fun startRecording() {
@@ -548,7 +572,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         r.background = if (open || waiting) barBg.apply { cornerRadius = dp(Prefs.bubbleSize(this@FloatingMicService)).toFloat() } else null
         for (c in takeControls) c.visibility = if (open) View.VISIBLE else View.GONE
         for (c in pendingControls) c.visibility = if (waiting) View.VISIBLE else View.GONE
-        micBg.setColor(getColor(if (open) R.color.bubble_recording else R.color.accent))
+        barBg.alpha = Prefs.bubbleBarAlpha(this) * 255 / 100
+        micBg.setColor(if (open) getColor(R.color.bubble_recording) else Prefs.bubbleColor(this))
         icon.setImageResource(if (open) R.drawable.ic_stop else R.drawable.ic_mic)
         icon.visibility = if (state == State.TRANSCRIBING) View.GONE else View.VISIBLE
         spinner.visibility = if (state == State.TRANSCRIBING) View.VISIBLE else View.GONE

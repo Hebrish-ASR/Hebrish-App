@@ -2,9 +2,11 @@ package app.hebrish.dictation
 
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.drawable.GradientDrawable
 import android.provider.Settings
 import android.view.View
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.SeekBar
@@ -12,7 +14,7 @@ import android.widget.TextView
 
 /**
  * The floating mic: whether it is on (with the step-by-step guide, [FloatingMicGuideActivity]),
- * where it sits and how it looks. Every control writes Prefs; FloatingMicService moves the mic
+ * where it sits and how it looks (opacity, bar opacity, mic colour). Every control writes Prefs; FloatingMicService moves the mic
  * live, and dragging the mic updates these controls while the screen is open.
  */
 class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeListener {
@@ -26,6 +28,9 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
     private lateinit var edgeViews: List<View>
     private lateinit var size: SeekBar
     private lateinit var alpha: SeekBar
+    private lateinit var barAlpha: SeekBar
+    /** Colour swatches, by ARGB value; the chosen one has a ring. */
+    private val swatches = mutableMapOf<Int, GradientDrawable>()
     private val sideIds = mutableMapOf<String, Int>()
 
     override fun build() {
@@ -80,6 +85,23 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
         alpha = slider(Prefs.ALPHA_MIN, 100, Prefs.bubbleAlpha(this), alphaLabel,
             { getString(R.string.bubble_alpha, it) }) { Prefs.setBubbleAlpha(this, it) }
 
+        val barAlphaLabel = text(top = 12)
+        barAlpha = slider(Prefs.BAR_ALPHA_MIN, 100, Prefs.bubbleBarAlpha(this), barAlphaLabel,
+            { getString(R.string.bubble_bar_alpha, it) }) { Prefs.setBubbleBarAlpha(this, it) }
+
+        text(R.string.bubble_colour, top = 12)
+        val colours = row()
+        for ((i, c) in Prefs.BUBBLE_COLORS.withIndex()) {
+            val d = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(c) }
+            swatches[c] = d
+            colours.addView(View(this).apply {
+                background = d
+                contentDescription = getString(R.string.bubble_colour_cd, i + 1)
+                setOnClickListener { Prefs.setBubbleColor(this@FloatingMicActivity, c) }
+            }, LinearLayout.LayoutParams(dp(40), dp(40)).apply { setMargins(0, dp(6), dp(10), dp(6)) })
+        }
+        small(R.string.bubble_colour_hint)
+
         heading(R.string.step_options)
         switch(R.string.bubble_only_typing, { Prefs.bubbleOnlyTyping(this) }, { Prefs.setBubbleOnlyTyping(this, it) })
         text(R.string.bubble_options_hint)
@@ -116,6 +138,9 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
         edge.progress = Prefs.bubbleEdge(this)
         size.progress = Prefs.bubbleSize(this) - Prefs.SIZE_MIN
         alpha.progress = Prefs.bubbleAlpha(this) - Prefs.ALPHA_MIN
+        barAlpha.progress = Prefs.bubbleBarAlpha(this) - Prefs.BAR_ALPHA_MIN
+        val chosen = Prefs.bubbleColor(this)
+        for ((c, d) in swatches) d.setStroke(if (c == chosen) dp(3) else 0, getColor(android.R.color.darker_gray))
     }
 
     private companion object {
