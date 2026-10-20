@@ -233,8 +233,18 @@ def fetch_latest(mid: str | None = None) -> Manifest:
 
 # -- local -------------------------------------------------------------------
 
+# Where models live: MODELS_DIR, or the folder the user picked (config `models_dir`, 0.5.0).
+# The app calls set_root() at start and when the setting changes; the CLI uses the default.
+ROOT = MODELS_DIR
+
+
+def set_root(path: Path):
+    global ROOT
+    ROOT = Path(path)
+
+
 def model_dir(mid: str) -> Path:
-    return MODELS_DIR / mid
+    return ROOT / mid
 
 
 def installed(mid: str | None = None) -> list[tuple[Path, Manifest]]:
@@ -288,7 +298,7 @@ def remove(dirname: str, mid: str | None = None):
 def remove_model(mid: str):
     """Delete every version of one model."""
     target = model_dir(mid).resolve()
-    if target.parent != MODELS_DIR.resolve():
+    if target.parent != ROOT.resolve():
         raise ValueError(mid)
     shutil.rmtree(target, ignore_errors=True)
 
@@ -393,8 +403,9 @@ def download(m: Manifest, on_progress=None, cancel: threading.Event | None = Non
 def main():
     import argparse
     import sys
-    from .config import import_parlance
+    from .config import CONFIG_PATH, import_parlance, models_root
     import_parlance()                   # first start: copy Parlance's settings and models
+    set_root(models_root(load_json(CONFIG_PATH)))
     p = argparse.ArgumentParser(prog="hebrish-model")
     p.add_argument("cmd", choices=["list", "status", "check", "download", "use"])
     p.add_argument("model", nargs="?", help="catalogue id (default: the selected model)")

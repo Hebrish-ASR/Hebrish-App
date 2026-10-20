@@ -93,11 +93,40 @@ def test_unset_keys_do_nothing():
     assert r.events == []
 
 
+V05 = {"feedback": "beeps", "keep_history": False, "live_insert_s": 10}   # what upgrade() gives a pre-0.5.0 config
+
+
 def test_upgrade_old_modes():
     from hebrish.config import upgrade
-    assert upgrade({"mode": "hold", "hotkey": "KEY_F9"}) == {"hotkey": "", "ptt_hotkey": "KEY_F9"}
-    assert upgrade({"mode": "toggle"}) == {"hold_to_talk": False}
-    assert upgrade({"mode": "hybrid", "hotkey": "KEY_F9"}) == {"hotkey": "KEY_F9"}
+    assert upgrade({"mode": "hold", "hotkey": "KEY_F9"}) == {"hotkey": "", "ptt_hotkey": "KEY_F9", **V05}
+    assert upgrade({"mode": "toggle"}) == {"hold_to_talk": False, **V05}
+    assert upgrade({"mode": "hybrid", "hotkey": "KEY_F9"}) == {"hotkey": "KEY_F9", **V05}
+
+
+def test_upgrade_to_0_5_0_defaults():
+    """Daniel, 2026-10-21: insert as you go every ~10 s and no history by default, for existing
+    installs too; `beeps` became `feedback`. A config that already has `feedback` is left alone."""
+    from hebrish.config import upgrade
+    assert upgrade({"beeps": False, "live_insert_s": 0, "keep_history": True}) == \
+        {"feedback": "off", "live_insert_s": 10, "keep_history": False}
+    assert upgrade({"beeps": True, "live_insert_s": 20})["live_insert_s"] == 20
+    kept = {"feedback": "voice", "live_insert_s": 0, "keep_history": True}
+    assert upgrade(dict(kept)) == kept
+    assert upgrade({}) == {}
+
+
+def test_vad_skips_silence_and_shortens_long_pauses():
+    import numpy as np
+    from hebrish.engine import has_speech, shorten_silences
+    sr = 16000
+    rng = np.random.default_rng(0)
+    hiss = lambda s: rng.normal(0, 0.001, int(s * sr)).astype(np.float32)
+    tone = lambda s: (0.1 * np.sin(np.arange(int(s * sr)) / 3)).astype(np.float32)
+    assert not has_speech(hiss(3))
+    x = np.concatenate([hiss(0.5), tone(1), hiss(3), tone(1), hiss(0.7), tone(1)])
+    assert has_speech(x)
+    y = shorten_silences(x)
+    assert abs(len(y) / sr - (0.5 + 1 + 0.8 + 1 + 0.7 + 1)) < 0.05      # only the 3 s pause shrank
 
 
 def test_capture_takes_next_key():

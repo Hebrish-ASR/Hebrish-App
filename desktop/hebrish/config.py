@@ -10,7 +10,7 @@ from pathlib import Path
 APP_ID = "app.hebrish.Dictation"
 APP_NAME = "Hebrish"
 AUTOSTART_KEY = "Hebrish"     # Windows HKCU Run value name
-TAGLINE = "On-device dictation with Parakeet"
+TAGLINE = "Dictation for English speakers in Israel"
 
 _env = lambda var, default: Path(os.environ.get(var) or Path.home() / default)  # noqa: E731
 if sys.platform == "win32":
@@ -41,21 +41,23 @@ DEFAULTS = {
     "key_pause": "",              # pause / resume
     "key_retake": "",
     "key_discard": "",
-    "live_insert_s": 0,           # decode while recording and insert every ~N s, at a pause; 0 = off
+    "live_insert_s": 10,          # decode while recording and insert every ~N s, at a pause; 0 = off
     "overlay": "off",             # off | active (while dictating) | always
     "overlay_pos": None,          # [x, y] of the overlay's top-left; None = bottom centre
     "overlay_opacity": 85,        # idle opacity %, "always" mode
-    "insert": "paste",            # paste | clipboard
+    "insert": "paste",            # paste | clipboard | app (the Dictate tab's text box only)
     "paste_chord": "ctrl+v",      # e.g. ctrl+shift+v if you dictate mostly into terminals
     "trailing_space": True,
-    "beeps": True,
-    "beep_volume": 50,            # %; 50 = the 0.3.x level
-    "quiet_hours": False,         # no beeps between quiet_from and quiet_to (may cross midnight)
+    "feedback": "beeps",          # beeps | voice (spoken status: data/voice/) | off
+    "beep_volume": 50,            # %; 50 = the 0.3.x level; also the voice volume
+    "quiet_hours": False,         # no beeps or voice between quiet_from and quiet_to (may cross midnight)
     "quiet_from": "22:00",
     "quiet_to": "07:00",
     "audio_device": "",           # "" = system default; else a sounddevice name
+    "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad)
     "num_threads": 0,             # decoder threads; 0 = auto (physical cores, at most 8)
-    "keep_history": True,         # remember recent transcripts across restarts
+    "keep_history": False,        # keep a History tab of transcripts, saved across restarts
+    "models_dir": "",             # where model weights live; "" = DATA_DIR/models
     "update_check_hours": 24,     # 0 = never check automatically
     "auto_update": False,         # download a new version without asking
     "keep_old_versions": True,    # False = delete the previous model once the new one verifies
@@ -150,6 +152,14 @@ def upgrade(stored: dict) -> dict:
     # 0.4.0 adds "auto" (0); a 4 from a file without 0.4.0's keys is that old default.
     if "live_insert_s" not in stored and stored.get("num_threads") == 4:
         stored["num_threads"] = 0
+    # 0.5.0 (Daniel, 2026-10-21): insert as you go every ~10 s and no history by default, and
+    # `beeps` (bool) became `feedback`. A config without `feedback` predates that: give it the
+    # new defaults once, so they reach existing installs too.
+    if stored and "feedback" not in stored:
+        stored["feedback"] = "beeps" if stored.pop("beeps", True) else "off"
+        if not stored.get("live_insert_s"):
+            stored["live_insert_s"] = 10
+        stored["keep_history"] = False
     return stored
 
 
@@ -158,6 +168,12 @@ def threads(cfg) -> int:
     Ryzen 7 5700U (8 cores / 16 threads), 51 s of speech took 4.94 s on 4 threads, 4.41 on 8,
     5.29 on 12 and 5.79 on 16."""
     return cfg["num_threads"] or max(1, min(8, (os.cpu_count() or 4) // 2))
+
+
+def models_root(cfg=None) -> Path:
+    """The folder holding models/<id>/<version>/: the user's choice (Settings, "Model storage"),
+    else MODELS_DIR."""
+    return Path(cfg["models_dir"]).expanduser() if cfg and cfg.get("models_dir") else MODELS_DIR
 
 
 def in_quiet_hours(cfg, now: time.struct_time | None = None) -> bool:
@@ -192,7 +208,7 @@ class Config(dict):
     def __init__(self):
         super().__init__(DEFAULTS)
         stored = load_json(CONFIG_PATH)
-        old = "mode" in stored
+        old = "mode" in stored or ("feedback" not in stored and bool(stored))
         self.update({k: v for k, v in upgrade(stored).items() if k in DEFAULTS})
         if old or not CONFIG_PATH.exists():
             self.save()

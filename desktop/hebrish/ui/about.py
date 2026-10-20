@@ -22,6 +22,7 @@ MODEL = "https://huggingface.co/Hebrish/Jachnun"       # the HF home since 2026-
 LEADERBOARD = "https://huggingface.co/spaces/danielrosehill/English-Hebrew-Codeswitching-ASR-Leaderboard"
 DEMO = "https://huggingface.co/spaces/danielrosehill/English-Hebrew-Codeswitching-Parakeet-Demo"
 SOURCE = "https://github.com/Hebrish-ASR/Hebrish-App"
+AUTHOR_SITE = "https://danielrosehill.com"
 
 # hebrish.app, the website for the code-switching model, its contact topics and the feedback
 # address. The only place these URLs live: the About tab, the Model tab and the tray's
@@ -180,7 +181,7 @@ class AboutPage(QScrollArea):
 
         foot = muted(f"<a href='{HUB}'>Code-switching project</a> · <a href='{MODEL}'>Jachnun on "
                      f"Hugging Face</a> · <a href='{DEMO}'>Demo</a> · <a href='{SOURCE}'>Source code</a>"
-                     "<br>Made by Daniel Rosehill")
+                     f"<br>Open source (MIT) by <a href='{AUTHOR_SITE}'>Daniel Rosehill</a>")
         foot.setTextFormat(Qt.RichText)
         foot.setOpenExternalLinks(True)
         foot.setAlignment(Qt.AlignCenter)
@@ -217,9 +218,15 @@ class AboutPage(QScrollArea):
         title = QLabel("Hebrish")
         title.setFont(display_font(30))
         col.addWidget(title)
-        tag = QLabel("Dictation that gets the Hebrew words right.", objectName="heroMuted")
+        tag = QLabel("Dictation for English speakers in Israel. Gets the Hebrew words right.",
+                     objectName="heroMuted")
         tag.setWordWrap(True)
         col.addWidget(tag)
+        by = _rich(f"An open-source project by <a href='{AUTHOR_SITE}' style='color:{BRAND_GREEN}'>"
+                   "<b>Daniel Rosehill</b></a> · <a href='{AUTHOR_SITE}' "
+                   f"style='color:{BRAND_GREEN}'>danielrosehill.com</a>".replace("{AUTHOR_SITE}", AUTHOR_SITE))
+        by.setStyleSheet("font-size: 13px;")
+        col.addWidget(by)
         chips = QHBoxLayout()
         chips.setSpacing(6)
         chips.setContentsMargins(0, 6, 0, 0)

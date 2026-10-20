@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>Sabich</title>
+  <!-- Sabich model mark (hand-drawn 2026-10-20; companion to jachnun.svg). A pita pocket filled with fried
+       eggplant, a slice of egg and parsley, with a tahini drizzle. Colours from tokens.json only: pita
+       dark.gold #e0b14a, inside and toast spots light.gold #c8901c, outline and eggplant skin light.warn-ink
+       #9a3412, eggplant flesh dark.warn-ink #f4a582, egg white and tahini light.bg #fbf8f2, yolk dark.gold,
+       parsley light.accent #0f6b5c. -->
+  <g transform="rotate(-22 32 34)" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="32" cy="24" rx="20" ry="4" fill="#c8901c" stroke="#9a3412" stroke-width="2.2"/>
+    <circle cx="22" cy="18" r="6.5" fill="#f4a582" stroke="#9a3412" stroke-width="2.2"/>
+    <g fill="#9a3412"><circle cx="20.5" cy="17" r="0.8"/><circle cx="23.5" cy="17.5" r="0.8"/><circle cx="21.8" cy="20.2" r="0.8"/></g>
+    <circle cx="44" cy="19.5" r="5.5" fill="#f4a582" stroke="#9a3412" stroke-width="2.2"/>
+    <g fill="#9a3412"><circle cx="43" cy="18.5" r="0.7"/><circle cx="45.3" cy="20.5" r="0.7"/></g>
+    <ellipse cx="33" cy="14.5" rx="6.5" ry="5.8" fill="#fbf8f2" stroke="#9a3412" stroke-width="2"/>
+    <circle cx="33" cy="14.5" r="2.9" fill="#e0b14a"/>
+    <g fill="#0f6b5c"><ellipse cx="27.5" cy="21.5" rx="2.4" ry="1.4" transform="rotate(-30 27.5 21.5)"/><ellipse cx="38.5" cy="21.5" rx="2.4" ry="1.4" transform="rotate(25 38.5 21.5)"/><ellipse cx="15" cy="22" rx="2.2" ry="1.3" transform="rotate(-25 15 22)"/><ellipse cx="49.5" cy="23" rx="2.2" ry="1.3" transform="rotate(20 49.5 23)"/><ellipse cx="29" cy="10" rx="2" ry="1.2" transform="rotate(-45 29 10)"/></g>
+    <path d="M12,24 Q32,31 52,24 C52,44 44,57 32,57 C20,57 12,44 12,24 Z" fill="#e0b14a" stroke="#9a3412" stroke-width="2.4"/>
+    <g fill="#c8901c"><circle cx="24" cy="48" r="1.3"/><circle cx="39" cy="50" r="1.1"/><circle cx="44" cy="39" r="1.2"/><circle cx="19" cy="38" r="1"/></g>
+    <path d="M17,34 q3.75,-2.6 7.5,0 t7.5,0 t7.5,0 t7.5,0" fill="none" stroke="#fbf8f2" stroke-width="2.4"/>
+  </g>
+</svg>

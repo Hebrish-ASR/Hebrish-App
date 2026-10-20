@@ -48,7 +48,7 @@ QTabBar::tab:selected {{ border-bottom: 3px solid {BLUE}; font-weight: 600; }}
 #muted {{ color: palette(placeholder-text); }}
 #transcript {{ font-size: 13px; }}
 
-#record {{ border-radius: 66px; font-size: 15px; font-weight: 700; color: white;
+#record {{ border-radius: 52px; font-size: 15px; font-weight: 700; color: white;
           background: {BLUE}; border: 4px solid palette(base); }}
 #record:hover {{ background: {BLUE_HOVER}; }}
 #record[state="recording"] {{ background: {RED}; }}
@@ -59,6 +59,9 @@ QTabBar::tab:selected {{ border-bottom: 3px solid {BLUE}; font-weight: 600; }}
 #primary {{ background: {BLUE}; color: white; border: none; border-radius: 6px;
            padding: 6px 14px; font-weight: 600; }}
 #primary:hover {{ background: {BLUE_HOVER}; }}
+#dropZone {{ border: 2px dashed palette(mid); border-radius: 12px; background: palette(base);
+             font-size: 15px; color: palette(placeholder-text); padding: 18px; }}
+#dropZone:hover {{ border-color: {BLUE}; color: {BLUE}; }}
 #toast {{ background: {BRAND_GREEN}; color: white; border-radius: 14px; font-weight: 600; }}
 #banner {{ background: #fff3cd; color: #5c4400; border-radius: 8px; padding: 8px; }}
 QProgressBar {{ border: 1px solid palette(mid); border-radius: 5px; text-align: center;

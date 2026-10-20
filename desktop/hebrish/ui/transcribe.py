@@ -1,15 +1,14 @@
-"""Transcribe tab: the long-form workflow. Record (with pause) or open a file, and the
-transcript fills an editable text box piece by piece. Hotkey dictation is the Dictate tab."""
+"""File tab: transcribe an audio file. Drop or pick one, and the transcript fills an editable
+text box piece by piece. Recording (hotkey or button) is the Dictate tab; up to 0.4.0 this tab
+also recorded, with its own 3-hour recorder."""
 
 import threading
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QTimer, Signal
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QLabel, QMessageBox,
-                               QPlainTextEdit, QProgressBar, QPushButton, QToolButton,
-                               QVBoxLayout, QWidget)
+from PySide6.QtCore import QObject, Qt, Signal
+from PySide6.QtWidgets import (QFileDialog, QHBoxLayout, QMessageBox, QPlainTextEdit,
+                               QProgressBar, QPushButton, QSizePolicy, QVBoxLayout, QWidget)
 
 from .. import audio
 from ..inserter import copy_to_clipboard
@@ -33,8 +32,6 @@ class TranscribePage(QWidget):
     def __init__(self, ctl, card, muted):
         super().__init__()
         self.ctl, self.cfg = ctl, ctl.cfg
-        self.rec = ctl.long_recorder
-        self.last_audio = None
         self.cancel = None
         self.sig = _Sig()
         self.sig.chunk.connect(self._append)
@@ -47,54 +44,23 @@ class TranscribePage(QWidget):
         lay.setContentsMargins(16, 14, 16, 8)
         lay.setSpacing(12)
 
-        # -- source
-        box, b = card("Record or open audio")
-        row = QHBoxLayout()
-        row.addWidget(QLabel("Microphone"))
-        self.mic = QComboBox()
-        row.addWidget(self.mic, 1)
-        refresh = QToolButton()
-        refresh.setIcon(QIcon.fromTheme("view-refresh"))
-        refresh.setText("↻")
-        refresh.setToolTip("Rescan microphones")
-        refresh.clicked.connect(self._fill_mics)
-        row.addWidget(refresh)
-        b.addLayout(row)
-        self._fill_mics()
-        self.mic.currentIndexChanged.connect(lambda _i: self.cfg.set("audio_device", self.mic.currentData()))
-
-        row = QHBoxLayout()
-        self.btn_rec = QPushButton("● Record", objectName="primary")
-        self.btn_rec.clicked.connect(self._record)
-        self.btn_pause = QPushButton("Pause")
-        self.btn_pause.clicked.connect(self._pause)
-        self.btn_stop = QPushButton("■ Stop and transcribe")
-        self.btn_stop.clicked.connect(self._stop)
-        self.clock = QLabel("00:00")
-        self.clock.setStyleSheet("font-size: 18px; font-weight: 700; font-family: monospace;")
-        for w in (self.btn_rec, self.btn_pause, self.btn_stop):
-            row.addWidget(w)
-        row.addStretch(1)
-        row.addWidget(self.clock)
-        b.addLayout(row)
-        self.meter = QProgressBar(maximum=100, textVisible=False)
-        self.meter.setFixedHeight(8)
-        b.addWidget(self.meter)
-
-        row = QHBoxLayout()
-        self.btn_open = QPushButton(QIcon.fromTheme("document-open"), "Open audio file…")
-        self.btn_open.clicked.connect(self._open)
-        row.addWidget(self.btn_open)
-        row.addWidget(muted("…or drop one on this tab. WAV, MP3, M4A, OGG, FLAC, WebM."), 1)
-        b.addLayout(row)
-        lay.addWidget(box)
+        # -- source: half the tab is the drop zone (0.5.0: recording moved to the Dictate tab)
+        self.drop = QPushButton(objectName="dropZone")
+        self.drop.setText("Drop an audio file here\n\nor click to choose one\n\n"
+                          "WAV, MP3, M4A, OGG, OPUS, FLAC, WebM")
+        self.drop.setCursor(Qt.PointingHandCursor)
+        self.drop.setMinimumHeight(160)
+        self.drop.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.drop.clicked.connect(self._open)
+        lay.addWidget(self.drop, 1)
+        self.btn_open = self.drop
 
         # -- transcript
         box, b = card("Transcript")
         self.text = QPlainTextEdit()
-        self.text.setPlaceholderText("Transcripts land here, and you can edit them. New ones are "
-                                     "added at the end. Long recordings get a paragraph for "
-                                     "roughly every 30 seconds, split at a pause.")
+        self.text.setPlaceholderText("The file's transcript lands here, and you can edit it. "
+                                     "Another file is added at the end. Long recordings get a "
+                                     "paragraph for roughly every 30 seconds, split at a pause.")
         self.text.setStyleSheet("font-size: 14px;")
         b.addWidget(self.text, 1)
         row = QHBoxLayout()
@@ -107,7 +73,6 @@ class TranscribePage(QWidget):
         b.addLayout(row)
         row = QHBoxLayout()
         for label, fn, name in (("Copy", self._copy, "copy"), ("Save…", self._save, "save"),
-                                ("Save recording…", self._save_audio, "save_audio"),
                                 ("Clear", self._clear, "clear")):
             btn = QPushButton(label)
             btn.clicked.connect(fn)
@@ -120,60 +85,8 @@ class TranscribePage(QWidget):
         self.text.textChanged.connect(self._count)
         lay.addWidget(box, 1)
 
-        self._tick = QTimer(self, interval=100, timeout=self._update_meter)
         self._busy(False)
         self._count()
-
-    # -- recording -------------------------------------------------------------------
-    def _fill_mics(self):
-        cur = self.cfg["audio_device"]
-        self.mic.blockSignals(True)
-        self.mic.clear()
-        self.mic.addItem("System default", "")
-        for name in audio.input_devices():
-            self.mic.addItem(name, name)
-        self.mic.setCurrentIndex(max(0, self.mic.findData(cur)))
-        self.mic.blockSignals(False)
-
-    def _record(self):
-        if self.ctl.state == "recording":
-            self.ctl.stop()                 # finish the hotkey take first
-        try:
-            self.rec.start(self.mic.currentData())
-        except Exception as e:
-            QMessageBox.warning(self, "Microphone", str(e))
-            return
-        self._tick.start()
-        self._sync_buttons()
-
-    def _pause(self):
-        self.rec.resume() if self.rec.paused else self.rec.pause()
-        self._sync_buttons()
-
-    def _stop(self):
-        self._tick.stop()
-        samples = self.rec.stop()
-        self.meter.setValue(0)
-        self._sync_buttons()
-        self.last_audio = samples
-        self.btn_save_audio.setEnabled(len(samples) > 0)
-        self.transcribe(samples)
-
-    def _update_meter(self):
-        self.clock.setText(_clock(self.rec.seconds))
-        self.meter.setValue(int(self.rec.level * 100))
-        if self.rec.full:
-            self._stop()
-            self.ctl.notify("Recording stopped", "Reached the 3-hour limit; transcribing.")
-
-    def _sync_buttons(self):
-        active, busy = self.rec.active, self.cancel is not None
-        self.btn_rec.setEnabled(not active and not busy)
-        self.btn_pause.setEnabled(active)
-        self.btn_pause.setText("Resume" if self.rec.paused else "Pause")
-        self.btn_stop.setEnabled(active)
-        self.btn_open.setEnabled(not active and not busy)
-        self.mic.setEnabled(not active)
 
     # -- files -----------------------------------------------------------------------
     def _open(self):
@@ -183,7 +96,7 @@ class TranscribePage(QWidget):
             self.transcribe_file(path)
 
     def transcribe_file(self, path: str):
-        if self.cancel is not None or self.rec.active:
+        if self.cancel is not None:
             return
         self.ctl.win.status(f"Reading {Path(path).name}…")
 
@@ -199,8 +112,6 @@ class TranscribePage(QWidget):
             QMessageBox.warning(self, "Couldn't open the file", f"{name}: {samples}")
             return
         self.ctl.win.status(f"{name}: {_clock(len(samples) / audio.SAMPLE_RATE)} of audio.")
-        self.last_audio = None
-        self.btn_save_audio.setEnabled(False)
         self.transcribe(samples)
 
     def dragEnterEvent(self, ev):
@@ -229,7 +140,7 @@ class TranscribePage(QWidget):
         def work():
             try:
                 para_at = None     # pieces are ~10-25 s; start a paragraph every ~30 s of audio
-                for text in self.ctl.engine.transcribe_chunks(samples, cancel):
+                for text in self.ctl.engine.transcribe_chunks(samples, cancel, vad=self.cfg["vad"]):
                     done, total = self.ctl.engine.last_progress
                     new = para_at is None or done - para_at >= PARAGRAPH_S * audio.SAMPLE_RATE
                     para_at = done if new else para_at
@@ -262,7 +173,7 @@ class TranscribePage(QWidget):
         self.pbar.setVisible(on)
         self.btn_cancel.setVisible(on)
         self.pbar.setValue(0)
-        self._sync_buttons()
+        self.drop.setEnabled(not on)
 
     # -- output ----------------------------------------------------------------------
     def _count(self):
@@ -282,16 +193,6 @@ class TranscribePage(QWidget):
                                               "Text (*.txt);;Markdown (*.md);;All files (*)")
         if path:
             Path(path).write_text(self.text.toPlainText() + "\n", encoding="utf-8")
-            self.ctl.win.status(f"Saved {path}")
-
-    def _save_audio(self):
-        if self.last_audio is None:
-            return
-        name = time.strftime("recording-%Y-%m-%d-%H%M.wav")
-        path, _ = QFileDialog.getSaveFileName(self, "Save recording", str(Path.home() / name),
-                                              "WAV audio (*.wav)")
-        if path:
-            audio.save_wav(path, self.last_audio)
             self.ctl.win.status(f"Saved {path}")
 
     def _clear(self):

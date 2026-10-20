@@ -180,7 +180,7 @@ def test_legacy_voice_to_hebrish_install_is_adopted(monkeypatch):
     (old_cfg / "config.json").write_text(json.dumps({"hotkey": "KEY_F14", "junk": 1}))
     config.CONFIG_PATH.unlink(missing_ok=True)
     config.migrate_legacy()
-    assert json.loads(config.CONFIG_PATH.read_text()) == {"hotkey": "KEY_F14"}
+    assert json.loads(config.CONFIG_PATH.read_text()) == {"hotkey": "KEY_F14", **{"feedback": "beeps", "keep_history": False, "live_insert_s": 10}}
     assert ms.current_id() == "codeswitch"
     assert ms.active()[0].name == m.dirname and ms.active()[1].model == "codeswitch"
     shutil.rmtree(old_data)
@@ -205,3 +205,18 @@ def test_cdn_manifest_missing_file_is_an_error():
     doc = json.loads(json.dumps(CDN_DOC)); doc["files"].pop("joiner.int8.onnx")
     with pytest.raises(RuntimeError):
         ms.manifest_from_cdn(CS, doc)
+
+
+def test_custom_model_folder(tmp_path):
+    """Settings, "Where the models are stored" (0.5.0): every lookup follows set_root."""
+    from hebrish import config
+    assert config.models_root({"models_dir": ""}) == config.MODELS_DIR
+    assert config.models_root({"models_dir": str(tmp_path)}) == tmp_path
+    try:
+        ms.set_root(tmp_path)
+        d = install(manifest())
+        assert tmp_path in d.parents and ms.installed_ids() == ["codeswitch"]
+        ms.remove_model("codeswitch")
+        assert not d.exists()
+    finally:
+        ms.set_root(config.MODELS_DIR)

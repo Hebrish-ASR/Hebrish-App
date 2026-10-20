@@ -3,7 +3,7 @@
 **On-device dictation with NVIDIA Parakeet, for Android, Linux and Windows.** Made for the
 English-Hebrew code-switching model; stock Parakeet is there too.
 
-![Hebrish on Linux: the Model tab, choosing between stock Parakeet and the code-switching model](docs/screenshots/desktop-model.png)
+![Hebrish on Linux: the Models tab, one card per model with its own Download button](docs/screenshots/desktop-model.png)
 
 Everything runs **on your device**. The only network traffic is downloading the model you
 pick (~630 MB, once) and a periodic check for a newer version.
@@ -48,7 +48,7 @@ app and OS version filled in, and link to hebrish.app's contact form to
 [send voice samples](https://hebrish.app/contact?topic=samples) or
 [get involved](https://hebrish.app/contact?topic=involved). On Android they are in the
 **Hebrish** section at the bottom of the setup screen; on the desktop, in the tray's
-**Hebrish** submenu, the About tab, and under the code-switching model on the Model tab.
+**Hebrish** submenu, the About tab, and on each Hebrish model's card in the Models tab.
 
 ## Download
 
@@ -64,14 +64,17 @@ build and the Android app have not yet been tried on real hardware.
 
 ## Desktop app (Linux and Windows)
 
-- **Dictate**: press a hotkey anywhere, talk, and the text is pasted where your cursor is.
+- **Dictate**: press a hotkey anywhere (or Talk in the window), talk, and the text is pasted
+  where your cursor is, inserted as you go every ~10 s. Output can also be the clipboard or the
+  window's text box. The Dictate tab shows the microphone in use, a switcher, a level meter with
+  a clip lamp, and a voice-detection toggle. Feedback is beeps, short spoken prompts, or off.
   Two hotkeys, any key or a foot pedal: a toggle key (tap to start, tap to stop; holding it
   is push-to-talk too, unless you turn that off) and an optional push-to-talk key. An optional
   floating overlay, like the Android floating mic, shows the take with Pause, Retake and Discard.
-- **Transcribe**: record with a level meter, a timer and pause, or open or drop an audio
-  file. The transcript fills an editable text box piece by piece; save it as .txt or .md.
-- **Model**: choose the model, download it, switch between downloaded ones, keep or delete
-  old versions.
+- **File**: drop or open an audio file. The transcript fills an editable text box piece by
+  piece; save it as .txt or .md.
+- **Models**: a card per model (Jachnun, Sabich, stock Parakeet) with its own Download, Use
+  and Delete; choose the folder the weights are stored in. History is optional (off by default).
 
 Ubuntu: `sudo apt install ./hebrish_<version>-1_amd64.deb`, then
 `sudo usermod -aG input $USER` for the hotkey, and log in again. It replaces Voice To

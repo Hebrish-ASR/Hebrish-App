@@ -9,7 +9,7 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
 
 ## Two ways to work
 
-**Dictate** (hotkey, anywhere):
+**Dictate** (hotkey anywhere, or the Talk button on the Dictate tab):
 - Two hotkeys, each any key on any keyboard or a foot pedal, and each optional (Settings →
   Dictation):
   - **Toggle key** (default F14): tap to start, tap again to stop. With *Holding it is
@@ -20,12 +20,16 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
 - **Action keys** (optional, Settings → Action keys), for a macropad or foot pedals: one key
   each for **Start** (also resumes a paused take), **Stop**, **Pause/Resume**, **Retake** and
   **Discard**. A key can hold one job only; assigning it elsewhere moves it.
-- **Insert as you go** (Settings → Speed, off by default): the take is decoded while you are
-  still talking and the text is inserted every ~10–30 s, at a pause, so a long take on a CPU-only
-  computer shows up as you go and only the last few seconds are left when you stop. Text
+- **Insert as you go** (Settings → Speed, on by default since 0.5.0, every ~10 s): the take is
+  decoded while you are still talking and the text is inserted every ~10–30 s, at a pause, so a
+  long take on a CPU-only computer shows up as you go and only the last few seconds are left when you stop. Text
   already inserted stays if you then Discard or Retake. *CPU threads* defaults to Auto
   (physical cores, at most 8).
-- **Beeps** (Settings → Beeps): on/off, volume, and quiet hours during which they stay silent.
+- **Sounds** (Settings → Sounds): *Beeps* (start and stop), *Voice* (short spoken prompts:
+  "Recording", "Paused", "Resumed", "Transcribing", "Discarded", and "Copied" when the output is
+  the clipboard; nothing when the text arrives) or *Off*; one volume, and quiet hours.
+- **Voice detection** (Dictate tab, on by default): a take with no speech is not decoded (no
+  stray "Yeah."), and silences longer than 1.5 s are shortened before decoding.
 - Settings apply as you change them; a short *Settings saved* toast confirms it.
 - **Floating overlay** (optional, Settings → Floating overlay, or the tray's *Show overlay*):
   a small bar over every app, like the Android floating mic. While you dictate, the mic turns
@@ -33,28 +37,34 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
   and **Discard**, then *Transcribing…* and *Inserted*. Show it *while dictating* or *always*
   (an idle mic button that starts a take, with its own opacity). Drag it anywhere; it opens
   towards the middle of the screen and never takes the keyboard focus.
-- The text is pasted at the cursor: the app puts it on the clipboard and sends Ctrl+V, so
-  it works whatever keyboard layout is active, Hebrew included. Clipboard-only is an option.
-- Recent transcripts are listed with Copy buttons, plus **Copy all** and **Clear history**.
+- **Output** (Dictate tab): *Paste at the cursor* (the default: the app puts the text on the
+  clipboard and sends Ctrl+V, so it works whatever keyboard layout is active, Hebrew included),
+  *Clipboard only*, or *This window's text box only*. Every take also lands in the Dictate tab's
+  editable text box (Copy, Save, Clear).
+- **Microphone** (Dictate tab): the mic in use (for *System default*, which device that is right
+  now), a switcher with rescan, and a level meter: too quiet / good / loud zones, the peak, and a
+  CLIP lamp. *Test mic* shows the level without recording.
+- **History** is optional (Settings → *Keep a history*, off by default since 0.5.0): when on, a
+  History tab lists the last 50 transcripts, saved on this computer.
 - `hebrish --toggle` starts or stops the running app, for a desktop shortcut.
 
-**Transcribe** (long form):
-- Pick the microphone, then record with a level meter, a timer and Pause/Resume. Recordings can run up to 3 hours.
-- Or open an audio file, or drop one on the tab. With ffmpeg installed it reads any format; without it, WAV, FLAC, OGG and MP3.
+**File** (an audio file):
+- Drop a file on the drop zone (half the tab) or click it to choose one. With ffmpeg installed it reads any format; without it, WAV, FLAC, OGG and MP3.
 - The transcript fills an editable text box piece by piece, about one paragraph per 30 s, split at a pause.
-- New transcripts are added at the end of the text.
-- Copy the text, save it as .txt or .md, or save the recording as WAV.
+- New transcripts are added at the end of the text. Copy it, or save it as .txt or .md.
+- Long recordings: dictate with the Talk button (a take can run an hour), or record elsewhere and drop the file here.
 
 **Also included:**
 - **Start-up screen** while the model loads (not when started in the tray at login).
 - **Tray icon:** closing the window leaves the app in the tray. Middle-click the tray icon to start or stop dictation.
-- **Model choice** (Model tab): stock Parakeet, or the English-Hebrew code-switching
-  fine-tune. Those are the only two; the other fine-tunes are in Parlance
-  (danielrosehill/Parlance-Dictation). A new code-switching version appears by itself (the app
-  re-reads the catalogue from this repo).
-  - Each model (~630 MB) downloads once, on request, with its SHA-256 checked.
-  - Models you've downloaded stay on disk, so switching back is instant; *Delete the other
-    models* frees the space.
+- **Models tab:** one card per model, with its icon: Jachnun (code-switching, recommended),
+  Sabich (code-switching plus tech vocabulary) and stock Parakeet. Each has its own
+  **Download**, **Use** and **Delete**, so you can download a model without switching to it.
+  The other fine-tunes are in Parlance (danielrosehill/Parlance-Dictation). A new version
+  appears by itself (the app re-reads the catalogue from this repo).
+  - Each model (~660 MB) downloads once, on request, with its SHA-256 checked.
+  - **Where the models are stored** shows the folder (the default, or one you chose with
+    *Change folder…*; the app offers to move the downloaded models there) and opens it.
   - It checks the selected model for new versions on a schedule, and installs them
     automatically or after you confirm. It can keep previous versions so you can switch back.
 - **About tab:** versions, the main links, the models, and Jachnun's benchmarks and training data.
@@ -62,8 +72,8 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
   email to feedback@hebrish.app (report a bug, request a feature, send feedback; your mail
   client opens with the app and OS version filled in), and the site's contact form (suggest a
   word, send voice samples, get involved). In
-  the tray's **Hebrish** submenu, on the About tab, and under the code-switching model on the
-  Model tab.
+  the tray's **Hebrish** submenu, on the About tab, and on each Hebrish model's card in the
+  Models tab.
 
 ## Install
 
@@ -102,7 +112,7 @@ a shared hotkey would start both.
 | | Linux | Windows |
 | --- | --- | --- |
 | Settings | `~/.config/hebrish/config.json` | `%APPDATA%\Hebrish\config.json` |
-| Models, history, state | `~/.local/share/hebrish/` | `%LOCALAPPDATA%\Hebrish\` |
+| Models (default; Models tab → *Change folder…*), history, state | `~/.local/share/hebrish/` | `%LOCALAPPDATA%\Hebrish\` |
 | Log | stderr | `%LOCALAPPDATA%\Hebrish\hebrish.log` |
 
 `config.json` keys and defaults: `DEFAULTS` in [`hebrish/config.py`](hebrish/config.py).

@@ -22,7 +22,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from .. import audio, model_store
 from ..config import (APP_NAME, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
-                      migrate_legacy, import_parlance, save_json, threads)
+                      migrate_legacy, import_parlance, models_root, save_json, threads)
 from ..engine import Engine, live_cut
 from ..hotkey import make_listener
 from ..inserter import make_inserter
@@ -32,6 +32,8 @@ from .overlay import OverlayHost
 log = logging.getLogger("hebrish")
 ICONS = Path(__file__).resolve().parent.parent / "data" / "icons"
 HISTORY_MAX = 50
+NO_SPEECH = "no speech"        # _worker -> _done: the take had audio but no speech (engine VAD)
+BEEPS = {"recording": 880, "transcribing": 620}    # the beeps mode cues only start and stop
 
 
 def icon(name: str) -> QIcon:
@@ -45,6 +47,9 @@ class Signals(QObject):
     action = Signal(str)
     captured = Signal(str)
     transcribed = Signal(str, object)
+    piece = Signal(str)             # each decoded piece of a take, for the Dictate tab's text box
+    fetched = Signal(object, object)    # manifest or None, error: download_model()
+    moved = Signal(object)          # error or None: move_models()
     loaded = Signal(object)
     checked = Signal(object, object, bool)
     progress = Signal(float, str)
@@ -56,12 +61,14 @@ class Controller(QObject):
         super().__init__()
         from .window import MainWindow
         self.cfg = Config()
+        model_store.set_root(models_root(self.cfg))
         self.engine = Engine()
-        self.recorder = audio.Recorder()                       # hotkey takes
-        self.long_recorder = audio.Recorder(audio.LONGFORM_MAX_S)  # Transcribe tab
+        self.recorder = audio.Recorder()                       # every take: hotkey or Dictate tab
+        self.monitor = audio.Recorder(max_s=0)                 # Test mic: level only, keeps nothing
         self.state = "idle"             # idle | recording | busy
         self.latest: model_store.Manifest | None = None
         self.downloading: threading.Event | None = None
+        self.downloading_id: str | None = None     # the model being downloaded
         self.reload_pending = False
         self.loading = False
         self.splash = splash
@@ -77,6 +84,8 @@ class Controller(QObject):
         self.sig.loaded.connect(self._loaded)
         self.sig.checked.connect(self._checked)
         self.sig.downloaded.connect(self._downloaded)
+        self.sig.fetched.connect(self._fetched)
+        self.sig.moved.connect(self._moved)
 
         self.inserter = make_inserter()
         self.hotkeys = make_listener(self.cfg, self.sig.start.emit, self.sig.stop.emit,
@@ -135,38 +144,59 @@ class Controller(QObject):
     def start(self):
         if self.state != "idle":
             return
-        if self.long_recorder.active:
-            self.notify("Microphone busy", "A recording is running in the Transcribe tab.")
-            return
         if self.engine.loaded_dir is None and not model_store.active():
             self.win.present_tab("model")
             self.win.banner("The model isn't downloaded yet. Hold tight, or click Download.")
             return
+        self.stop_monitor()
         try:
             self.recorder.start(self.cfg["audio_device"])
         except Exception as e:
             self.notify("Microphone error", str(e))
             return
         self._take += 1
-        self._beep(880)
+        self.cue("recording")
         self.set_state("recording")
 
-    def _beep(self, freq):
-        if self.cfg["beeps"] and self.cfg["beep_volume"] and not in_quiet_hours(self.cfg):
-            audio.beep(freq, volume=0.5 * self.cfg["beep_volume"] / 100)
+    def cue(self, event: str):
+        """Audible feedback (config `feedback`): beeps for start and stop, or a spoken prompt
+        for each event (audio.VOICE_PROMPTS). Nothing when the text arrives: it is visible."""
+        mode, vol = self.cfg["feedback"], self.cfg["beep_volume"] / 100
+        if mode == "off" or not vol or in_quiet_hours(self.cfg):
+            return
+        if mode == "voice":
+            audio.say(event, volume=0.5 * vol)
+        elif event in BEEPS:
+            audio.beep(BEEPS[event], volume=0.5 * vol)
 
-    def cancel(self):
+    def cancel(self, quiet=False):
         """Discard the take. With live insertion, text already inserted stays."""
         if self.state == "recording":
             self._take += 1
             self.recorder.stop()
+            if not quiet:
+                self.cue("discarded")
             self.set_state("idle")
 
     def pause(self):
         if self.state == "recording":
             self.recorder.resume() if self.recorder.paused else self.recorder.pause()
+            self.cue("paused" if self.recorder.paused else "resumed")
             self._overlay_push()
             self.win.update_state()
+
+    def start_monitor(self):
+        """Test mic: open the mic for the level meter only (nothing is recorded or decoded)."""
+        if self.state == "idle" and not self.monitor.active:
+            self.monitor.start(self.cfg["audio_device"])
+
+    def stop_monitor(self):
+        if self.monitor.active:
+            self.monitor.stop()
+
+    @property
+    def meter_source(self) -> audio.Recorder | None:
+        return self.recorder if self.recorder.active else self.monitor if self.monitor.active else None
 
     # -- actions: overlay buttons and action keys -------------------------------------
     def do_action(self, action):
@@ -181,7 +211,7 @@ class Controller(QObject):
         elif action == "discard":
             self.cancel()
         elif action == "retake":
-            self.cancel()
+            self.cancel(quiet=True)
             self.start()
 
     def overlay_changed(self):
@@ -204,12 +234,16 @@ class Controller(QObject):
         if self.state != "recording":
             return
         samples = self.recorder.stop()
-        self._beep(620)
+        self.cue("transcribing")
         self.set_state("busy")
         self._jobs.put((self._take, samples, True))
 
     def _live_tick(self):
         """Live insertion: hand the take to the decoder in pieces, cut at a pause."""
+        if self.state == "recording" and self.recorder.full:
+            self.stop()
+            self.notify("Dictation stopped", f"Reached the {audio.DICTATION_MAX_S // 60}-minute limit.")
+            return
         interval = self.cfg["live_insert_s"]
         if not interval or self.state != "recording" or self.recorder.paused:
             return
@@ -224,13 +258,17 @@ class Controller(QObject):
             if job != take:
                 take, parts = job, []
             try:
-                text = self.engine.transcribe(samples) if job == self._take else ""
+                live = job == self._take
+                text = self.engine.transcribe(samples, vad=self.cfg["vad"]) if live else ""
                 if text:
                     parts.append(text)
+                    self.sig.piece.emit(text)
                     space = " " if not final or self.cfg["trailing_space"] else ""
-                    self.inserter.insert(text + space, self.cfg["insert"], self.cfg["paste_chord"])
+                    if self.cfg["insert"] != "app":
+                        self.inserter.insert(text + space, self.cfg["insert"], self.cfg["paste_chord"])
                 if final:
-                    self.sig.transcribed.emit(" ".join(parts), None)
+                    heard = parts or len(samples) < audio.SAMPLE_RATE // 2 or not live
+                    self.sig.transcribed.emit(" ".join(parts), None if heard else NO_SPEECH)
             except Exception as e:
                 if final:
                     self.sig.transcribed.emit(" ".join(parts), e)
@@ -239,15 +277,22 @@ class Controller(QObject):
 
     def _done(self, text, err):
         log.info("transcript %r err=%r", text, err)
-        if err:
+        if err == NO_SPEECH:
+            self.cue("no_speech")
+            self.win.status("No speech heard, so nothing was inserted. (Voice detection: Settings.)")
+        elif err:
+            self.cue("failed")
             self.notify("Transcription failed", str(err))
         elif text:
             self._overlay_done = True              # "Inserted" for a moment
             QTimer.singleShot(1100, self._overlay_clear_done)
-            self.history.insert(0, {"text": text, "at": time.time()})
-            del self.history[HISTORY_MAX:]
-            self._save_history()
-            self.win.show_history()
+            if self.cfg["insert"] == "clipboard":
+                self.cue("copied")
+            if self.cfg["keep_history"]:
+                self.history.insert(0, {"text": text, "at": time.time()})
+                del self.history[HISTORY_MAX:]
+                self._save_history()
+                self.win.show_history()
         self.set_state("idle")
         if self.reload_pending:
             self.load_model()
@@ -378,6 +423,7 @@ class Controller(QObject):
         if self.downloading:
             return
         self.downloading = cancel = threading.Event()
+        self.downloading_id = manifest.model
         self.win.update_model()
 
         def progress(done, total, name):
@@ -392,7 +438,7 @@ class Controller(QObject):
         threading.Thread(target=work, daemon=True).start()
 
     def _downloaded(self, manifest, err):
-        self.downloading = None
+        self.downloading = self.downloading_id = None
         if isinstance(err, model_store.Cancelled):
             self.win.status("Download cancelled. It resumes where it stopped next time.")
         elif err:
@@ -406,6 +452,78 @@ class Controller(QObject):
         self.win.progress(-1, "")
         self.win.update_model()
         self._update_tray()
+
+    def download_model(self, mid: str):
+        """Download a catalogue model without switching to it (the Models tab's buttons)."""
+        if self.downloading:
+            return
+        self.downloading_id = mid
+        self.win.status(f"Looking up {model_store.get_model(mid).name}…")
+
+        def work():
+            try:
+                self.sig.fetched.emit(model_store.fetch_latest(mid), None)
+            except Exception as e:
+                self.sig.fetched.emit(None, e)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _fetched(self, manifest, err):
+        if err:
+            self.downloading_id = None
+            self.win.status(f"Couldn't look up the model: {err}")
+            self.notify("Model download failed", str(err))
+            self.win.update_model()
+        elif model_store.needs_update(manifest):
+            self.download(manifest)
+        else:
+            self.downloading_id = None
+            self.win.status(f"{manifest.full_label} is already downloaded.")
+            self.win.update_model()
+
+    def use_model(self, mid: str):
+        """Switch to a model that is already downloaded."""
+        if mid != model_store.current_id() and model_store.active(mid):
+            model_store.select(mid)
+            self.latest = None
+            self.load_model()
+            self.win.update_model()
+
+    def set_models_dir(self, path: str, move: bool):
+        """Point the app at another model folder ("" = default), moving the models there first
+        when asked. The move runs off the GUI thread: across disks it copies ~660 MB per model."""
+        old, new = model_store.ROOT, models_root({"models_dir": path})
+        if move and old.is_dir() and old.resolve() != new.resolve():
+            self.engine.unload()
+            self.set_state("busy")
+            self.win.status(f"Moving models to {new}…")
+
+            def work():
+                import shutil
+                try:
+                    new.mkdir(parents=True, exist_ok=True)
+                    for d in old.iterdir():
+                        if d.is_dir() and not (new / d.name).exists():
+                            shutil.move(str(d), new / d.name)
+                    self.sig.moved.emit(None)
+                except Exception as e:
+                    self.sig.moved.emit(e)
+            self._moving_to = path
+            threading.Thread(target=work, daemon=True).start()
+            return
+        self.cfg.set("models_dir", path)
+        model_store.set_root(new)
+        self.latest = None
+        self.load_model()
+        self.win.update_model()
+
+    def _moved(self, err):
+        self.set_state("idle")
+        if err:
+            self.win.banner(f"Couldn't move the models: {err}. Still using {model_store.ROOT}.")
+            self.load_model()
+            return
+        self.set_models_dir(self._moving_to, move=False)
+        self.win.status(f"Models moved to {model_store.ROOT}.")
 
     def update_available(self) -> bool:
         return bool(self.latest and model_store.active() and model_store.needs_update(self.latest))
@@ -485,6 +603,10 @@ def _selftest() -> int:
         print("latest model:", model_store.fetch_latest().label, file=out)
         if not sizes or any(sizes.values()):
             raise RuntimeError("an icon failed to load (missing Qt SVG plugin?)")
+        voice = [k for k in audio.VOICE_PROMPTS if not (audio.VOICE_DIR / f"{k}.wav").is_file()]
+        print("voice prompts missing:", voice, file=out)
+        if voice:
+            raise RuntimeError("voice prompts not bundled (package-data data/voice/*.wav)")
         print("SELFTEST OK", file=out)
         return 0
     except Exception as e:

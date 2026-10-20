@@ -58,6 +58,54 @@ def stretch_pauses(x: np.ndarray) -> np.ndarray:
     return np.concatenate(out)
 
 
+# Voice activity (config `vad`, 0.5.0). Energy-based, no extra model: a frame is speech when
+# its RMS is above VAD_ABS (-46 dBFS) and above the noise floor by a third of the way to the
+# speech level. A take with under VAD_MIN_SPEECH_S of speech frames, or whose loudest frames
+# stay under VAD_QUIET (-40 dBFS), is not decoded: Parakeet turns silence and breathing into
+# stray words ("Yeah.", "Mm."). Silences longer than VAD_LONG_S are shortened to VAD_KEEP_S
+# (still above PAUSE_TARGET_S and LIVE_PAUSE_S, so pause cuts are unaffected) to save decode time.
+VAD_ABS = 0.005
+VAD_QUIET = 0.01
+VAD_MIN_SPEECH_S = 0.25
+VAD_LONG_S = 1.5
+VAD_KEEP_S = 0.8
+
+
+def _speech_frames(x: np.ndarray) -> np.ndarray:
+    n = len(x) // FRAME
+    rms = np.sqrt((x[: n * FRAME].reshape(n, FRAME) ** 2).mean(axis=1))
+    if not n:
+        return rms > 1
+    floor, loud = np.percentile(rms, 10), np.percentile(rms, 95)
+    if loud < VAD_QUIET:
+        return np.zeros(n, bool)
+    return rms > max(VAD_ABS, floor + (loud - floor) / 3)
+
+
+def has_speech(x: np.ndarray) -> bool:
+    return int(_speech_frames(x).sum()) * FRAME >= VAD_MIN_SPEECH_S * SAMPLE_RATE
+
+
+def shorten_silences(x: np.ndarray) -> np.ndarray:
+    """Cut every non-speech run longer than VAD_LONG_S down to VAD_KEEP_S (keeping its two ends)."""
+    sp = _speech_frames(x)
+    n, keep = len(sp), int(VAD_KEEP_S * SAMPLE_RATE / FRAME)
+    out, last, i = [], 0, 0
+    while i < n:
+        if sp[i]:
+            i += 1
+            continue
+        j = i
+        while j < n and not sp[j]:
+            j += 1
+        if (j - i) * FRAME > VAD_LONG_S * SAMPLE_RATE:
+            out.append(x[last:(i + keep // 2) * FRAME])
+            last = (j - keep // 2) * FRAME
+        i = j
+    out.append(x[last:])
+    return np.concatenate(out) if out else x
+
+
 def split_points(x: np.ndarray) -> list[tuple[int, int]]:
     """Cut a whole take the way live insertion cuts it while recording: grow the piece in
     0.5 s steps until live_cut finds a pause. Up to 0.3.x this cut every 30 s at the quietest
@@ -146,14 +194,20 @@ class Engine:
         with self._lock:
             self._rec, self._dir = None, None
 
-    def transcribe(self, samples: np.ndarray) -> str:
-        return " ".join(self.transcribe_chunks(samples))
+    def transcribe(self, samples: np.ndarray, vad: bool = False) -> str:
+        return " ".join(self.transcribe_chunks(samples, vad=vad))
 
-    def transcribe_chunks(self, samples: np.ndarray, cancel=None):
+    def transcribe_chunks(self, samples: np.ndarray, cancel=None, vad: bool = False):
         """Yield the text of each piece (split_points) as it is decoded. The lock is taken per
-        piece, so a hotkey dictation can slip in between pieces of a long file."""
+        piece, so a hotkey dictation can slip in between pieces of a long file. With vad, a
+        take without speech yields nothing and long silences are shortened first."""
         if len(samples) < MIN_TAKE_S * SAMPLE_RATE:
             return
+        if vad:
+            if not has_speech(samples):
+                self.last_progress = (1, 1)
+                return
+            samples = shorten_silences(samples)
         samples = stretch_pauses(normalize(samples))
         pad = np.zeros(int(TAIL_PAD_S * SAMPLE_RATE), np.float32)
         for a, b in split_points(samples):

@@ -1,26 +1,34 @@
-"""Main window: header, then Dictate / Model / Settings / About tabs."""
+"""Main window: header, then Dictate / File / [History] / Models / Settings / About tabs.
+History is there only while "Keep a history" is on (off by default since 0.5.0)."""
 
 import os
 import time
 
-from PySide6.QtCore import QSize, Qt, QTime, QTimer
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QFormLayout, QFrame, QHBoxLayout, QLabel,
-                               QLineEdit, QMainWindow, QMessageBox, QProgressBar, QPushButton,
-                               QScrollArea, QSlider, QSpinBox, QTabWidget, QTimeEdit, QToolButton,
-                               QVBoxLayout, QWidget)
+from pathlib import Path
+
+from PySide6.QtCore import QSize, Qt, QTime, QTimer, QUrl
+from PySide6.QtGui import QDesktopServices, QIcon
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout,
+                               QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit,
+                               QProgressBar, QPushButton, QScrollArea, QSlider, QSpinBox,
+                               QTabWidget, QTimeEdit, QToolButton, QVBoxLayout, QWidget)
 
 from .. import __version__, audio, autostart, model_store
-from ..config import APP_NAME, CONFIG_PATH, STATE_PATH, TAGLINE, load_json, threads
+from ..config import APP_NAME, CONFIG_PATH, MODELS_DIR, STATE_PATH, TAGLINE, load_json, threads
 from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
 from . import about
 from .app import icon
+from .meter import LevelMeter, verdict
 from .style import BLUE
 
 OVERLAY = [("off", "Off"), ("active", "While dictating"), ("always", "Always (a mic button)")]
 LIVE = [(0, "Off: everything when you stop"), (10, "Every ~10 seconds"), (15, "Every ~15 seconds"),
         (20, "Every ~20 seconds"), (30, "Every ~30 seconds")]
+OUTPUT = [("paste", "Paste at the cursor"), ("clipboard", "Clipboard only"),
+          ("app", "This window's text box only")]
+FEEDBACK = [("beeps", "Beeps (start and stop)"), ("voice", "Voice (“Recording”, “Paused”, “Transcribing”…)"),
+            ("off", "Off")]
 # Saved silently, so no toast: moving the overlay
 NO_TOAST = {"overlay_pos"}
 
@@ -68,13 +76,21 @@ class MainWindow(QMainWindow):
 
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
-        self.tabs.addTab(self._dictate_page(), "Dictate")
+        self.pages = {}
+        self.pages["dictate"] = self._dictate_page()
         from .transcribe import TranscribePage
-        self.transcribe = TranscribePage(ctl, card, muted)
-        self.tabs.addTab(self.transcribe, "Transcribe")
-        self.tabs.addTab(self._scroll(self._model_page()), "Model")
-        self.tabs.addTab(self._scroll(self._settings_page()), "Settings")
-        self.tabs.addTab(self._about_page(), "About")
+        self.transcribe = self.pages["file"] = TranscribePage(ctl, card, muted)
+        self.pages["history"] = self._history_page()
+        self.pages["model"] = self._scroll(self._model_page())
+        self.pages["settings"] = self._scroll(self._settings_page())
+        self.pages["about"] = self._about_page()
+        for key, label in (("dictate", "Dictate"), ("file", "File"), ("history", "History"),
+                           ("model", "Models"), ("settings", "Settings"), ("about", "About")):
+            self.tabs.addTab(self.pages[key], label)
+        self.tabs.setTabVisible(self.tabs.indexOf(self.pages["history"]), self.cfg["keep_history"])
+        self.ctl.sig.piece.connect(self._append_piece)
+        self._meter_timer = QTimer(self, interval=60, timeout=self._update_meter)
+        self._meter_timer.start()
         outer.addWidget(self.tabs, 1)
 
         self.status_label = muted()
@@ -120,7 +136,7 @@ class MainWindow(QMainWindow):
 
     def present_tab(self, name: str = ""):
         if name:
-            self.tabs.setCurrentIndex({"dictate": 0, "transcribe": 1, "model": 2, "settings": 3, "about": 4}[name])
+            self.tabs.setCurrentWidget(self.pages[name])
         self.show()
         self.raise_()
         self.activateWindow()
@@ -132,28 +148,188 @@ class MainWindow(QMainWindow):
 
     # -- dictate -------------------------------------------------------------------
     def _dictate_page(self):
+        """Record into the text box (and wherever Output sends it), with the mic, voice
+        detection and a level meter on the same screen. 0.5.0 replaced the history list here."""
         page = QWidget()
         lay = QVBoxLayout(page)
         lay.setContentsMargins(16, 14, 16, 8)
-        lay.setSpacing(12)
+        lay.setSpacing(10)
 
         self.banner_label = QLabel(objectName="banner")
         self.banner_label.setWordWrap(True)
         self.banner_label.hide()
         lay.addWidget(self.banner_label)
 
+        top = QHBoxLayout()
+        top.setSpacing(16)
+        col = QVBoxLayout()
+        col.setSpacing(4)
         self.rec = QPushButton("Talk", objectName="record")
-        self.rec.setFixedSize(132, 132)
+        self.rec.setFixedSize(104, 104)
         self.rec.setCursor(Qt.PointingHandCursor)
         self.rec.clicked.connect(self.ctl.toggle)
-        lay.addWidget(self.rec, 0, Qt.AlignHCenter)
+        col.addWidget(self.rec, 0, Qt.AlignHCenter)
         self.state_label = QLabel(alignment=Qt.AlignHCenter)
-        self.state_label.setStyleSheet("font-size: 15px; font-weight: 600;")
-        lay.addWidget(self.state_label)
+        self.state_label.setStyleSheet("font-size: 14px; font-weight: 600;")
+        col.addWidget(self.state_label)
+        row = QHBoxLayout()
+        self.btn_pause = QPushButton("Pause")
+        self.btn_pause.clicked.connect(self.ctl.pause)
+        self.btn_discard = QPushButton("Discard")
+        self.btn_discard.clicked.connect(lambda: self.ctl.cancel())
+        row.addWidget(self.btn_pause)
+        row.addWidget(self.btn_discard)
+        col.addLayout(row)
+        col.addStretch(1)
+        top.addLayout(col)
+
+        box, b = card("Microphone")
+        row = QHBoxLayout()
+        self.mic = QComboBox()
+        self.mic.setMinimumWidth(120)
+        self.mic.setToolTip("The microphone in use. Changing it applies from the next take.")
+        row.addWidget(self.mic, 1)
+        refresh = QToolButton()
+        refresh.setIcon(QIcon.fromTheme("view-refresh"))
+        refresh.setText("↻")
+        refresh.setToolTip("Rescan microphones")
+        refresh.clicked.connect(self._fill_mics)
+        row.addWidget(refresh)
+        b.addLayout(row)
+        self.mic_in_use = muted()
+        b.addWidget(self.mic_in_use)
+        self._fill_mics()
+        self.mic.currentIndexChanged.connect(self._on_mic)
+        self.meter = LevelMeter()
+        b.addWidget(self.meter)
+        row = QHBoxLayout()
+        self.meter_label = QLabel()
+        self.meter_label.setStyleSheet("font-size: 12px;")
+        row.addWidget(self.meter_label, 1)
+        self.btn_test = QPushButton("Test mic")
+        self.btn_test.setCheckable(True)
+        self.btn_test.setToolTip("Watch the level without recording anything")
+        self.btn_test.toggled.connect(self._on_test)
+        row.addWidget(self.btn_test)
+        b.addLayout(row)
+        b.addWidget(self._check("vad", "Voice detection: skip silent takes, trim long pauses"))
+        top.addWidget(box, 1)
+        lay.addLayout(top)
+
         self.hint_label = muted()
-        self.hint_label.setAlignment(Qt.AlignHCenter)
         lay.addWidget(self.hint_label)
 
+        box, b = card()
+        head = QHBoxLayout()
+        head.addWidget(QLabel("Text", objectName="cardTitle"))
+        head.addStretch(1)
+        self.words = muted()
+        head.addWidget(self.words)
+        b.addLayout(head)
+        self.text = QPlainTextEdit()
+        self.text.setPlaceholderText("Press Talk or your hotkey and start talking. The text appears "
+                                     "here as well as wherever Output sends it, and you can edit it.")
+        self.text.setStyleSheet("font-size: 14px;")
+        b.addWidget(self.text, 1)
+        row = QHBoxLayout()
+        self.btn_copy_text = QPushButton(QIcon.fromTheme("edit-copy"), "Copy")
+        self.btn_copy_text.clicked.connect(lambda: (copy_to_clipboard(self.text.toPlainText()),
+                                                    self.status("Text copied.")))
+        self.btn_save_text = QPushButton(QIcon.fromTheme("document-save"), "Save…")
+        self.btn_save_text.clicked.connect(self._save_text)
+        self.btn_clear_text = QPushButton(QIcon.fromTheme("edit-clear"), "Clear")
+        self.btn_clear_text.clicked.connect(self.text.clear)
+        for w in (self.btn_copy_text, self.btn_save_text, self.btn_clear_text):
+            row.addWidget(w)
+        row.addStretch(1)
+        row.addWidget(QLabel("Output"))
+        self.output_combo = self._combo("insert", OUTPUT)
+        row.addWidget(self.output_combo)
+        b.addLayout(row)
+        self.text.textChanged.connect(self._count)
+        lay.addWidget(box, 1)
+        self._count()
+        return page
+
+    def _fill_mics(self):
+        cur = self.cfg["audio_device"]
+        self.mic.blockSignals(True)
+        self.mic.clear()
+        self.mic.addItem("System default", "")
+        for name in audio.input_devices():
+            self.mic.addItem(name, name)
+        if cur and self.mic.findData(cur) < 0:
+            self.mic.addItem(f"{cur} (not found)", cur)
+        self.mic.setCurrentIndex(max(0, self.mic.findData(cur)))
+        self.mic.blockSignals(False)
+        self._show_mic()
+
+    def _show_mic(self):
+        name = self.cfg["audio_device"]
+        if not name:
+            real = audio.default_input_name()
+            name = f"System default: {real}" if real else "System default"
+        self.mic_in_use.setText(f"In use: {name}")
+
+    def _on_mic(self, _i):
+        self.cfg.set("audio_device", self.mic.currentData())
+        self._show_mic()
+        if self.ctl.monitor.active:                 # re-open the test on the new mic
+            self.ctl.stop_monitor()
+            self._on_test(True)
+
+    def _on_test(self, on):
+        if on:
+            try:
+                self.ctl.start_monitor()
+            except Exception as e:
+                self.btn_test.setChecked(False)
+                self.banner(f"Couldn't open the microphone: {e}")
+        else:
+            self.ctl.stop_monitor()
+
+    def _update_meter(self):
+        if not self.isVisible():
+            return
+        src = self.ctl.meter_source
+        self.meter.set_source(src)
+        if src is None:
+            self.meter_label.setText("<span style='color:gray'>Level: talk, or press Test mic</span>")
+        elif src.paused:
+            self.meter_label.setText("Paused")
+        else:
+            text, col = verdict(self.meter.rms_db, self.meter.clipping)
+            self.meter_label.setText(f"<b style='color:{col}'>{text}</b> &nbsp;"
+                                     f"<span style='color:gray'>{self.meter.rms_db:.0f} dB · peak "
+                                     f"{self.meter.peak_db:.0f} dB</span>")
+
+    def _append_piece(self, text):
+        cur = self.text.toPlainText()
+        sep = "" if not cur or cur.endswith((" ", "\n")) else " "
+        self.text.moveCursor(self.text.textCursor().MoveOperation.End)
+        self.text.insertPlainText(sep + text)
+        self.text.ensureCursorVisible()
+
+    def _count(self):
+        t = self.text.toPlainText()
+        n = len(t.split())
+        self.words.setText(f"{n} word{'s' if n != 1 else ''}" if n else "")
+        for w in (self.btn_copy_text, self.btn_save_text, self.btn_clear_text):
+            w.setEnabled(bool(t.strip()))
+
+    def _save_text(self):
+        name = time.strftime("dictation-%Y-%m-%d-%H%M.txt")
+        path, _ = QFileDialog.getSaveFileName(self, "Save text", str(Path.home() / name),
+                                              "Text (*.txt);;Markdown (*.md);;All files (*)")
+        if path:
+            Path(path).write_text(self.text.toPlainText() + "\n", encoding="utf-8")
+            self.status(f"Saved {path}")
+
+    # -- history (optional) ------------------------------------------------------------
+    def _history_page(self):
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(16, 14, 16, 8)
         box, blay = card()
         head = QHBoxLayout()
         head.addWidget(QLabel("Recent transcripts", objectName="cardTitle"))
@@ -166,7 +342,8 @@ class MainWindow(QMainWindow):
         head.addWidget(self.btn_copy_all)
         head.addWidget(self.btn_clear)
         blay.addLayout(head)
-
+        blay.addWidget(muted("Kept because “Keep a history” is on in Settings: the last 50 "
+                             "transcripts, saved on this computer."))
         self.hist_box = QVBoxLayout()
         self.hist_box.setSpacing(6)
         inner = QWidget()
@@ -176,6 +353,13 @@ class MainWindow(QMainWindow):
         blay.addWidget(sc, 1)
         lay.addWidget(box, 1)
         return page
+
+    def _on_history_setting(self):
+        on = self.cfg["keep_history"]
+        self.tabs.setTabVisible(self.tabs.indexOf(self.pages["history"]), on)
+        if not on and self.ctl.history and QMessageBox.question(
+                self, "History", "Also delete the saved history?") == QMessageBox.Yes:
+            self.ctl.clear_history()
 
     def _confirm_clear(self):
         n = len(self.ctl.history)
@@ -190,8 +374,7 @@ class MainWindow(QMainWindow):
             if w:
                 w.deleteLater()
         if not self.ctl.history:
-            empty = muted("Nothing yet. Press your hotkey and start talking; the text appears "
-                          "wherever your cursor is.")
+            empty = muted("Nothing yet. Transcripts are added here from now on.")
             empty.setAlignment(Qt.AlignCenter)
             self.hist_box.addWidget(empty)
         for h in self.ctl.history:
@@ -234,6 +417,14 @@ class MainWindow(QMainWindow):
         self.rec.setProperty("pulse", False)
         self.rec.setText({"idle": "Talk", "recording": "Stop", "busy": "…"}[st])
         self.rec.setEnabled(st != "busy")
+        rec = st == "recording"
+        self.btn_pause.setEnabled(rec)
+        self.btn_pause.setText("Resume" if rec and self.ctl.recorder.paused else "Pause")
+        self.btn_discard.setEnabled(rec)
+        self.mic.setEnabled(not rec)
+        if rec and self.btn_test.isChecked():
+            self.btn_test.setChecked(False)
+        self.btn_test.setEnabled(st == "idle")
         self.rec.style().unpolish(self.rec)
         self.rec.style().polish(self.rec)
         self._pulse.start() if st == "recording" else self._pulse.stop()
@@ -244,43 +435,44 @@ class MainWindow(QMainWindow):
             lbl.setText(pretty(self.cfg[slot]))
         self.update_model()
 
-    # -- model ---------------------------------------------------------------------
+    # -- models --------------------------------------------------------------------
     def _model_page(self):
+        """One row per catalogue model, each with its own Download / Use / Delete, so a model can
+        be downloaded without switching to it (0.5.0; before, a combo box picked the model and
+        the one Download button acted on it). Then updates, versions and the storage folder."""
         page = QWidget()
         lay = QVBoxLayout(page)
         lay.setContentsMargins(16, 14, 16, 14)
-        box, b = card("Choose a model")
-        self.picker = QComboBox()
-        self.picker.activated.connect(self._on_pick)
-        b.addWidget(self.picker)
-        self.model_summary = muted()
-        self.model_summary.setTextFormat(Qt.RichText)
-        self.model_summary.setOpenExternalLinks(True)
-        b.addWidget(self.model_summary)
+        lay.setSpacing(12)
+        box, b = card("Models")
+        b.addWidget(muted("Download any of them; each is about 660 MB, downloads once and then "
+                          "works offline. “Use” switches the model you dictate with."))
+        self.model_rows_box = QVBoxLayout()
+        self.model_rows_box.setSpacing(0)
+        b.addLayout(self.model_rows_box)
+        self.model_rows: dict[str, dict] = {}
         lay.addWidget(box)
 
-        box, b = card("Status")
+        box, b = card("Updates")
         self.model_label = QLabel()
         self.model_label.setWordWrap(True)
         self.model_label.setTextFormat(Qt.RichText)
+        self.model_label.setOpenExternalLinks(True)
         b.addWidget(self.model_label)
         row = QHBoxLayout()
-        self.btn_check = QPushButton("Check for update")
+        self.btn_check = QPushButton("Check for updates")
         self.btn_check.clicked.connect(lambda: self.ctl.check_updates(manual=True))
-        self.btn_update = QPushButton("Download", objectName="primary")
-        self.btn_update.clicked.connect(self._on_download)
-        self.btn_cancel = QPushButton("Cancel")
+        self.btn_update = QPushButton("Update", objectName="primary")
+        self.btn_update.clicked.connect(lambda: self.ctl.latest and self.ctl.download(self.ctl.latest))
+        self.btn_cancel = QPushButton("Cancel download")
         self.btn_cancel.clicked.connect(lambda: self.ctl.downloading and self.ctl.downloading.set())
         for w in (self.btn_check, self.btn_update, self.btn_cancel):
             row.addWidget(w)
         row.addStretch(1)
         b.addLayout(row)
-        self.pbar = QProgressBar(maximum=1000)
-        self.pbar.hide()
-        b.addWidget(self.pbar)
         lay.addWidget(box)
 
-        box, b = card("Installed versions")
+        box, b = card("Installed versions of the model in use")
         b.addWidget(muted("Kept versions stay on disk so you can switch back. "
                           "Turn off “Keep previous versions” in Settings to save space."))
         row = QHBoxLayout()
@@ -293,45 +485,103 @@ class MainWindow(QMainWindow):
         row.addWidget(use)
         row.addWidget(delete)
         b.addLayout(row)
-        self.others_label = muted()
-        b.addWidget(self.others_label)
-        self.btn_free = QPushButton("Delete the other models")
-        self.btn_free.clicked.connect(self._delete_others)
-        b.addWidget(self.btn_free, 0, Qt.AlignLeft)
+        lay.addWidget(box)
+
+        box, b = card("Where the models are stored")
+        self.store_label = QLabel()
+        self.store_label.setWordWrap(True)
+        self.store_label.setTextFormat(Qt.RichText)
+        self.store_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        b.addWidget(self.store_label)
+        row = QHBoxLayout()
+        change = QPushButton(QIcon.fromTheme("folder-open"), "Change folder…")
+        change.clicked.connect(self._change_store)
+        self.btn_store_default = QPushButton("Use the default folder")
+        self.btn_store_default.clicked.connect(lambda: self._set_store(""))
+        opener = QPushButton("Open folder")
+        opener.clicked.connect(self._open_store)
+        for w in (change, self.btn_store_default, opener):
+            row.addWidget(w)
+        row.addStretch(1)
+        b.addLayout(row)
         lay.addWidget(box)
         lay.addStretch(1)
         return page
 
-    def _on_pick(self, _i):
-        mid = self.picker.currentData()
+    def _model_row(self, m) -> dict:
+        f = QFrame(objectName="modelRow")
+        f.setStyleSheet("#modelRow { border-bottom: 1px solid palette(midlight); }"
+                        "#modelRow QLabel { border: none; }")
+        outer = QHBoxLayout(f)
+        outer.setContentsMargins(2, 10, 2, 10)
+        outer.setSpacing(12)
+        pic = QLabel()
+        ic = icon(f"model-{m.id}")
+        pic.setPixmap((ic if not ic.pixmap(8, 8).isNull() else icon("hebrish")).pixmap(48, 48))
+        pic.setFixedSize(52, 52)
+        outer.addWidget(pic, 0, Qt.AlignTop)
+        col = QVBoxLayout()
+        col.setSpacing(3)
+        head = QHBoxLayout()
+        name = QLabel(f"<b style='font-size:15px'>{m.name}</b>")
+        head.addWidget(name)
+        chip = QLabel(objectName="chip")
+        chip.setStyleSheet(f"background: {BLUE}; color: white; border-radius: 9px; padding: 1px 8px;"
+                           " font-size: 11px; font-weight: 600;")
+        head.addWidget(chip)
+        rec = QLabel("Recommended")
+        rec.setStyleSheet("color: #0f6b5c; border: 1px solid #0f6b5c; border-radius: 9px;"
+                          " padding: 0 7px; font-size: 11px;")
+        rec.setVisible(m.id == model_store.catalogue().get("recommended"))
+        head.addWidget(rec)
+        head.addStretch(1)
+        col.addLayout(head)
+        summary = muted()
+        summary.setTextFormat(Qt.RichText)
+        summary.setOpenExternalLinks(True)
+        link = f" <a href='{m.card}'>Model card</a>" if m.card else ""
+        terms = (f"<br><small>Free for personal and non-commercial use: <a href='{about.TERMS}'>"
+                 "terms of use</a>.</small>" if m.id != "stock" else "")
+        summary.setText(m.summary + link + terms)
+        col.addWidget(summary)
+        status = QLabel()
+        status.setStyleSheet("font-size: 12px;")
+        col.addWidget(status)
+        pbar = QProgressBar(maximum=1000)
+        pbar.hide()
+        col.addWidget(pbar)
+        outer.addLayout(col, 1)
+        btns = QVBoxLayout()
+        btns.setSpacing(4)
+        dl = QPushButton(QIcon.fromTheme("download"), "Download", objectName="primary")
+        dl.clicked.connect(lambda _=False, mid=m.id: self._download_model(mid))
+        use = QPushButton("Use")
+        use.clicked.connect(lambda _=False, mid=m.id: self.ctl.use_model(mid))
+        rm = QPushButton("Delete")
+        rm.clicked.connect(lambda _=False, mid=m.id: self._delete_model(mid))
+        for w in (dl, use, rm):
+            btns.addWidget(w)
+        btns.addStretch(1)
+        outer.addLayout(btns)
+        self.model_rows_box.addWidget(f)
+        return {"frame": f, "chip": chip, "status": status, "pbar": pbar, "dl": dl, "use": use, "rm": rm}
+
+    def _download_model(self, mid):
         m = model_store.get_model(mid)
-        if not m or not m.available or mid == model_store.current_id():
-            self.update_model()
-            return
-        if not model_store.installed(mid) and QMessageBox.question(
-                self, "Download model",
-                f"{m.name} isn't on this computer yet. Download it now (about 660 MB)? "
-                "It works offline afterwards.") != QMessageBox.Yes:
-            self.update_model()
-            return
-        self.ctl.select_model(mid)
-
-    def _delete_others(self):
-        cur = model_store.current_id()
-        others = [mid for mid in model_store.installed_ids() if mid != cur]
-        names = ", ".join(model_store.get_model(m).name for m in others)
-        if others and QMessageBox.question(
-                self, "Delete models", f"Delete {names}? You can download them again later.") == QMessageBox.Yes:
-            for mid in others:
-                model_store.remove_model(mid)
+        if m and m.available:
+            self.ctl.download_model(mid)
             self.update_model()
 
-    def _on_download(self):
-        if self.ctl.latest:
-            self.ctl.download(self.ctl.latest)
-        else:
-            self.ctl.pending_download = model_store.current_id()
-            self.ctl.check_updates(manual=True)
+    def _delete_model(self, mid):
+        m = model_store.get_model(mid)
+        if mid == model_store.current_id():
+            self.banner("That's the model in use. Use another one first.")
+            return
+        if QMessageBox.question(self, "Delete model", f"Delete {m.name} "
+                                f"({model_store.disk_usage(mid) >> 20} MB)? You can download it "
+                                "again later.") == QMessageBox.Yes:
+            model_store.remove_model(mid)
+            self.update_model()
 
     def _use_version(self):
         name = self.versions.currentData()
@@ -350,37 +600,75 @@ class MainWindow(QMainWindow):
         model_store.remove(name)
         self.update_model()
 
+    def _change_store(self):
+        start = str(model_store.ROOT if model_store.ROOT.exists() else Path.home())
+        path = QFileDialog.getExistingDirectory(self, "Folder for the model weights", start)
+        if path:
+            self._set_store(path)
+
+    def _set_store(self, path: str):
+        new = Path(path).expanduser() if path else MODELS_DIR
+        if new.resolve() == model_store.ROOT.resolve():
+            return
+        if self.ctl.state != "idle" or self.ctl.downloading:
+            self.banner("Wait until dictation or the download has finished, then change the folder.")
+            return
+        on_disk = model_store.installed_ids()
+        move = False
+        if on_disk:
+            names = ", ".join(model_store.get_model(m).name for m in on_disk)
+            ans = QMessageBox.question(
+                self, "Model folder", f"Move the downloaded models ({names}) to {new}?\n\n"
+                "Yes moves them. No leaves them where they are; the app then looks only in the "
+                "new folder, so they would need downloading again.",
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+            if ans == QMessageBox.Cancel:
+                return
+            move = ans == QMessageBox.Yes
+        self.ctl.set_models_dir(path, move)
+        self.update_model()
+
+    def _open_store(self):
+        model_store.ROOT.mkdir(parents=True, exist_ok=True)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(model_store.ROOT)))
+
     def update_model(self):
         if not hasattr(self, "model_label"):
             return
         cur, ctl = model_store.active(), self.ctl
         sel = model_store.current()
-        on_disk = set(model_store.installed_ids())
-        self.picker.blockSignals(True)
-        self.picker.clear()
-        for m in model_store.models():
-            tag = "" if m.available else "  (coming soon)"
-            if m.id in on_disk:
-                tag = "  ✓ downloaded"
-            self.picker.addItem(m.name + tag, m.id)
-            if not m.available:
-                self.picker.model().item(self.picker.count() - 1).setEnabled(False)
-        self.picker.setCurrentIndex(self.picker.findData(sel.id))
-        self.picker.setEnabled(not ctl.downloading)
-        self.picker.blockSignals(False)
-        link = f" <a href='{sel.card}'>Model card</a>" if sel.card else ""
-        if sel.id != "stock":  # a Hebrish fine-tune (codeswitch, sabich): site links, terms
-            link += f" · <a href='{about.HEBRISH}'>hebrish.app</a> · " + " · ".join(
-                f"<a href='{u}'>{n}</a>" for n, u in about.HEBRISH_LINKS[1:])
-        soon = [m.name for m in model_store.models() if not m.available]
-        self.model_summary.setText(sel.summary + link + (
-            f"<br><small>Coming soon: {', '.join(soon)}.</small>" if soon else ""))
+        cat = [m for m in model_store.models() if m.available]
+        if list(self.model_rows) != [m.id for m in cat]:         # catalogue changed: rebuild
+            for r in self.model_rows.values():
+                r["frame"].deleteLater()
+            self.model_rows = {m.id: self._model_row(m) for m in cat}
+        busy = bool(ctl.downloading or ctl.downloading_id)
+        for m in cat:
+            r, inst = self.model_rows[m.id], model_store.active(m.id)
+            in_use = m.id == sel.id
+            r["chip"].setText("In use")
+            r["chip"].setVisible(in_use and inst is not None)
+            here = ctl.downloading_id == m.id
+            if here:
+                text = "<b>Downloading…</b>"
+            elif inst:
+                text = (f"<span style='color:#2e9e5b'>✓ Downloaded</span> · {inst[1].label} · "
+                        f"{model_store.disk_usage(m.id) >> 20} MB")
+            else:
+                text = "<span style='color:gray'>Not downloaded · about 660 MB</span>"
+            r["status"].setText(text)
+            r["pbar"].setVisible(here and ctl.downloading is not None)
+            r["dl"].setVisible(inst is None)
+            r["dl"].setEnabled(not busy)
+            r["dl"].setText("Downloading…" if here else "Download")
+            r["use"].setVisible(inst is not None and not in_use)
+            r["use"].setEnabled(ctl.state == "idle")
+            r["rm"].setVisible(inst is not None and not in_use)
+            r["rm"].setEnabled(not here)
+
         if cur is None:
-            text = (f"<b>{sel.name} isn't downloaded yet</b> (~660 MB). Click Download; "
-                    "it downloads once and then works offline.")
-            if sel.id != "stock":  # a Hebrish fine-tune (codeswitch, sabich): site links, terms
-                text += (f"<br><small>By downloading it you agree to the <a href='{about.TERMS}'>"
-                         "terms of use</a>: free for personal and non-commercial use.</small>")
+            text = (f"<b>{sel.name} isn't downloaded yet.</b> Download it above, or download "
+                    "another model and click Use.")
         else:
             text = f"In use: <b>{sel.name}</b> {cur[1].label}"
             if ctl.engine.loaded_dir != cur[0]:
@@ -391,31 +679,34 @@ class MainWindow(QMainWindow):
         if last:
             text += f"<br><small>Last checked {time.strftime('%Y-%m-%d %H:%M', time.localtime(last))}</small>"
         self.model_label.setText(text)
-        busy = bool(ctl.downloading)
-        self.btn_update.setVisible(not busy and (cur is None or ctl.update_available()))
-        self.btn_update.setText("Download model" if cur is None else
-                                f"Update to {ctl.latest.version}" if ctl.latest else "Update")
-        self.btn_cancel.setVisible(busy)
+        self.btn_update.setVisible(not busy and ctl.update_available())
+        self.btn_update.setText(f"Update to {ctl.latest.version}" if ctl.latest else "Update")
+        self.btn_cancel.setVisible(ctl.downloading is not None)
         self.btn_check.setEnabled(not busy)
         self.versions.clear()
         for d, m in model_store.installed():
             self.versions.addItem(m.label + ("  ✓ in use" if cur and d == cur[0] else ""), d.name)
         if cur:
             self.versions.setCurrentIndex(self.versions.findData(cur[0].name))
-        others = [mid for mid in on_disk if mid != sel.id]
-        self.others_label.setText("Also on disk: " + ", ".join(
-            f"{model_store.get_model(mid).name} ({model_store.disk_usage(mid) >> 20} MB)" for mid in others)
-            if others else "")
-        self.others_label.setVisible(bool(others))
-        self.btn_free.setVisible(bool(others) and not busy)
+
+        custom = model_store.ROOT.resolve() != MODELS_DIR.resolve()
+        self.store_label.setText(
+            f"<b>{model_store.ROOT}</b><br><small>"
+            + ("A folder you chose. " if custom else "The default folder. ")
+            + "Each model is a subfolder (codeswitch = Jachnun, sabich = Sabich, stock = "
+            "Parakeet), one folder per version inside it.</small>")
+        self.btn_store_default.setVisible(custom)
 
     def progress(self, frac: float, text: str):
-        if frac < 0:
-            self.pbar.hide()
+        r = self.model_rows.get(self.ctl.downloading_id or "")
+        if r is None:
             return
-        self.pbar.show()
-        self.pbar.setValue(int(frac * 1000))
-        self.pbar.setFormat(text)
+        if frac < 0:
+            r["pbar"].hide()
+            return
+        r["pbar"].show()
+        r["pbar"].setValue(int(frac * 1000))
+        r["pbar"].setFormat(text)
 
     # -- settings ------------------------------------------------------------------
     def _settings_page(self):
@@ -435,23 +726,16 @@ class MainWindow(QMainWindow):
         form.addRow("", muted("Tap the toggle key to start, tap again to stop. Hold the "
                               "push-to-talk key while you talk. Any key on any keyboard or foot "
                               "pedal: pick ones nothing else uses (F13–F24 are ideal)."))
-        form.addRow("Output", self._combo("insert", [("paste", "Paste at the cursor"),
-                                                     ("clipboard", "Clipboard only")]))
         chord = QLineEdit(self.cfg["paste_chord"])
         chord.setToolTip("ctrl+v for most apps; ctrl+shift+v for terminals")
         chord.textChanged.connect(lambda t: self._on_chord(chord, t))
         form.addRow("Paste shortcut", chord)
-        mics = QComboBox()
-        mics.addItem("System default", "")
-        for name in audio.input_devices():
-            mics.addItem(name, name)
-        mics.setCurrentIndex(max(0, mics.findData(self.cfg["audio_device"])))
-        mics.currentIndexChanged.connect(lambda _i: self.cfg.set("audio_device", mics.currentData()))
-        form.addRow("Microphone", mics)
         b.addLayout(form)
-        for key, label in (("trailing_space", "Add a space after each transcript"),
-                           ("keep_history", "Remember recent transcripts between sessions")):
-            b.addWidget(self._check(key, label))
+        b.addWidget(muted("Output (paste, clipboard or the text box) and the microphone are on "
+                          "the Dictate tab."))
+        b.addWidget(self._check("trailing_space", "Add a space after each transcript"))
+        b.addWidget(self._check("keep_history", "Keep a history of transcripts (adds a History tab, "
+                                                "saved on this computer)", self._on_history_setting))
         lay.addWidget(box)
 
         box, b = card("Action keys")
@@ -466,11 +750,11 @@ class MainWindow(QMainWindow):
         lay.addWidget(box)
 
         box, b = card("Speed")
-        b.addWidget(muted("On a computer without a GPU, a long take can take a few seconds to "
-                          "appear after you stop. Inserting as you go decodes the take while you "
-                          "are still talking, at a pause, so only the last few seconds are left "
-                          "when you stop. Text already inserted stays if you then Discard or "
-                          "Retake."))
+        b.addWidget(muted("Inserting as you go (on by default, every ~10 seconds) decodes the take "
+                          "while you are still talking, at a pause, so text appears as you speak "
+                          "and only the last few seconds are left when you stop. Text already "
+                          "inserted stays if you then Discard or Retake. Off: everything is "
+                          "inserted at once when you stop."))
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignRight)
         form.addRow("Insert as you go", self._combo("live_insert_s", LIVE))
@@ -482,22 +766,25 @@ class MainWindow(QMainWindow):
         b.addLayout(form)
         lay.addWidget(box)
 
-        box, b = card("Beeps")
-        b.addWidget(self._check("beeps", "Beep when dictation starts and stops"))
+        box, b = card("Sounds")
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignRight)
+        form.addRow("Feedback", self._combo("feedback", FEEDBACK, lambda: self.ctl.cue("recording")))
         row = QHBoxLayout()
         vol = QSlider(Qt.Horizontal, minimum=0, maximum=100, value=self.cfg["beep_volume"])
         vol_lbl = QLabel(f"{self.cfg['beep_volume']} %")
         vol_lbl.setMinimumWidth(44)
         vol.valueChanged.connect(lambda v: vol_lbl.setText(f"{v} %"))
         vol.sliderReleased.connect(lambda: (self.cfg.set("beep_volume", vol.value()),
-                                            audio.beep(880, volume=0.5 * vol.value() / 100)))
+                                            self.ctl.cue("recording")))
         row.addWidget(vol, 1)
         row.addWidget(vol_lbl)
         form.addRow("Volume", row)
         b.addLayout(form)
-        b.addWidget(self._check("quiet_hours", "Quiet hours: no beeps between"))
+        b.addWidget(muted("Voice says “Recording”, “Paused”, “Resumed”, “Transcribing”, "
+                          "“Discarded”, and “Copied” when Output is the clipboard. Nothing is "
+                          "said when the text arrives: you can see it."))
+        b.addWidget(self._check("quiet_hours", "Quiet hours: no sounds between"))
         row = QHBoxLayout()
         for key in ("quiet_from", "quiet_to"):
             te = QTimeEdit(QTime.fromString(self.cfg[key], "HH:mm"), displayFormat="HH:mm")

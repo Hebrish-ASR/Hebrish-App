@@ -1,17 +1,20 @@
-"""Microphone capture (16 kHz mono float32), audio files, and the start/stop beeps."""
+"""Microphone capture (16 kHz mono float32), audio files, and the start/stop beeps and
+spoken status prompts."""
 
+import math
 import shutil
 import subprocess
 import sys
 import threading
+import time
 import wave
+from pathlib import Path
 
 import numpy as np
 import sounddevice as sd
 
 SAMPLE_RATE = 16000
-DICTATION_MAX_S = 15 * 60          # one hotkey take
-LONGFORM_MAX_S = 3 * 60 * 60       # Transcribe tab; ~690 MB of float32 at the cap
+DICTATION_MAX_S = 60 * 60          # one take (hotkey or the Dictate tab); stops itself at the cap
 AUDIO_FILTER = "Audio files (*.wav *.mp3 *.m4a *.ogg *.oga *.opus *.flac *.webm *.aac *.mp4)"
 
 
@@ -25,16 +28,68 @@ def input_devices() -> list[str]:
     return out
 
 
-def beep(freq: float, ms: int = 70, volume: float = 0.25):
-    t = np.arange(int(48000 * ms / 1000)) / 48000
-    tone = np.sin(2 * np.pi * freq * t) * volume
-    fade = min(len(t) // 4, 480)
-    tone[:fade] *= np.linspace(0, 1, fade)
-    tone[-fade:] *= np.linspace(1, 0, fade)
+VOICE_DIR = Path(__file__).resolve().parent / "data" / "voice"
+VOICE_PROMPTS = ("recording", "paused", "resumed", "transcribing", "discarded", "copied",
+                 "no_speech", "failed")      # data/voice/<key>.wav, made by scripts/make_voice.py
+# Level zones for the meter, in dBFS of the block RMS (speech guidance from Voice Notepad's mic
+# test: aim for -30 to -12) and of the block peak (clipping).
+QUIET_DB, LOUD_DB, CLIP_PEAK = -40.0, -12.0, 0.98
+
+
+def db(x: float) -> float:
+    return 20 * math.log10(x) if x > 1e-6 else -120.0
+
+
+def _play(samples: np.ndarray, sr: int):
+    # 25 ms of silence first: PipeWire/Pulse often swallow or click the first few ms of a
+    # fresh stream, which is what made the 0.4.0 pips sound clipped and odd.
+    lead = np.zeros(int(sr * 0.025), np.float32)
     try:
-        sd.play(tone.astype(np.float32), 48000)
+        sd.play(np.concatenate([lead, samples.astype(np.float32)]), sr)
     except sd.PortAudioError:
         pass
+
+
+def default_input_name() -> str:
+    """What "System default" means right now. PortAudio on PipeWire/Pulse only sees a device
+    called "default", so on Linux ask the sound server for its default source's description."""
+    if sys.platform.startswith("linux") and shutil.which("pactl"):
+        try:
+            import json
+            src = subprocess.run(["pactl", "get-default-source"], capture_output=True, text=True,
+                                 timeout=2).stdout.strip()
+            for d in json.loads(subprocess.run(["pactl", "-f", "json", "list", "sources"],
+                                               capture_output=True, text=True, timeout=2).stdout):
+                if d.get("name") == src:
+                    return d.get("description") or src
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass
+    try:
+        return sd.query_devices(kind="input")["name"]
+    except Exception:
+        return ""
+
+
+def beep(freq: float, ms: int = 110, volume: float = 0.25):
+    """A soft pip: sine plus a quiet octave, raised-cosine attack (12 ms) and release (45 ms).
+    Up to 0.4.0 it was a 70 ms bare sine with 10 ms linear fades."""
+    sr = 48000
+    t = np.arange(int(sr * ms / 1000)) / sr
+    tone = (np.sin(2 * np.pi * freq * t) + 0.2 * np.sin(4 * np.pi * freq * t)) * volume / 1.2
+    a, r = int(sr * 0.012), int(sr * 0.045)
+    tone[:a] *= 0.5 - 0.5 * np.cos(np.linspace(0, np.pi, a))
+    tone[-r:] *= 0.5 + 0.5 * np.cos(np.linspace(0, np.pi, r))
+    _play(tone, sr)
+
+
+def say(key: str, volume: float = 0.5):
+    """Play a spoken status prompt (data/voice/<key>.wav). Missing file: silent."""
+    try:
+        with wave.open(str(VOICE_DIR / f"{key}.wav"), "rb") as w:
+            sr, raw = w.getframerate(), w.readframes(w.getnframes())
+    except (OSError, wave.Error):
+        return
+    _play(np.frombuffer(raw, "<i2").astype(np.float32) / 32768 * min(1.0, volume * 1.6), sr)
 
 
 class Recorder:
@@ -45,6 +100,9 @@ class Recorder:
         self._stream = None
         self._lock = threading.Lock()
         self.level = 0.0            # RMS of the last block, 0..1, for a meter
+        self.rms = 0.0              # the same, unscaled (dBFS: db(rms))
+        self.peak = 0.0             # peak of the last block
+        self.clipped_at = 0.0       # time.monotonic() of the last block that hit CLIP_PEAK
         self.paused = False
 
     @property
@@ -87,7 +145,7 @@ class Recorder:
             self._close()
             self._stream = object()        # still "active"
             self.paused = True
-            self.level = 0.0
+            self.level = self.rms = self.peak = 0.0
 
     def resume(self):
         if self.paused:
@@ -96,7 +154,11 @@ class Recorder:
 
     def _cb(self, indata, frames, time_info, status):
         block = indata[:, 0]
-        self.level = min(1.0, float(np.sqrt(np.mean(block ** 2))) * 4)
+        self.rms = float(np.sqrt(np.mean(block ** 2)))
+        self.peak = float(np.max(np.abs(block))) if len(block) else 0.0
+        if self.peak >= CLIP_PEAK:
+            self.clipped_at = time.monotonic()
+        self.level = min(1.0, self.rms * 4)
         with self._lock:
             if self._n < self._max:
                 self._chunks.append(block.copy())
@@ -110,7 +172,7 @@ class Recorder:
 
     def stop(self) -> np.ndarray:
         self._close()
-        self._stream, self.paused, self.level = None, False, 0.0
+        self._stream, self.paused, self.level, self.rms, self.peak = None, False, 0.0, 0.0, 0.0
         with self._lock:
             out = np.concatenate(self._chunks) if self._chunks else np.zeros(0, np.float32)
             self._chunks, self._n = [], 0
