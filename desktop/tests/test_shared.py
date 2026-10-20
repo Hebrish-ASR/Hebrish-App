@@ -37,8 +37,10 @@ def test_android_offline_fallbacks_are_available_models():
     assert ids and ids <= available
 
 
-def test_hebrish_ships_only_stock_and_codeswitch():
-    """Hebrish is the code-switching app: stock Parakeet and the code-switching model, nothing else.
-    The other fine-tunes (tech, personal) belong to Parlance (danielrosehill/Parlance-Dictation)."""
+def test_hebrish_ships_only_stock_and_code_switching_models():
+    """Hebrish is the code-switching app: stock Parakeet and the code-switching fine-tunes
+    (Jachnun = `codeswitch`, and Sabich = `sabich`, the kitchen-sink line with code-switching
+    plus tech; Daniel, 2026-10-20), nothing else. The fine-tunes without Hebrew (Boxty, tech,
+    personal) belong to Parlance (danielrosehill/Parlance-Dictation)."""
     with open(SHARED) as f:
-        assert [m["id"] for m in json.load(f)["models"]] == ["stock", "codeswitch"]
+        assert [m["id"] for m in json.load(f)["models"]] == ["stock", "codeswitch", "sabich"]

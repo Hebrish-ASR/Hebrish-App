@@ -363,7 +363,7 @@ class MainWindow(QMainWindow):
         self.picker.setEnabled(not ctl.downloading)
         self.picker.blockSignals(False)
         link = f" <a href='{sel.card}'>Model card</a>" if sel.card else ""
-        if sel.id == "codeswitch":
+        if sel.id != "stock":  # a Hebrish fine-tune (codeswitch, sabich): site links, terms
             link += f" · <a href='{about.HEBRISH}'>hebrish.app</a> · " + " · ".join(
                 f"<a href='{u}'>{n}</a>" for n, u in about.HEBRISH_LINKS[1:])
         soon = [m.name for m in model_store.models() if not m.available]
@@ -372,7 +372,7 @@ class MainWindow(QMainWindow):
         if cur is None:
             text = (f"<b>{sel.name} isn't downloaded yet</b> (~660 MB). Click Download; "
                     "it downloads once and then works offline.")
-            if sel.id == "codeswitch":
+            if sel.id != "stock":  # a Hebrish fine-tune (codeswitch, sabich): site links, terms
                 text += (f"<br><small>By downloading it you agree to the <a href='{about.TERMS}'>"
                          "terms of use</a>: free for personal and non-commercial use.</small>")
         else:

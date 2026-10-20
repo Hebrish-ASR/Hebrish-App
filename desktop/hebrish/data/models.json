@@ -28,6 +28,16 @@
       "subdir": "",
       "card": "https://hebrish.app/models#parakeet",
       "manifest_url": "https://cdn.hebrish.app/models/parakeet-codeswitch/latest.json"
+    },
+    {
+      "id": "sabich",
+      "name": "Sabich: code-switching + tech",
+      "summary": "Fine-tuned on everything: English with Hebrew words in it plus tech terms, brand names and numbers (arnona, Kubernetes, 250 shekels). One speaker's voice.",
+      "status": "available",
+      "repo": "Hebrish/Sabich-sherpa-onnx-int8",
+      "subdir": "",
+      "card": "https://hebrish.app/models#sabich",
+      "manifest_url": "https://cdn.hebrish.app/models/parakeet-sabich/latest.json"
     }
   ]
 }

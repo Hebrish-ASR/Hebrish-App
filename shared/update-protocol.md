@@ -25,7 +25,8 @@ recognizer loads), `version_file`, `default` (the id selected on a fresh install
 | --- | --- | --- | --- |
 | `stock` | `csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8` (k2-fsa's int8 export of NVIDIA's release; static since 2025-08-16) | *(root)* | `v2` |
 | `codeswitch` | `Hebrish/Jachnun-sherpa-onnx-int8` (since 2026-10-19; named `Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8` until 2026-10-20, which redirects with 307) | *(root)* | `rev <sha7>` |
-| `tech`, `personal` | not published yet | | |
+| `sabich` | `Hebrish/Sabich-sherpa-onnx-int8` (Sabich v1.0, run `r7-all`, the kitchen-sink line: code-switching plus tech; added 2026-10-20). Apps 0.2.2+ use its `manifest_url`, `https://cdn.hebrish.app/models/parakeet-sabich/latest.json`; Android has no `BUNDLED` manifest for it, so `checkLatest` resolves it before the first download | *(root)* | from `version.json`: `Sabich v1.0` |
+| `tech`, `personal` | not in Hebrish: fine-tunes without Hebrew (Boxty) belong to Parlance | | |
 
 **Since 0.2.2 (2026-10-20): the Hebrish CDN.** A catalogue entry may carry `manifest_url`; apps
 0.2.2+ use it in place of the Hugging Face API. One GET of
