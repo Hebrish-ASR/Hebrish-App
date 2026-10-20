@@ -1,0 +1,854 @@
+{
+ "_comment": "Living feature matrix for Hebrish across Android, Ubuntu (.deb) and Windows (zip). Written by the asr-dev check-feature-parity skill; update in place, keep ids stable. Windows statuses come from the shared desktop code and CI, never from a real Windows machine (verified: false).",
+ "checked": "2026-10-21",
+ "commit": "4425f94",
+ "released": {
+  "android": "0.6.0",
+  "ubuntu": "0.3.0",
+  "windows": "0.3.0"
+ },
+ "features": [
+  {
+   "id": "insert-as-you-go",
+   "group": "insertion",
+   "name": "Insert as you go (decode while recording, insert at pauses)",
+   "android": {
+    "status": "present",
+    "since": "0.4.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/Prefs.kt:37"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.4.0",
+    "evidence": "desktop/hebrish/ui/app.py _live_tick"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.4.0",
+    "evidence": "desktop/hebrish/ui/app.py _live_tick",
+    "verified": false
+   },
+   "notes": "Default differs: desktop ON (~10 s) since 0.5.0 (Daniel, 2026-10-21); Android OFF."
+  },
+  {
+   "id": "start-stop-beeps",
+   "group": "feedback",
+   "name": "Start/stop beeps",
+   "android": {
+    "status": "present",
+    "since": "0.6.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/Feedback.kt:40"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/audio.py beep; ui/app.py cue"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/audio.py beep; ui/app.py cue",
+    "verified": false
+   },
+   "notes": "Android default off; desktop default on. Desktop 0.5.0 softened the tone."
+  },
+  {
+   "id": "voice-status-prompts",
+   "group": "feedback",
+   "name": "Spoken status prompts (Recording, Paused, Transcribing…)",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/Feedback.kt:27"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/audio.py say; data/voice/*.wav"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/audio.py say; data/voice/*.wav",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "beep-volume",
+   "group": "feedback",
+   "name": "Sound volume setting",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/Feedback.kt:67"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.4.0",
+    "evidence": "desktop/hebrish/config.py beep_volume"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.4.0",
+    "evidence": "desktop/hebrish/config.py beep_volume",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "quiet-hours",
+   "group": "feedback",
+   "name": "Quiet hours",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/Prefs.kt:44"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.4.0",
+    "evidence": "desktop/hebrish/config.py in_quiet_hours"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.4.0",
+    "evidence": "desktop/hebrish/config.py in_quiet_hours",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "vibration-cues",
+   "group": "feedback",
+   "name": "Vibration cues",
+   "android": {
+    "status": "present",
+    "since": "0.6.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/Prefs.kt:51"
+   },
+   "ubuntu": {
+    "status": "n/a",
+    "since": "",
+    "evidence": "no vibration hardware"
+   },
+   "windows": {
+    "status": "n/a",
+    "since": "",
+    "evidence": "no vibration hardware"
+   },
+   "notes": ""
+  },
+  {
+   "id": "vad",
+   "group": "transcription-engine",
+   "name": "Voice detection: skip takes with no speech, shorten long silences",
+   "android": {
+    "status": "partial",
+    "since": "0.4.0",
+    "evidence": "android/core/src/main/java/app/hebrish/core/Transcriber.kt:109"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/engine.py has_speech, shorten_silences"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/engine.py has_speech, shorten_silences",
+    "verified": false
+   },
+   "notes": "Android trims leading/trailing silence and reports 'Heard nothing' on empty text, but decodes silent takes and has no toggle."
+  },
+  {
+   "id": "mic-selection",
+   "group": "capture-and-triggers",
+   "name": "Choose the microphone",
+   "android": {
+    "status": "present",
+    "since": "0.6.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/Mic.kt:37"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/ui/window.py _fill_mics"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/ui/window.py _fill_mics",
+    "verified": false
+   },
+   "notes": "Desktop moved it to the Dictate tab in 0.5.0."
+  },
+  {
+   "id": "mic-in-use",
+   "group": "capture-and-triggers",
+   "name": "Show the mic in use",
+   "android": {
+    "status": "present",
+    "since": "0.6.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/VoiceImeService.kt:151"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/audio.py default_input_name"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/audio.py default_input_name",
+    "verified": false
+   },
+   "notes": "Windows: PortAudio's default input name; Linux asks pactl."
+  },
+  {
+   "id": "level-meter",
+   "group": "capture-and-triggers",
+   "name": "Level meter",
+   "android": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/VoiceImeService.kt:399"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/ui/meter.py"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/ui/meter.py",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "clipping-indicator",
+   "group": "capture-and-triggers",
+   "name": "Clipping indicator and good-level zones",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "android/core/src/main/java/app/hebrish/core/Recorder.kt:108"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/ui/meter.py"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/ui/meter.py",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "mic-test",
+   "group": "capture-and-triggers",
+   "name": "Mic test without recording",
+   "android": {
+    "status": "partial",
+    "since": "0.1.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/TryActivity.kt:42"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/ui/app.py start_monitor"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/ui/app.py start_monitor",
+    "verified": false
+   },
+   "notes": "Android: the Try it notepad doubles as one."
+  },
+  {
+   "id": "output-insert",
+   "group": "insertion",
+   "name": "Insert at the cursor / focused field",
+   "android": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/FloatingMicService.kt:631"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "desktop/hebrish/inserter_linux.py / inserter_win.py"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "desktop/hebrish/inserter_linux.py / inserter_win.py",
+    "verified": false
+   },
+   "notes": "Per-OS paste chord: uinput on Linux, SendInput on Windows."
+  },
+  {
+   "id": "output-clipboard",
+   "group": "insertion",
+   "name": "Clipboard-only output mode",
+   "android": {
+    "status": "partial",
+    "since": "0.3.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/FloatingMicService.kt:670"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "desktop/hebrish/config.py insert"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "desktop/hebrish/config.py insert",
+    "verified": false
+   },
+   "notes": "Android: only as a fallback."
+  },
+  {
+   "id": "output-in-app-textbox",
+   "group": "insertion",
+   "name": "In-app text box for dictation",
+   "android": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/TryActivity.kt:194"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/ui/window.py _dictate_page"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/ui/window.py _dictate_page",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "placeholder-replace",
+   "group": "insertion",
+   "name": "Replace placeholder text in the field",
+   "android": {
+    "status": "present",
+    "since": "0.6.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/Prefs.kt:70"
+   },
+   "ubuntu": {
+    "status": "n/a",
+    "since": "",
+    "evidence": "desktop pastes; it cannot read the target field"
+   },
+   "windows": {
+    "status": "n/a",
+    "since": "",
+    "evidence": "desktop pastes; it cannot read the target field"
+   },
+   "notes": ""
+  },
+  {
+   "id": "history",
+   "group": "history-and-files",
+   "name": "Transcript history",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/Prefs.kt:29"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "desktop/hebrish/ui/window.py _history_page"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "desktop/hebrish/ui/window.py _history_page",
+    "verified": false
+   },
+   "notes": "Desktop: optional and off by default since 0.5.0. Android keeps only the last transcript."
+  },
+  {
+   "id": "file-transcription",
+   "group": "history-and-files",
+   "name": "Transcribe an audio file",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "android/app/src/main/AndroidManifest.xml:33"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/ui/transcribe.py"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/ui/transcribe.py",
+    "verified": false
+   },
+   "notes": "Desktop: the File tab since 0.5.0."
+  },
+  {
+   "id": "model-cards",
+   "group": "model-catalogue-and-updates",
+   "name": "A card per model with icon and its own Download/Use/Delete",
+   "android": {
+    "status": "present",
+    "since": "0.6.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/ModelsActivity.kt:134"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/ui/window.py _model_row"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/ui/window.py _model_row",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "download-without-switching",
+   "group": "model-catalogue-and-updates",
+   "name": "Download a model without switching to it",
+   "android": {
+    "status": "present",
+    "since": "0.4.0",
+    "evidence": "android/core/src/main/java/app/hebrish/core/ModelDownload.kt:89"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/ui/app.py download_model"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/ui/app.py download_model",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "download-all",
+   "group": "model-catalogue-and-updates",
+   "name": "Download all models at once",
+   "android": {
+    "status": "present",
+    "since": "0.4.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/ModelsActivity.kt:40"
+   },
+   "ubuntu": {
+    "status": "missing",
+    "since": "",
+    "evidence": ""
+   },
+   "windows": {
+    "status": "missing",
+    "since": "",
+    "evidence": ""
+   },
+   "notes": ""
+  },
+  {
+   "id": "stock-parakeet",
+   "group": "model-catalogue-and-updates",
+   "name": "Stock Parakeet downloadable",
+   "android": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "shared/models.json"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "shared/models.json"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "shared/models.json",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "model-storage-folder",
+   "group": "model-catalogue-and-updates",
+   "name": "User-chosen model folder, default shown",
+   "android": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/ModelsActivity.kt:249"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/model_store.py set_root; ui/window.py _set_store"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/model_store.py set_root; ui/window.py _set_store",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "model-auto-update",
+   "group": "model-catalogue-and-updates",
+   "name": "Install model updates automatically",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/ModelsActivity.kt:201"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/config.py auto_update"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/config.py auto_update",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "keep-old-versions",
+   "group": "model-catalogue-and-updates",
+   "name": "Keep previous model versions",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "android/core/src/main/java/app/hebrish/core/ModelDownload.kt:123"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/config.py keep_old_versions"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/config.py keep_old_versions",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "pause-retake-discard",
+   "group": "capture-and-triggers",
+   "name": "Pause/resume, retake, discard",
+   "android": {
+    "status": "present",
+    "since": "0.3.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/VoiceImeService.kt:161"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.3.0",
+    "evidence": "desktop/hebrish/ui/app.py do_action"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.3.0",
+    "evidence": "desktop/hebrish/ui/app.py do_action",
+    "verified": false
+   },
+   "notes": "Desktop: also buttons on the Dictate tab since 0.5.0."
+  },
+  {
+   "id": "action-keys",
+   "group": "capture-and-triggers",
+   "name": "One key per action (macropad, pedals)",
+   "android": {
+    "status": "present",
+    "since": "0.6.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/FloatingMicService.kt:161"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.4.0",
+    "evidence": "desktop/hebrish/hotkey.py ACTIONS"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.4.0",
+    "evidence": "desktop/hebrish/hotkey.py ACTIONS",
+    "verified": false
+   },
+   "notes": "Per-OS key source: evdev on Linux, pynput hook on Windows."
+  },
+  {
+   "id": "floating-overlay",
+   "group": "platform-integration",
+   "name": "Floating mic / overlay",
+   "android": {
+    "status": "present",
+    "since": "0.3.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/FloatingMicService.kt:281"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.3.0",
+    "evidence": "desktop/hebrish/ui/overlay.py"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.3.0",
+    "evidence": "desktop/hebrish/ui/overlay.py",
+    "verified": false
+   },
+   "notes": "Desktop picks in-process or an XWayland child by Qt platform; Windows uses in-process (I)."
+  },
+  {
+   "id": "global-hotkey-tray-autostart",
+   "group": "platform-integration",
+   "name": "Global hotkey, tray, start at login",
+   "android": {
+    "status": "n/a",
+    "since": "",
+    "evidence": "desktop concept"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "desktop/hebrish/hotkey_evdev.py, autostart.py"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/hotkey_win.py, autostart.py HKCU Run",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "voice-ime",
+   "group": "platform-integration",
+   "name": "Voice keyboard (IME)",
+   "android": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "android/app/src/main/AndroidManifest.xml:57"
+   },
+   "ubuntu": {
+    "status": "n/a",
+    "since": "",
+    "evidence": "Android only"
+   },
+   "windows": {
+    "status": "n/a",
+    "since": "",
+    "evidence": "Android only"
+   },
+   "notes": ""
+  },
+  {
+   "id": "setup-checklist",
+   "group": "setup-and-onboarding",
+   "name": "Setup checklist",
+   "android": {
+    "status": "present",
+    "since": "0.6.0",
+    "evidence": "android/docs/maintaining.md:318"
+   },
+   "ubuntu": {
+    "status": "missing",
+    "since": "",
+    "evidence": ""
+   },
+   "windows": {
+    "status": "missing",
+    "since": "",
+    "evidence": ""
+   },
+   "notes": "Desktop opens the Models tab on first run instead."
+  },
+  {
+   "id": "parlance-coexistence",
+   "group": "settings-import-and-coexistence",
+   "name": "Installs alongside Parlance",
+   "android": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "android/docs/maintaining.md:470"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/config.py import_parlance"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.2.0",
+    "evidence": "desktop/hebrish/config.py import_parlance",
+    "verified": false
+   },
+   "notes": "Desktop also copies Parlance's settings and hardlinks its models on first start."
+  },
+  {
+   "id": "about-author",
+   "group": "links-about-contact",
+   "name": "About: open-source project by Daniel Rosehill, link to danielrosehill.com",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/AboutActivity.kt:28"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/ui/about.py AUTHOR_SITE"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/ui/about.py AUTHOR_SITE",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "tagline",
+   "group": "links-about-contact",
+   "name": "Tagline 'Dictation for English speakers in Israel'",
+   "android": {
+    "status": "partial",
+    "since": "0.6.0",
+    "evidence": "android/app/src/main/res/values/strings.xml:335"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/config.py TAGLINE"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.5.0",
+    "evidence": "desktop/hebrish/config.py TAGLINE",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "feedback-links",
+   "group": "links-about-contact",
+   "name": "Bug / feature / feedback mail and hebrish.app contact links",
+   "android": {
+    "status": "present",
+    "since": "0.1.1",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/Hebrish.kt:35"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.1.1",
+    "evidence": "desktop/hebrish/ui/about.py HEBRISH_LINKS"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.1.1",
+    "evidence": "desktop/hebrish/ui/about.py HEBRISH_LINKS",
+    "verified": false
+   },
+   "notes": ""
+  }
+ ],
+ "engine_rules": [
+  {
+   "rule": "trailing silence before decode",
+   "android": "0.8 s zeros after trim (core/Transcriber.kt:27)",
+   "desktop": "1.0 s (engine.TAIL_PAD_S)",
+   "same": false,
+   "explained_by": "Both above the measured 0.6 s minimum (shared/models.json min_trailing_silence_s); the gap is unmeasured"
+  },
+  {
+   "rule": "leading/trailing silence",
+   "android": "trimmed, 0.35 s kept each side (Transcriber.kt:122)",
+   "desktop": "not trimmed; with vad, silences over 1.5 s cut to 0.8 s (engine.shorten_silences)",
+   "same": false,
+   "explained_by": ""
+  },
+  {
+   "rule": "inner pauses",
+   "android": "kept as recorded",
+   "desktop": "0.12-0.6 s pauses stretched to 0.6 s (engine.stretch_pauses)",
+   "same": false,
+   "explained_by": "desktop/docs/maintaining.md: 0.3 s gaps lost sentences, 6/8 -> 8/8 with stretching (v4, 2026-10-18); not measured on Android"
+  },
+  {
+   "rule": "long-take chunking",
+   "android": "no cut before 8 s, cut at a 0.6 s pause, hard cut at 28 s (core/Recorder.kt:36)",
+   "desktop": "pieces >= ~10 s cut at a 0.6 s pause, forced at interval + 15 s (engine.live_cut, split_points)",
+   "same": false,
+   "explained_by": "Same 0.6 s pause rule; minimum and forced lengths differ, unmeasured"
+  },
+  {
+   "rule": "no-speech takes",
+   "android": "decoded; 'Heard nothing' on empty text",
+   "desktop": "not decoded when vad is on (engine.has_speech)",
+   "same": false,
+   "explained_by": "desktop 0.5.0 (Daniel, 2026-10-21)"
+  },
+  {
+   "rule": "normalisation",
+   "android": "none (int16/32768)",
+   "desktop": "RMS to -20 dBFS, gain at most 10x (engine.normalize)",
+   "same": false,
+   "explained_by": ""
+  },
+  {
+   "rule": "sample rate",
+   "android": "16 kHz mono",
+   "desktop": "16 kHz mono",
+   "same": true,
+   "explained_by": ""
+  },
+  {
+   "rule": "model files",
+   "android": "int8 encoder/decoder/joiner + tokens, greedy",
+   "desktop": "same",
+   "same": true,
+   "explained_by": ""
+  },
+  {
+   "rule": "catalogue fetch and fallback",
+   "android": "catalogue_url, cache, bundled copy",
+   "desktop": "catalogue_url, cache, bundled copy (byte-identical, test_shared.py)",
+   "same": true,
+   "explained_by": ""
+  }
+ ],
+ "unreleased": {
+  "android": [],
+  "desktop": [
+   "0.4.0 (never tagged): action keys, insert as you go, pause-cut long takes, beep volume, quiet hours",
+   "0.5.0: everything in desktop/docs/maintaining.md, '0.5.0'"
+  ]
+ },
+ "twin_lag": {
+  "parlance_behind_hebrish": 9,
+  "hebrish_behind_parlance": 4,
+  "note": "commits after the ledger's *_reviewed_through (Parlance-Dictation/docs/twin-sync.json), 2026-10-21; Hebrish's 9 include desktop 0.3.0-0.5.0"
+ }
+}
