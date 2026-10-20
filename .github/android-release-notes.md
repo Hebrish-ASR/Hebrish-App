@@ -1,8 +1,8 @@
-**0.3.0: floating mic.**
+**0.4.0: faster, longer takes, a floating mic that works in more apps.**
 
-- A mic button that floats over every app (optional, an accessibility service). Tap it in any text field, talk, tap Stop: the text goes in at the cursor and your keyboard stays as it is.
-- While you talk: Pause / Resume, Retake, Discard and a timer, next to the mic.
-- Choose where it sits: drag it (it snaps to the nearer edge), or set the side, height and size on the setup screen, which moves it live. Option to show it only while a text field is focused.
-- Long-press the idle mic to insert the last transcript again.
-- Turn it on in the app's new step 4. On Android 13+ you may first need App info → ⋮ → Allow restricted settings.
+- Takes are transcribed while you talk, so the wait after Stop is short, and a take can run 20 minutes (was 90 s).
+- Floating mic: finds the text field in apps built with Jetpack Compose, such as ChatGPT, where 0.3.0 often said there was no field or stayed hidden.
+- Floating mic: a new "Keep it running" step in the guide lets Hebrish run unrestricted on battery, so phones like OnePlus don't stop it in the background.
+- Floating mic: if no field had focus, tap one and then Insert. Finer placement: any height, anywhere across the screen, edge gap, size and idle opacity.
+- The app has a screen per area: Models (download any or all, switch at once), Voice keyboard, Floating mic, Dictation, Install and updates (the F-Droid repository) and Help.
 - Not yet tested on a device. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).

@@ -17,6 +17,7 @@ import android.widget.TextView
 class FloatingMicGuideActivity : Page() {
     private lateinit var status: TextView
     private lateinit var micStep: List<View>
+    private lateinit var batteryStatus: TextView
 
     override fun build() {
         status = text()
@@ -41,6 +42,16 @@ class FloatingMicGuideActivity : Page() {
         val micBtn: Button = button(R.string.grant) { requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1) }
         micStep = listOf(micTitle, micText, micBtn)
 
+        heading(R.string.guide_battery_title)
+        text(R.string.guide_battery)
+        batteryStatus = text()
+        button(R.string.guide_battery_button) {
+            // The direct prompt; if a ROM refuses it, the list of apps' battery settings.
+            runCatching {
+                startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
+            }.onFailure { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+        }
+
         heading(R.string.guide_done_title)
         text(R.string.guide_done)
         button(R.string.guide_position) { finish() }
@@ -57,5 +68,6 @@ class FloatingMicGuideActivity : Page() {
         status.setText(if (Setup.bubbleOn(this)) R.string.guide_status_on else R.string.guide_status_off)
         val mic = Setup.hasMic(this)
         for (v in micStep) v.visibility = if (mic) View.GONE else View.VISIBLE
+        batteryStatus.setText(if (Setup.batteryExempt(this)) R.string.guide_battery_on else R.string.guide_battery_off)
     }
 }

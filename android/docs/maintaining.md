@@ -223,8 +223,33 @@ everything below that describes runtime behaviour).
   waiting) and onto the clipboard, and the bar shows **Insert** + ×. Insert runs the same
   `insertInto` on whatever has input focus at that moment; × drops it. The bar is shown while
   something is pending even with *only while typing* on.
-- **Insertion** (`deliver`): target = `findFocus(FOCUS_INPUT)` captured when the take starts
-  (re-checked with `refresh()`), else the focus at insert time. `ACTION_SET_TEXT` replaces the
+- **Finding the field (0.4.0, after "doesn't work in ChatGPT", Daniel, 2026-10-20):** 0.3.0 used
+  `findFocus(FOCUS_INPUT)` alone and required `isEditable` on the result, and only listened for
+  `typeViewFocused` / `typeWindowStateChanged`. It worked in View-based apps and failed in
+  ChatGPT. Diagnosis from the code, **not confirmed on the device**: ChatGPT is a Jetpack Compose
+  app, and Compose text fields are virtual nodes under one `AndroidComposeView`. There
+  `findFocus(FOCUS_INPUT)` can return the host view (not editable) or null, depending on the
+  Compose version, and focus changes often arrive without a `TYPE_VIEW_FOCUSED`. The result is
+  "no text field" (text held for Insert) or, with *only while typing* on, a hidden mic.
+  `focusedField()` now tries findFocus, then a focused editable node under it, then the last
+  editable node any event came from (still focused, or the keyboard is up), then a bounded
+  search (1500 nodes) of every application window, active first. The config also listens for
+  `typeWindowsChanged`, `typeViewTextSelectionChanged`, `typeViewTextChanged` and
+  `typeViewClicked`, and sets `flagIncludeNotImportantViews`. *Only while typing* counts the
+  keyboard's window being on screen (`AccessibilityWindowInfo.TYPE_INPUT_METHOD`) as typing.
+  Ruled out: a missing "display over other apps" permission. `TYPE_ACCESSIBILITY_OVERLAY` needs
+  no `SYSTEM_ALERT_WINDOW` and draws above app and keyboard windows, and the mic did show in
+  ChatGPT. If it still fails there, the next suspect is Android 14's
+  `accessibilityDataSensitive` (views hidden from services without `isAccessibilityTool`).
+  Check with `adb shell uiautomator dump` whether the field appears at all.
+  `onAccessibilityEvent` is wrapped in `runCatching`, because a service that crashes gets
+  turned off by Android.
+- **Battery (0.4.0):** the guide has a *Keep it running* step that asks for
+  `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` (falls back to the battery optimisation list) and shows
+  whether the exemption is held (`Setup.batteryExempt`). OxygenOS kills background services, and an
+  accessibility service that is killed stays off until it is toggled again (I).
+- **Insertion** (`deliver`): target = the field `focusedField()` finds, captured when the take starts
+  (re-checked with `refresh()`), else the field found at insert time. `ACTION_SET_TEXT` replaces the
   whole field, so it builds `before + [space] + text + after` from `text` and
   `textSelectionStart/End` (an empty field's hint is excluded via `isShowingHintText`), then
   `ACTION_SET_SELECTION` to the end of the insert. Fallback: clipboard + `ACTION_PASTE`; the
@@ -312,7 +337,7 @@ to it. Losing it means users must uninstall before installing a newer APK.
 
 ## Not yet verified (as of 2026-10-20)
 
-- 0.4.0 on a device: segment cuts and joins, the trim on quiet speakers, the Stop-to-text time,
+- 0.4.0 on a device: the floating mic in ChatGPT and other Compose apps, segment cuts and joins, the trim on quiet speakers, the Stop-to-text time,
   the download queue, the new screens, Insert after a missed field, `fdroidrepos://` opening
   F-Droid.
 

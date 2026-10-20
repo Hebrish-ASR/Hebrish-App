@@ -22,6 +22,7 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -82,6 +83,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     /** Transcript that found no field to go into; Insert puts it in once one has focus. */
     private var pending: String? = null
     private var editableFocused = false
+    /** The last editable node an event came from: the fallback when findFocus can't see the field. */
+    private var lastEditable: AccessibilityNodeInfo? = null
     private var shownSeconds = -1
 
     private val open get() = state == State.RECORDING || state == State.PAUSED
@@ -111,18 +114,60 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
      * load the model the moment someone is about to type rather than when they tap the mic.
      */
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        val was = editableFocused
-        editableFocused = when (event.eventType) {
-            AccessibilityEvent.TYPE_VIEW_FOCUSED -> event.source?.isEditable == true
-            else -> findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.isEditable == true
+        // An exception here would crash the service, and Android turns a crashing service off.
+        runCatching {
+            val was = editableFocused
+            val source = event.source
+            if (source?.isEditable == true && !source.isPassword) lastEditable = source
+            editableFocused = source?.isEditable == true && event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                keyboardShowing() || focusedField() != null
+            if (editableFocused && !was) Transcriber.preload(this)
+            if (Prefs.bubbleOnlyTyping(this) && was != editableFocused) render()
         }
-        if (editableFocused && !was) Transcriber.preload(this)
-        if (Prefs.bubbleOnlyTyping(this) && was != editableFocused) render()
+    }
+
+    /** True while a keyboard window is on screen: the surest sign that someone is typing. */
+    private fun keyboardShowing() =
+        runCatching { windows.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD } }.getOrDefault(false)
+
+    /**
+     * The text field that has input focus, or null. `findFocus(FOCUS_INPUT)` alone misses fields
+     * in Jetpack Compose apps (ChatGPT, reported 2026-10-20): there it can return the host
+     * AndroidComposeView, which is not editable, or nothing. So, in order:
+     * 1. findFocus, if it is editable;
+     * 2. a focused editable node under what findFocus returned (the Compose host case);
+     * 3. the last editable node an event came from, if it still exists and is focused (or the
+     *    keyboard is up: some Compose fields never report isFocused);
+     * 4. a focused editable node in any app window, the active one first.
+     */
+    private fun focusedField(): AccessibilityNodeInfo? {
+        val f = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        if (f != null && f.isEditable) return f
+        f?.let { findFocusedEditable(it) }?.let { return it }
+        lastEditable?.takeIf { it.refresh() && it.isEditable && (it.isFocused || keyboardShowing()) }?.let { return it }
+        val roots = runCatching { windows }.getOrDefault(emptyList())
+            .filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+            .sortedByDescending { it.isActive }
+            .mapNotNull { it.root }
+        for (r in roots) findFocusedEditable(r)?.let { return it }
+        return null
+    }
+
+    /** Depth-first search for a focused, editable node, bounded so a huge tree can't stall the service. */
+    private fun findFocusedEditable(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        val stack = ArrayDeque<AccessibilityNodeInfo>().apply { add(root) }
+        var seen = 0
+        while (stack.isNotEmpty() && seen++ < MAX_NODES) {
+            val n = stack.removeLast()
+            if (n.isEditable && n.isFocused) return n
+            for (i in n.childCount - 1 downTo 0) n.getChild(i)?.let { stack.add(it) }
+        }
+        return null
     }
 
     override fun onSharedPreferenceChanged(sp: SharedPreferences?, key: String?) {
         if (key?.startsWith("bubble_") != true) return
-        if (key == "bubble_only_typing") editableFocused = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.isEditable == true
+        if (key == "bubble_only_typing") editableFocused = keyboardShowing() || focusedField() != null
         place()
         render()
     }
@@ -323,7 +368,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     private fun startRecording() {
         Transcriber.preload(this)
-        target = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.takeIf { it.isEditable && !it.isPassword }
+        target = focusedField()?.takeIf { !it.isPassword }
         takeText.setLength(0)
         // Type as you go: each segment goes in when decoded. Otherwise it is all held for Stop.
         val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { deliverPart(text) } } else null)
@@ -438,7 +483,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
      */
     private fun deliver(text: String) {
         val node = target?.takeIf { it.refresh() && it.isEditable }
-            ?: findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.takeIf { it.isEditable }
+            ?: focusedField()
         target = null
         if (node == null || node.isPassword || !insertInto(node, text)) hold(text)
     }
@@ -480,7 +525,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     /** Insert: the held text into whatever field has focus now, at its cursor. */
     private fun insertPending() {
         val text = pending ?: return
-        val node = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.takeIf { it.isEditable && !it.isPassword }
+        val node = focusedField()?.takeIf { !it.isPassword }
             ?: return toast(getString(R.string.bubble_tap_field))
         if (!insertInto(node, text)) return toast(getString(R.string.bubble_on_clipboard))
         pending = null
@@ -535,5 +580,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private companion object {
         /** Padding inside the bubble's window, around the mic and the bar. */
         const val PAD_DP = 4
+        /** Most nodes [findFocusedEditable] visits per search. */
+        const val MAX_NODES = 1500
     }
 }

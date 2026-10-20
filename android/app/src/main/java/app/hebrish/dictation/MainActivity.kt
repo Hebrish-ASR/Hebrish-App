@@ -126,6 +126,9 @@ object Setup {
     fun imeEnabled(ctx: Context) = (ctx.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
         .enabledInputMethodList.any { it.packageName == ctx.packageName }
 
+    fun batteryExempt(ctx: Context) = (ctx.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager)
+        .isIgnoringBatteryOptimizations(ctx.packageName)
+
     fun bubbleOn(ctx: Context) = (ctx.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager)
         .getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
         .any { it.resolveInfo.serviceInfo.packageName == ctx.packageName && it.resolveInfo.serviceInfo.name == FloatingMicService::class.java.name }

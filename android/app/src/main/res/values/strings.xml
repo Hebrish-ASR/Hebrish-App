@@ -197,6 +197,11 @@
     <string name="guide_step3">Back in Accessibility settings → Downloaded apps → Hebrish floating mic, the switch now works. Turn it on and tap Allow.</string>
     <string name="guide_mic_title">Microphone</string>
     <string name="guide_mic">The floating mic records with the app\'s microphone permission.</string>
+    <string name="guide_battery_title">Keep it running</string>
+    <string name="guide_battery">Some phones (OnePlus, Xiaomi, Samsung and others) stop background apps to save battery, and the floating mic disappears until you turn it on again. Allow Hebrish to run unrestricted. On OnePlus, also check App info → Battery → Unrestricted.</string>
+    <string name="guide_battery_button">Allow unrestricted battery</string>
+    <string name="guide_battery_on">Battery: unrestricted.</string>
+    <string name="guide_battery_off">Battery: optimised. Android may stop the floating mic.</string>
     <string name="guide_done_title">Done</string>
     <string name="guide_done">A mic now sits at the edge of the screen. Tap into a text field, tap the mic, talk, and tap it again. Drag it to move it.</string>
     <string name="guide_position">Set where it sits</string>

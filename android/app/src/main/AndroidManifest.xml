@@ -11,6 +11,9 @@
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
+    <!-- The floating mic guide's "Keep it running" step asks to be exempt from battery
+         optimisation, so OxygenOS and similar don't kill the accessibility service (0.4.0). -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:allowBackup="false"

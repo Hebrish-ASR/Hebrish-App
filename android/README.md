@@ -114,6 +114,11 @@ all: your regular keyboard stays up and the text goes straight into the field.
   The bar always opens towards the middle of the screen. *Show only while a text field is
   focused* hides the mic the rest of the time.
 - **Long-press the idle mic** to insert the last transcript again.
+- **Keep it running:** the guide's *Keep it running* step lets Hebrish run unrestricted on
+  battery. Without it, phones such as OnePlus can stop the floating mic in the background.
+- **Apps built with Jetpack Compose** (ChatGPT, for example): 0.3.0 often couldn't find the text
+  field there. Since 0.4.0 the floating mic searches for the focused field more thoroughly.
+  No "display over other apps" permission is needed or used.
 - **Fields that refuse it** (some web pages and custom editors): the text is pasted from the
   clipboard instead, and if that fails too it is held for **Insert** and left on the
   clipboard. Password fields are never touched.
