@@ -1,6 +1,8 @@
 package app.hebrish.core
 
 import android.annotation.SuppressLint
+import android.os.Build
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
@@ -49,6 +51,18 @@ class Recorder(
     /** Slowly tracked background level, so "silence" adapts to the room. */
     private var noiseFloor = 0.01f
 
+    /**
+     * Microphone to ask for (AudioRecord.setPreferredDevice), or null for the system's choice.
+     * Read at each [start], so it can change between takes and on resume. A Bluetooth headset
+     * mic also needs the caller to route the call audio to it first (the app's Mic.route).
+     * Android treats this as a preference: [routedDevice] says what it actually used.
+     */
+    @Volatile var preferredDevice: AudioDeviceInfo? = null
+
+    /** The microphone capture is actually using, known once [start] has run; null before or if unknown. */
+    @Volatile var routedDevice: AudioDeviceInfo? = null
+        private set
+
     /** Samples recorded so far in this take, across pauses and segments. */
     @Volatile var samples = 0
         private set
@@ -69,8 +83,12 @@ class Recorder(
             MediaRecorder.AudioSource.VOICE_RECOGNITION, rate,
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(minBuf, rate),
         )
+        // API checks keep this compiling for Hebrish Keyboard (minSdk 21); the app is minSdk 28.
+        val want = preferredDevice
+        if (want != null && Build.VERSION.SDK_INT >= 23) record.setPreferredDevice(want)
         running = true
         record.startRecording()
+        if (Build.VERSION.SDK_INT >= 24) routedDevice = record.routedDevice
         thread = Thread {
             val buf = ShortArray(rate / 10)
             try {

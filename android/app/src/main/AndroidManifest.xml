@@ -3,6 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Feedback (0.6.0): the optional buzz at start / stop / retake. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Mic (0.6.0): routing a take to a Bluetooth headset mic (setCommunicationDevice / SCO). -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Used once, to download the model from Hugging Face. Recognition itself is offline. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Only if the user picks a shared folder for the model (so other apps can use it).
@@ -39,6 +43,7 @@
         <activity android:name=".FloatingMicGuideActivity" android:exported="false" android:label="@string/title_guide" android:parentActivityName=".MainActivity" />
         <activity android:name=".DictationActivity" android:exported="false" android:label="@string/title_dictation" android:parentActivityName=".MainActivity" />
         <activity android:name=".InstallActivity" android:exported="false" android:label="@string/title_install" android:parentActivityName=".MainActivity" />
+        <activity android:name=".ControlsActivity" android:exported="false" android:label="@string/title_controls" android:parentActivityName=".MainActivity" />
         <activity android:name=".ContactActivity" android:exported="false" android:label="@string/title_contact" android:parentActivityName=".MainActivity" />
 
         <activity

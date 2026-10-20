@@ -3,6 +3,8 @@ package app.hebrish.dictation
 import app.hebrish.core.*
 import android.Manifest
 import android.accessibilityservice.AccessibilityService
+import android.animation.ValueAnimator
+import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -17,6 +19,8 @@ import android.os.Looper
 import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
+import android.util.Log
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -57,6 +61,11 @@ import android.widget.Toast
  *
  * Same engine and process as the voice keyboard, so both share one loaded model. Recording needs
  * no foreground service: see docs/maintaining.md, "Floating mic".
+ *
+ * Feedback and control (0.6.0): while recording the mic pulses, and each start / stop / retake /
+ * discard can pip and buzz ([Feedback]). The bar names the microphone in use ([Mic]; Bluetooth
+ * first). Broadcast intents and bound hardware keys (a Bluetooth shutter remote, a keyboard)
+ * drive the same actions as the buttons ([Remote], [onKeyEvent]; docs/external-control.md).
  */
 class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPreferenceChangeListener {
     private enum class State { IDLE, RECORDING, PAUSED, TRANSCRIBING }
@@ -89,6 +98,20 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     /** The last editable node an event came from: the fallback when findFocus can't see the field. */
     private var lastEditable: AccessibilityNodeInfo? = null
     private var shownSeconds = -1
+    /** Short name of the mic the current take records from, shown in the bar. */
+    private var micName = ""
+    private var remote: BroadcastReceiver? = null
+    /** Key code whose ACTION_UP must still be swallowed (its DOWN was consumed). */
+    private var swallowUp = KeyEvent.KEYCODE_UNKNOWN
+    /** Until this uptime the bar shows the retake flash (amber, "New take") instead of the timer. */
+    private var flashUntil = 0L
+    /** While recording the mic's colour breathes, so a take in progress is obvious at a glance. */
+    private val pulse = ValueAnimator.ofInt(255, 120).apply {
+        duration = 700
+        repeatMode = ValueAnimator.REVERSE
+        repeatCount = ValueAnimator.INFINITE
+        addUpdateListener { micBg.alpha = it.animatedValue as Int }
+    }
 
     private val open get() = state == State.RECORDING || state == State.PAUSED
 
@@ -96,11 +119,16 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         Prefs.listen(this, this)
         addBubble()
+        remote = Remote.register(this) { main.post { onRemote(it) } }
         Transcriber.preload(this)
     }
 
     override fun onDestroy() {
         Prefs.unlisten(this, this)
+        remote?.let { runCatching { unregisterReceiver(it) } }
+        remote = null
+        pulse.cancel()
+        Mic.release(this)
         recorder?.cancel()
         recorder = null
         decoder?.cancel()
@@ -111,6 +139,46 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     }
 
     override fun onInterrupt() = Unit
+
+    /** A broadcast or a bound key: the same actions as the bar's buttons. */
+    private fun onRemote(a: Remote.Action) {
+        if (a != Remote.Action.STOP && a != Remote.Action.DISCARD && (!ModelStore.isReady(this) || !hasMic())) return onTap()
+        when (a) {
+            Remote.Action.TOGGLE -> onTap()
+            Remote.Action.START -> if (state == State.IDLE) startRecording()
+            Remote.Action.STOP -> if (open) stopAndTranscribe()
+            Remote.Action.RESTART -> if (open) retake() else if (state == State.IDLE) startRecording()
+            Remote.Action.PAUSE -> togglePause()
+            Remote.Action.DISCARD -> discard()
+        }
+    }
+
+    /**
+     * Hardware keys (flagRequestFilterKeyEvents in res/xml/floating_mic.xml). Only keys bound
+     * to an action are consumed, plus the next key while the settings screen is learning one.
+     * Back, Home and Recents are never taken. Acts on key down, once (not on auto-repeat).
+     */
+    override fun onKeyEvent(event: KeyEvent): Boolean = runCatching {
+        val code = event.keyCode
+        if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_HOME || code == KeyEvent.KEYCODE_APP_SWITCH) return false
+        if (event.action == KeyEvent.ACTION_UP && code == swallowUp) {
+            swallowUp = KeyEvent.KEYCODE_UNKNOWN
+            return true
+        }
+        val learning = Prefs.learning(this)?.let { n -> Remote.Action.entries.firstOrNull { it.name == n } }
+        if (learning != null) {
+            if (event.action != KeyEvent.ACTION_DOWN) return true
+            for (other in Remote.Action.entries) if (other != learning && Prefs.keyFor(this, other) == code) Prefs.setKeyFor(this, other, 0)
+            Prefs.setKeyFor(this, learning, code)
+            Prefs.setLearning(this, null)
+            swallowUp = code
+            main.post { toast(getString(R.string.controls_key_bound, Remote.keyName(code))) }
+            return true
+        }
+        val a = Remote.actionFor(this, code) ?: return false
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) main.post { onRemote(a) }
+        true
+    }.getOrDefault(false)
 
     /**
      * Tracks whether an editable field has input focus: for "show only while typing", and to
@@ -390,7 +458,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         return true
     }
 
-    private fun startRecording() {
+    private fun startRecording(cue: Feedback.Cue = Feedback.Cue.START) {
         Transcriber.preload(this)
         target = focusedField()?.takeIf { !it.isPassword }
         takeText.setLength(0)
@@ -401,16 +469,24 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             onLimit = { main.post { if (state == State.RECORDING) stopAndTranscribe() } },
             onSegment = { d.add(it) },
         )
+        Mic.prepare(this, r)
         try {
             r.start()
         } catch (e: Exception) {
             d.cancel()
+            Mic.release(this)
             return toast(getString(R.string.ime_mic_error, e.message ?: ""))
         }
         recorder = r
         decoder = d
+        micName = Mic.label(this, r.routedDevice)
         state = State.RECORDING
         shownSeconds = -1
+        Feedback.cue(this, cue)
+        if (cue == Feedback.Cue.RESTART) flashRetake()
+        // A quick pop, so the start is visible even from the corner of an eye.
+        mic.animate().scaleX(1.2f).scaleY(1.2f).setDuration(110)
+            .withEndAction { mic.animate().scaleX(1f).scaleY(1f).setDuration(140) }
         render()
     }
 
@@ -440,6 +516,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         recorder = null
         decoder?.cancel()
         decoder = null
+        Mic.release(this)
     }
 
     /** Throws the take away and starts a fresh one at once, into the same field. */
@@ -448,7 +525,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         val keep = target
         dropTake()
         state = State.IDLE
-        startRecording()
+        startRecording(Feedback.Cue.RESTART)
         if (keep != null) target = keep
     }
 
@@ -457,6 +534,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         dropTake()
         target = null
         state = State.IDLE
+        Feedback.cue(this, Feedback.Cue.DISCARD)
         toast(getString(R.string.bubble_discarded))
         render()
     }
@@ -467,6 +545,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         recorder = null
         decoder = null
         val samples = r.stop()
+        Mic.release(this)
+        Feedback.cue(this, Feedback.Cue.STOP)
         if (samples.size < Transcriber.SAMPLE_RATE / 4 && d.segmentsQueued == 0) {
             d.cancel()
             state = State.IDLE
@@ -512,9 +592,33 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         if (node == null || node.isPassword || !insertInto(node, text)) hold(text)
     }
 
+    /**
+     * True when [current], the field's reported text, is really its placeholder ("Message" in
+     * WhatsApp), so the transcript must replace it rather than follow it.
+     * 1. isShowingHintText: the standard signal; many apps set it.
+     * 2. The text equals the field's declared hint.
+     * 3. Prefs.clearPlaceholder (on by default, 0.6.0): apps such as WhatsApp report the hint as
+     *    the text and set neither. Short (≤ [PLACEHOLDER_MAX] chars), single-line text with no
+     *    real cursor (selection -1 or 0..0) is taken for a placeholder. That could replace a real
+     *    one-word draft whose cursor sits at its start, hence the setting. Never applied once this
+     *    take has typed something ([takeText]), so type-as-you-go can't wipe its own text.
+     * (I: 2026-10-20, 3. inferred from the reported WhatsApp behaviour; not yet tried on a phone.)
+     */
+    private fun isPlaceholder(node: AccessibilityNodeInfo, current: String, firstPart: Boolean): Boolean {
+        if (current.isEmpty()) return false
+        if (node.isShowingHintText) return true
+        if (node.hintText?.toString() == current) return true
+        if (!firstPart || !Prefs.clearPlaceholder(this)) return false
+        val s = node.textSelectionStart
+        val e = node.textSelectionEnd
+        return current.length <= PLACEHOLDER_MAX && '\n' !in current && (s == -1 || (s == 0 && e == 0))
+    }
+
     /** True if [text] went into [node]; tries SET_TEXT, then clipboard + PASTE. */
     private fun insertInto(node: AccessibilityNodeInfo, text: String): Boolean {
-        val current = if (node.isShowingHintText) "" else node.text?.toString() ?: ""
+        val reported = node.text?.toString() ?: ""
+        val placeholder = isPlaceholder(node, reported, firstPart = takeText.length <= text.length)
+        val current = if (placeholder) "" else reported
         var start = node.textSelectionStart
         var end = node.textSelectionEnd
         if (start !in 0..current.length || end !in 0..current.length) { start = current.length; end = current.length }
@@ -525,6 +629,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, before + insert + current.substring(end))
         }
         if (node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, set)) {
+            if (placeholder) Log.i(TAG, "Replaced placeholder text (${reported.length} chars)")
             val cursor = start + insert.length
             node.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, Bundle().apply {
                 putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor)
@@ -582,6 +687,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         pauseBtn.contentDescription = getString(if (state == State.PAUSED) R.string.resume else R.string.pause)
         r.alpha = if (state == State.IDLE && !waiting) Prefs.bubbleAlpha(this) / 100f else 1f
         if (state != State.RECORDING) setLevel(0f)
+        if (state == State.RECORDING) { if (!pulse.isStarted) pulse.start() } else { pulse.cancel(); micBg.alpha = 255 }
         if (open) showTime()
     }
 
@@ -593,11 +699,29 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         if (state == State.RECORDING) showTime()
     }
 
+    /**
+     * Retake is otherwise too quick to see (the timer just goes back to 0:00): the bar turns
+     * amber and says "New take" for [FLASH_MS], with or without sounds.
+     */
+    private fun flashRetake() {
+        flashUntil = android.os.SystemClock.uptimeMillis() + FLASH_MS
+        barBg.setColor(getColor(R.color.bubble_retake))
+        timer.setText(R.string.bubble_new_take)
+        main.postDelayed({
+            if (android.os.SystemClock.uptimeMillis() < flashUntil) return@postDelayed
+            barBg.setColor(getColor(R.color.ime_bg))
+            shownSeconds = -1
+            if (open) showTime()
+        }, FLASH_MS)
+    }
+
     private fun showTime() {
+        if (android.os.SystemClock.uptimeMillis() < flashUntil) return
         val secs = recorder?.seconds ?: return
         if (secs == shownSeconds && state == State.RECORDING) return
         shownSeconds = secs
-        timer.text = getString(if (state == State.PAUSED) R.string.bubble_paused_time else R.string.bubble_time, secs / 60, secs % 60)
+        timer.text = getString(if (state == State.PAUSED) R.string.bubble_paused_time else R.string.bubble_time, secs / 60, secs % 60) +
+            if (micName.isNotEmpty()) " · $micName" else ""
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
@@ -605,6 +729,11 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private companion object {
         /** Padding inside the bubble's window, around the mic and the bar. */
         const val PAD_DP = 4
+        const val TAG = "HebrishFloatingMic"
+        /** Longest field text [isPlaceholder] will take for a placeholder. */
+        const val PLACEHOLDER_MAX = 40
+        /** How long the retake flash lasts. */
+        const val FLASH_MS = 1000L
         /** Most nodes [findFocusedEditable] visits per search. */
         const val MAX_NODES = 1500
     }

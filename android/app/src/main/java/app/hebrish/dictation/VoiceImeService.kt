@@ -38,6 +38,8 @@ class VoiceImeService : InputMethodService() {
     /** Set when the user asked to leave while a take was being transcribed: insert, then switch. */
     private var switchWhenDone = false
     private var shownSeconds = -1
+    /** Short name of the mic the current take records from (Mic.label), shown in the status line. */
+    private var micName = ""
     private lateinit var status: TextView
     private lateinit var mic: ImageButton
     private lateinit var spinner: ProgressBar
@@ -123,7 +125,7 @@ class VoiceImeService : InputMethodService() {
 
     private fun preload() = Transcriber.preload(this)
 
-    private fun startRecording() {
+    private fun startRecording(cue: Feedback.Cue = Feedback.Cue.START) {
         preload()
         takeText.setLength(0)
         val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { commitPart(text) } } else null)
@@ -132,19 +134,24 @@ class VoiceImeService : InputMethodService() {
             onLimit = { main.post { if (state == State.RECORDING) stopAndTranscribe() } },
             onSegment = { d.add(it) },
         )
+        Mic.prepare(this, r)
         try {
             r.start()
         } catch (e: Exception) {
             d.cancel()
+            Mic.release(this)
             show(getString(R.string.ime_mic_error, e.message ?: ""), busy = false)
             return
         }
         recorder = r
         decoder = d
+        micName = Mic.label(this, r.routedDevice)
         state = State.RECORDING
         shownSeconds = -1
+        Feedback.cue(this, cue)
+        if (cue == Feedback.Cue.RESTART) flashRetake()
         mic.setImageResource(R.drawable.ic_stop)
-        show(getString(R.string.ime_listening), busy = false)
+        show(getString(R.string.ime_listening) + " · " + micName, busy = false)
         renderTake()
     }
 
@@ -166,7 +173,7 @@ class VoiceImeService : InputMethodService() {
                 }
                 state = State.RECORDING
                 shownSeconds = -1
-                show(getString(R.string.ime_listening), busy = false)
+                show(getString(R.string.ime_listening) + " · " + micName, busy = false)
             }
             else -> return
         }
@@ -178,6 +185,7 @@ class VoiceImeService : InputMethodService() {
         recorder = null
         decoder?.cancel()
         decoder = null
+        Mic.release(this)
     }
 
     /** Throws the take away and starts a fresh one at once. */
@@ -185,13 +193,14 @@ class VoiceImeService : InputMethodService() {
         if (state != State.RECORDING && state != State.PAUSED) return
         dropTake()
         state = State.IDLE
-        startRecording()
+        startRecording(Feedback.Cue.RESTART)
     }
 
     private fun discard() {
         if (state != State.RECORDING && state != State.PAUSED) return
         dropTake()
         state = State.IDLE
+        Feedback.cue(this, Feedback.Cue.DISCARD)
         setLevel(0f)
         mic.setImageResource(R.drawable.ic_mic)
         show(getString(R.string.ime_discarded), busy = false)
@@ -204,6 +213,8 @@ class VoiceImeService : InputMethodService() {
         recorder = null
         decoder = null
         val samples = r.stop()
+        Mic.release(this)
+        Feedback.cue(this, Feedback.Cue.STOP)
         setLevel(0f)
         mic.setImageResource(R.drawable.ic_mic)
         if (samples.size < Transcriber.SAMPLE_RATE / 4 && d.segmentsQueued == 0) {
@@ -350,13 +361,27 @@ class VoiceImeService : InputMethodService() {
         pauseBtn.setText(if (state == State.PAUSED) R.string.resume else R.string.pause)
     }
 
+    /** Retake is too quick to see otherwise: the status line turns amber and says "New take" for a second. */
+    private fun flashRetake() {
+        if (!::status.isInitialized) return
+        status.setBackgroundColor(getColor(R.color.bubble_retake))
+        status.setText(R.string.bubble_new_take)
+        flashing = true
+        status.postDelayed({
+            flashing = false
+            status.background = null
+            shownSeconds = -1
+        }, 1000)
+    }
+    private var flashing = false
+
     private fun setLevel(l: Float) {
         if (!::level.isInitialized) return
         level.scaleX = (l * 4f).coerceIn(0.02f, 1f)
         val secs = recorder?.seconds ?: return
-        if (state == State.RECORDING && secs != shownSeconds) {
+        if (state == State.RECORDING && secs != shownSeconds && !flashing) {
             shownSeconds = secs
-            status.text = getString(R.string.ime_listening_time, secs / 60, secs % 60)
+            status.text = getString(R.string.ime_listening_time, secs / 60, secs % 60) + " · " + micName
         }
     }
 

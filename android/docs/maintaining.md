@@ -288,6 +288,41 @@ everything below that describes runtime behaviour).
   Accessibility → Downloaded apps → Hebrish floating mic.
 - Ramblr (GPL-3.0) was read for design only; no code was copied (this app is MIT).
 
+## Sound, microphone and buttons (0.6.0, 2026-10-20)
+
+Screen `ControlsActivity`. Compiled (V, 2026-10-20); not run on a device (I below).
+
+- **Feedback** (`Feedback.kt`): `Prefs.beeps` (default off), `Prefs.vibrate` (default on). Tones
+  are synthesised into an `AudioTrack` with `USAGE_ASSISTANCE_SONIFICATION` at 35% amplitude and
+  4 ms fades (no sound files). Cues: START 660→990 Hz, STOP 990→660, RESTART 990·gap·990, DISCARD
+  330 Hz. Played by the floating mic, the IME and the Try screen.
+- **Retake flash:** a retake turns the floating mic's bar `R.color.bubble_retake` (#B26A00) and
+  shows "↺ New take" for `FLASH_MS` = 1000 ms; the IME flashes its status line the same way.
+  Daniel asked for it so a retake is obvious with beeps off. While recording, the mic background
+  pulses (alpha 255↔120, 700 ms).
+- **Microphone** (`Mic.kt`): `Prefs.micChoice` = `Mic.AUTO` or a key `"<type>:<productName>"`
+  (device ids change on reconnect, so they are not stored). Auto order: Bluetooth (SCO, or BLE
+  headset type 26), then wired/USB headset, then the phone mic. Bluetooth is routed with
+  `AudioManager.setCommunicationDevice` on API 31+, `startBluetoothSco` below; `Mic.release`
+  undoes it after every take. `Recorder.preferredDevice` (engine, additive) calls
+  `AudioRecord.setPreferredDevice`; `Recorder.routedDevice` reports what Android actually used,
+  and that label ("Bluetooth: X") is shown next to the timer. Needs `MODIFY_AUDIO_SETTINGS`.
+- **External control** (`Remote.kt`): broadcast intents and learned keys; reference for users in
+  `docs/external-control.md`.
+
+## Placeholder text (0.6.0, 2026-10-20)
+
+Reported by Daniel: in WhatsApp the floating mic left "Message" in the field and dictation landed
+after it. `insertInto` already treated `isShowingHintText` as empty, so WhatsApp evidently does not
+set it (I: inferred from the report). `FloatingMicService.isPlaceholder` now also treats the text as
+the placeholder when it equals `node.hintText`, and, when `Prefs.clearPlaceholder` is on (key
+`clear_placeholder`, **default on**, switch on the floating mic screen), when the text is at most
+`PLACEHOLDER_MAX` = 40 chars, one line, and has no real cursor (selection −1 or 0..0). The risk,
+accepted by Daniel: a real one-word draft with the cursor at its start gets replaced; the switch
+turns that off. It never applies after the current take has already typed text, so a take's own
+segments are not wiped. Replacement is logged (`HebrishFloatingMic`, "Replaced placeholder text").
+Not yet tried in WhatsApp.
+
 ## Inference speed (0.4.0, 2026-10-20)
 
 What makes the wait after Stop short, in order of effect (I: none of it timed on a device yet;
@@ -356,6 +391,9 @@ to it. Losing it means users must uninstall before installing a newer APK.
 - 0.4.0 on a device: the floating mic in ChatGPT and other Compose apps, segment cuts and joins, the trim on quiet speakers, the Stop-to-text time,
   the download queue, the new screens, Insert after a missed field, `fdroidrepos://` opening
   F-Droid.
+
+- 0.6.0 on a device: beeps, Bluetooth mic routing and the mic label, learned keys and broadcasts,
+  the retake flash, placeholder replacement in WhatsApp.
 
 - The floating mic (0.3.0) on any device: recording from the service, insertion in Gmail,
   WhatsApp, Chrome and a Compose app, the paste fallback, drag and snap, rotation.

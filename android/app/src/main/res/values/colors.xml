@@ -7,4 +7,6 @@
     <color name="ime_text">#E8EAED</color>
     <!-- Floating mic while a take is open. -->
     <color name="bubble_recording">#C62828</color>
+    <!-- Retake flash (0.6.0): bar / status line for a second after Retake. Dark amber, so ime_text stays readable. -->
+    <color name="bubble_retake">#B26A00</color>
 </resources>

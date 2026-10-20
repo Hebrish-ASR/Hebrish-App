@@ -115,7 +115,7 @@
     <string name="bubble_free">Anywhere</string>
     <string name="bubble_right">Right edge</string>
     <string name="bubble_only_typing">Show only while a text field is focused</string>
-    <string name="bubble_time">%1$d:%2$02d</string>
+    <string name="bubble_time">● %1$d:%2$02d</string>
     <string name="bubble_paused_time">Paused %1$d:%2$02d</string>
     <string name="bubble_retake">Retake</string>
     <string name="bubble_discarded">Take discarded.</string>
@@ -271,4 +271,48 @@
     <string name="try_need_mic">The app needs microphone access to hear you.</string>
     <string name="try_copied">Copied</string>
     <string name="try_cd_stop">Stop and transcribe</string>
+
+    <!-- Sound, microphone and buttons (ControlsActivity, Feedback, Mic, Remote; 0.6.0) -->
+    <string name="title_controls">Sound, microphone and buttons</string>
+    <string name="nav_controls">Sound, microphone and buttons</string>
+    <string name="nav_controls_summary">Beeps, which mic to use, and Bluetooth buttons</string>
+    <string name="bubble_clear_placeholder">Replace placeholder text such as "Message"</string>
+    <string name="bubble_clear_placeholder_hint">Some apps, WhatsApp among them, report their grey placeholder as real text, so dictation would land after it. With this on, a short line with the cursor at its very start is treated as a placeholder and replaced. Turn it off if it ever replaces a word you typed.</string>
+    <string name="bubble_new_take">↺ New take</string>
+    <string name="mic_builtin">Phone mic</string>
+    <string name="mic_bluetooth">Bluetooth: %1$s</string>
+    <string name="mic_wired">Wired headset</string>
+    <string name="mic_usb">USB: %1$s</string>
+    <string name="controls_sound">Sounds and vibration</string>
+    <string name="controls_beeps">Beep when a take starts, stops or restarts</string>
+    <string name="controls_beeps_hint">Start: a rising pip. Stop: a falling pip. Retake: a quick double pip. Discard: a low pip.</string>
+    <string name="controls_test_start">Start</string>
+    <string name="controls_test_stop">Stop</string>
+    <string name="controls_test_retake">Retake</string>
+    <string name="controls_vibrate">Vibrate at the same moments</string>
+    <string name="controls_mic">Microphone</string>
+    <string name="controls_mic_body">Automatic always uses a Bluetooth headset mic when one is connected, then a wired or USB headset, then the phone\'s mic.</string>
+    <string name="controls_mic_auto">Automatic (Bluetooth first)</string>
+    <string name="controls_mic_gone">%1$s (not connected; Automatic is used)</string>
+    <string name="controls_mic_next">The next take will use: %1$s</string>
+    <string name="controls_mic_hint">The mic in use is shown while you record. While a Bluetooth mic is in use, the headset switches to call audio, so music in it sounds worse until the take ends.</string>
+    <string name="controls_buttons">Buttons and remotes</string>
+    <string name="controls_buttons_body">Bind a key on a Bluetooth shutter remote, a keyboard or a media remote to an action. Tap Learn, then press the key.</string>
+    <string name="controls_needs_bubble">Buttons and intents work through the floating mic: turn it on first.</string>
+    <string name="controls_learn">Learn</string>
+    <string name="controls_clear">Clear</string>
+    <string name="controls_press_key">Press the key now…</string>
+    <string name="controls_key">Key: %1$s</string>
+    <string name="controls_no_key">No key</string>
+    <string name="controls_key_bound">Hebrish: bound %1$s</string>
+    <string name="controls_buttons_hint">Only bound keys are taken; every other key works as before. Many camera shutter remotes send Volume up: binding it means the volume up key dictates instead. If Learn does nothing, turn the floating mic off and on again in Accessibility settings.</string>
+    <string name="controls_intents">From other apps</string>
+    <string name="controls_intents_body">Apps such as Key Mapper, Tasker and MacroDroid can send these broadcast intents (package app.hebrish.dictation, no extras):</string>
+    <string name="controls_intents_hint">Full reference and examples: docs/external-control.md in the Hebrish-App repository on GitHub.</string>
+    <string name="action_toggle">Start or stop</string>
+    <string name="action_start">Start</string>
+    <string name="action_stop">Stop and insert</string>
+    <string name="action_restart">Retake (start over)</string>
+    <string name="action_pause">Pause or resume</string>
+    <string name="action_discard">Discard</string>
 </resources>

@@ -104,6 +104,8 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
 
         heading(R.string.step_options)
         switch(R.string.bubble_only_typing, { Prefs.bubbleOnlyTyping(this) }, { Prefs.setBubbleOnlyTyping(this, it) })
+        switch(R.string.bubble_clear_placeholder, { Prefs.clearPlaceholder(this) }, { Prefs.setClearPlaceholder(this, it) })
+        small(R.string.bubble_clear_placeholder_hint)
         text(R.string.bubble_options_hint)
     }
 

@@ -49,7 +49,7 @@ class TryActivity : Activity() {
         override fun run() {
             if (state != State.RECORDING) return
             val s = recorder.seconds
-            status.text = getString(R.string.try_listening, s / 60, s % 60)
+            status.text = getString(R.string.try_listening, s / 60, s % 60) + "\n" + micName
             ui.postDelayed(this, 250)
         }
     }
@@ -85,6 +85,9 @@ class TryActivity : Activity() {
         }
         preload()
     }
+
+    /** The mic this take records from (Mic.label), under the timer. */
+    private var micName = ""
 
     override fun onPause() {
         super.onPause()
@@ -123,7 +126,15 @@ class TryActivity : Activity() {
             return
         }
         decoder = TakeDecoder(this) { said -> ui.post { insert(said) } }
-        recorder.start()
+        Mic.prepare(this, recorder)
+        try {
+            recorder.start()
+        } catch (e: Exception) {
+            Mic.release(this)
+            throw e
+        }
+        Feedback.cue(this, Feedback.Cue.START)
+        micName = Mic.label(this, recorder.routedDevice)
         startedAt = SystemClock.elapsedRealtime()
         setState(State.RECORDING, getString(R.string.try_listening, 0, 0))
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -133,6 +144,8 @@ class TryActivity : Activity() {
     private fun stopAndTranscribe() {
         val audio = recorder.samples / Transcriber.SAMPLE_RATE.toFloat()
         val samples = recorder.stop()
+        Mic.release(this)
+        Feedback.cue(this, Feedback.Cue.STOP)
         val d = decoder ?: return
         decoder = null
         level.progress = 0

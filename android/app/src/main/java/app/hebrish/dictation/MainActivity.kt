@@ -16,7 +16,7 @@ import android.widget.TextView
 
 /**
  * Home: what's set up, a big Try button, and the way to each area's own screen (models, voice
- * keyboard, floating mic, dictation, install and updates, help and contact).
+ * keyboard, floating mic, dictation, sound / microphone / buttons, install and updates, help and contact).
  */
 class MainActivity : Page() {
     private lateinit var version: TextView
@@ -51,6 +51,7 @@ class MainActivity : Page() {
         keyboardSummary = nav(R.string.nav_keyboard, {}, KeyboardActivity::class.java)
         bubbleSummary = nav(R.string.nav_bubble, {}, FloatingMicActivity::class.java)
         nav(R.string.nav_dictation, { setText(R.string.nav_dictation_summary) }, DictationActivity::class.java)
+        nav(R.string.nav_controls, { setText(R.string.nav_controls_summary) }, ControlsActivity::class.java)
         heading(R.string.home_more)
         nav(R.string.nav_install, { setText(R.string.nav_install_summary) }, InstallActivity::class.java)
         nav(R.string.nav_contact, { setText(R.string.nav_contact_summary) }, ContactActivity::class.java)

@@ -8,11 +8,16 @@
      focus event, as Jetpack Compose fields often don't (ChatGPT, 0.4.0).
      No flagRequestAccessibilityButton on purpose: on targetSdk 30+ it makes Android tie the
      service's on/off switch to its shortcut, so turning the shortcut off silently turns the
-     service off (found by Ramblr, its accessibility_service_config.xml, read 2026-10-20). -->
+     service off (found by Ramblr, its accessibility_service_config.xml, read 2026-10-20).
+     flagRequestFilterKeyEvents + canRequestFilterKeyEvents (0.6.0): hardware keys reach
+     onKeyEvent, so a Bluetooth shutter remote or keyboard key can start and stop takes (Remote).
+     Only keys the user bound are consumed. A user who had the service on before 0.6.0 may
+     need to turn it off and on again for Android to grant the new capability (I). -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeViewFocused|typeWindowStateChanged|typeWindowsChanged|typeViewTextSelectionChanged|typeViewTextChanged|typeViewClicked"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagIncludeNotImportantViews|flagRequestFilterKeyEvents"
+    android:canRequestFilterKeyEvents="true"
     android:canRetrieveWindowContent="true"
     android:notificationTimeout="100"
     android:description="@string/a11y_description" />

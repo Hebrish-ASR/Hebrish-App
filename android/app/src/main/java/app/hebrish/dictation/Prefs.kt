@@ -37,6 +37,35 @@ object Prefs {
     fun typeAsYouGo(ctx: Context) = sp(ctx).getBoolean("type_as_you_go", false)
     fun setTypeAsYouGo(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("type_as_you_go", v).apply()
 
+    // Sound, microphone and buttons (ControlsActivity; Feedback, Mic, Remote). 0.6.0.
+
+    /** Short pips when a take starts, stops, restarts or is discarded (Feedback). Off by default. */
+    fun beeps(ctx: Context) = sp(ctx).getBoolean("beeps", false)
+    fun setBeeps(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("beeps", v).apply()
+
+    /** A short buzz at the same moments. On by default. */
+    fun vibrate(ctx: Context) = sp(ctx).getBoolean("vibrate", true)
+    fun setVibrate(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("vibrate", v).apply()
+
+    /** Mic.AUTO (Bluetooth first) or a Mic.key of a chosen microphone. */
+    fun micChoice(ctx: Context): String = sp(ctx).getString("mic_choice", Mic.AUTO) ?: Mic.AUTO
+    fun setMicChoice(ctx: Context, v: String) = sp(ctx).edit().putString("mic_choice", v).apply()
+
+    /** Key code bound to a remote action, or 0 (KEYCODE_UNKNOWN) for none. */
+    fun keyFor(ctx: Context, a: Remote.Action) = sp(ctx).getInt("key_" + a.name, 0)
+    fun setKeyFor(ctx: Context, a: Remote.Action, keyCode: Int) = sp(ctx).edit().putInt("key_" + a.name, keyCode).apply()
+
+    /** While set, the next hardware key FloatingMicService sees is bound to this action (its name). */
+    fun learning(ctx: Context): String? = sp(ctx).getString("key_learning", null)
+    fun setLearning(ctx: Context, a: Remote.Action?) = sp(ctx).edit().putString("key_learning", a?.name).apply()
+
+    /**
+     * Floating mic: treat short text with no real cursor as the field's placeholder and replace
+     * it (WhatsApp reports "Message" as the field's text). On by default; FloatingMicService.isPlaceholder.
+     */
+    fun clearPlaceholder(ctx: Context) = sp(ctx).getBoolean("clear_placeholder", true)
+    fun setClearPlaceholder(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("clear_placeholder", v).apply()
+
     // Floating mic (FloatingMicService). Keys start with "bubble_": the service re-places itself on any change.
     const val SIDE_LEFT = "left"
     const val SIDE_RIGHT = "right"
