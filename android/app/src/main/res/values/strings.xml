@@ -4,7 +4,7 @@
     <string name="subtype_label">English (voice)</string>
 
     <string name="url_heliboard">https://github.com/HeliBorg/HeliBoard/releases</string>
-    <string name="url_source">https://github.com/Hebrish-ASR/Hebrish-Dictation</string>
+    <string name="url_source">https://github.com/Hebrish-ASR/Hebrish-App</string>
     <string name="url_terms">https://hebrish.app/terms</string>
     <string name="download_terms">By downloading the code-switching model you agree to the Hebrish terms of use: free for personal and non-commercial use; commercial use, including telephony, needs a licence.</string>
     <string name="terms_title">Terms of use</string>

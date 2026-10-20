@@ -15,7 +15,7 @@ HUB = "https://github.com/Hebrish-ASR/English-Hebrew-Codeswitching-Parakeet-Fine
 MODEL = "https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching"
 LEADERBOARD = "https://huggingface.co/spaces/danielrosehill/English-Hebrew-Codeswitching-ASR-Leaderboard"
 DEMO = "https://huggingface.co/spaces/danielrosehill/English-Hebrew-Codeswitching-Parakeet-Demo"
-SOURCE = "https://github.com/Hebrish-ASR/Hebrish-Dictation"
+SOURCE = "https://github.com/Hebrish-ASR/Hebrish-App"
 
 # hebrish.app, the website for the code-switching model, its contact topics and the feedback
 # address. The only place these URLs live: the About tab, the Model tab and the tray's

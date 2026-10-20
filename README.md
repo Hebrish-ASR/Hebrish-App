@@ -58,7 +58,7 @@ app and OS version filled in, and link to hebrish.app's contact form to
 | **Ubuntu** | A tray app for Ubuntu 26.04 amd64 (.deb) |
 | **Windows** | A portable tray app (.zip): unzip and run `Hebrish.exe` |
 
-Builds are on the [releases page](https://github.com/Hebrish-ASR/Hebrish-Dictation/releases):
+Builds are on the [releases page](https://github.com/Hebrish-ASR/Hebrish-App/releases):
 tags `android-v*` carry the APK, tags `desktop-v*` the .deb and the Windows zip. The Windows
 build and the Android app have not yet been tried on real hardware.
 

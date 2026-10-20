@@ -331,7 +331,7 @@ screens are in `Setup` (MainActivity.kt). Every screen but home has `parentActiv
 The release key is **not** in the repo. GitHub Actions secrets: `RELEASE_KEYSTORE_B64`
 (base64 of the .jks), `RELEASE_KEYSTORE_PASSWORD` (store and key password are the same),
 `RELEASE_KEY_ALIAS` (`codeswitchvoice`: the key was carried over from Voice To Hebrish, alias
-unchanged). The secrets must be set on the Hebrish-Dictation repo too. Daniel's local copy is
+unchanged). The secrets must be set on the Hebrish-App repo too. Daniel's local copy is
 `~/.android/keystores/codeswitch-voice-release.jks`, with its password in the `.txt` next
 to it. Losing it means users must uninstall before installing a newer APK.
 
@@ -372,7 +372,7 @@ shipped while installs were near zero.
   (`app.hebrish.keyboard`, the HeliBoard fork in `Hebrish-ASR/Hebrish-Keyboard`) before HeliBoard.
 - Release APK: `Hebrish-<ver>.apk` (already so since the 0.1.2 workflow).
 
-## Repo name: Hebrish-Dictation (renamed 2026-10-19)
+## Repo name: Hebrish-App (renamed 2026-10-20; Hebrish-Dictation 2026-10-19)
 
 On 2026-10-19 the GitHub repo `Hebrish-ASR/Parlance-Dictation` was renamed to
 `Hebrish-ASR/Hebrish-Dictation` (local clone moved from
@@ -388,3 +388,11 @@ including 0.1.2 (desktop and Android) fetch the catalogue from the old-name `cat
 a repo taking the old name kills GitHub's redirect and those installs stop seeing catalogue
 updates (they fall back to the bundled copy). Old download links on other sites rely on the
 same redirect.
+
+On 2026-10-20 it was renamed again, `Hebrish-ASR/Hebrish-Dictation` → `Hebrish-ASR/Hebrish-App`, so the
+repo name says what it is: the source of every Hebrish app (Android, Linux, Windows). The website, which
+had been `danielrosehill/Hebrish-App`, became `danielrosehill/Hebrish-Website` (private, kept on the personal
+account: Vercel Hobby cannot deploy a private org-owned repo). Local clones moved to
+`.../Hebrish-App` and `.../Hebrish-Website`. Checked the same day: the old raw `shared/models.json` URL and
+the old release-asset URL still return 200, so apps already installed keep their `catalogue_url`. All
+references in the Hebrish repos were updated; the Hebrish-Keyboard submodule URL points at the new name.
