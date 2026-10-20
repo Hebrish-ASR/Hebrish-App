@@ -15,6 +15,13 @@ object Hebrish {
     /** Always the newest APK (follows cdn.hebrish.app/downloads/latest.json). */
     const val APK = "$SITE/get/android"
     const val DOWNLOAD_PAGE = "$SITE/download#fdroid"
+    /** The setup guide; steps have ids `step-mic`, `step-model`, … matching SetupActivity's order. */
+    const val SETUP_GUIDE = "$SITE/setup"
+    const val LEXICON = "$SITE/lexicon"
+    /** Ways to help: recordings, words, donations (side menu "Contribute"). */
+    const val CONTRIBUTE = "$SITE/support"
+    const val SAMPLES = "$SITE/contact?topic=samples"
+    const val WORD = "$SITE/contact?topic=word"
 
     // The Hebrish F-Droid repository (Hebrish-ASR/Hebrish-FDroid). The fingerprint is the repo
     // signing key's SHA-256; it never changes (every user who added the repo pinned it).

@@ -26,10 +26,16 @@ class MainActivity : Page() {
     private lateinit var modelsSummary: TextView
     private lateinit var keyboardSummary: TextView
     private lateinit var bubbleSummary: TextView
+    private lateinit var setupSummary: TextView
+    private lateinit var versionShort: TextView
 
     override fun build() {
         text(R.string.intro)
-        version = text()
+        setupSummary = nav(R.string.title_setup, {}, SetupActivity::class.java)
+        (setupSummary.parent as View).apply {
+            setBackgroundResource(R.drawable.card_bg)
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+        }
         tryBtn = Button(this).apply {
             backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent))
             setTextColor(0xFFFFFFFF.toInt())
@@ -55,6 +61,11 @@ class MainActivity : Page() {
         heading(R.string.home_more)
         nav(R.string.nav_install, { setText(R.string.nav_install_summary) }, InstallActivity::class.java)
         nav(R.string.nav_contact, { setText(R.string.nav_contact_summary) }, ContactActivity::class.java)
+        nav(R.string.title_about, { setText(R.string.nav_about_summary) }, AboutActivity::class.java)
+
+        // The version, at the bottom (Daniel, 2026-10-20); the detailed line is for bug reports.
+        versionShort = text(top = 28).apply { gravity = android.view.Gravity.CENTER; alpha = 0.8f }
+        version = text().apply { gravity = android.view.Gravity.CENTER; textSize = 11f; alpha = 0.6f }
     }
 
     override fun onResume() {
@@ -82,6 +93,11 @@ class MainActivity : Page() {
         val model = Catalogue.selected(this)
         val installed = ModelStore.installed(this, model)
         val ready = ModelStore.isReady(this)
+        // Pin the model in use once one is ready, so a later catalogue change can't move it.
+        if (ready && ModelPrefs.selectedModel(this) == null) ModelPrefs.setSelectedModel(this, model.id)
+        versionShort.text = versionSummary()
+        val (done, of) = Checklist.progress(this)
+        setupSummary.text = if (done == of) getString(R.string.setup_all_done) else getString(R.string.setup_progress_home, done, of)
         version.text = if (installed != null)
             getString(R.string.version_line, versionName(), model.name, installed.version, installed.revision.take(12))
         else getString(R.string.version_line_none, versionName(), model.name)
@@ -129,6 +145,10 @@ object Setup {
 
     fun batteryExempt(ctx: Context) = (ctx.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager)
         .isIgnoringBatteryOptimizations(ctx.packageName)
+
+    /** Android 11+: true once "Pause app activity if unused" is off, so the mic permission is never auto-revoked. */
+    fun notPausedWhenUnused(ctx: Context) =
+        android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R || ctx.packageManager.isAutoRevokeWhitelisted
 
     fun bubbleOn(ctx: Context) = (ctx.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager)
         .getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)

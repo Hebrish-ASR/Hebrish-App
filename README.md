@@ -26,12 +26,13 @@ run with sherpa-onnx (int8).
 
 | Model | Status | For |
 | --- | --- | --- |
-| **Parakeet (stock)** | available | General English, any speaker. NVIDIA's release, unchanged |
-| **English-Hebrew code-switching** | available | English with Hebrew words in it (*teudat zehut*, *arnona*, *bituach leumi*), written in Latin letters. [Model card](https://huggingface.co/danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching) · website: [hebrish.app](https://hebrish.app) |
+| **Jachnun** | available | English + Hebrew vocabulary (*teudat zehut*, *arnona*, *bituach leumi*), written in Latin letters. Recommended; the Android app's default since 0.6.0. [Models](https://hebrish.app/models#parakeet) |
+| **Sabich** | available | Hebrew vocabulary + tech vocabulary: code-switching plus tech terms, brand names and numbers. [Models](https://hebrish.app/models#sabich) |
+| **Parakeet (stock)** | available | Standard English, without the Hebrew words. NVIDIA's release, unchanged |
 
-The code-switching model is trained on **one speaker's voice**, so it works best for voices like
-that one; stock Parakeet is the better choice for anyone else. Those are the only two models
-Hebrish ships. The other Parakeet fine-tunes (technical vocabulary, personal voice) are in
+The fine-tunes are trained on **one speaker's voice**; recordings from more voices are welcome
+([hebrish.app/contact?topic=samples](https://hebrish.app/contact?topic=samples)). Those are the only
+models Hebrish ships. The other Parakeet fine-tunes (technical vocabulary, personal voice) are in
 [Parlance](https://github.com/danielrosehill/Parlance-Dictation), the general-purpose twin of this
 app; `desktop/tests/test_shared.py` fails if any other model appears in this catalogue.
 
@@ -97,7 +98,7 @@ Windows zip in CI; the Ubuntu .deb is built with `desktop/build-deb.sh` and adde
 release. Then copy all three to the Hebrish CDN, `https://cdn.hebrish.app/downloads/{android,ubuntu,windows}/`,
 and rewrite `downloads/latest.json` (the `r2-upload` skill in `parakeet-finetune-ops`). hebrish.app needs no
 edit: since 2026-10-20 its buttons link `hebrish.app/get/<platform>`, which redirects to the file `latest.json`
-names. The F-Droid repository picks up the new APK within six hours. Adding a model needs no release:
+names. The F-Droid repository (Hebrish-ASR/Hebrish-FDroid) checks GitHub releases hourly and picks up the new APK. Adding a model needs no release:
 see `shared/update-protocol.md`.
 
 ## History

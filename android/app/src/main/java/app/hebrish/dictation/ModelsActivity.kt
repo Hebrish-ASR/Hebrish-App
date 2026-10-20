@@ -9,9 +9,12 @@ import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.Settings
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -49,7 +52,7 @@ class ModelsActivity : Page() {
         locationStatus = text()
         val r = row()
         button(R.string.choose_location, r) { chooseLocation() }
-        resetLocationBtn = button(R.string.reset_location, r) { ModelDownload.relocate(this, null); render() }
+        resetLocationBtn = button(R.string.reset_location, r) { confirmReset() }
     }
 
     override fun onResume() {
@@ -97,19 +100,71 @@ class ModelsActivity : Page() {
             else -> getString(R.string.models_updates_hint)
         }
 
+        // The current location is always shown, default included (Daniel, 2026-10-20).
         val root = ModelPrefs.modelRoot(this)
         locationStatus.text = when {
             running && ModelDownload.moving -> getString(R.string.model_moving, mb((s as ModelDownload.Status.Running).done), mb(s.total))
-            root == null -> getString(R.string.location_private)
+            root == null -> getString(R.string.location_private, File(filesDir, "models").path)
             else -> getString(R.string.location_shared, root)
         }
         resetLocationBtn.visibility = if (root == null) View.GONE else View.VISIBLE
     }
 
-    /** One model: name, what it is, its state, and the actions that make sense for it now. */
+    /** Back to app storage: the models are copied back there first, then used from there. */
+    private fun confirmReset() {
+        android.app.AlertDialog.Builder(this)
+            .setMessage(R.string.reset_location_confirm)
+            .setPositiveButton(R.string.reset_location) { _, _ -> ModelDownload.relocate(this, null); render() }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    /** The model's mark: Jachnun and Sabich have one (Hebrish-Mgmt/brand/logo); stock gets a mic disc. */
+    private fun mark(m: Catalogue.Model) = when (m.id) {
+        "codeswitch" -> R.drawable.model_jachnun
+        "sabich" -> R.drawable.model_sabich
+        else -> R.drawable.model_stock
+    }
+
+    /**
+     * One model as a card (0.6.0): its mark, its name, a one-line plain description (the
+     * catalogue summary), a Recommended / In use badge, its state, and the actions that make
+     * sense for it now.
+     */
     private fun card(m: Catalogue.Model, inUse: Boolean, s: ModelDownload.Status) {
-        heading(if (inUse) getString(R.string.models_in_use, m.name) else m.name, list)
-        text(m.summary, list)
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.card_bg)
+            setPadding(dp(16), dp(14), dp(16), dp(10))
+        }
+        list.addView(card, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            .apply { topMargin = dp(14) })
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        card.addView(top)
+        top.addView(ImageView(this).apply { setImageResource(mark(m)) }, LinearLayout.LayoutParams(dp(52), dp(52)))
+        val words = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), 0, 0, 0) }
+        top.addView(words, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        val nameRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        words.addView(nameRow)
+        nameRow.addView(TextView(this).apply {
+            text = m.name
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 19f)
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        val badge = when {
+            inUse -> getString(R.string.models_badge_in_use)
+            m.id == Catalogue.get(this).recommended -> getString(R.string.models_badge_recommended)
+            else -> null
+        }
+        if (badge != null) nameRow.addView(TextView(this).apply {
+            text = badge
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundResource(R.drawable.badge_bg)
+            setPadding(dp(8), dp(2), dp(8), dp(2))
+        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(10) })
+        words.addView(TextView(this).apply { text = m.summary; alpha = 0.85f })
+        val list = card
         val ready = ModelStore.isReady(this, model = m)
         val installed = ModelStore.installed(this, m)
         val update = ModelDownload.updateAvailable(this, m)

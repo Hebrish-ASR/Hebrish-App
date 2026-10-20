@@ -310,6 +310,58 @@ Screen `ControlsActivity`. Compiled (V, 2026-10-20); not run on a device (I belo
 - **External control** (`Remote.kt`): broadcast intents and learned keys; reference for users in
   `docs/external-control.md`.
 
+## Setup checklist, side menu, About, model cards, keyboard layout (0.6.0, 2026-10-20)
+
+Asked for by Daniel on 2026-10-20 after using 0.5.0. Compiled with `assembleDebug` (V, 2026-10-20,
+JDK 21); **not run on a device** (I for runtime behaviour below).
+
+- **Setup checklist** (`SetupActivity`, reached from a card at the top of home and from the side
+  menu). Steps and ids, the same as hebrish.app/setup's `#step-<id>` anchors (keep both in step;
+  never rename an id): `mic` (prompt; after a refusal the prompt no longer appears, so the button
+  opens App info: `Prefs.micAsked`, key `mic_asked`), `model` (Models screen), `keyboard`
+  (`ACTION_INPUT_METHOD_SETTINGS`), `floating` (the guide), `battery`
+  (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`), `unused` (API 30+:
+  `Intent.ACTION_AUTO_REVOKE_PERMISSIONS` with `package:` opens App info's "Pause app activity if
+  unused" / "Remove permissions if app is unused"; done when `PackageManager.isAutoRevokeWhitelisted`),
+  `files` (API 30+: `ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION`; done when
+  `Environment.isExternalStorageManager`). `Checklist.progress` counts the required ones for home's
+  "3 of 5": mic, model, keyboard **or** floating mic, battery, unused (API 30+). `floating` and
+  `files` are optional. The website's step 1, Install, has no in-app counterpart (the app is installed).
+- **Side menu** (`Page.addDrawer`, home only; ☰ replaces Up there): every screen, Explore the
+  lexicon and Contribute (hebrish.app `/lexicon`, `/support`), Help and contact, About; footer
+  `Page.versionSummary()` ("Hebrish 0.6.0 · Jachnun v1.0"). Hand-built (scrim + panel in a
+  FrameLayout, slide animation, Back closes it) because the app has no androidx dependency; adding
+  DrawerLayout would mean androidx and an AppCompat theme for one widget.
+- **About** (`AboutActivity`): what Hebrish is, the lexicon, contribute (samples, word, support),
+  website / source / terms, version. URLs in `Hebrish.kt`.
+- **Version at the bottom of home** (`versionSummary()`), with the detailed `version_line`
+  (HF revision, for bug reports) under it.
+- **Models as cards** (`ModelsActivity.card`): mark (`res/drawable-nodpi/model_jachnun.png` and
+  `model_sabich.png`, rendered at 192 px with inkscape from `Hebrish-Mgmt/brand/logo/{jachnun,sabich}.svg`;
+  stock has `drawable/model_stock.xml`, a slate disc with the mic), name, the catalogue `summary` as the
+  one-line description, a Recommended / In use badge.
+- **Catalogue: Jachnun recommended and first** (`shared/models.json`, Daniel: "the default one
+  should be English Hebrew code switching, because that's what's unique about this app"). Names are
+  now `Jachnun`, `Sabich`, `Parakeet (stock)`; summaries are plain ("English + Hebrew vocabulary: …",
+  "Hebrew vocabulary + tech vocabulary: …"); order codeswitch, sabich, stock. New key
+  `recommended: "codeswitch"`. **`default` stays `stock` on purpose:** builds up to Android 0.5.0
+  and desktop 0.2.2 fetch this file and fall back to `default` when the user never picked a model;
+  changing it would switch those users to a model they have not downloaded and break their keyboard.
+  `Catalogue.selected` (0.6.0) with no pick: a model already on the phone (recommended first, then
+  `default`), else the recommended one; home then pins whatever is ready into `ModelPrefs.selectedModel`
+  so a later catalogue change can't move it. The desktop app still reads `default` (unchanged).
+- **Model location:** the default is now shown too, with its path (`filesDir/models`). **Back to the
+  default** (was "Use app storage") asks first, then `ModelDownload.relocate(null)` copies every ready
+  model back into app storage; the shared copies stay for other apps (unchanged behaviour).
+- **Voice keyboard layout** (`res/layout/ime_view.xml`): header row with the Hebrish mark
+  (`drawable/ic_hebrish.xml`, the mark's H on the green square) and name, the status line, and a gear
+  that opens the app; the mic directly under it, always at the top; level bar, take controls and
+  Insert last below; key row keyboard · `,` · `.` · space · delete · enter. `,` and `.` drop a space
+  just before the cursor first (`VoiceImeService.punctuate`), so they attach to the last word.
+- **Retake flash, stronger:** besides the amber bar / status line, the mic itself turns amber for
+  `FLASH_MS` and its icon spins back once (−360°, 500 ms). Floating mic: `render()` keeps the mic
+  amber while `flashing()`; IME: `backgroundTintList` on the mic.
+
 ## Placeholder text (0.6.0, 2026-10-20)
 
 Reported by Daniel: in WhatsApp the floating mic left "Message" in the field and dictation landed
@@ -393,7 +445,9 @@ to it. Losing it means users must uninstall before installing a newer APK.
   F-Droid.
 
 - 0.6.0 on a device: beeps, Bluetooth mic routing and the mic label, learned keys and broadcasts,
-  the retake flash, placeholder replacement in WhatsApp.
+  the retake flash and spin, placeholder replacement in WhatsApp, the setup checklist (does
+  `ACTION_AUTO_REVOKE_PERMISSIONS` open the right page on OxygenOS?), the side menu, the model cards,
+  the new keyboard layout (height on a small phone), an upgrade from 0.5.0 keeping its model.
 
 - The floating mic (0.3.0) on any device: recording from the service, insertion in Gmail,
   WhatsApp, Chrome and a Compose app, the paste fallback, drag and snap, rotation.

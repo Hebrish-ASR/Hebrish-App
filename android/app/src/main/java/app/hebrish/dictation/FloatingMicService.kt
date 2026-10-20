@@ -678,7 +678,11 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         for (c in takeControls) c.visibility = if (open) View.VISIBLE else View.GONE
         for (c in pendingControls) c.visibility = if (waiting) View.VISIBLE else View.GONE
         barBg.alpha = Prefs.bubbleBarAlpha(this) * 255 / 100
-        micBg.setColor(if (open) getColor(R.color.bubble_recording) else Prefs.bubbleColor(this))
+        micBg.setColor(when {
+            open && flashing() -> getColor(R.color.bubble_retake)
+            open -> getColor(R.color.bubble_recording)
+            else -> Prefs.bubbleColor(this)
+        })
         icon.setImageResource(if (open) R.drawable.ic_stop else R.drawable.ic_mic)
         icon.visibility = if (state == State.TRANSCRIBING) View.GONE else View.VISIBLE
         spinner.visibility = if (state == State.TRANSCRIBING) View.VISIBLE else View.GONE
@@ -700,23 +704,29 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     }
 
     /**
-     * Retake is otherwise too quick to see (the timer just goes back to 0:00): the bar turns
-     * amber and says "New take" for [FLASH_MS], with or without sounds.
+     * Retake is otherwise too quick to see (the timer just goes back to 0:00): for [FLASH_MS] the
+     * mic and the bar turn amber, the bar says "New take", and the mic's icon spins back once (the
+     * ↺ of the Retake button), with or without sounds. render() keeps the mic amber while [flashing].
      */
     private fun flashRetake() {
         flashUntil = android.os.SystemClock.uptimeMillis() + FLASH_MS
         barBg.setColor(getColor(R.color.bubble_retake))
         timer.setText(R.string.bubble_new_take)
+        icon.animate().cancel()
+        icon.rotation = 0f
+        icon.animate().rotation(-360f).setDuration(500).withEndAction { icon.rotation = 0f }
         main.postDelayed({
-            if (android.os.SystemClock.uptimeMillis() < flashUntil) return@postDelayed
+            if (flashing()) return@postDelayed
             barBg.setColor(getColor(R.color.ime_bg))
             shownSeconds = -1
-            if (open) showTime()
+            render()
         }, FLASH_MS)
     }
 
+    private fun flashing() = android.os.SystemClock.uptimeMillis() < flashUntil
+
     private fun showTime() {
-        if (android.os.SystemClock.uptimeMillis() < flashUntil) return
+        if (flashing()) return
         val secs = recorder?.seconds ?: return
         if (secs == shownSeconds && state == State.RECORDING) return
         shownSeconds = secs

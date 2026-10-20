@@ -67,6 +67,9 @@ class VoiceImeService : InputMethodService() {
         v.findViewById<ImageButton>(R.id.backspace).setOnClickListener { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
         v.findViewById<ImageButton>(R.id.space).setOnClickListener { currentInputConnection?.commitText(" ", 1) }
         v.findViewById<ImageButton>(R.id.enter).setOnClickListener { sendEnter() }
+        v.findViewById<Button>(R.id.comma).setOnClickListener { punctuate(",") }
+        v.findViewById<Button>(R.id.period).setOnClickListener { punctuate(".") }
+        v.findViewById<ImageButton>(R.id.settings).setOnClickListener { openSetup() }
         pauseBtn.setOnClickListener { togglePause() }
         v.findViewById<Button>(R.id.restart).setOnClickListener { restart() }
         v.findViewById<Button>(R.id.discard).setOnClickListener { discard() }
@@ -287,6 +290,13 @@ class VoiceImeService : InputMethodService() {
         }
     }
 
+    /** Comma and period keys: a space the dictation left before the cursor goes, so "word ." becomes "word.". */
+    private fun punctuate(mark: String) {
+        val ic = currentInputConnection ?: return
+        if (ic.getTextBeforeCursor(1, 0)?.toString() == " ") ic.deleteSurroundingText(1, 0)
+        ic.commitText(mark, 1)
+    }
+
     private fun sendEnter() {
         val ic = currentInputConnection ?: return
         val action = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_NONE
@@ -361,15 +371,24 @@ class VoiceImeService : InputMethodService() {
         pauseBtn.setText(if (state == State.PAUSED) R.string.resume else R.string.pause)
     }
 
-    /** Retake is too quick to see otherwise: the status line turns amber and says "New take" for a second. */
+    /**
+     * Retake is too quick to see otherwise: for a second the mic and the status line turn amber,
+     * the status says "New take", and the mic spins back once (the ↺ of the Restart button).
+     */
     private fun flashRetake() {
         if (!::status.isInitialized) return
+        val amber = android.content.res.ColorStateList.valueOf(getColor(R.color.bubble_retake))
         status.setBackgroundColor(getColor(R.color.bubble_retake))
         status.setText(R.string.bubble_new_take)
+        mic.backgroundTintList = amber
+        mic.animate().cancel()
+        mic.rotation = 0f
+        mic.animate().rotation(-360f).setDuration(500).withEndAction { mic.rotation = 0f }
         flashing = true
         status.postDelayed({
             flashing = false
             status.background = null
+            mic.backgroundTintList = null
             shownSeconds = -1
         }, 1000)
     }

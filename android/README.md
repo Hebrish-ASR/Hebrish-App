@@ -21,17 +21,25 @@ setup is needed.
 
 | Model | Status | What it is |
 | --- | --- | --- |
-| **Parakeet (stock)** | available | NVIDIA's release, unchanged. General English, any speaker. The default |
-| **English-Hebrew code-switching** | available | Fine-tuned on English with Hebrew words in it, written in Latin letters. One speaker's voice |
+| **Jachnun** | available | English + Hebrew vocabulary: the English-Hebrew code-switching fine-tune, Hebrew words in Latin letters. **Recommended**, and what a new install uses (0.6.0+) |
+| **Sabich** | available | Hebrew vocabulary + tech vocabulary: code-switching plus tech terms, brand names and numbers |
+| **Parakeet (stock)** | available | NVIDIA's release, unchanged. Standard English, without the Hebrew words |
+
+The fine-tunes are trained on one speaker's voice; more voices are welcome (hebrish.app/contact?topic=samples).
 
 The list comes from [`../shared/models.json`](../shared/models.json). The APK carries a copy,
 and every update check fetches the current one from GitHub, so a model published later
-shows up without installing a new APK. Hebrish ships only these two; the other fine-tunes are in
+shows up without installing a new APK. Hebrish ships only these three; the other fine-tunes are in
 [Parlance](https://github.com/danielrosehill/Parlance-Dictation).
 
 The app is a home screen with one screen per area (since 0.4.0): **Models**, **Voice keyboard**,
-**Floating mic** (with a step-by-step guide to turning it on), **Dictation**, **Install and
-updates** (the F-Droid repository, for anyone who installed the APK) and **Help and contact**.
+**Floating mic** (with a step-by-step guide to turning it on), **Dictation**, **Sound, microphone
+and buttons**, **Install and updates** (the F-Droid repository, for anyone who installed the APK),
+**Help and contact** and (0.6.0) **About**. Since 0.6.0 home opens with the **Setup checklist**
+(microphone, a model, the voice keyboard or floating mic, battery unrestricted, "Pause app activity if
+unused" off, optional all files access; the same steps with pictures at
+[hebrish.app/setup](https://hebrish.app/setup)), has a side menu (☰) with every screen plus Explore
+the lexicon and Contribute, and shows the app and model version at the bottom.
 
 **Models** downloads any model whether or not it is the one in use: one at a time, or all of them
 with **Download all** (they queue and download one after another; about 660 MB each). **Use this
@@ -77,7 +85,8 @@ can be switched off in the app. Any keyboard that opens a "voice" input method w
 same way, and you can also switch to Hebrish directly from the system keyboard
 picker.
 
-Voice keyboard keys: previous keyboard · delete · **mic** · space · enter.
+Voice keyboard (0.6.0): a header with the Hebrish mark and a settings gear, the **mic** at the top,
+and the key row previous keyboard · `,` · `.` · space · delete · enter.
 
 - **Getting back to your keyboard:** tap the keyboard key or press **Back**. Long-press the
   keyboard key for the system picker. If you leave mid-take, what you said is still

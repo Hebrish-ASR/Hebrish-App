@@ -11,7 +11,7 @@
     <string name="terms_body">The Hebrish models are free for personal, research, education and non-profit use. Commercial use, including telephony and call centres, needs a commercial licence: access-requests@hebrish.app. Hebrish is experimental and trained on one speaker\'s voice; transcripts can be wrong, so check them before relying on them. It is provided as is, without warranty. Your audio stays on this phone.</string>
     <string name="open_terms">Read the terms of use</string>
 
-    <string name="intro">On-device voice typing with NVIDIA Parakeet TDT 0.6B v2. Made for the English-Hebrew code-switching model; stock Parakeet is there too. Recognition runs on the phone; audio never leaves it.</string>
+    <string name="intro">Voice typing in English that gets the Hebrew words right. It all runs on your phone; your voice never leaves it.</string>
     <string name="version_line">App %1$s · %2$s %3$s (HF rev %4$s) · sherpa-onnx int8</string>
     <string name="version_line_none">App %1$s · %2$s · sherpa-onnx int8</string>
 
@@ -28,11 +28,12 @@
     <string name="update_check_failed">Couldn\'t check for updates: %1$s</string>
     <string name="cancel">Cancel</string>
     <string name="location_title">Model location</string>
-    <string name="location_private">App storage (private to this app).</string>
+    <string name="location_private">Default: app storage (private to this app).\n%1$s</string>
     <string name="location_shared">%1$s\nStandard sherpa-onnx int8 files: other apps with file access can load them from here.</string>
     <string name="location_unusable">Can\'t use that folder. Pick a folder on internal storage or an SD card.</string>
     <string name="choose_location">Choose folder</string>
-    <string name="reset_location">Use app storage</string>
+    <string name="reset_location">Back to the default</string>
+    <string name="reset_location_confirm">Move the models back to app storage? They are copied back first; the copies in the shared folder stay there for other apps.</string>
 
     <string name="step_mic">Microphone</string>
     <string name="mic_ok">Granted.</string>
@@ -102,6 +103,10 @@
     <string name="cd_backspace">Delete</string>
     <string name="cd_space">Space</string>
     <string name="cd_enter">Enter</string>
+    <string name="cd_comma">Comma</string>
+    <string name="cd_period">Full stop</string>
+    <string name="cd_settings">Hebrish settings</string>
+    <string name="cd_menu">Menu</string>
     <!-- Floating mic (FloatingMicService) -->
     <string name="a11y_label">Hebrish floating mic</string>
     <string name="a11y_description">Shows a floating microphone over other apps. Tap it to dictate into the text field you are in, without switching keyboards. Hebrish reads the focused text field only to put your transcript in at the cursor, and it never reads password fields. Audio and text stay on this phone.</string>
@@ -174,7 +179,9 @@
     <string name="home_bubble_on">On</string>
     <string name="home_bubble_off">Off. Optional: a mic over every app.</string>
 
-    <string name="models_intro">Download any model, whether or not it is the one in use; each is about 660 MB, once. Downloads run one after another. The model in use is the one the keyboard and the floating mic transcribe with.</string>
+    <string name="models_intro">Pick the model that fits how you talk. Each is about 660 MB, downloaded once; you can keep several and switch any time.</string>
+    <string name="models_badge_recommended">Recommended</string>
+    <string name="models_badge_in_use">In use</string>
     <string name="models_download_all">Download all</string>
     <string name="models_download_all_size">Download all (%1$d, about %2$d MB)</string>
     <string name="models_all_downloaded">All models downloaded</string>
@@ -315,4 +322,53 @@
     <string name="action_restart">Retake (start over)</string>
     <string name="action_pause">Pause or resume</string>
     <string name="action_discard">Discard</string>
+
+    <!-- 0.6.0: side menu, About, setup checklist, version line. -->
+    <string name="title_setup">Setup checklist</string>
+    <string name="title_about">About Hebrish</string>
+    <string name="nav_about_summary">The lexicon, how to contribute, version</string>
+    <string name="menu_lexicon">Explore the lexicon</string>
+    <string name="menu_contribute">Contribute</string>
+    <string name="version_summary">Hebrish %1$s · %2$s %3$s</string>
+    <string name="version_summary_none">Hebrish %1$s · no model yet</string>
+
+    <string name="about_body">Hebrish is voice typing for people who speak English with Hebrew words in it: teudat zehut, arnona, be\'ezrat Hashem. The models are fine-tuned versions of NVIDIA Parakeet, and they run entirely on your phone. Hebrish is free and not-for-profit.</string>
+    <string name="about_lexicon_title">The lexicon</string>
+    <string name="about_lexicon">Every Hebrew word the models were taught, with what it means and how it is spelled. Browse it on hebrish.app.</string>
+    <string name="about_contribute_title">Contribute</string>
+    <string name="about_contribute">Hebrish gets better with more voices and more words. Record a few sentences, suggest a word it gets wrong, or support the project.</string>
+    <string name="about_support">Support Hebrish</string>
+    <string name="about_links_title">Links</string>
+    <string name="about_source">Source code</string>
+    <string name="about_terms">Terms</string>
+    <string name="about_private">Recognition runs on the phone. Audio is never uploaded.</string>
+
+    <string name="setup_intro">Work down the list. Each button opens the right settings page; come back here when you\'re done and the step ticks itself off.</string>
+    <string name="setup_progress">%1$d of %2$d required steps done</string>
+    <string name="setup_progress_home">%1$d of %2$d steps done. Tap to continue.</string>
+    <string name="setup_all_done">All set. Hebrish is ready.</string>
+    <string name="setup_optional">  (optional)</string>
+    <string name="setup_more">More options</string>
+    <string name="setup_mic_title">Allow the microphone</string>
+    <string name="setup_mic">Hebrish needs it to hear you. Audio stays on the phone.</string>
+    <string name="setup_mic_button">Allow microphone</string>
+    <string name="setup_model_title">Download a model</string>
+    <string name="setup_model">Jachnun (English + Hebrew vocabulary) is recommended. About 660 MB, once; use Wi-Fi.</string>
+    <string name="setup_model_button">Choose and download</string>
+    <string name="setup_keyboard_title">Turn on the voice keyboard</string>
+    <string name="setup_keyboard">Switch on Hebrish in your keyboard settings. Then the mic key on Hebrish Keyboard or HeliBoard opens it. You need this or the floating mic, or both.</string>
+    <string name="setup_floating_title">Floating mic</string>
+    <string name="setup_floating">A mic over every app, so you keep your usual keyboard. Android 13+ asks you to allow restricted settings first; the guide walks you through it.</string>
+    <string name="setup_floating_button">Step by step</string>
+    <string name="setup_battery_title">Keep it running</string>
+    <string name="setup_battery">Let Hebrish run unrestricted on battery, so the phone doesn\'t stop it in the background.</string>
+    <string name="setup_unused_title">Turn off \"Pause app activity if unused\"</string>
+    <string name="setup_unused">Otherwise Android takes the microphone permission away if you don\'t open the app for a few months. On the page that opens, switch it off.</string>
+    <string name="setup_unused_button">Open the setting</string>
+    <string name="setup_files_title">All files access</string>
+    <string name="setup_files">Only if you want the models in a shared folder (Models → Model location) so other speech apps can use the same files. Not needed otherwise.</string>
+    <string name="setup_files_button">Allow all files access</string>
+    <string name="setup_try_title">Try it</string>
+    <string name="setup_try">Tap, talk, tap again. No keyboard setup needed for this.</string>
+    <string name="setup_guide_button">Guide with pictures</string>
 </resources>

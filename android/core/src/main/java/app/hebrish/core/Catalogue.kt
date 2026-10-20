@@ -35,6 +35,8 @@ object Catalogue {
     data class Data(
         val catalogueUrl: String?,
         val default: String,
+        /** The model to use when the user hasn't picked one (0.6.0+); [default] is for older builds. */
+        val recommended: String,
         val files: List<String>,
         val versionFile: String,
         val models: List<Model>,
@@ -54,12 +56,18 @@ object Catalogue {
 
     fun model(ctx: Context, id: String): Model? = get(ctx).models.firstOrNull { it.id == id }
 
-    /** The model the keyboard uses: the user's pick if still available, else the catalogue default. */
+    /**
+     * The model the keyboard uses: the user's pick if still available. Without a pick, a model
+     * already on the phone (recommended first), so a user of an older build that defaulted to
+     * stock keeps a working keyboard; then the recommended model (Jachnun since 0.6.0).
+     */
     fun selected(ctx: Context): Model {
         val data = get(ctx)
         val pick = ModelPrefs.selectedModel(ctx)?.let { id -> data.models.firstOrNull { it.id == id && it.available } }
-        return pick ?: data.models.firstOrNull { it.id == data.default && it.available }
-            ?: data.models.first { it.available }
+        if (pick != null) return pick
+        val order = data.models.filter { it.available }
+            .sortedBy { when (it.id) { data.recommended -> 0; data.default -> 1; else -> 2 } }
+        return order.firstOrNull { ModelStore.isReady(ctx, model = it) } ?: order.first()
     }
 
     /** Null if [s] is not a catalogue this app understands. */
@@ -83,7 +91,8 @@ object Catalogue {
             )
         }
         if (models.none { it.available }) return null
-        Data(o.optString("catalogue_url").ifEmpty { null }, o.getString("default"), files,
+        val default = o.getString("default")
+        Data(o.optString("catalogue_url").ifEmpty { null }, default, o.optString("recommended").ifEmpty { default }, files,
             o.optString("version_file", "version.json"), models)
     }.getOrNull()
 

@@ -1,8 +1,9 @@
 {
-  "_comment": "The model catalogue both apps read. Bundled in each app, and re-fetched from catalogue_url on every update check so a newly published model shows up without an app release. A model with status 'planned' is listed as coming soon and cannot be downloaded. Protocol: shared/update-protocol.md. desktop/tests/test_shared.py fails if either app's bundled copy drifts from this file.",
+  "_comment": "The model catalogue both apps read. Bundled in each app, and re-fetched from catalogue_url on every update check so a newly published model shows up without an app release. A model with status 'planned' is listed as coming soon and cannot be downloaded. Protocol: shared/update-protocol.md. desktop/tests/test_shared.py fails if either app's bundled copy drifts from this file. 'recommended' (Android 0.6.0+) is the model new installs use when nothing is picked; 'default' stays 'stock' because builds up to Android 0.5.0 and desktop 0.2.2 read it, and changing it would switch their users to a model they have not downloaded.",
   "schema": 1,
   "catalogue_url": "https://raw.githubusercontent.com/Hebrish-ASR/Hebrish-App/main/shared/models.json",
   "default": "stock",
+  "recommended": "codeswitch",
   "files": ["encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"],
   "version_file": "version.json",
   "model_type": "nemo_transducer",
@@ -10,19 +11,9 @@
   "min_trailing_silence_s": 0.6,
   "models": [
     {
-      "id": "stock",
-      "name": "Parakeet (stock)",
-      "summary": "NVIDIA Parakeet TDT 0.6B v2 as released. General English, any speaker.",
-      "status": "available",
-      "repo": "csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8",
-      "subdir": "",
-      "version_label": "v2",
-      "card": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2"
-    },
-    {
       "id": "codeswitch",
-      "name": "English-Hebrew code-switching",
-      "summary": "Fine-tuned on English with Hebrew words in it (teudat zehut, arnona, makolet). One speaker's voice.",
+      "name": "Jachnun",
+      "summary": "English + Hebrew vocabulary: teudat zehut, arnona, makolet.",
       "status": "available",
       "repo": "Hebrish/Jachnun-sherpa-onnx-int8",
       "subdir": "",
@@ -31,13 +22,23 @@
     },
     {
       "id": "sabich",
-      "name": "Sabich: code-switching + tech",
-      "summary": "Fine-tuned on everything: English with Hebrew words in it plus tech terms, brand names and numbers (arnona, Kubernetes, 250 shekels). One speaker's voice.",
+      "name": "Sabich",
+      "summary": "Hebrew vocabulary + tech vocabulary: arnona, Kubernetes, 250 shekels.",
       "status": "available",
       "repo": "Hebrish/Sabich-sherpa-onnx-int8",
       "subdir": "",
       "card": "https://hebrish.app/models#sabich",
       "manifest_url": "https://cdn.hebrish.app/models/parakeet-sabich/latest.json"
+    },
+    {
+      "id": "stock",
+      "name": "Parakeet (stock)",
+      "summary": "Standard English, without the Hebrew words. NVIDIA's release, unchanged.",
+      "status": "available",
+      "repo": "csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8",
+      "subdir": "",
+      "version_label": "v2",
+      "card": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2"
     }
   ]
 }

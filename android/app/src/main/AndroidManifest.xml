@@ -44,6 +44,8 @@
         <activity android:name=".DictationActivity" android:exported="false" android:label="@string/title_dictation" android:parentActivityName=".MainActivity" />
         <activity android:name=".InstallActivity" android:exported="false" android:label="@string/title_install" android:parentActivityName=".MainActivity" />
         <activity android:name=".ControlsActivity" android:exported="false" android:label="@string/title_controls" android:parentActivityName=".MainActivity" />
+        <activity android:name=".SetupActivity" android:exported="false" android:label="@string/title_setup" android:parentActivityName=".MainActivity" />
+        <activity android:name=".AboutActivity" android:exported="false" android:label="@string/title_about" android:parentActivityName=".MainActivity" />
         <activity android:name=".ContactActivity" android:exported="false" android:label="@string/title_contact" android:parentActivityName=".MainActivity" />
 
         <activity

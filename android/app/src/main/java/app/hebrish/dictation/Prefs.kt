@@ -37,6 +37,10 @@ object Prefs {
     fun typeAsYouGo(ctx: Context) = sp(ctx).getBoolean("type_as_you_go", false)
     fun setTypeAsYouGo(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("type_as_you_go", v).apply()
 
+    /** The microphone prompt has been shown once (SetupActivity: after a refusal, App info is the only way). */
+    fun micAsked(ctx: Context) = sp(ctx).getBoolean("mic_asked", false)
+    fun setMicAsked(ctx: Context) = sp(ctx).edit().putBoolean("mic_asked", true).apply()
+
     // Sound, microphone and buttons (ControlsActivity; Feedback, Mic, Remote). 0.6.0.
 
     /** Short pips when a take starts, stops, restarts or is discarded (Feedback). Off by default. */

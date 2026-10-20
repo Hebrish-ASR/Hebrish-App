@@ -8,7 +8,11 @@ import android.os.Bundle
 import android.util.TypedValue
 import android.view.MenuItem
 import android.view.View
+import android.view.Gravity
+import android.view.ViewGroup
 import android.widget.Button
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
@@ -20,10 +24,13 @@ import android.widget.Toast
  * Base of the app's screens: a scrolling column built in code, with helpers for headings, text,
  * buttons, switches and sliders. The setup used to be one long XML screen (activity_main.xml, up
  * to 0.3.0); since 0.4.0 each area has its own screen, reached from the home screen ([MainActivity]),
- * and every screen but home has an Up arrow.
+ * and every screen but home has an Up arrow. Home has the side menu instead (0.6.0, [drawer]).
  */
 abstract class Page : Activity() {
     protected lateinit var column: LinearLayout
+    /** The side menu (home only): a panel over the content, opened by the ☰ button. */
+    private var drawer: View? = null
+    private var scrim: View? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,8 +38,16 @@ abstract class Page : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(12), dp(20), dp(32))
         }
-        setContentView(ScrollView(this).apply { fitsSystemWindows = true; addView(column) })
-        if (this !is MainActivity) actionBar?.setDisplayHomeAsUpEnabled(true)
+        val scroll = ScrollView(this).apply { fitsSystemWindows = true; addView(column) }
+        if (this is MainActivity) {
+            setContentView(FrameLayout(this).apply { addView(scroll); addDrawer(this) })
+            actionBar?.setDisplayHomeAsUpEnabled(true)
+            actionBar?.setHomeAsUpIndicator(R.drawable.ic_menu)
+            actionBar?.setHomeActionContentDescription(R.string.cd_menu)
+        } else {
+            setContentView(scroll)
+            actionBar?.setDisplayHomeAsUpEnabled(true)
+        }
         build()
     }
 
@@ -40,8 +55,112 @@ abstract class Page : Activity() {
     protected abstract fun build()
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == android.R.id.home) { finish(); return true }
+        if (item.itemId == android.R.id.home) {
+            if (drawer != null) toggleDrawer(drawer?.visibility != View.VISIBLE) else finish()
+            return true
+        }
         return super.onOptionsItemSelected(item)
+    }
+
+    @Deprecated("Activity.onBackPressed")
+    override fun onBackPressed() {
+        if (drawer?.visibility == View.VISIBLE) toggleDrawer(false) else @Suppress("DEPRECATION") super.onBackPressed()
+    }
+
+    /**
+     * The side menu (Daniel, 2026-10-20: "we need like a sidebar menu"): every screen, the
+     * lexicon, contributing, About, and the version at the bottom. Built by hand rather than
+     * with androidx DrawerLayout, because the app has no androidx dependency.
+     */
+    private fun addDrawer(root: FrameLayout) {
+        val bg = TypedValue().also { theme.resolveAttribute(android.R.attr.colorBackground, it, true) }.data
+        scrim = View(this).apply {
+            setBackgroundColor(0x66000000)
+            visibility = View.GONE
+            setOnClickListener { toggleDrawer(false) }
+        }
+        root.addView(scrim, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(bg)
+            elevation = dp(8).toFloat()
+            visibility = View.GONE
+            isClickable = true
+            fitsSystemWindows = true
+        }
+        val items = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
+        val head = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(20), dp(20), dp(20), dp(12))
+            addView(ImageView(this@Page).apply { setImageResource(R.drawable.ic_hebrish) }, LinearLayout.LayoutParams(dp(36), dp(36)))
+            addView(TextView(this@Page).apply {
+                text = getString(R.string.app_name)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setPadding(dp(12), 0, 0, 0)
+            })
+        }
+        items.addView(head)
+        fun entry(label: Int, go: () -> Unit) = items.addView(TextView(this).apply {
+            setText(label)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            setPadding(dp(20), dp(13), dp(20), dp(13))
+            val out = TypedValue()
+            theme.resolveAttribute(android.R.attr.selectableItemBackground, out, true)
+            setBackgroundResource(out.resourceId)
+            setOnClickListener { toggleDrawer(false); go() }
+        })
+        fun screen(label: Int, target: Class<out Activity>) = entry(label) { startActivity(Intent(this, target)) }
+        fun divider() = items.addView(View(this).apply { setBackgroundColor(0x33808080) },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply { setMargins(dp(20), dp(8), dp(20), dp(8)) })
+        screen(R.string.title_setup, SetupActivity::class.java)
+        screen(R.string.title_models, ModelsActivity::class.java)
+        screen(R.string.title_keyboard, KeyboardActivity::class.java)
+        screen(R.string.title_bubble, FloatingMicActivity::class.java)
+        screen(R.string.title_dictation, DictationActivity::class.java)
+        screen(R.string.title_controls, ControlsActivity::class.java)
+        screen(R.string.title_install, InstallActivity::class.java)
+        divider()
+        entry(R.string.menu_lexicon) { open(Hebrish.LEXICON) }
+        entry(R.string.menu_contribute) { open(Hebrish.CONTRIBUTE) }
+        screen(R.string.title_contact, ContactActivity::class.java)
+        screen(R.string.title_about, AboutActivity::class.java)
+        panel.addView(ScrollView(this).apply { addView(items) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        panel.addView(TextView(this).apply {
+            text = versionSummary()
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            alpha = 0.7f
+            setPadding(dp(20), dp(12), dp(20), dp(20))
+        })
+        root.addView(panel, FrameLayout.LayoutParams(dp(290), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.START))
+        drawer = panel
+    }
+
+    private fun toggleDrawer(show: Boolean) {
+        val d = drawer ?: return
+        val s = scrim ?: return
+        val w = dp(290).toFloat()
+        if (show) {
+            d.visibility = View.VISIBLE
+            s.visibility = View.VISIBLE
+            d.translationX = -w
+            s.alpha = 0f
+            d.animate().translationX(0f).setDuration(180)
+            s.animate().alpha(1f).setDuration(180)
+        } else {
+            d.animate().translationX(-w).setDuration(160).withEndAction { d.visibility = View.GONE }
+            s.animate().alpha(0f).setDuration(160).withEndAction { s.visibility = View.GONE }
+        }
+    }
+
+    /** "Hebrish 0.6.0 · Jachnun v1.0": the side menu's footer and the bottom of home and About. */
+    protected fun versionSummary(): String {
+        val model = app.hebrish.core.Catalogue.selected(this)
+        val installed = app.hebrish.core.ModelStore.installed(this, model)
+        return if (installed != null && app.hebrish.core.ModelStore.isReady(this, model = model))
+            getString(R.string.version_summary, versionName(), model.name, installed.version)
+        else getString(R.string.version_summary_none, versionName())
     }
 
     protected fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
