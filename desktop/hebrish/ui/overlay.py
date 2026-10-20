@@ -408,7 +408,9 @@ class OverlayHost(QObject):
 
 
 def _child():
-    """`python -m hebrish.ui.overlay`, started by OverlayHost with QT_QPA_PLATFORM=xcb."""
+    """`python -m hebrish.ui.overlay`, started by OverlayHost with QT_QPA_PLATFORM=xcb.
+    POSIX only: QSocketNotifier can't watch a pipe on Windows (the CI test timed out there,
+    2026-10-20), and Windows never needs the child."""
     from PySide6.QtCore import QSocketNotifier
     app = QApplication([sys.argv[0]])
     app.setApplicationName("hebrish-overlay")

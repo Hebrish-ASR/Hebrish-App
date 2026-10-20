@@ -82,6 +82,8 @@ def test_drag_moves_and_reports_position():
     assert moved == [(start.x() + 40, start.y() + 30)]
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="the child exists only on Linux Wayland; "
+                    "QSocketNotifier can't watch a stdin pipe on Windows")
 def test_child_process_protocol():
     """What OverlayHost runs on Wayland (there with QT_QPA_PLATFORM=xcb)."""
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen",
