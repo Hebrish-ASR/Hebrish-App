@@ -1,6 +1,6 @@
 # Desktop 0.5.0: plan
 
-Status on 2026-10-21: **built, pushed, not released.** Daniel wants to add a few more things
+Status on 2026-10-21: **releasing as desktop-v0.5.0.**
 before the release. Add them under "Still to add", then follow "Release". Delete this file once
 0.5.0 is released (the decisions live in `maintaining.md`, "0.5.0").
 
