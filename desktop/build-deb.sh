@@ -27,7 +27,8 @@ ROOT="$BUILD/root"
 LIB="$ROOT/usr/lib/$PKG"
 mkdir -p "$ROOT/DEBIAN" "$LIB" "$ROOT/usr/bin" "$ROOT/usr/share/applications" \
          "$ROOT/usr/share/icons/hicolor/scalable/apps" \
-         "$ROOT/usr/share/doc/$PKG" "$ROOT/usr/lib/udev/rules.d"
+         "$ROOT/usr/share/doc/$PKG" "$ROOT/usr/lib/udev/rules.d" \
+         "$ROOT/etc/apt/keyrings" "$ROOT/etc/apt/sources.list.d"
 
 uv pip install --quiet --python "$PY" --target "$LIB" --no-deps "sherpa-onnx>=1.12" sherpa-onnx-core
 uv pip install --quiet --python "$PY" --target "$LIB" --no-deps .
@@ -42,6 +43,15 @@ install -m644 packaging/debian/70-$PKG-uinput.rules "$ROOT/usr/lib/udev/rules.d/
 install -m644 README.md packaging/debian/README.Debian "$ROOT/usr/share/doc/$PKG/"
 install -m644 LICENSE "$ROOT/usr/share/doc/$PKG/copyright"
 install -m755 packaging/debian/postinst "$ROOT/DEBIAN/"
+# 0.6.2: the package enrols the machine in the APT repo (cdn.hebrish.app/apt), as Chrome and
+# VS Code do, so a .deb installed by hand still gets updates. Both files are conffiles: a user
+# who deletes the sources file keeps it deleted across upgrades, `apt remove` keeps the pair
+# (so apt update keeps working), and purge removes both. The keyring is in /etc/apt/keyrings,
+# not /usr/share/keyrings, because a non-conffile key would go on remove and leave the sources
+# file pointing at nothing.
+install -m644 packaging/apt/hebrish-archive-keyring.gpg "$ROOT/etc/apt/keyrings/"
+install -m644 packaging/apt/hebrish.sources "$ROOT/etc/apt/sources.list.d/"
+printf '%s\n' /etc/apt/keyrings/hebrish-archive-keyring.gpg /etc/apt/sources.list.d/hebrish.sources > "$ROOT/DEBIAN/conffiles"
 
 cat > "$ROOT/DEBIAN/control" <<CTRL
 Package: $PKG
@@ -50,7 +60,7 @@ Architecture: $ARCH
 Section: sound
 Priority: optional
 Installed-Size: $(du -sk "$ROOT/usr" | cut -f1)
-Maintainer: Daniel Rosehill <daniel@danielrosehill.co.il>
+Maintainer: Hebrish <info@hebrish.app>
 Homepage: https://github.com/Hebrish-ASR/Hebrish-App
 Depends: python3 (>= $PYVER), python3 (<< $PYNEXT), python3-pyside6.qtwidgets, python3-pyside6.qtnetwork, qt6-svg-plugins, python3-numpy, python3-sounddevice, python3-evdev, libportaudio2, wl-clipboard, xclip, qt6-wayland
 Recommends: ffmpeg
