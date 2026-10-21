@@ -23,7 +23,8 @@ CONFIG_PATH = CONFIG_DIR / "config.json"
 STATE_PATH = DATA_DIR / "state.json"          # active model, last update check
 HISTORY_PATH = DATA_DIR / "history.json"
 MODELS_DIR = DATA_DIR / "models"            # models/<catalogue id>/<version>-<sha12>/
-CATALOGUE_CACHE = DATA_DIR / "catalogue.json"   # last models.json fetched from GitHub
+CATALOGUE_CACHE = DATA_DIR / "catalogue-v2.json"   # last shared/catalogue.json fetched (0.6.0+)
+# DATA_DIR / "catalogue.json" is the schema-1 models.json cached by 0.5.x and earlier; left alone.
 
 # Predecessor apps (Voice To Hebrish, and before it Codeswitch Dictation) ran only the
 # code-switching model. Their settings are copied and their downloaded versions moved into

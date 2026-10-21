@@ -159,13 +159,50 @@ def test_planned_models_cannot_be_selected_or_fetched():
 
 
 def test_bad_cached_catalogue_falls_back_to_bundled():
-    ms.save_json(ms.CATALOGUE_CACHE, {"schema": 99, "models": []})
+    ms.save_json(ms.CATALOGUE_CACHE, {"schema": 1, "models": [{"id": "x"}]})   # an old models.json
     assert ms.get_model("stock") is not None
-    ms.save_json(ms.CATALOGUE_CACHE, {**json.loads(ms.BUNDLED_CATALOGUE.read_text()),
-                                      "models": [{"id": "x", "name": "X", "status": "available", "repo": "a/b"}],
-                                      "default": "x"})
+    bundled = json.loads(ms.BUNDLED_CATALOGUE.read_text())
+    ms.save_json(ms.CATALOGUE_CACHE, {**bundled, "lines": [{"id": "l", "name": "L", "variants": [
+        {"id": "x", "name": "X", "status": "available", "repo": "a/b", "engine": "sherpa_offline_transducer"}]}]})
     assert [m.id for m in ms.models()] == ["x"]           # a newer published catalogue wins
     ms.CATALOGUE_CACHE.unlink()
+
+
+def test_unsupported_engines_are_listed_but_not_models():
+    """Qwen3-ASR and asr4all are in lines() (shown greyed) but never in models(), so nothing can
+    select or download them; Shakshuka waits for sherpa_online_transducer (phase 2)."""
+    listed = {v.id for v in ms.variants()}
+    usable = {m.id for m in ms.models()}
+    assert {"sabich-qwen3-asr-1.7b", "sabich-asr4all-s", "shakshuka"} <= listed - usable
+    assert {"sabich", "codeswitch", "stock", "sabich-parakeet-110m"} <= usable
+    assert ms.get_model("sabich-qwen3-asr-1.7b") is None
+    with pytest.raises(ValueError):
+        ms.select("sabich-qwen3-asr-1.7b")
+
+
+def test_no_pick_prefers_a_downloaded_model_then_recommended():
+    state = ms.load_json(ms.STATE_PATH)
+    state.pop("model", None)
+    ms.save_json(ms.STATE_PATH, state)
+    assert ms.current_id() == "sabich"                    # nothing on disk: the recommended model
+    install(ms.manifest_from_tree(ms.get_model("stock"), "s" * 40, STOCK_TREE, None))
+    assert ms.current_id() == "stock"                     # a 0.5.x user on schema 1's default keeps it
+
+
+@pytest.mark.parametrize("args,first", [
+    (("desktop", "amd", 16, "accuracy"), "sabich-qwen3-asr-1.7b"),
+    (("desktop", "nvidia", 4, "accuracy"), "sabich"),      # 4 GB is under Qwen's 5 GB
+    (("desktop", "none", 0, "balanced"), "sabich"),
+    (("desktop", "none", 0, "speed"), "sabich-parakeet-110m"),
+    (("phone", "none", 0, "balanced"), "sabich"),
+    (("wearable", "none", 0, "accuracy"), "sabich-parakeet-110m"),
+    (("wearable", "none", 0, "speed"), "sabich-asr4all-m"),
+    (("desktop", "none", 0, "balanced", True), "shakshuka"),
+])
+def test_recommend(args, first):
+    picks = ms.recommend(*args)
+    assert picks[0].id == first
+    assert all(p.line != "stock" for p in picks)
 
 
 def test_legacy_voice_to_hebrish_install_is_adopted(monkeypatch):

@@ -1,7 +1,8 @@
-**0.5.2: clearer Models tab; Sabich recommended.**
+**0.6.0: choose a model by family and version, with Help me choose.**
 
-- The model you dictate with is now outlined in green with an "In use" badge, so it no longer looks greyed out next to the others.
-- The other downloaded models have a "Switch to …" button instead of "Use".
-- Sabich, the complete model (the Hebrew words plus tech vocabulary, brand names and numbers), is listed first and recommended. On the first round of tests it was level with Jachnun on Hebrew words and better on tech dictation. Jachnun is still there; if one doesn't give you good results, try the other.
-- Everything in 0.5.1: one copy of each model, updated automatically. See the [0.5.1 release](https://github.com/Hebrish-ASR/Hebrish-App/releases/tag/desktop-v0.5.1).
+- **Models tab, two levels.** Each family is listed by what it is trained for: **Sabich** (Hebrew words plus tech vocabulary, recommended), **Jachnun** (Hebrew words only), **Shakshuka** (live text while you talk) and stock Parakeet, with its versions on different base models under it.
+- Every version shows **speed and accuracy dots** (1 to 5, estimates), its download size, the hardware it needs, and one line on who it is for.
+- **Help me choose…** asks where you dictate, your graphics card and its memory (detected where possible), and whether speed or accuracy matters more, then names a version. If the best fit runs outside the app (Sabich-Qwen3-ASR-1.7B on a GPU, via llama.cpp), it says so and names the best one the app can run, with a Download button.
+- Versions the app can't run yet are listed greyed with where they run and a link to the model card. **Sabich-Parakeet-110M**, a small fast version, shows as coming soon and becomes downloadable without an app update once it is published.
+- Your model, downloads and updates are unchanged.
 - Ubuntu 26.04 .deb and a portable Windows zip. Not yet tested on Windows hardware. Downloads: [hebrish.app/download](https://hebrish.app/download).

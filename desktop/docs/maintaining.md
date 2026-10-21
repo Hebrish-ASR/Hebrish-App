@@ -267,10 +267,14 @@ old app then sees no model and downloads 660 MB again into its own folder. Quit 
 
 ## Models
 
-The catalogue is `../shared/models.json`, bundled as `hebrish/data/models.json`
-(`tests/test_shared.py` fails if the copies differ). Each update check first re-fetches it
-from `catalogue_url` (raw GitHub, `main`; builds up to 0.1.2 use the pre-2026-10-19 repo name `Parlance-Dictation` and depend on GitHub's rename redirect, see `android/docs/maintaining.md`, "Repo name") into `~/.local/share/hebrish/catalogue.json`; an
-unparseable or wrong-`schema` copy is ignored and the bundled one is used. So **publishing a
+Since 0.6.0 the catalogue is `../shared/catalogue.json` (schema 2: lines and variants; the
+protocol is in `../shared/update-protocol.md`, "Catalogue v2"), bundled as
+`hebrish/data/catalogue.json` (`tests/test_shared.py` fails if the copies differ). Each update
+check first re-fetches it from `catalogue_v2_url` into `~/.local/share/hebrish/catalogue-v2.json`;
+an unparseable or wrong-`schema` copy is ignored and the bundled one is used. Up to 0.5.2 it was
+`../shared/models.json` (schema 1) from `catalogue_url` into `catalogue.json` (builds up to 0.1.2
+use the pre-2026-10-19 repo name `Parlance-Dictation` and depend on GitHub's rename redirect, see
+`android/docs/maintaining.md`, "Repo name"); that file and its cache stay for those builds. So **publishing a
 model needs no app release**: push the HF repo (files: `encoder.int8.onnx`,
 `decoder.int8.onnx`, `joiner.int8.onnx`, `tokens.txt`, optional `version.json`), then flip its
 entry to `"status": "available"` with `repo` and `subdir`, re-copy the bundled file, push.
@@ -476,3 +480,39 @@ new version … we get that and we delete the older ones in the user storage." S
   older versions stay on the CDN (`models/<model>/<version>/`) and on Hugging Face.
 - Tests: `test_one_version_per_model_by_default`, `test_upgrade_drops_keep_old_versions_and_turns_on_auto_update`.
 
+
+## Two-level model picker and Help me choose (0.6.0, 2026-10-21)
+
+Daniel (2026-10-21): "you choose Sabich, and under Sabich we show the versions available …
+with a short recommendation for each … apps show it as a speed–accuracy gradient … add some way
+for users to make sense and use the right one."
+
+- `model_store.lines()` / `variants()` give every line and variant; `models()` only the ones this
+  build can run (`SUPPORTED_ENGINES = {"sherpa_offline_transducer"}`, `PLATFORM` linux or
+  windows). Every download, select, update and folder path still goes through `models()` /
+  `get_model()`, so a Qwen3-ASR or asr4all variant can never be selected or fetched (test
+  `test_unsupported_engines_are_listed_but_not_models`).
+- Models tab (`ui/window.py` `_line_header`, `_model_row`): per line a header (mark, name,
+  summary, link, terms), then one row per variant: name and base model, Recommended / In use
+  chips, the recommendation sentence, speed and accuracy as five-dot meters marked
+  "(estimates)", size, hardware and card link, state, buttons. A variant the app can't run is
+  greyed with "Not in this app yet. Runs on: …" and no buttons; a planned one says "Coming soon".
+  Rows are rebuilt when the catalogue's (id, available, supported) list changes.
+- `current_id()` without a pick: the first downloaded supported model, recommended first, else
+  `recommended`. Before 0.6.0 it was schema 1's `default` (`stock`); a user who never picked keeps
+  the stock download they have.
+- **Help me choose** (`ui/choose.py`, logic in `model_store.recommend`, `fits`, `detect_gpu`):
+  device (this computer, a phone, a wearable), GPU vendor and VRAM, priority, and "words while
+  I'm talking" (streaming). Ranking and filters are in `../shared/update-protocol.md`. When the top
+  pick can't run here it is still named ("Use via llama.cpp: see the model card." for
+  `qwen3_asr`, else its `runs_on`), followed by the best variant this app can run, with a
+  Download / Switch button.
+- `detect_gpu()`: `nvidia-smi --query-gpu=memory.total` (3 s timeout), else
+  `/sys/class/drm/card*/device/{vendor,mem_info_vram_total}` (amdgpu; vendor ids 0x1002 AMD,
+  0x10de NVIDIA, 0x8086 Intel). (V, 2026-10-21, daniellaptop) an AMD APU reports its 1 GB
+  carve-out there, so it is shown as "AMD, 1 GB" and Qwen is not suggested; correct by hand.
+  `rocm-smi` was not used: it is often not installed, and sysfs gives the same number. Windows:
+  NVIDIA only (no sysfs); others are entered by hand.
+- Rendered off-screen and checked (V, 2026-10-21): the Models tab and the dialog, including
+  "AMD, 16 GB, accuracy" → Sabich-Qwen3-ASR-1.7B + "In this app, the best fit is Sabich".
+  Not tried on Windows.

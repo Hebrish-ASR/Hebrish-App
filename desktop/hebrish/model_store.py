@@ -2,9 +2,11 @@
 
 Same protocol as the Android app (../shared/update-protocol.md):
 
-0. The catalogue (../shared/models.json, bundled as data/models.json) lists the models.
+0. The catalogue (../shared/catalogue.json, schema 2, bundled as data/catalogue.json) lists
+   lines and their variants; models() is the variants this build's engines can run.
    Every update check also re-fetches it from `catalogue_url`, so a newly published model
-   shows up without an app release. A model with status "planned" can't be downloaded.
+   shows up without an app release. (`catalogue_v2_url`; schema 1, models.json, is
+   for builds up to 0.5.x.) A model with status "planned" can't be downloaded.
 1. GET /api/models/<repo>/revision/main                 -> sha `main` points at now
 2. GET /api/models/<repo>/tree/<sha>[/<subdir>]           -> per file size + lfs.oid (SHA-256)
 3. GET /<repo>/resolve/<sha>[/<subdir>]/version.json      -> {"version": "v4", "run": ...}
@@ -25,6 +27,7 @@ once its manifest.json exists (written last, after every file verified).
 import hashlib
 import json
 import shutil
+import sys
 import threading
 import urllib.request
 from dataclasses import dataclass, field
@@ -32,10 +35,14 @@ from pathlib import Path
 
 from .config import CATALOGUE_CACHE, MODELS_DIR, STATE_PATH, load_json, save_json
 
-BUNDLED_CATALOGUE = Path(__file__).resolve().parent / "data" / "models.json"
-SCHEMA = 1
+BUNDLED_CATALOGUE = Path(__file__).resolve().parent / "data" / "catalogue.json"
+SCHEMA = 2
 HF = "https://huggingface.co"
 USER_AGENT = "hebrish (+https://github.com/Hebrish-ASR/Hebrish-App)"
+# Engines this build can run. A variant with any other engine is listed (greyed, with where it
+# runs and its card) but can't be selected or downloaded. Phase 2 adds sherpa_online_transducer.
+SUPPORTED_ENGINES = {"sherpa_offline_transducer"}
+PLATFORM = "windows" if sys.platform == "win32" else "linux"
 
 
 class Cancelled(Exception):
@@ -46,6 +53,7 @@ class Cancelled(Exception):
 
 @dataclass
 class Model:
+    """One variant of the v2 catalogue (shared/catalogue.json)."""
     id: str
     name: str
     summary: str = ""
@@ -55,19 +63,50 @@ class Model:
     card: str = ""
     version_label: str = ""          # label when the repo has no version.json
     manifest_url: str = ""           # CDN manifest; preferred over repo when set (0.2.2+)
+    line: str = ""                   # line id (sabich, jachnun, shakshuka, stock)
+    engine: str = "sherpa_offline_transducer"
+    base_model: str = ""
+    size_label: str = ""
+    platforms: list = field(default_factory=lambda: ["android", "linux", "windows"])
+    devices: list = field(default_factory=list)       # wearable | phone | desktop
+    requirements: dict = field(default_factory=dict)  # {"ram_mb", "gpu": null | {"vram_gb", "backends"}}
+    hardware: str = ""
+    download_mb: int | None = None
+    speed: int = 0                   # 1-5, estimate
+    accuracy: int = 0                # 1-5, estimate
+    recommendation: str = ""
+    runs_on: str = ""                # where an unsupported variant runs instead
+    streaming: bool = False
+
+    @property
+    def supported(self) -> bool:
+        """This build can run it on this OS."""
+        return self.engine in SUPPORTED_ENGINES and PLATFORM in self.platforms
 
     @property
     def available(self) -> bool:
-        return self.status == "available" and bool(self.repo or self.manifest_url)
+        return self.supported and self.status == "available" and bool(self.repo or self.manifest_url)
 
     def path(self, name: str = "") -> str:
         """`subdir/name` without stray slashes; subdir is empty when files sit at the repo root."""
         return "/".join(p for p in (self.subdir, name) if p)
 
 
+@dataclass
+class Line:
+    id: str
+    name: str
+    summary: str = ""
+    card: str = ""
+    variants: list = field(default_factory=list)      # [Model]
+
+
 def _parse(doc: dict) -> dict:
-    if doc.get("schema") != SCHEMA or not isinstance(doc.get("models"), list):
+    if (doc.get("schema") != SCHEMA or not isinstance(doc.get("lines"), list)
+            or "sherpa_offline_transducer" not in doc.get("engines", {})):
         raise ValueError("unsupported catalogue")
+    if not any(v.get("id") for ln in doc["lines"] for v in ln.get("variants", [])):
+        raise ValueError("empty catalogue")
     return doc
 
 
@@ -83,22 +122,47 @@ def catalogue() -> dict:
     return _load_catalogue()
 
 
-FILES: tuple = tuple(catalogue()["files"])
-VERSION_FILE: str = catalogue()["version_file"]
+FILES: tuple = tuple(catalogue()["engines"]["sherpa_offline_transducer"]["files"])
+VERSION_FILE: str = catalogue().get("version_file", "version.json")
+
+
+def lines() -> list[Line]:
+    """Every line with every variant, supported or not, in catalogue order."""
+    keys = Model.__dataclass_fields__
+    out = []
+    for ln in catalogue()["lines"]:
+        vs = [Model(**{k: v for k, v in m.items() if k in keys}, line=ln["id"],
+                    summary=m.get("summary") or ln.get("summary", ""))
+              for m in ln.get("variants", [])]
+        out.append(Line(ln["id"], ln["name"], ln.get("summary", ""), ln.get("card", ""), vs))
+    return out
+
+
+def variants() -> list[Model]:
+    return [v for ln in lines() for v in ln.variants]
 
 
 def models() -> list[Model]:
-    keys = Model.__dataclass_fields__
-    return [Model(**{k: v for k, v in m.items() if k in keys}) for m in catalogue()["models"]]
+    """The variants this build can run (planned ones included), in catalogue order. Everything
+    that downloads, selects or lists installs goes through this, never through variants()."""
+    return [v for v in variants() if v.supported]
 
 
 def get_model(mid: str) -> Model | None:
     return next((m for m in models() if m.id == mid), None)
 
 
+def get_variant(mid: str) -> Model | None:
+    return next((m for m in variants() if m.id == mid), None)
+
+
+def recommended_id() -> str:
+    return catalogue().get("recommended", "")
+
+
 def refresh_catalogue():
     """Fetch the published catalogue; keep the cached/bundled one if that fails."""
-    url = json.loads(BUNDLED_CATALOGUE.read_text())["catalogue_url"]
+    url = json.loads(BUNDLED_CATALOGUE.read_text())["catalogue_v2_url"]
     try:
         doc = _parse(json.loads(_get(url)))
     except Exception:
@@ -107,10 +171,79 @@ def refresh_catalogue():
 
 
 def current_id() -> str:
-    """The model the user picked; else the catalogue default."""
+    """The model the user picked. Without a pick: a downloaded model (recommended first), so an
+    install that ran schema 1's default (stock) keeps working; else the recommended model."""
     mid = load_json(STATE_PATH).get("model")
     m = get_model(mid) if mid else None
-    return m.id if m and m.available else catalogue()["default"]
+    if m and m.available:
+        return m.id
+    rec = recommended_id()
+    order = sorted((m for m in models() if m.available), key=lambda m: m.id != rec)
+    for m in order:
+        if installed(m.id):
+            return m.id
+    return order[0].id if order else rec
+
+
+# -- help me choose (0.6.0) --------------------------------------------------
+
+GPU_BACKENDS = {"nvidia": ["cuda", "vulkan"], "amd": ["hip", "vulkan"], "intel": ["vulkan"], "none": []}
+PRIORITY_WEIGHTS = {"speed": (3, 1), "balanced": (1, 1), "accuracy": (1, 3)}
+
+
+def fits(v: Model, device: str, gpu: str = "none", vram_gb: float = 0) -> bool:
+    """Whether variant v suits a device ("wearable" | "phone" | "desktop") with that GPU."""
+    if device not in v.devices:
+        return False
+    need = (v.requirements or {}).get("gpu")
+    if need:
+        if device != "desktop" or vram_gb < need.get("vram_gb", 0):
+            return False
+        if not set(need.get("backends", [])) & set(GPU_BACKENDS.get(gpu, [])):
+            return False
+    return True
+
+
+def recommend(device: str, gpu: str = "none", vram_gb: float = 0, priority: str = "balanced",
+              live: bool = False) -> list[Model]:
+    """Variants that fit, best first: speed and accuracy tiers weighted by the priority. Lines
+    with a streaming variant are only considered when live text is wanted, and then only those.
+    Stock Parakeet is left out (it has no Hebrew words). Ties keep catalogue order, so the
+    recommended model wins a tie. The first entry may be one this app can't run (see .supported)."""
+    ws, wa = PRIORITY_WEIGHTS.get(priority, (1, 1))
+    pool = [v for v in variants() if v.line != "stock" and v.streaming == live and fits(v, device, gpu, vram_gb)]
+    return sorted(pool, key=lambda v: -(ws * v.speed + wa * v.accuracy))
+
+
+def detect_gpu() -> tuple[str, float]:
+    """Best-effort (vendor, VRAM in GB): nvidia-smi, then Linux sysfs (amdgpu reports VRAM there),
+    else ("none", 0). Cheap: each probe has a 3 s timeout and failures are ignored."""
+    import shutil as _sh
+    import subprocess
+    if _sh.which("nvidia-smi"):
+        try:
+            out = subprocess.run(["nvidia-smi", "--query-gpu=memory.total", "--format=csv,noheader,nounits"],
+                                 capture_output=True, text=True, timeout=3).stdout
+            mib = max(int(x) for x in out.split() if x.strip().isdigit())
+            return "nvidia", round(mib / 1024, 1)
+        except Exception:
+            pass
+    best = ("none", 0.0)
+    for dev in Path("/sys/class/drm").glob("card[0-9]*/device"):
+        try:
+            vendor = (dev / "vendor").read_text().strip()
+        except OSError:
+            continue
+        name = {"0x1002": "amd", "0x10de": "nvidia", "0x8086": "intel"}.get(vendor)
+        if not name:
+            continue
+        try:
+            gb = int((dev / "mem_info_vram_total").read_text()) / (1 << 30)
+        except (OSError, ValueError):
+            gb = 0.0
+        if gb >= best[1] or best[0] == "none":
+            best = (name, round(gb, 1))
+    return best
 
 
 def current() -> Model:

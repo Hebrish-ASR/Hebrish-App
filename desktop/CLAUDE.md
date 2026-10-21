@@ -2,8 +2,8 @@
 
 Read `docs/maintaining.md` before changing the update protocol, the engine padding and
 pause handling, or the hotkey and paste path. Each has a measured reason recorded there.
-The model source and update rules are shared with Android: `../shared/models.json` (the model catalogue; `hebrish/data/models.json` is a
-byte-identical copy, re-copy after editing) and
+The model source and update rules are shared with Android: `../shared/catalogue.json` (the model catalogue, schema 2 since 0.6.0;
+`hebrish/data/catalogue.json` is a byte-identical copy, re-copy after editing; `../shared/models.json` is schema 1 for older builds) and
 `../shared/update-protocol.md` (`tests/test_shared.py` enforces them).
 
 - Dev venv (Linux): `uv venv --python /usr/bin/python3 --system-site-packages .venv && uv pip install -e . pytest`.
