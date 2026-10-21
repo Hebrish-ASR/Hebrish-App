@@ -3,10 +3,10 @@
 **On-device dictation with NVIDIA Parakeet, for Android, Linux and Windows.** Made for the
 English-Hebrew code-switching model; stock Parakeet is there too.
 
-![Hebrish on Linux: the Models tab, one card per model with its own Download button](docs/screenshots/desktop-model.png)
+![Hebrish on Linux: the Models tab, the Sabich line with its versions under it, each with speed and accuracy dots, size, hardware and a one-line recommendation](docs/screenshots/desktop-model.png)
 
 Everything runs **on your device**. The only network traffic is downloading the model you
-pick (~630 MB, once) and a periodic check for a newer version.
+pick (about 660 MB for the main models, once) and a periodic check for a newer version.
 
 **Name:** the apps were first released as **Parlance** (0.1.0–0.1.2, 2026-10-19). Since
 0.2.0 every identifier is Hebrish too: Android application ID `app.hebrish.dictation`, desktop
@@ -21,14 +21,27 @@ app copies Parlance's settings (not its hotkey) and hardlinks its downloaded mod
 
 ## Models
 
-Every model is [Parakeet TDT 0.6B v2](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2),
-run with sherpa-onnx (int8).
+Models come in **lines**, named for what they are trained on, and each line has **versions on
+different base models**, from the most accurate to the fastest. Both apps show them that way
+(Android 0.7.0+, desktop 0.6.0+): pick a line, then a version, with a speed and accuracy rating
+(1–5, estimates), the download size, the hardware it needs and a one-line "who it's for". The
+desktop app also has **Help me choose**: device, graphics card and VRAM (detected where it can
+be), and whether speed or accuracy matters more. The list is `shared/catalogue.json`.
 
-| Model | Status | For |
-| --- | --- | --- |
-| **Sabich** | available | Hebrew vocabulary + tech vocabulary: code-switching plus tech terms, brand names and numbers. **Recommended** since 2026-10-21 (`shared/models.json` `recommended`): level with Jachnun on Hebrew words, better on tech. [Models](https://hebrish.app/models#sabich) |
-| **Jachnun** | available | English + Hebrew vocabulary (*teudat zehut*, *arnona*, *bituach leumi*), written in Latin letters. The first stable release; recommended until 2026-10-21. [Models](https://hebrish.app/models#parakeet) |
-| **Parakeet (stock)** | available | Standard English, without the Hebrew words. NVIDIA's release, unchanged |
+![Help me choose: an AMD GPU with 16 GB and accuracy first suggests Sabich-Qwen3-ASR-1.7B via llama.cpp, and Sabich in the app](docs/screenshots/desktop-choose.png)
+
+| Line | Version | Base model | Status in the apps | For |
+| --- | --- | --- | --- | --- |
+| **Sabich** (everything: Hebrew words + tech vocabulary) | **Sabich** | Parakeet TDT 0.6B v2 | available, **recommended** | Start here: phone or any recent computer, no GPU. [Models](https://hebrish.app/models#sabich) |
+| | Sabich-Qwen3-ASR-1.7B | Qwen3-ASR 1.7B | listed; not runnable in the apps yet | Most accurate. Desktop GPU, 5 GB+ VRAM, via llama.cpp (GGUF) |
+| | Sabich-Parakeet-110M | Parakeet TDT-CTC 110M | coming soon | Older phones, wearables: a fifth of the size, faster, more mistakes |
+| | Sabich-asr4all-M / -S | FUTO asr4all 56M / 28M | listed; not published | Tiny, for wearables; writes numbers as words |
+| **Jachnun** (code-switching only) | **Jachnun** | Parakeet TDT 0.6B v2 | available | English + Hebrew vocabulary (*teudat zehut*, *arnona*, *bituach leumi*), in Latin letters. Recommended until 2026-10-21. [Models](https://hebrish.app/models#parakeet) |
+| **Shakshuka** (streaming) | **Shakshuka** | Nemotron speech streaming 0.6B | listed; needs the streaming engine (next release) | Live text while you talk |
+| **Parakeet (stock)** | | Parakeet TDT 0.6B v2 | available | Standard English, without the Hebrew words. NVIDIA's release, unchanged |
+
+Everything the apps can run today is a sherpa-onnx int8 offline transducer. A version on an
+engine the app doesn't have yet is shown greyed, with where it runs instead and its model card.
 
 The fine-tunes are trained on **one speaker's voice**; recordings from more voices are welcome
 ([hebrish.app/contact?topic=samples](https://hebrish.app/contact?topic=samples)). Those are the only
@@ -75,8 +88,10 @@ build and the Android app have not yet been tried on real hardware.
   floating overlay, like the Android floating mic, shows the take with Pause, Retake and Discard.
 - **File**: drop or open an audio file. The transcript fills an editable text box piece by
   piece; save it as .txt or .md.
-- **Models**: a card per model (Jachnun, Sabich, stock Parakeet) with its own Download, Use
-  and Delete; choose the folder the weights are stored in. History is optional (off by default).
+- **Models**: each line (Sabich, Jachnun, Shakshuka, stock Parakeet) with its versions under it,
+  each with speed and accuracy dots, size, hardware, a one-line recommendation and its own
+  Download, Use and Delete; **Help me choose** recommends one from your device, GPU and priority.
+  Choose the folder the weights are stored in. History is optional (off by default).
 
 Ubuntu: `sudo apt install ./hebrish_<version>-1_amd64.deb`, then
 `sudo usermod -aG input $USER` for the hotkey, and log in again. It replaces Voice To
@@ -96,7 +111,8 @@ you talk, and you're returned to HeliBoard with the text inserted. Details:
 | --- | --- |
 | `desktop/` | Linux + Windows app (Python, PySide6, sherpa-onnx). Only the hotkey and paste code differs per OS |
 | `android/` | Android voice keyboard (Kotlin, sherpa-onnx AAR) |
-| `shared/models.json` | The model catalogue both apps bundle and re-fetch; a test fails if either app's copy drifts |
+| `shared/catalogue.json` | The model catalogue (schema 2: lines and variants) both apps bundle and re-fetch since Android 0.7.0 / desktop 0.6.0; a test fails if either app's copy drifts |
+| `shared/models.json` | The schema-1 catalogue, kept for older builds; a test fails if it disagrees with `catalogue.json` |
 | `shared/update-protocol.md` | How models are listed, downloaded and updated, and the quirks both apps work around |
 
 Releases: tag `android-vX.Y.Z` builds the signed APK in CI. Tag `desktop-vX.Y.Z` builds the

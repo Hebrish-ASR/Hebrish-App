@@ -3,9 +3,9 @@
  "checked": "2026-10-21",
  "commit": "4425f94",
  "released": {
-  "android": "0.6.0",
-  "ubuntu": "0.5.1",
-  "windows": "0.5.1"
+  "android": "0.7.0",
+  "ubuntu": "0.6.0",
+  "windows": "0.6.0"
  },
  "features": [
   {
@@ -422,7 +422,72 @@
     "evidence": "desktop/hebrish/ui/window.py _model_row",
     "verified": false
    },
+   "notes": "Grouped under lines since Android 0.7.0 / desktop 0.6.0 (model-lines-variants)."
+  },
+  {
+   "id": "model-lines-variants",
+   "group": "model-catalogue-and-updates",
+   "name": "Models by line, then variants (base models), with speed/accuracy tiers, size, hardware and a recommendation each",
+   "android": {
+    "status": "present",
+    "since": "0.7.0",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/ModelsActivity.kt lineHeader, card, tiers"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.6.0",
+    "evidence": "desktop/hebrish/ui/window.py _line_header, _model_row, tiers_html"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.6.0",
+    "evidence": "desktop/hebrish/ui/window.py _line_header, _model_row, tiers_html",
+    "verified": false
+   },
+   "notes": "Catalogue v2 (shared/catalogue.json). Variants on engines the app lacks (Qwen3-ASR, asr4all, streaming Shakshuka) are listed greyed with where they run."
+  },
+  {
+   "id": "help-me-choose",
+   "group": "model-catalogue-and-updates",
+   "name": "Help me choose: device, GPU/VRAM (auto-detected), priority -> a recommended variant",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/ModelsActivity.kt (recommendation sentences and tiers only)"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.6.0",
+    "evidence": "desktop/hebrish/ui/choose.py; model_store.recommend, detect_gpu"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.6.0",
+    "evidence": "desktop/hebrish/ui/choose.py; GPU detection NVIDIA only",
+    "verified": false
+   },
    "notes": ""
+  },
+  {
+   "id": "streaming-engine",
+   "group": "transcription-engine",
+   "name": "Streaming recognizer (live text while speaking; Shakshuka)",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "Catalogue.SUPPORTED_ENGINES"
+   },
+   "ubuntu": {
+    "status": "missing",
+    "since": "",
+    "evidence": "model_store.SUPPORTED_ENGINES"
+   },
+   "windows": {
+    "status": "missing",
+    "since": "",
+    "evidence": "model_store.SUPPORTED_ENGINES"
+   },
+   "notes": "Phase 2: sherpa_online_transducer. Desktop's insert-as-you-go is chunked offline decoding, not streaming."
   },
   {
    "id": "download-without-switching",
@@ -474,17 +539,17 @@
    "android": {
     "status": "present",
     "since": "0.1.0",
-    "evidence": "shared/models.json"
+    "evidence": "shared/catalogue.json (shared/models.json before Android 0.7.0 / desktop 0.6.0)"
    },
    "ubuntu": {
     "status": "present",
     "since": "0.2.0",
-    "evidence": "shared/models.json"
+    "evidence": "shared/catalogue.json (shared/models.json before Android 0.7.0 / desktop 0.6.0)"
    },
    "windows": {
     "status": "present",
     "since": "0.2.0",
-    "evidence": "shared/models.json",
+    "evidence": "shared/catalogue.json (shared/models.json before Android 0.7.0 / desktop 0.6.0)",
     "verified": false
    },
    "notes": ""
@@ -854,8 +919,8 @@
   },
   {
    "rule": "catalogue fetch and fallback",
-   "android": "catalogue_url, cache, bundled copy",
-   "desktop": "catalogue_url, cache, bundled copy (byte-identical, test_shared.py)",
+   "android": "catalogue_v2_url, cache (pref catalogue_v2), bundled catalogue.json",
+   "desktop": "catalogue_v2_url, cache (catalogue-v2.json), bundled catalogue.json (byte-identical, test_shared.py)",
    "same": true,
    "explained_by": ""
   }
