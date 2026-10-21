@@ -179,7 +179,12 @@
     <string name="home_bubble_on">On</string>
     <string name="home_bubble_off">Off. Optional: a mic over every app.</string>
 
-    <string name="models_intro">Pick the model that fits how you talk. Each is about 660 MB, downloaded once; you can keep several and switch any time.</string>
+    <string name="models_intro">Each family is what a model is trained for; under it are its versions, from most accurate to fastest, with who each one is for. Sabich is the one to start with. Models download once and then work offline; you can keep several and switch any time. Speed and accuracy dots are estimates.</string>
+    <string name="models_line_about">About %1$s</string>
+    <string name="models_tiers">Speed %1$s &#160;&#160;Accuracy %2$s &#160;(estimates)</string>
+    <string name="models_size_mb">%1$d MB</string>
+    <string name="models_runs_on">Not in this app yet. Runs on: %1$s</string>
+    <string name="models_card">Model card</string>
     <string name="models_badge_recommended">Recommended</string>
     <string name="models_badge_in_use">In use</string>
     <string name="models_download_all">Download all</string>

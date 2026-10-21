@@ -27,8 +27,9 @@ object ModelPrefs {
         sp(ctx).edit().putString("installed_manifest_$model", v).apply()
 
     /** The last catalogue fetched from catalogue_url that parsed; null = the bundled asset. */
-    fun catalogueJson(ctx: Context): String? = sp(ctx).getString("catalogue", null)
-    fun setCatalogueJson(ctx: Context, v: String) = sp(ctx).edit().putString("catalogue", v).apply()
+    /** The last schema-2 catalogue fetched (0.7.0+). Key "catalogue" holds 0.6.0's schema-1 copy; left alone. */
+    fun catalogueJson(ctx: Context): String? = sp(ctx).getString("catalogue_v2", null)
+    fun setCatalogueJson(ctx: Context, v: String) = sp(ctx).edit().putString("catalogue_v2", v).apply()
 
     /** Wall-clock ms of the last successful update check. */
     fun lastCheck(ctx: Context) = sp(ctx).getLong("last_check", 0L)

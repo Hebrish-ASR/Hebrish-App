@@ -23,11 +23,11 @@ val fetchSherpaAar by tasks.registering {
     }
 }
 
-// The model catalogue (shared/models.json) is shared with the desktop app. It is copied into the
+// The model catalogue (shared/catalogue.json, schema 2 since 0.7.0) is shared with the desktop app. It is copied into the
 // APK's assets at build time, never edited or hand-copied here.
 val catalogueDir = layout.buildDirectory.dir("generated/catalogue")
 val copyCatalogue by tasks.registering(Copy::class) {
-    from(rootProject.file("../shared/models.json"))
+    from(rootProject.file("../shared/catalogue.json"))
     into(catalogueDir)
 }
 tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(fetchSherpaAar, copyCatalogue) }
@@ -40,8 +40,8 @@ android {
         applicationId = "app.hebrish.dictation"
         minSdk = 28
         targetSdk = 35
-        versionCode = 10
-        versionName = "0.6.0"
+        versionCode = 11
+        versionName = "0.7.0"
         // Phones only: x86 libs would add ~25 MB for emulator use nobody needs here.
         ndk { abiFilters += "arm64-v8a" }
     }

@@ -1,13 +1,7 @@
-**0.6.0: a setup checklist, a side menu, simpler models, and a tidier voice keyboard.**
+**0.7.0: models by family, with a speed and accuracy guide.**
 
-- **Setup checklist** (home, and the side menu): every step in order, each ticking itself off: microphone, a model, the voice keyboard or floating mic, battery unrestricted, "Pause app activity if unused" off, and optional all files access. The same steps with pictures: [hebrish.app/setup](https://hebrish.app/setup).
-- **Side menu** (☰ on home) with every screen, Explore the lexicon, Contribute and a new **About** page. The app and model versions are at the bottom of home and the menu.
-- **Models as cards**, each with its mark: **Jachnun** (English + Hebrew vocabulary) first and recommended, **Sabich** (Hebrew + tech vocabulary), stock Parakeet last. A new install uses Jachnun; an existing install keeps the model it has.
-- **Model location** always shows where the models are, the default included. **Back to the default** copies them back into app storage.
-- **Voice keyboard:** the mic sits at the top, with the Hebrish mark and a settings gear above it; comma and full stop keys beside space, delete and enter.
-- **Retake you can see:** the mic and bar flash amber, say "↺ New take" and the mic spins back once. The mic pulses while recording.
-- Optional beeps when a take starts (rising), stops (falling) and restarts (double pip); vibration on by default. Settings → Sound, microphone and buttons.
-- The microphone in use is shown next to the timer. Choose one, or leave it on Automatic: a Bluetooth headset is always preferred.
-- Start, stop, restart, pause and discard from outside the app: broadcast intents for Tasker, MacroDroid and Key Mapper, or learn a key from a Bluetooth shutter remote or keyboard. After upgrading, turn the floating mic off and on once so it can see buttons. Reference: docs/external-control.md.
-- Floating mic: placeholder text such as WhatsApp's "Message" is replaced instead of left in front of your words (setting, on by default).
+- **Models screen, two levels.** Each family is listed by what it is trained for: **Sabich** (Hebrew words plus tech vocabulary, recommended), **Jachnun** (Hebrew words only), **Shakshuka** (live text while you talk) and stock Parakeet. Under each are its versions on different base models.
+- Every version shows **speed and accuracy dots** (1 to 5, estimates), its download size, the hardware it needs, and one line on who it is for.
+- Versions this app can't run yet (Sabich-Qwen3-ASR-1.7B for desktop GPUs, the tiny asr4all builds for wearables, and Shakshuka's streaming engine) are listed greyed, with where they run and a link to the model card. **Sabich-Parakeet-110M**, a small version for older phones, shows as coming soon and becomes downloadable without an app update once it is published.
+- The model you use, your downloads and updates are unchanged.
 - Not yet tested on a device. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).

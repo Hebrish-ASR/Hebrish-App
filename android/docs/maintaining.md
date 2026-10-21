@@ -438,7 +438,30 @@ unchanged). The secrets must be set on the Hebrish-App repo too. Daniel's local 
 `~/.android/keystores/codeswitch-voice-release.jks`, with its password in the `.txt` next
 to it. Losing it means users must uninstall before installing a newer APK.
 
+## Models by line, catalogue v2 (0.7.0, 2026-10-21)
+
+The Models screen lists **lines** (Sabich, Jachnun, Shakshuka, stock), each with its
+**variants** under it (Daniel, 2026-10-21: "you choose Sabich, and under Sabich we show the
+versions available … with a short recommendation for each … a speed–accuracy gradient").
+
+- `Catalogue.kt` reads `shared/catalogue.json` (schema 2; asset `catalogue.json`, pref
+  `catalogue_v2`, fetched from `catalogue_v2_url`). Protocol: `../../shared/update-protocol.md`,
+  "Catalogue v2". `Data.models` holds only variants this build can run
+  (`SUPPORTED_ENGINES = setOf("sherpa_offline_transducer")`, `PLATFORM = "android"`), planned
+  included, so `ModelDownload` and `ModelStore` are unchanged; `Data.lines` holds all of them.
+- `ModelsActivity`: `lineHeader` (mark, name, summary, "About <line>" link), then `card` per
+  variant: name, badge, base model, the recommendation sentence, `tiers()` (Speed ●●●○○ /
+  Accuracy ●●●●○, "(estimates)", `Html.fromHtml`), size and hardware, state and buttons. A variant
+  this build can't run is drawn at 60% alpha with "Not in this app yet. Runs on: …" and a "Model
+  card" link, and no buttons. Expected size before download: manifest, else `download_mb`.
+- No "Help me choose" dialog on Android yet (the desktop has one); the recommendation sentences
+  and tiers carry it here.
+- Compiled, not run on a device.
+
 ## Not yet verified (as of 2026-10-20)
+
+- 0.7.0 on a device: the line/variant list, greyed variants, the tiers rendering, a pre-0.7.0
+  install keeping its selected model after the switch to catalogue v2.
 
 - 0.4.0 on a device: the floating mic in ChatGPT and other Compose apps, segment cuts and joins, the trim on quiet speakers, the Stop-to-text time,
   the download queue, the new screens, Insert after a missed field, `fdroidrepos://` opening

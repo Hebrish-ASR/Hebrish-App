@@ -6,14 +6,23 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * The model catalogue, shared/models.json. The APK carries a copy in its assets ([ASSET], copied
- * by the gradle `copyCatalogue` task). Each update check also fetches `catalogue_url`; a copy that
- * parses with schema [SCHEMA] is cached in Prefs and wins over the bundled one, so a newly
- * published model appears without an APK release.
+ * The model catalogue, shared/catalogue.json (schema 2, since 0.7.0): lines (what a model is
+ * trained for: Sabich, Jachnun, Shakshuka, stock) each with variants (the line on another base
+ * model). The APK carries a copy in its assets ([ASSET], copied by the gradle `copyCatalogue`
+ * task). Each update check also fetches `catalogue_v2_url`; a copy that parses with schema
+ * [SCHEMA] is cached in Prefs and wins over the bundled one, so a newly published model appears
+ * without an APK release. Builds up to 0.6.0 read shared/models.json (schema 1) instead.
+ *
+ * [Data.models] holds only the variants this build can run ([SUPPORTED_ENGINES], platform
+ * android), planned ones included; everything that downloads or selects uses it. [Data.lines]
+ * holds every variant, for the Models screen, which lists the others greyed with where they run.
  */
 object Catalogue {
-    const val ASSET = "models.json"
-    const val SCHEMA = 1
+    const val ASSET = "catalogue.json"
+    const val SCHEMA = 2
+    const val PLATFORM = "android"
+    /** Engines this build can run. Phase 2 adds sherpa_online_transducer (Shakshuka). */
+    val SUPPORTED_ENGINES = setOf("sherpa_offline_transducer")
 
     data class Model(
         val id: String,
@@ -27,19 +36,37 @@ object Catalogue {
         val versionLabel: String?,
         /** CDN manifest (cdn.hebrish.app); preferred over [repo] when set (0.2.2+). */
         val manifestUrl: String? = null,
+        val line: String = "",
+        val engine: String = "sherpa_offline_transducer",
+        val baseModel: String = "",
+        val platforms: List<String> = listOf(PLATFORM),
+        val hardware: String = "",
+        /** Download size in MB from the catalogue; null when not known yet. */
+        val downloadMb: Int? = null,
+        /** 1-5 tiers, estimates (catalogue `tiers`). */
+        val speed: Int = 0,
+        val accuracy: Int = 0,
+        val recommendation: String = "",
+        /** Where a variant this app can't run runs instead. */
+        val runsOn: String = "",
     ) {
+        /** This build can run it. */
+        val supported: Boolean get() = engine in SUPPORTED_ENGINES && PLATFORM in platforms
         /** Listed but not downloadable: "planned" models show as coming soon. */
-        val available: Boolean get() = status == "available" && !(repo.isNullOrEmpty() && manifestUrl.isNullOrEmpty())
+        val available: Boolean get() = supported && status == "available" && !(repo.isNullOrEmpty() && manifestUrl.isNullOrEmpty())
     }
+
+    data class Line(val id: String, val name: String, val summary: String, val card: String?, val variants: List<Model>)
 
     data class Data(
         val catalogueUrl: String?,
         val default: String,
-        /** The model to use when the user hasn't picked one (0.6.0+); [default] is for older builds. */
+        /** The model to use when the user hasn't picked one (0.6.0+). */
         val recommended: String,
         val files: List<String>,
         val versionFile: String,
         val models: List<Model>,
+        val lines: List<Line> = emptyList(),
     )
 
     @Volatile private var cached: Data? = null
@@ -59,7 +86,7 @@ object Catalogue {
     /**
      * The model the keyboard uses: the user's pick if still available. Without a pick, a model
      * already on the phone (recommended first), so a user of an older build that defaulted to
-     * stock keeps a working keyboard; then the recommended model (Jachnun since 0.6.0).
+     * stock keeps a working keyboard; then the recommended model (Sabich since 2026-10-21).
      */
     fun selected(ctx: Context): Model {
         val data = get(ctx)
@@ -70,30 +97,49 @@ object Catalogue {
         return order.firstOrNull { ModelStore.isReady(ctx, model = it) } ?: order.first()
     }
 
+    private fun strings(o: JSONObject, key: String): List<String> =
+        o.optJSONArray(key)?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
+
     /** Null if [s] is not a catalogue this app understands. */
     fun parse(s: String): Data? = runCatching {
         val o = JSONObject(s)
         if (o.getInt("schema") != SCHEMA) return null
-        val files = o.getJSONArray("files").let { a -> (0 until a.length()).map { a.getString(it) } }
-        val arr = o.getJSONArray("models")
-        val models = (0 until arr.length()).map { i ->
-            val m = arr.getJSONObject(i)
-            Model(
-                id = m.getString("id"),
-                name = m.getString("name"),
-                summary = m.optString("summary"),
-                status = m.optString("status", "planned"),
-                repo = m.optString("repo").ifEmpty { null },
-                subdir = m.optString("subdir").trim('/'),
-                card = m.optString("card").ifEmpty { null },
-                versionLabel = m.optString("version_label").ifEmpty { null },
-                manifestUrl = m.optString("manifest_url").ifEmpty { null },
-            )
+        val files = strings(o.getJSONObject("engines").getJSONObject("sherpa_offline_transducer"), "files")
+        val la = o.getJSONArray("lines")
+        val lines = (0 until la.length()).map { i ->
+            val l = la.getJSONObject(i)
+            val va = l.getJSONArray("variants")
+            Line(l.getString("id"), l.getString("name"), l.optString("summary"), l.optString("card").ifEmpty { null },
+                (0 until va.length()).map { j ->
+                    val m = va.getJSONObject(j)
+                    Model(
+                        id = m.getString("id"),
+                        name = m.getString("name"),
+                        summary = m.optString("summary").ifEmpty { l.optString("summary") },
+                        status = m.optString("status", "planned"),
+                        repo = m.optString("repo").ifEmpty { null },
+                        subdir = m.optString("subdir").trim('/'),
+                        card = m.optString("card").ifEmpty { null },
+                        versionLabel = m.optString("version_label").ifEmpty { null },
+                        manifestUrl = m.optString("manifest_url").ifEmpty { null },
+                        line = l.getString("id"),
+                        engine = m.optString("engine", "sherpa_offline_transducer"),
+                        baseModel = m.optString("base_model"),
+                        platforms = strings(m, "platforms"),
+                        hardware = m.optString("hardware"),
+                        downloadMb = if (m.isNull("download_mb")) null else m.optInt("download_mb").takeIf { it > 0 },
+                        speed = m.optInt("speed"),
+                        accuracy = m.optInt("accuracy"),
+                        recommendation = m.optString("recommendation"),
+                        runsOn = m.optString("runs_on"),
+                    )
+                })
         }
-        if (models.none { it.available }) return null
-        val default = o.getString("default")
-        Data(o.optString("catalogue_url").ifEmpty { null }, default, o.optString("recommended").ifEmpty { default }, files,
-            o.optString("version_file", "version.json"), models)
+        val models = lines.flatMap { it.variants }.filter { it.supported }
+        if (models.none { it.available } || files.isEmpty()) return null
+        val recommended = o.optString("recommended").ifEmpty { models.first { it.available }.id }
+        Data(o.optString("catalogue_v2_url").ifEmpty { null }, recommended, recommended, files,
+            o.optString("version_file", "version.json"), models, lines)
     }.getOrNull()
 
     /**
