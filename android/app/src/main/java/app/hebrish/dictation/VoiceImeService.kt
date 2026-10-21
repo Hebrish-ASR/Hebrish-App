@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
+import android.text.InputType
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
@@ -76,11 +77,31 @@ class VoiceImeService : InputMethodService() {
         return v
     }
 
+    /**
+     * Password fields (0.8.0) are never recorded for or typed into, as with the floating mic
+     * (FloatingMicService skips isPassword nodes): no auto-start, the mic does nothing, commits fail.
+     */
+    private var passwordField = false
+
+    private fun isPassword(info: EditorInfo?): Boolean {
+        val t = info?.inputType ?: return false
+        val variation = t and InputType.TYPE_MASK_VARIATION
+        return when (t and InputType.TYPE_MASK_CLASS) {
+            InputType.TYPE_CLASS_TEXT -> variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+                variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
+                variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD
+            InputType.TYPE_CLASS_NUMBER -> variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            else -> false
+        }
+    }
+
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        passwordField = isPassword(info)
         if (restarting) return
         switchWhenDone = false
         when {
+            passwordField -> show(getString(R.string.ime_password), busy = false)
             !ModelStore.isReady(this) -> show(getString(R.string.ime_no_model), busy = false)
             !hasMic() -> show(getString(R.string.ime_no_permission), busy = false)
             Prefs.autoStart(this) -> startRecording()
@@ -129,6 +150,7 @@ class VoiceImeService : InputMethodService() {
     private fun preload() = Transcriber.preload(this)
 
     private fun startRecording(cue: Feedback.Cue = Feedback.Cue.START) {
+        if (passwordField) return show(getString(R.string.ime_password), busy = false)
         preload()
         takeText.setLength(0)
         val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { commitPart(text) } } else null)
@@ -273,6 +295,7 @@ class VoiceImeService : InputMethodService() {
      * when there is no live text field: commitText returns false on a dead connection.
      */
     private fun commit(text: String): Boolean {
+        if (passwordField) return false
         val ic = currentInputConnection ?: return false
         val before = ic.getTextBeforeCursor(1, 0)
         val sep = if (!before.isNullOrEmpty() && !before[0].isWhitespace()) " " else ""

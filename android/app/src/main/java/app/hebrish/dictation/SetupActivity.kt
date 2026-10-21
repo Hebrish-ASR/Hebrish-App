@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.os.Environment
 import android.provider.Settings
 import android.util.TypedValue
 import android.view.View
@@ -19,8 +18,8 @@ import android.widget.TextView
  * system page. The same steps, with the same ids, are on hebrish.app/setup (`#step-<id>`).
  *
  * Counted as required: microphone, a model, a way to dictate (the voice keyboard or the floating
- * mic), battery unrestricted, and not pausing the app when unused. The floating mic and all-files
- * access are optional. [Checklist] does the counting, so home can show "3 of 5 done".
+ * mic), battery unrestricted, and not pausing the app when unused. The floating mic is optional
+ * (the all-files step `files` went with the custom model location in 0.8.0). [Checklist] does the counting, so home can show "3 of 5 done".
  */
 class SetupActivity : Page() {
     private val steps = mutableListOf<Step>()
@@ -62,12 +61,6 @@ class SetupActivity : Page() {
                     runCatching {
                         startActivity(Intent(Intent.ACTION_AUTO_REVOKE_PERMISSIONS, Uri.parse("package:$packageName")))
                     }.onFailure { appInfo() }
-                }
-            }
-            // Optional, and not in the Play build, which has no all-files access ([Channel]).
-            if (Channel.sharedFolder) step("files", R.string.setup_files_title, R.string.setup_files, { Environment.isExternalStorageManager() }) { r ->
-                button(R.string.setup_files_button, r) {
-                    startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:$packageName")))
                 }
             }
         }
@@ -136,7 +129,7 @@ class SetupActivity : Page() {
 
 /** What counts towards "set up": shared by the checklist and the home screen. */
 object Checklist {
-    val OPTIONAL = setOf("floating", "files")
+    val OPTIONAL = setOf("floating")
 
     /** (done, required) over: mic, model, keyboard or floating mic, battery, not paused when unused. */
     fun progress(ctx: android.content.Context): Pair<Int, Int> {

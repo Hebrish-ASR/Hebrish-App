@@ -1,16 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Google Play build only (0.8.0). Play allows all-files access only for file managers, backup,
-     antivirus and similar, and a battery-optimisation exemption only for messaging, safety and
-     automation apps, so this build has neither: models stay in app storage (no shared folder) and
-     the battery step opens the system list instead. Hebrish-App-Planning google-play.md §6, §7. -->
+<!-- Google Play build only (0.8.0). Play allows a battery-optimisation exemption only for
+     messaging, safety and automation apps, so this build doesn't ask for one: the battery step
+     opens the system list instead. Hebrish-App-Planning google-play.md §7. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:node="remove" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" tools:node="remove" />
-
-    <application
-        android:requestLegacyExternalStorage="false"
-        tools:replace="android:requestLegacyExternalStorage" />
 </manifest>

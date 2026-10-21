@@ -17,7 +17,6 @@
 
     <string name="manage_confirm">Delete %1$s from this phone? You can download it again later.</string>
     <string name="delete">Delete</string>
-    <string name="model_moving">Moving model… %1$d / %2$d MB</string>
     <string name="model_failed">Download failed: %1$s. Tap Download to resume.</string>
     <string name="download">Download</string>
     <string name="model_downloading_version">Downloading %1$s… %2$d / %3$d MB</string>
@@ -27,13 +26,6 @@
     <string name="update_button">Update to %1$s</string>
     <string name="update_check_failed">Couldn\'t check for updates: %1$s</string>
     <string name="cancel">Cancel</string>
-    <string name="location_title">Model location</string>
-    <string name="location_private">Default: app storage (private to this app).\n%1$s</string>
-    <string name="location_shared">%1$s\nStandard sherpa-onnx int8 files: other apps with file access can load them from here.</string>
-    <string name="location_unusable">Can\'t use that folder. Pick a folder on internal storage or an SD card.</string>
-    <string name="choose_location">Choose folder</string>
-    <string name="reset_location">Back to the default</string>
-    <string name="reset_location_confirm">Move the models back to app storage? They are copied back first; the copies in the shared folder stay there for other apps.</string>
 
     <string name="step_mic">Microphone</string>
     <string name="mic_ok">Granted.</string>
@@ -74,6 +66,7 @@
     <string name="ime_discarded">Take discarded. Tap the mic to speak.</string>
     <string name="ime_switch_after">Inserting, then switching back…</string>
     <string name="ime_not_inserted">No text field to type into. Tap a field, then Insert last.</string>
+    <string name="ime_password">Password field: Hebrish doesn\'t dictate passwords. Switch to your regular keyboard.</string>
     <string name="ime_no_field">Tap a text field first, then Insert last.</string>
     <string name="pause">Pause</string>
     <string name="resume">Resume</string>
@@ -376,9 +369,6 @@
     <string name="setup_unused_title">Turn off \"Pause app activity if unused\"</string>
     <string name="setup_unused">Otherwise Android takes the microphone permission away if you don\'t open the app for a few months. On the page that opens, switch it off.</string>
     <string name="setup_unused_button">Open the setting</string>
-    <string name="setup_files_title">All files access</string>
-    <string name="setup_files">Only if you want the models in a shared folder (Models → Model location) so other speech apps can use the same files. Not needed otherwise.</string>
-    <string name="setup_files_button">Allow all files access</string>
     <string name="setup_try_title">Try it</string>
     <string name="setup_try">Tap, talk, tap again. No keyboard setup needed for this.</string>
     <string name="setup_guide_button">Guide with pictures</string>

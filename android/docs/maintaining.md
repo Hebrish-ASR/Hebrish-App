@@ -120,9 +120,21 @@ on the device). If 0.2.0 still doesn't appear, run `adb shell ime list -a` to se
 the system parsed the service at all, then try adding a second subtype with
 `imeSubtypeMode="keyboard"`.
 
-## Model location
+## Model location (retired in 0.8.0, 2026-10-21)
 
-`Prefs.modelRoot` is null (app storage, `filesDir/models/<id>/<version>`) or an absolute path
+**Retired** (Daniel, 2026-10-21: "retire the custom model storage location feature … eke our way
+towards compliance"). Google Play allows all-files access only for file managers, backup and
+similar apps, and the feature needed it, so it went from both builds, not just `play`. Removed:
+`MANAGE_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, `requestLegacyExternalStorage`, the Models
+screen's location section, and setup step `files`. Models live only in `filesDir/models/<id>/<version>`.
+Migration: `MainActivity.retireModelLocation` calls `ModelDownload.relocate(ctx, null)` when
+`model_root` is still set. It copies what is still readable, or, when nothing is (Android revokes
+all-files access once the update drops the permission, I), just switches, and the models
+download again. The root support in `core` (`ModelPrefs.modelRoot`, `ModelStore.base(root)`,
+`relocate`) stays, because Hebrish Keyboard compiles the same sources (it pins `core` at 0.5.0 today).
+Until a user opens the app after updating, the IME and the floating mic report the model as missing.
+
+How it worked, for the record: `Prefs.modelRoot` was null (app storage, `filesDir/models/<id>/<version>`) or an absolute path
 the user picked; each model then lives in `<root>/<repo name>/<version>`. `pruneOld` only clears
 that dedicated subfolder, never the user's folder. The picker is `ACTION_OPEN_DOCUMENT_TREE`;
 its tree URI is turned into a path (`primary:X` → `/storage/emulated/0/X`, `<uuid>:X` →
@@ -173,6 +185,11 @@ Every candidate is checked against `enabledInputMethodList` first, so a keyboard
 uninstalled or disabled is skipped instead of throwing.
 
 ## Takes and insertion (0.4.0)
+
+Password fields (0.8.0): `VoiceImeService` treats text `PASSWORD` / `VISIBLE_PASSWORD` /
+`WEB_PASSWORD` and number `PASSWORD` variations as off limits. It doesn't auto-start, the mic
+shows `ime_password`, and `commit` refuses. Before 0.8.0 only the floating mic skipped password
+fields (found while writing hebrish.app/privacy, 2026-10-21).
 
 - While a take is open, a row shows **Pause / Restart / Discard**. Pause stops `AudioRecord`
   and frees the mic, so the privacy indicator goes off, and keeps the samples. Resume appends
@@ -536,15 +553,15 @@ What `play` drops, and why (Play policy, plan §5 to §7):
 
 | Removed in `play` | Where | UI effect ([Channel]) |
 | --- | --- | --- |
-| `MANAGE_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, `requestLegacyExternalStorage` | `src/play/AndroidManifest.xml` (`tools:node="remove"`) | Models → no "Choose location"; setup step `files` hidden. Models stay in `filesDir/models` |
-| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | same | Battery buttons open `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` (the list), label and text from `src/play/res/values/strings.xml` |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | `src/play/AndroidManifest.xml` (`tools:node="remove"`) | Battery buttons open `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` (the list), label and text from `src/play/res/values/strings.xml` |
 | `flagRequestFilterKeyEvents`, `canRequestFilterKeyEvents` | `src/play/res/xml/floating_mic.xml` (keep its other attributes identical to main) | Controls → no Learn/Clear per action; intents only |
 | Install screen (F-Droid repo) | code only | Hidden from home and the side menu (Play doesn't allow pointing users at another store) |
 
-Verified 2026-10-21 by building both flavors (JDK 21) and dumping them with `aapt2`:
-`play` has only `INTERNET`, `MODIFY_AUDIO_SETTINGS`, `RECORD_AUDIO`, `VIBRATE`,
-`requestLegacyExternalStorage=false`, and `accessibilityFlags=0x42` (no key filter). `fdroid` keeps
-all seven permissions and `0x62`. `bundlePlayRelease` builds a 12.8 MB AAB.
+All-files access was first dropped from `play` only, then retired from both builds the same day
+("Model location"). Verified 2026-10-21 by building both flavors (JDK 21) and dumping them with
+`aapt2`: `play` has only `INTERNET`, `MODIFY_AUDIO_SETTINGS`, `RECORD_AUDIO`, `VIBRATE`, and
+`accessibilityFlags=0x42` (no key filter). `fdroid` has those plus `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`,
+and `0x62`. `bundlePlayRelease` builds a 12.8 MB AAB.
 
 **Floating mic disclosure** (both flavors): `FloatingMicConsentActivity`. Play requires an in-app
 disclosure plus an explicit accept before the user turns on an accessibility service that isn't an
@@ -565,7 +582,10 @@ already enforced at 35 and no screen opts out. The IME's `KEYCODE_BACK` handling
 
 - Channels / targetSdk 36 on a device: the disclosure (decline leaves settings closed, accept
   opens them and isn't shown again), Back closing the side menu on Android 13+, the IME's Back
-  ("switch keyboard") on Android 16, the play build's battery list and missing location button.
+  ("switch keyboard") on Android 16, the play build's battery list; an install with a shared model
+  folder updating to 0.8.0 (copied back, or re-downloaded?); the keyboard in a password field
+  (message shown, no auto-start, mic does nothing).
+
 
 - 0.7.2 on a device: the bar order on both edges, the chip's width with a long headset name,
   switching Bluetooth ↔ internal mid-take (does the SCO link come up fast enough that the first

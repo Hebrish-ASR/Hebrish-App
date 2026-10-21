@@ -1,14 +1,8 @@
 package app.hebrish.dictation
 
 import app.hebrish.core.*
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
-import android.os.Environment
-import android.provider.DocumentsContract
-import android.provider.Settings
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -18,11 +12,11 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
-import java.io.File
 
 /**
  * Models: download any model whether or not it is the one in use, all of them with one button,
- * choose which one the keyboard and floating mic use, update, delete, and where they are kept.
+ * choose which one the keyboard and floating mic use, update and delete. Models live in app
+ * storage only: the custom location (shared folder, all-files access) was retired in 0.8.0.
  * Downloads run one at a time; the rest wait in ModelDownload's queue.
  */
 class ModelsActivity : Page() {
@@ -30,10 +24,6 @@ class ModelsActivity : Page() {
     private lateinit var list: LinearLayout
     private lateinit var checkStatus: TextView
     private lateinit var checkBtn: Button
-    private lateinit var locationStatus: TextView
-    private lateinit var resetLocationBtn: Button
-    /** Set while the user is away granting storage access, so the folder picker opens on return. */
-    private var pickAfterGrant = false
 
     override fun build() {
         text(R.string.models_intro)
@@ -47,20 +37,11 @@ class ModelsActivity : Page() {
         heading(R.string.models_updates)
         checkStatus = text()
         checkBtn = button(R.string.check_update) { ModelDownload.check(this, force = true) }
-
-        heading(R.string.location_title)
-        locationStatus = text()
-        val r = row()
-        // The Play build has no all-files access, so models stay in app storage there ([Channel]).
-        if (Channel.sharedFolder) button(R.string.choose_location, r) { chooseLocation() }
-        resetLocationBtn = button(R.string.reset_location, r) { confirmReset() }
     }
 
     override fun onResume() {
         super.onResume()
         ModelDownload.listener = { render() }
-        if (pickAfterGrant && hasStorageAccess()) openFolderPicker()
-        pickAfterGrant = false
         ModelDownload.check(this)
         render()
     }
@@ -106,23 +87,6 @@ class ModelsActivity : Page() {
             else -> getString(R.string.models_updates_hint)
         }
 
-        // The current location is always shown, default included (Daniel, 2026-10-20).
-        val root = ModelPrefs.modelRoot(this)
-        locationStatus.text = when {
-            running && ModelDownload.moving -> getString(R.string.model_moving, mb((s as ModelDownload.Status.Running).done), mb(s.total))
-            root == null -> getString(R.string.location_private, File(filesDir, "models").path)
-            else -> getString(R.string.location_shared, root)
-        }
-        resetLocationBtn.visibility = if (root == null) View.GONE else View.VISIBLE
-    }
-
-    /** Back to app storage: the models are copied back there first, then used from there. */
-    private fun confirmReset() {
-        android.app.AlertDialog.Builder(this)
-            .setMessage(R.string.reset_location_confirm)
-            .setPositiveButton(R.string.reset_location) { _, _ -> ModelDownload.relocate(this, null); render() }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
     }
 
     /** The line's mark: Jachnun and Sabich have one (Hebrish-Mgmt/brand/logo); the others get the app's. */
@@ -285,54 +249,5 @@ class ModelsActivity : Page() {
             .setPositiveButton(R.string.delete) { _, _ -> ModelStore.delete(this, m); render() }
             .setNegativeButton(R.string.cancel, null)
             .show()
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        if (requestCode == REQ_STORAGE && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) openFolderPicker()
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != REQ_FOLDER || resultCode != RESULT_OK) return
-        val path = data?.data?.let(::treeToPath)
-        val dir = path?.let { File(it, ModelStore.sharedFolder(Catalogue.selected(this))) }
-        if (dir == null || !(dir.isDirectory || dir.mkdirs()) || !dir.canWrite()) {
-            locationStatus.text = getString(R.string.location_unusable)
-            return
-        }
-        ModelDownload.relocate(this, path)
-        render()
-    }
-
-    /** Shared storage needs a real file path (sherpa-onnx opens files by path), hence all-files access. */
-    private fun chooseLocation() {
-        if (hasStorageAccess()) return openFolderPicker()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            pickAfterGrant = true
-            startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:$packageName")))
-        } else {
-            requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), REQ_STORAGE)
-        }
-    }
-
-    private fun hasStorageAccess() =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) Environment.isExternalStorageManager()
-        else checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-
-    private fun openFolderPicker() = startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), REQ_FOLDER)
-
-    /** "primary:Models" -> /storage/emulated/0/Models; "1234-ABCD:x" -> /storage/1234-ABCD/x (SD card). */
-    private fun treeToPath(uri: Uri): String? {
-        if (uri.authority != "com.android.externalstorage.documents") return null
-        val id = DocumentsContract.getTreeDocumentId(uri)
-        val volume = id.substringBefore(':')
-        val rel = id.substringAfter(':', "")
-        val root = if (volume == "primary") Environment.getExternalStorageDirectory().path else "/storage/$volume"
-        return if (rel.isEmpty()) root else "$root/$rel"
-    }
-
-    private companion object {
-        const val REQ_STORAGE = 2
-        const val REQ_FOLDER = 3
     }
 }
