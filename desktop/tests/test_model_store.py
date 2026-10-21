@@ -220,3 +220,24 @@ def test_custom_model_folder(tmp_path):
         assert not d.exists()
     finally:
         ms.set_root(config.MODELS_DIR)
+
+
+def test_one_version_per_model_by_default():
+    """0.5.1 (Daniel, 2026-10-21): an update replaces the old version, and old versions kept by
+    earlier releases are cleared at start (prune_all), the active one always kept."""
+    old = install(manifest(sha="1" * 40, version="v3"))
+    m = manifest(sha="2" * 40, version="v4", encoder_oid="9" * 64)
+    d = install(m)
+    (d / "manifest.json").unlink()
+    ms.download(m)                                        # default: replace
+    assert not old.exists() and ms.active()[0] == d
+    older = install(manifest(sha="3" * 40, version="v2", encoder_oid="8" * 64))
+    ms.set_active(d.name)
+    assert ms.prune_all() > 0
+    assert not older.exists() and d.exists()
+
+
+def test_upgrade_drops_keep_old_versions_and_turns_on_auto_update():
+    from hebrish.config import upgrade
+    out = upgrade({"feedback": "beeps", "keep_old_versions": True, "auto_update": False})
+    assert out == {"feedback": "beeps", "auto_update": True}

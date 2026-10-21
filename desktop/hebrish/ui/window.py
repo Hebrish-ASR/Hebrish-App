@@ -442,7 +442,8 @@ class MainWindow(QMainWindow):
     def _model_page(self):
         """One row per catalogue model, each with its own Download / Use / Delete, so a model can
         be downloaded without switching to it (0.5.0; before, a combo box picked the model and
-        the one Download button acted on it). Then updates, versions and the storage folder."""
+        the one Download button acted on it). Then updates and the storage folder. One version per
+        model since 0.5.1: an update replaces the old version, so there is no versions list."""
         page = QWidget()
         lay = QVBoxLayout(page)
         lay.setContentsMargins(16, 14, 16, 14)
@@ -472,21 +473,6 @@ class MainWindow(QMainWindow):
         for w in (self.btn_check, self.btn_update, self.btn_cancel):
             row.addWidget(w)
         row.addStretch(1)
-        b.addLayout(row)
-        lay.addWidget(box)
-
-        box, b = card("Installed versions of the model in use")
-        b.addWidget(muted("Kept versions stay on disk so you can switch back. "
-                          "Turn off “Keep previous versions” in Settings to save space."))
-        row = QHBoxLayout()
-        self.versions = QComboBox()
-        row.addWidget(self.versions, 1)
-        use = QPushButton("Use")
-        use.clicked.connect(self._use_version)
-        delete = QPushButton("Delete")
-        delete.clicked.connect(self._delete_version)
-        row.addWidget(use)
-        row.addWidget(delete)
         b.addLayout(row)
         lay.addWidget(box)
 
@@ -586,23 +572,6 @@ class MainWindow(QMainWindow):
             model_store.remove_model(mid)
             self.update_model()
 
-    def _use_version(self):
-        name = self.versions.currentData()
-        if name:
-            model_store.set_active(name)
-            self.ctl.load_model()
-
-    def _delete_version(self):
-        name = self.versions.currentData()
-        cur = model_store.active()
-        if not name:
-            return
-        if cur and cur[0].name == name:
-            self.banner("That's the version in use. Switch to another one first.")
-            return
-        model_store.remove(name)
-        self.update_model()
-
     def _change_store(self):
         start = str(model_store.ROOT if model_store.ROOT.exists() else Path.home())
         path = QFileDialog.getExistingDirectory(self, "Folder for the model weights", start)
@@ -686,18 +655,13 @@ class MainWindow(QMainWindow):
         self.btn_update.setText(f"Update to {ctl.latest.version}" if ctl.latest else "Update")
         self.btn_cancel.setVisible(ctl.downloading is not None)
         self.btn_check.setEnabled(not busy)
-        self.versions.clear()
-        for d, m in model_store.installed():
-            self.versions.addItem(m.label + ("  ✓ in use" if cur and d == cur[0] else ""), d.name)
-        if cur:
-            self.versions.setCurrentIndex(self.versions.findData(cur[0].name))
 
         custom = model_store.ROOT.resolve() != MODELS_DIR.resolve()
         self.store_label.setText(
             f"<b>{model_store.ROOT}</b><br><small>"
             + ("A folder you chose. " if custom else "The default folder. ")
             + "Each model is a subfolder (codeswitch = Jachnun, sabich = Sabich, stock = "
-            "Parakeet), one folder per version inside it.</small>")
+            "Parakeet), with the version in use inside it.</small>")
         self.btn_store_default.setVisible(custom)
 
     def progress(self, frac: float, text: str):
@@ -835,8 +799,9 @@ class MainWindow(QMainWindow):
         spin.valueChanged.connect(lambda v: self.cfg.set("update_check_hours", v))
         form.addRow("Check every", spin)
         b.addLayout(form)
-        b.addWidget(self._check("auto_update", "Install new versions automatically"))
-        b.addWidget(self._check("keep_old_versions", "Keep previous versions (to switch back)"))
+        b.addWidget(self._check("auto_update", "Install new model versions automatically"))
+        b.addWidget(muted("A new version replaces the old one: the old version is deleted once the "
+                          "new one has downloaded and checked out, so each model is on disk once."))
         lay.addWidget(box)
 
         box, b = card("System")

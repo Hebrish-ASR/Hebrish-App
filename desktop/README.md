@@ -71,7 +71,7 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
   - **Where the models are stored** shows the folder (the default, or one you chose with
     *Change folder…*; the app offers to move the downloaded models there) and opens it.
   - It checks the selected model for new versions on a schedule, and installs them
-    automatically or after you confirm. It can keep previous versions so you can switch back.
+    automatically (the default since 0.5.1) or after you confirm. A new version replaces the old one, which is deleted once the new one has verified, so each model is on disk once.
 - **About tab:** versions, the main links, the models, and Jachnun's benchmarks and training data.
 - **Hebrish links:** [hebrish.app](https://hebrish.app), the code-switching model's website,
   email to feedback@hebrish.app (report a bug, request a feature, send feedback; your mail

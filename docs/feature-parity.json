@@ -4,8 +4,8 @@
  "commit": "4425f94",
  "released": {
   "android": "0.6.0",
-  "ubuntu": "0.3.0",
-  "windows": "0.3.0"
+  "ubuntu": "0.5.1",
+  "windows": "0.5.1"
  },
  "features": [
   {
@@ -543,17 +543,16 @@
     "evidence": "android/core/src/main/java/app/hebrish/core/ModelDownload.kt:123"
    },
    "ubuntu": {
-    "status": "present",
-    "since": "0.2.0",
-    "evidence": "desktop/hebrish/config.py keep_old_versions"
+    "status": "n/a",
+    "since": "",
+    "evidence": "removed in 0.5.1, desktop/docs/maintaining.md"
    },
    "windows": {
-    "status": "present",
-    "since": "0.2.0",
-    "evidence": "desktop/hebrish/config.py keep_old_versions",
-    "verified": false
+    "status": "n/a",
+    "since": "",
+    "evidence": "removed in 0.5.1, desktop/docs/maintaining.md"
    },
-   "notes": ""
+   "notes": "Removed on desktop in 0.5.1 (Daniel, 2026-10-21): now the same as Android."
   },
   {
    "id": "pause-retake-discard",
@@ -772,6 +771,28 @@
     "verified": false
    },
    "notes": ""
+  },
+  {
+   "id": "one-model-version",
+   "group": "model-catalogue-and-updates",
+   "name": "One version per model: an update replaces the old one",
+   "android": {
+    "status": "present",
+    "since": "0.1.0",
+    "evidence": "android/core/src/main/java/app/hebrish/core/ModelDownload.kt:123 (pruneOld)"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.5.1",
+    "evidence": "desktop/hebrish/model_store.py prune_all, download(keep_old=False)"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.5.1",
+    "evidence": "shared desktop code",
+    "verified": false
+   },
+   "notes": "Desktop kept old versions up to 0.5.0."
   }
  ],
  "engine_rules": [
@@ -841,10 +862,7 @@
  ],
  "unreleased": {
   "android": [],
-  "desktop": [
-   "0.4.0 (never tagged): action keys, insert as you go, pause-cut long takes, beep volume, quiet hours",
-   "0.5.0: everything in desktop/docs/maintaining.md, '0.5.0'"
-  ]
+  "desktop": []
  },
  "twin_lag": {
   "parlance_behind_hebrish": 9,

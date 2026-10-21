@@ -454,3 +454,22 @@ ones (`Hebrish/Jachnun-ONNX` has fp32). (I) At 13× real time on a mid laptop CP
 save well under a second per take; it matters more on old 2-4 core laptops, which are not
 measured yet (the Diagnostics tab is how to find out).
 
+## One model version on disk (0.5.1, 2026-10-21)
+
+Daniel: "I don't think we'll want to hold previous old versions of the model … when there's a
+new version … we get that and we delete the older ones in the user storage." So:
+
+- `model_store.download(keep_old=False)` is the default and the app always passes False: the
+  previous versions of that model go once the new one's `manifest.json` is written (same
+  `prune_except` as before, so other models are never touched).
+- `model_store.prune_all()` runs once per start (`Controller.__init__`, after `load_model`) and
+  keeps only each model's active version, clearing what 0.5.0 and earlier kept (daniellaptop had
+  four Jachnun folders: v1.0, v5 and two v4 on 2026-10-21).
+- `auto_update` is on by default. `config.upgrade()` treats a stored `keep_old_versions` as a
+  pre-0.5.1 config: drops it and sets `auto_update` true once. The setting stays in Settings →
+  Model updates; off means a notification and an Update button on the Models tab.
+- Removed: the "Installed versions" card (Use / Delete per version) and the "Keep previous
+  versions" checkbox. Rolling back to an older model version is no longer possible from the app;
+  older versions stay on the CDN (`models/<model>/<version>/`) and on Hugging Face.
+- Tests: `test_one_version_per_model_by_default`, `test_upgrade_drops_keep_old_versions_and_turns_on_auto_update`.
+

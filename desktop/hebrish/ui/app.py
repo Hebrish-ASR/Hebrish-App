@@ -123,6 +123,12 @@ class Controller(QObject):
             QTimer.singleShot(15_000, lambda: self._close_splash(show=True))   # if loading hangs
         self.load_model()
         self._overlay_push()
+        try:
+            freed = model_store.prune_all()       # older versions kept by 0.5.0 and earlier
+            if freed:
+                log.info("deleted old model versions: %d MB", freed >> 20)
+        except OSError:
+            log.exception("pruning old model versions failed")
         QTimer.singleShot(10_000, self._first_check)
         self._timer = QTimer(self, interval=600_000, timeout=self._periodic_check)
         self._timer.start()
@@ -439,7 +445,7 @@ class Controller(QObject):
 
         def work():
             try:
-                model_store.download(manifest, progress, cancel, keep_old=self.cfg["keep_old_versions"])
+                model_store.download(manifest, progress, cancel, keep_old=False)
                 self.sig.downloaded.emit(manifest, None)
             except Exception as e:
                 self.sig.downloaded.emit(manifest, e)

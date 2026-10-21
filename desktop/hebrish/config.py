@@ -62,8 +62,9 @@ DEFAULTS = {
     "keep_history": False,        # keep a History tab of transcripts, saved across restarts
     "models_dir": "",             # where model weights live; "" = DATA_DIR/models
     "update_check_hours": 24,     # 0 = never check automatically
-    "auto_update": False,         # download a new version without asking
-    "keep_old_versions": True,    # False = delete the previous model once the new one verifies
+    "auto_update": True,          # download a new model version without asking (0.5.1: default on)
+    # Old model versions are always deleted once the new one verifies (0.5.1, Daniel,
+    # 2026-10-21); up to 0.5.0 `keep_old_versions` kept them, default on.
 }
 
 
@@ -158,6 +159,10 @@ def upgrade(stored: dict) -> dict:
     # 0.5.0 (Daniel, 2026-10-21): insert as you go every ~10 s and no history by default, and
     # `beeps` (bool) became `feedback`. A config without `feedback` predates that: give it the
     # new defaults once, so they reach existing installs too.
+    # 0.5.1: no more old model versions on disk, and updates install by themselves. A config
+    # that still has `keep_old_versions` predates that: switch auto_update on once.
+    if stored.pop("keep_old_versions", None) is not None:
+        stored["auto_update"] = True
     if stored and "feedback" not in stored:
         stored["feedback"] = "beeps" if stored.pop("beeps", True) else "off"
         if not stored.get("live_insert_s"):
@@ -211,7 +216,7 @@ class Config(dict):
     def __init__(self):
         super().__init__(DEFAULTS)
         stored = load_json(CONFIG_PATH)
-        old = "mode" in stored or ("feedback" not in stored and bool(stored))
+        old = "mode" in stored or "keep_old_versions" in stored or ("feedback" not in stored and bool(stored))
         self.update({k: v for k, v in upgrade(stored).items() if k in DEFAULTS})
         if old or not CONFIG_PATH.exists():
             self.save()

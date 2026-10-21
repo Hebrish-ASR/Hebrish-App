@@ -316,6 +316,19 @@ def prune_except(keep: str, mid: str | None = None):
                 shutil.rmtree(d, ignore_errors=True)
 
 
+def prune_all():
+    """Keep only the active version of every installed model (0.5.1: one version per model;
+    run once at start to clear what earlier versions kept). Returns the bytes freed."""
+    freed = 0
+    for mid in installed_ids():
+        cur = active(mid)
+        before = disk_usage(mid)
+        if cur:
+            prune_except(cur[0].name, mid)
+        freed += before - disk_usage(mid)
+    return freed
+
+
 def disk_usage(mid: str) -> int:
     base = model_dir(mid)
     return sum(f.stat().st_size for f in base.rglob("*") if f.is_file()) if base.is_dir() else 0
@@ -339,7 +352,7 @@ def _sha256(path: Path, cancel: threading.Event | None) -> str:
 
 
 def download(m: Manifest, on_progress=None, cancel: threading.Event | None = None,
-             keep_old: bool = True) -> Path:
+             keep_old: bool = False) -> Path:
     """Fetch every file pinned to m.revision, verify, then activate.
 
     `.part` files resume on the next attempt. The previous version stays usable until
