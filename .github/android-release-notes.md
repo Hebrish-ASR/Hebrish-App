@@ -1,6 +1,7 @@
-**0.7.1: steadier recording and transcription.**
+**0.7.2: a tidier floating mic bar.**
 
-- If the microphone disappears mid-take (a Bluetooth headset switched off), Hebrish now stops and transcribes what it heard. Before, the take kept running with no audio and used the CPU flat out until you pressed Stop.
-- If the microphone can't be opened (another app holds it), Resume now reports it each time, instead of appearing to record nothing.
-- Fixed a possible crash when the model changed while a take was being transcribed.
+- The bar now has the buttons on the left (Pause, Retake, Discard) and the timer on the right, on either side of the screen.
+- Retake and Discard have their own coloured backgrounds, so they are easy to see and tap.
+- The microphone in use is a short chip: "BT" and the headset's name (shortened), or "Internal" for the phone's mic. A long headset name no longer stretches the bar.
+- Tap the chip to switch between Bluetooth and the phone's mic, also in the middle of a take. The choice is kept for the next takes (Controls shows it too).
 - Not yet tested on a device. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).

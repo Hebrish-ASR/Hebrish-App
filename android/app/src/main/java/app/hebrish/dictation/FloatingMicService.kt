@@ -64,7 +64,7 @@ import android.widget.Toast
  *
  * Feedback and control (0.6.0): while recording the mic pulses, and each start / stop / retake /
  * discard can pip and buzz ([Feedback]). The bar names the microphone in use ([Mic]; Bluetooth
- * first). Broadcast intents and bound hardware keys (a Bluetooth shutter remote, a keyboard)
+ * first) in a chip that switches between Bluetooth and the phone's mic when tapped (0.7.2). Broadcast intents and bound hardware keys (a Bluetooth shutter remote, a keyboard)
  * drive the same actions as the buttons ([Remote], [onKeyEvent]; docs/external-control.md).
  */
 class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPreferenceChangeListener {
@@ -79,6 +79,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private lateinit var spinner: ProgressBar
     private lateinit var timer: TextView
     private lateinit var pauseBtn: ImageButton
+    /** Which mic the take records from ("BT Pixel Bu…", "Internal"); tap to switch. */
+    private lateinit var source: TextView
     /** Shown while a take is open. */
     private lateinit var takeControls: List<View>
     /** Shown while a transcript is waiting for a field ([pending]). */
@@ -266,20 +268,36 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             setPadding(dp(8), 0, dp(4), 0)
             setOnTouchListener(Drag())
         }
-        fun button(drawable: Int, cd: Int, action: () -> Unit) = ImageButton(themed).apply {
+        fun button(drawable: Int, cd: Int, fill: Int? = null, action: () -> Unit) = ImageButton(themed).apply {
             setImageResource(drawable)
             contentDescription = getString(cd)
-            background = null
+            // Retake and Discard get a filled circle (0.7.2), so they are easy to find and hit.
+            background = fill?.let { GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(getColor(it)) } }
             setPadding(dp(10), dp(10), dp(10), dp(10))
             setOnClickListener { action() }
             setOnTouchListener(Drag({ performClick() }))
         }
         pauseBtn = button(R.drawable.ic_pause, R.string.pause) { togglePause() }
+        source = TextView(themed).apply {
+            setTextColor(getColor(R.color.ime_text))
+            textSize = 12f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            maxWidth = dp(SOURCE_MAX_DP)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+            background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(getColor(R.color.ime_key)) }
+            setOnClickListener { switchMic() }
+            setOnTouchListener(Drag({ performClick() }))
+        }
+        // Buttons on the left, timer and mic chip on the right, whichever edge the mic is on
+        // (Daniel, 2026-10-21: "controls to the left and then the timer to the right").
         takeControls = listOf(
-            timer,
             pauseBtn,
-            button(R.drawable.ic_retake, R.string.bubble_retake) { retake() },
-            button(R.drawable.ic_close, R.string.discard) { discard() },
+            button(R.drawable.ic_retake, R.string.bubble_retake, R.color.bubble_retake) { retake() },
+            button(R.drawable.ic_close, R.string.discard, R.color.bubble_discard) { discard() },
+            timer,
+            source,
         )
         val insert = TextView(themed).apply {
             setText(R.string.bubble_insert)
@@ -341,10 +359,13 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         mic.addView(icon, FrameLayout.LayoutParams(inner, inner, Gravity.CENTER))
         mic.addView(spinner, FrameLayout.LayoutParams(inner, inner, Gravity.CENTER))
         r.removeAllViews()
-        val children = listOf<View>(mic) + takeControls + pendingControls
-        for (c in if (left) children else children.reversed()) {
+        // The mic is the child nearest its edge; the bar keeps its own left-to-right order.
+        val bar = takeControls + pendingControls
+        for (c in if (left) listOf<View>(mic) + bar else bar + mic) {
             r.addView(c, if (c === mic) LinearLayout.LayoutParams(size, size) else LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            })
         }
         params.gravity = Gravity.TOP or if (left) Gravity.LEFT else Gravity.RIGHT
         params.x = (if (left) x - pad else w - x - size - pad).coerceAtLeast(0)
@@ -479,7 +500,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         }
         recorder = r
         decoder = d
-        micName = Mic.label(this, r.routedDevice)
+        showSource(r.routedDevice)
         state = State.RECORDING
         shownSeconds = -1
         Feedback.cue(this, cue)
@@ -517,6 +538,37 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         decoder?.cancel()
         decoder = null
         Mic.release(this)
+    }
+
+    private fun showSource(d: android.media.AudioDeviceInfo?) {
+        micName = Mic.shortLabel(this, d)
+        source.text = micName
+        source.contentDescription = getString(R.string.bubble_mic_cd, micName)
+    }
+
+    /**
+     * The source chip was tapped (0.7.2): switch between Bluetooth and the phone's mic in the
+     * middle of the take. The recorder pauses, re-routes and resumes, so the take keeps what it
+     * had; paused, the switch applies on Resume. The choice is saved ([Mic.toggle]).
+     */
+    private fun switchMic() {
+        val r = recorder ?: return
+        if (!open) return
+        if (!Mic.toggle(this, r.routedDevice ?: r.preferredDevice)) return toast(getString(R.string.bubble_no_headset))
+        val wasRecording = state == State.RECORDING
+        if (wasRecording) r.pause()
+        Mic.release(this)
+        Mic.prepare(this, r)
+        if (wasRecording) {
+            try {
+                r.start()
+            } catch (e: Exception) {
+                state = State.PAUSED
+                toast(getString(R.string.ime_mic_error, e.message ?: ""))
+            }
+        }
+        showSource(if (wasRecording && state == State.RECORDING) r.routedDevice else r.preferredDevice)
+        render()
     }
 
     /** Throws the take away and starts a fresh one at once, into the same field. */
@@ -730,8 +782,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         val secs = recorder?.seconds ?: return
         if (secs == shownSeconds && state == State.RECORDING) return
         shownSeconds = secs
-        timer.text = getString(if (state == State.PAUSED) R.string.bubble_paused_time else R.string.bubble_time, secs / 60, secs % 60) +
-            if (micName.isNotEmpty()) " · $micName" else ""
+        timer.text = getString(if (state == State.PAUSED) R.string.bubble_paused_time else R.string.bubble_time, secs / 60, secs % 60)
     }
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
@@ -744,6 +795,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         const val PLACEHOLDER_MAX = 40
         /** How long the retake flash lasts. */
         const val FLASH_MS = 1000L
+        /** Widest the mic source chip gets; [Mic.shortLabel] already cuts long names. */
+        const val SOURCE_MAX_DP = 110
         /** Most nodes [findFocusedEditable] visits per search. */
         const val MAX_NODES = 1500
     }

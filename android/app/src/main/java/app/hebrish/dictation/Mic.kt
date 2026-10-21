@@ -81,7 +81,7 @@ object Mic {
         }
     }
 
-    /** Short name for the status line and the floating mic's bar: "Bluetooth: Pixel Buds", "Phone mic". */
+    /** Name for the keyboard's and Try's status line: "Bluetooth: Pixel Buds", "Phone mic". */
     fun label(ctx: Context, d: AudioDeviceInfo?): String = when {
         d == null || d.type == AudioDeviceInfo.TYPE_BUILTIN_MIC -> ctx.getString(R.string.mic_builtin)
         isBluetooth(d) -> ctx.getString(R.string.mic_bluetooth, d.productName)
@@ -89,6 +89,40 @@ object Mic {
         d.type == AudioDeviceInfo.TYPE_USB_HEADSET || d.type == AudioDeviceInfo.TYPE_USB_DEVICE -> ctx.getString(R.string.mic_usb, d.productName)
         else -> d.productName.toString()
     }
+
+    /**
+     * Compact name for the floating mic's source chip (0.7.2): "BT Pixel Bu…", "Internal". Long
+     * Bluetooth names used to stretch the bar and push Retake and Discard along.
+     */
+    fun shortLabel(ctx: Context, d: AudioDeviceInfo?): String = when {
+        d == null || d.type == AudioDeviceInfo.TYPE_BUILTIN_MIC -> ctx.getString(R.string.mic_internal)
+        isBluetooth(d) -> ctx.getString(R.string.mic_bt_short, clip(d.productName.toString()))
+        d.type == AudioDeviceInfo.TYPE_WIRED_HEADSET -> ctx.getString(R.string.mic_wired_short)
+        else -> ctx.getString(R.string.mic_usb_short, clip(d.productName.toString()))
+    }
+
+    private fun clip(name: String) = if (name.length <= SHORT_NAME) name else name.take(SHORT_NAME - 1).trimEnd() + "…"
+
+    /**
+     * The floating mic's source chip was tapped while [current] records: switch between the
+     * phone's mic and Automatic (Bluetooth first). Saved as Prefs.micChoice, so the next take and
+     * the Controls screen agree. False when there is nothing to switch to (internal is in use and
+     * no headset is connected).
+     */
+    fun toggle(ctx: Context, current: AudioDeviceInfo?): Boolean {
+        val internal = current == null || current.type == AudioDeviceInfo.TYPE_BUILTIN_MIC
+        if (internal) {
+            if (inputs(ctx).none { isBluetooth(it) || it.type in HEADSETS }) return false
+            Prefs.setMicChoice(ctx, AUTO)
+        } else {
+            val phone = inputs(ctx).firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC } ?: return false
+            Prefs.setMicChoice(ctx, key(phone))
+        }
+        return true
+    }
+
+    /** Longest device name [shortLabel] shows before cutting it with "…". */
+    private const val SHORT_NAME = 10
 
     /** AudioDeviceInfo.TYPE_BLE_HEADSET (API 31), spelled out so this compiles against older stubs. */
     private const val TYPE_BLE_HEADSET = 26

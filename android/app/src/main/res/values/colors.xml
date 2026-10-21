@@ -9,4 +9,6 @@
     <color name="bubble_recording">#C62828</color>
     <!-- Retake flash (0.6.0): bar / status line for a second after Retake. Dark amber, so ime_text stays readable. -->
     <color name="bubble_retake">#B26A00</color>
+    <!-- Floating mic bar (0.7.2): Discard's own background, so it stands apart from the bar. Retake uses bubble_retake. -->
+    <color name="bubble_discard">#7A2E2E</color>
 </resources>

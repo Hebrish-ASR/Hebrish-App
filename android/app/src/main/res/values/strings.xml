@@ -295,6 +295,12 @@
     <string name="mic_bluetooth">Bluetooth: %1$s</string>
     <string name="mic_wired">Wired headset</string>
     <string name="mic_usb">USB: %1$s</string>
+    <string name="mic_internal">Internal</string>
+    <string name="mic_bt_short">BT %1$s</string>
+    <string name="mic_wired_short">Wired</string>
+    <string name="mic_usb_short">USB %1$s</string>
+    <string name="bubble_mic_cd">Microphone: %1$s. Tap to switch between Bluetooth and the phone\'s mic.</string>
+    <string name="bubble_no_headset">No Bluetooth or headset mic is connected.</string>
     <string name="controls_sound">Sounds and vibration</string>
     <string name="controls_beeps">Beep when a take starts, stops or restarts</string>
     <string name="controls_beeps_hint">Start: a rising pip. Stop: a falling pip. Retake: a quick double pip. Discard: a low pip.</string>

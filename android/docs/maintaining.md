@@ -307,6 +307,8 @@ Screen `ControlsActivity`. Compiled (V, 2026-10-20); not run on a device (I belo
   undoes it after every take. `Recorder.preferredDevice` (engine, additive) calls
   `AudioRecord.setPreferredDevice`; `Recorder.routedDevice` reports what Android actually used,
   and that label ("Bluetooth: X") is shown next to the timer. Needs `MODIFY_AUDIO_SETTINGS`.
+  Since 0.7.2 the floating mic shows `Mic.shortLabel` in its own chip instead (see below); the
+  keyboard and Try keep `Mic.label`.
 - **External control** (`Remote.kt`): broadcast intents and learned keys; reference for users in
   `docs/external-control.md`.
 
@@ -489,7 +491,37 @@ versions available … with a short recommendation for each … a speed–accura
   on 2026-10-21 by a catalogue change, no APK needed.
 - Compiled, not run on a device.
 
+## Floating mic bar: button order, source chip (0.7.2, 2026-10-21)
+
+Daniel, 2026-10-21: a long Bluetooth name ("Bluetooth: <product name>" after the timer) stretched
+the bar and pushed Retake along; "just say bt and then truncated name and for the phone just call
+it internal"; Retake should have a different background, Retake and exit "should always be easy to
+click"; tapping the name should toggle Bluetooth / internal. Then: "pause and restart ... should be
+to the left and then the timer can be to the right".
+
+- Bar order (`FloatingMicService.addBubble`, `takeControls`): Pause, Retake, Discard, timer, source
+  chip, left to right, **whichever edge the mic is on**. `place()` no longer mirrors the bar for a
+  right-parked mic; only the mic moves to the end nearest its edge (so with the mic on the right,
+  the timer sits next to the mic).
+- Retake has a filled `bubble_retake` circle (the retake-flash amber), Discard a `bubble_discard`
+  (#7A2E2E) circle, 2 dp margins between bar items.
+- Source chip: `Mic.shortLabel` = "BT <name>" (name cut to 10 chars with "…"), "Internal",
+  "Wired", "USB <name>"; the TextView is also capped at `SOURCE_MAX_DP` = 110 dp with end
+  ellipsis. The timer no longer carries the mic name.
+- Tap the chip → `switchMic()` → `Mic.toggle`: from the phone mic to `Mic.AUTO` (Bluetooth first;
+  refuses with a toast if no Bluetooth or headset mic is connected), from anything else to the
+  built-in mic's key. The choice is **saved in `Prefs.micChoice`**, so it holds for later takes
+  and the Controls screen shows it (decision made without asking: a take-only override would
+  silently revert). Mid-take, the recorder pauses, `Mic.release` + `Mic.prepare` re-route, and
+  `Recorder.start()` resumes into the same take (it re-reads `preferredDevice` on each start);
+  paused, the switch applies on Resume.
+- Compiled, not run on a device.
+
 ## Not yet verified (as of 2026-10-20)
+
+- 0.7.2 on a device: the bar order on both edges, the chip's width with a long headset name,
+  switching Bluetooth ↔ internal mid-take (does the SCO link come up fast enough that the first
+  second after the switch isn't lost?).
 
 - 0.7.0 on a device: Sabich-Parakeet-110M download and speed on a phone, the line/variant list, greyed variants, the tiers rendering, a pre-0.7.0
   install keeping its selected model after the switch to catalogue v2.
