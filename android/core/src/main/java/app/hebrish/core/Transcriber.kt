@@ -59,8 +59,9 @@ object Transcriber {
             recognizer = null
             val app = ctx.applicationContext
             val config = OfflineRecognizerConfig(
-                // sherpa-onnx reads the NeMo feature settings (128 mels) from the model metadata.
-                featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80),
+                // From the catalogue (128 for the 0.6B models, 80 for Sabich-Parakeet-110M).
+                // sherpa-onnx also reads it from the NeMo encoder metadata, which wins (desktop check, 2026-10-21).
+                featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = Catalogue.selected(app).featureDim),
                 modelConfig = OfflineModelConfig(
                     transducer = OfflineTransducerModelConfig(
                         encoder = ModelStore.file(app, "encoder.int8.onnx").path,

@@ -38,6 +38,8 @@ object Catalogue {
         val manifestUrl: String? = null,
         val line: String = "",
         val engine: String = "sherpa_offline_transducer",
+        /** Mel features for sherpa-onnx: 128 for the 0.6B models, 80 for Sabich-Parakeet-110M. */
+        val featureDim: Int = 128,
         val baseModel: String = "",
         val platforms: List<String> = listOf(PLATFORM),
         val hardware: String = "",
@@ -124,6 +126,7 @@ object Catalogue {
                         manifestUrl = m.optString("manifest_url").ifEmpty { null },
                         line = l.getString("id"),
                         engine = m.optString("engine", "sherpa_offline_transducer"),
+                        featureDim = m.optInt("feature_dim", 128),
                         baseModel = m.optString("base_model"),
                         platforms = strings(m, "platforms"),
                         hardware = m.optString("hardware"),

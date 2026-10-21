@@ -456,11 +456,15 @@ versions available … with a short recommendation for each … a speed–accura
   card" link, and no buttons. Expected size before download: manifest, else `download_mb`.
 - No "Help me choose" dialog on Android yet (the desktop has one); the recommendation sentences
   and tiers carry it here.
+- `Transcriber` passes the variant's `featureDim` (catalogue `feature_dim`; after 0.7.0, which
+  passed 80 for every model and relied on sherpa-onnx reading the real value from the encoder
+  metadata, verified on desktop 2026-10-21). Sabich-Parakeet-110M (80 mels) became downloadable
+  on 2026-10-21 by a catalogue change, no APK needed.
 - Compiled, not run on a device.
 
 ## Not yet verified (as of 2026-10-20)
 
-- 0.7.0 on a device: the line/variant list, greyed variants, the tiers rendering, a pre-0.7.0
+- 0.7.0 on a device: Sabich-Parakeet-110M download and speed on a phone, the line/variant list, greyed variants, the tiers rendering, a pre-0.7.0
   install keeping its selected model after the switch to catalogue v2.
 
 - 0.4.0 on a device: the floating mic in ChatGPT and other Compose apps, segment cuts and joins, the trim on quiet speakers, the Stop-to-text time,
