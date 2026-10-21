@@ -619,7 +619,8 @@ class MainWindow(QMainWindow):
         self.models_intro.setText(
             (f"<b>{rec.name}</b> is the recommended model. " if rec else "")
             + "Each model is about 660 MB, downloads once and then works offline. "
-            "The one you dictate with is outlined in green; switch any time.")
+            "The one you dictate with is outlined in green. Not getting good results with one? "
+            "Try the other.")
         for m in cat:
             r, inst = self.model_rows[m.id], model_store.active(m.id)
             in_use = m.id == sel.id
