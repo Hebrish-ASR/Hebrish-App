@@ -86,8 +86,9 @@ Shape (abridged; `_comment` in the file is the field reference):
   `chunk_ms`) that the apps ignore. A variant whose engine no app has needs an app release that
   adds it (phase 2): Shakshuka (`sherpa_online_transducer`, published and `available`, 560 ms
   chunks, 128 mels), Sabich-Qwen3-ASR-1.7B (`qwen3_asr`), Sabich-Canary-Qwen-2.5B (`nemo_salm`),
-  Sabich-asr4all-S/-M (`asr4all`; `planned` until `huggingface.co/Hebrish/Sabich-asr4all-S` returns
-  200, which it did not on 2026-10-21; Canary likewise).
+  Sabich-asr4all-S/-M (`asr4all`). Canary-Qwen and asr4all were flipped to `available` on
+  2026-10-21 once their HF pages returned 200 (gated, by access request); still not downloadable
+  in the apps.
 
 ## The catalogue (schema 1, builds up to Android 0.6.0 / desktop 0.5.2)
 

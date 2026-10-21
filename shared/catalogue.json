@@ -123,7 +123,7 @@
           "base_model": "nvidia/canary-qwen-2.5b",
           "size_label": "2.5B",
           "engine": "nemo_salm",
-          "status": "planned",
+          "status": "available",
           "platforms": [
             "linux",
             "windows"
@@ -190,7 +190,7 @@
           "base_model": "FUTO asr4all M (56M)",
           "size_label": "56M",
           "engine": "asr4all",
-          "status": "planned",
+          "status": "available",
           "platforms": [
             "android"
           ],
@@ -207,9 +207,9 @@
           "speed": 5,
           "accuracy": 2,
           "gradient": 14,
-          "recommendation": "Tiny, for wearables: live text, writes numbers as words. Not published yet.",
-          "runs_on": "FUTO's asr4all runtime (ONNX or ExecuTorch), with its punctuation model. Not published yet.",
-          "card": "https://hebrish.app/models/sabich-asr4all",
+          "recommendation": "Tiny, for wearables: live text, writes numbers as words.",
+          "runs_on": "FUTO's asr4all runtime (streaming CTC on the CPU, ONNX bundle on Hugging Face), with its punctuation model.",
+          "card": "https://huggingface.co/Hebrish/Sabich-asr4all-M",
           "repo": "Hebrish/Sabich-asr4all-M"
         },
         {
@@ -218,7 +218,7 @@
           "base_model": "FUTO asr4all S (28M)",
           "size_label": "28M",
           "engine": "asr4all",
-          "status": "planned",
+          "status": "available",
           "platforms": [
             "android"
           ],
@@ -235,9 +235,9 @@
           "speed": 5,
           "accuracy": 2,
           "gradient": 4,
-          "recommendation": "The smallest and fastest, for the weakest devices; writes numbers as words. Not published yet.",
-          "runs_on": "FUTO's asr4all runtime (ONNX or ExecuTorch), with its punctuation model. Not published yet.",
-          "card": "https://hebrish.app/models/sabich-asr4all",
+          "recommendation": "The smallest and fastest, for the weakest devices; writes numbers as words.",
+          "runs_on": "FUTO's asr4all runtime (streaming CTC on the CPU, ONNX bundle on Hugging Face), with its punctuation model.",
+          "card": "https://huggingface.co/Hebrish/Sabich-asr4all-S",
           "repo": "Hebrish/Sabich-asr4all-S"
         }
       ]

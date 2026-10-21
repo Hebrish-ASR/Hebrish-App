@@ -34,9 +34,9 @@ be), and whether speed or accuracy matters more, and answers with the same rules
 | --- | --- | --- | --- | --- |
 | **Sabich** (everything: Hebrew words + tech vocabulary) | **Sabich** | Parakeet TDT 0.6B v2 | available, **recommended** | Start here: phone or any recent computer, no GPU. [Models](https://hebrish.app/models#sabich) |
 | | Sabich-Qwen3-ASR-1.7B | Qwen3-ASR 1.7B | listed; not runnable in the apps yet | Most accurate. Desktop GPU: about 2.2 GB VRAM for the Q8_0 GGUF via llama.cpp, 5 GB for bf16 |
-| | Sabich-Canary-Qwen-2.5B | Canary-Qwen 2.5B | listed; not published yet | Best on plain English, behind Qwen3-ASR on Hebrew words. Desktop GPU, about 6 GB VRAM (NeMo) |
+| | Sabich-Canary-Qwen-2.5B | Canary-Qwen 2.5B | listed; not runnable in the apps yet | Best on plain English, behind Qwen3-ASR on Hebrew words. Desktop GPU, about 6 GB VRAM (NeMo) |
 | | Sabich-Parakeet-110M | Parakeet TDT-CTC 110M | available | Older phones, wearables: a fifth of the size (137 MB), faster, more mistakes |
-| | Sabich-asr4all-M / -S | FUTO asr4all 56M / 28M | listed; not published | Tiny, for wearables; writes numbers as words |
+| | Sabich-asr4all-M / -S | FUTO asr4all 56M / 28M | listed; not runnable in the apps yet | Tiny, for wearables; writes numbers as words |
 | **Jachnun** (code-switching only) | **Jachnun** | Parakeet TDT 0.6B v2 | available | English + Hebrew vocabulary (*teudat zehut*, *arnona*, *bituach leumi*), in Latin letters. Recommended until 2026-10-21. [Models](https://hebrish.app/models#parakeet) |
 | **Shakshuka** (streaming) | **Shakshuka** | Nemotron speech streaming 0.6B | listed; needs the streaming engine (next release) | Live text while you talk |
 | **Parakeet (stock)** | | Parakeet TDT 0.6B v2 | available | Standard English, without the Hebrew words. NVIDIA's release, unchanged |
