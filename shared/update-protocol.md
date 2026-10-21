@@ -2,12 +2,77 @@
 
 Written 2026-10-18 for one model; catalogue added 2026-10-19. (V) = verified, (I) = inferred.
 
-Both apps read the same catalogue, download the same files from the same places, and use
+Both apps read the same catalogue (since 2026-10-21 [`catalogue.json`](catalogue.json), schema 2), download the same files from the same places, and use
 the same rule to decide whether a new version is out. Android: `ModelStore.kt` /
 `ModelDownload.kt`. Desktop: `hebrish/model_store.py`. `desktop/tests/test_shared.py` fails
-if either app's bundled catalogue drifts from [`models.json`](models.json).
+if either app's bundled catalogue drifts from it, or `models.json` from it.
 
-## The catalogue
+## Catalogue v2: lines and variants (2026-10-21)
+
+[`catalogue.json`](catalogue.json) (`schema: 2`) is what **Android 0.7.0+ and desktop 0.6.0+**
+read; they bundle it (Android: gradle `copyCatalogue` into assets; desktop:
+`hebrish/data/catalogue.json`, byte-identical) and re-fetch `catalogue_v2_url` (this file on
+`main`, raw GitHub) on every update check, exactly as schema 1 below. Cache: desktop
+`<data>/catalogue-v2.json`, Android pref `catalogue_v2`. **`models.json` (schema 1) stays,
+unchanged in shape, for older builds**, which reject any schema but 1; `test_shared.py` fails if a
+schema-1 model differs from its v2 variant (repo, subdir, manifest_url, version_label, status).
+
+Why (Daniel, 2026-10-21): one line (Sabich) now has versions on several base models, and users
+need to see them as a speed/accuracy choice inside the line, with a recommendation each.
+
+Shape (abridged; `_comment` in the file is the field reference):
+
+```json
+{"schema": 2, "catalogue_v2_url": "…/main/shared/catalogue.json", "recommended": "sabich",
+ "version_file": "version.json", "tiers": {"estimate": true, "speed": "…", "accuracy": "…"},
+ "engines": {"sherpa_offline_transducer": {"name": "…", "files": ["encoder.int8.onnx", "…"], "model_type": "nemo_transducer"},
+             "sherpa_online_transducer": {…}, "qwen3_asr": {…}, "asr4all": {…}},
+ "lines": [{"id": "sabich", "name": "Sabich", "summary": "…", "card": "https://hebrish.app/models/sabich",
+            "variants": [{"id": "sabich", "name": "Sabich", "base_model": "nvidia/parakeet-tdt-0.6b-v2",
+                          "size_label": "0.6B", "engine": "sherpa_offline_transducer", "status": "available",
+                          "platforms": ["android", "linux", "windows"], "devices": ["phone", "desktop"],
+                          "requirements": {"ram_mb": 1500, "gpu": null}, "hardware": "Phone or computer, …",
+                          "download_mb": 661, "speed": 3, "accuracy": 4,
+                          "recommendation": "Start here: …", "repo": "Hebrish/Sabich-sherpa-onnx-int8",
+                          "subdir": "", "card": "…", "manifest_url": "https://cdn.hebrish.app/models/parakeet-sabich/latest.json"}]}]}
+```
+
+- **Lines** are what a model is trained for: `sabich` (everything), `jachnun` (code-switching
+  only), `shakshuka` (streaming), `stock`. **Variants** are the line on a base model, named
+  `<Line>-<Base>-<Size>` (ASR-Training `docs/training.md`, "Variants on other bases keep the line
+  name"). Variant ids are the permanent ids of schema 1 (`sabich`, `codeswitch`, `stock`) plus new
+  ones (`sabich-parakeet-110m`, `sabich-qwen3-asr-1.7b`, `sabich-asr4all-m`, `sabich-asr4all-s`,
+  `shakshuka`); they name `models/<id>/`, so never rename or reuse one.
+- **Supported engines.** Each app has a set (`SUPPORTED_ENGINES`: Android `Catalogue.kt`, desktop
+  `model_store.py`; the test keeps them equal). Both are `{"sherpa_offline_transducer"}` as of
+  0.7.0 / 0.6.0. A variant is downloadable only if its engine is supported, the app's platform
+  (`android`, `linux`, `windows`) is in `platforms`, and `status` is `available` with a `repo` or
+  `manifest_url`. Everything else is listed greyed with `runs_on` and a card link. In code,
+  `models()` / `Data.models` hold only supported variants, so the download, select and update
+  paths below never see the others; `lines()` / `Data.lines` hold all of them for display.
+- `status` is about publication, independent of the engine: Qwen3-ASR is `available` (published
+  on HF) but no app can run it yet.
+- **`speed` and `accuracy` are 1–5 tiers, estimates** relative to the other Hebrish models on the
+  hardware each is meant for, not benchmark results; both apps print "(estimates)". Starting
+  points (2026-10-21): best val WER from ASR-Training `data/checkpoints.json`: Sabich r7-all 4.63%,
+  Shakshuka r8-nemotron-all 6.66%, Sabich-Parakeet-110M r8-ctc110m-all 9.43% (I: val, not test).
+- `requirements.gpu` is `null` or `{vram_gb, backends}` (`cuda`, `hip`, `vulkan`); `devices` is a
+  subset of `wearable`, `phone`, `desktop`. The desktop "Help me choose" dialog
+  (`model_store.recommend`) filters on those and ranks by `speed`/`accuracy` weighted by the
+  user's priority (speed 3:1, balanced 1:1, accuracy 1:3); ties keep catalogue order, so the
+  recommended variant wins a tie. Streaming variants (`streaming: true`) are offered only when the
+  user asks for live text, and then only those. Stock is never recommended there.
+- No pick yet: the first downloaded supported model (recommended first), else `recommended`. So
+  a desktop install that ran on schema 1's `default` (`stock`) without an explicit pick keeps it.
+- **Publishing a planned variant** (e.g. Sabich-Parakeet-110M once
+  `https://cdn.hebrish.app/models/parakeet-sabich-110m/latest.json` returns 200): flip its
+  `status` to `available` and push; no app release, because its engine is already supported. The
+  HF repos of the new variants are **gated** (checked 2026-10-21: `…-110M-sherpa-onnx-int8`,
+  `Shakshuka-sherpa-onnx-int8`), so the apps can only use the CDN `manifest_url`. A variant whose
+  engine no app has (Shakshuka: `sherpa_online_transducer`; Qwen3-ASR; asr4all) needs an app
+  release that adds the engine (phase 2).
+
+## The catalogue (schema 1, builds up to Android 0.6.0 / desktop 0.5.2)
 
 [`models.json`](models.json) (`schema: 1`) lists every model with an `id`, `name`,
 `summary`, `status` (`available` or `planned`), and for available ones the HF `repo`,

@@ -1,0 +1,223 @@
+{
+  "_comment": "Model catalogue v2 (schema 2), read by Android 0.7.0+ and desktop 0.6.0+. Builds before those read models.json (schema 1) and reject any other schema, so both files are kept; desktop/tests/test_shared.py checks that every schema-1 model appears here with the same id, repo and manifest_url. Lines are what a model is trained for (Sabich = everything, Jachnun = code-switching only, Shakshuka = streaming); variants are the same line on another base model. A variant is downloadable in an app only if its engine is in that app's supported engines AND its status is 'available'; other variants are listed greyed with runs_on and a card link. Variant ids are permanent (they name the folder models/<id>/); never reuse or rename one. speed and accuracy are 1-5 tiers, estimates relative to the other Hebrish models, not benchmark results. Protocol: shared/update-protocol.md.",
+  "schema": 2,
+  "catalogue_v2_url": "https://raw.githubusercontent.com/Hebrish-ASR/Hebrish-App/main/shared/catalogue.json",
+  "recommended": "sabich",
+  "version_file": "version.json",
+  "sample_rate": 16000,
+  "min_trailing_silence_s": 0.6,
+  "tiers": {
+    "estimate": true,
+    "speed": "1 = slowest, 5 = fastest, each on the hardware it is meant for",
+    "accuracy": "1 = most mistakes, 5 = fewest, on English with Hebrew and tech words in it"
+  },
+  "engines": {
+    "sherpa_offline_transducer": {
+      "name": "sherpa-onnx (offline transducer)",
+      "files": ["encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"],
+      "model_type": "nemo_transducer"
+    },
+    "sherpa_online_transducer": {
+      "name": "sherpa-onnx (streaming transducer)",
+      "files": ["encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"]
+    },
+    "qwen3_asr": {
+      "name": "Qwen3-ASR (GGUF: llama.cpp, transcribe.cpp)"
+    },
+    "asr4all": {
+      "name": "FUTO asr4all (ONNX / ExecuTorch, streaming CTC)"
+    }
+  },
+  "lines": [
+    {
+      "id": "sabich",
+      "name": "Sabich",
+      "summary": "The complete model: English with Hebrew words and tech vocabulary: arnona, Kubernetes, 250 shekels.",
+      "card": "https://hebrish.app/models/sabich",
+      "variants": [
+        {
+          "id": "sabich",
+          "name": "Sabich",
+          "base_model": "nvidia/parakeet-tdt-0.6b-v2",
+          "size_label": "0.6B",
+          "engine": "sherpa_offline_transducer",
+          "status": "available",
+          "platforms": ["android", "linux", "windows"],
+          "devices": ["phone", "desktop"],
+          "requirements": {"ram_mb": 1500, "gpu": null},
+          "hardware": "Phone or computer, no GPU needed; about 1.5 GB of RAM",
+          "download_mb": 661,
+          "speed": 3,
+          "accuracy": 4,
+          "recommendation": "Start here: the best all-round choice on a phone or any recent computer.",
+          "repo": "Hebrish/Sabich-sherpa-onnx-int8",
+          "subdir": "",
+          "card": "https://hebrish.app/models/sabich",
+          "manifest_url": "https://cdn.hebrish.app/models/parakeet-sabich/latest.json"
+        },
+        {
+          "id": "sabich-qwen3-asr-1.7b",
+          "name": "Sabich-Qwen3-ASR-1.7B",
+          "base_model": "Qwen/Qwen3-ASR-1.7B",
+          "size_label": "1.7B",
+          "engine": "qwen3_asr",
+          "status": "available",
+          "platforms": ["linux", "windows"],
+          "devices": ["desktop"],
+          "requirements": {"ram_mb": 8000, "gpu": {"vram_gb": 5, "backends": ["cuda", "hip", "vulkan"]}},
+          "hardware": "Desktop with a GPU: 5 GB of VRAM or more (CUDA, ROCm/HIP or Vulkan)",
+          "download_mb": null,
+          "speed": 1,
+          "accuracy": 5,
+          "recommendation": "The most accurate, for a desktop with a GPU. Not in the Hebrish apps yet.",
+          "runs_on": "llama.cpp (CUDA, HIP or Vulkan) with the GGUF builds on a desktop GPU; transcribe.cpp in the Offline Voice Input app on Android, slow on phones.",
+          "repo": "Hebrish/Sabich-Qwen3-ASR-1.7B",
+          "card": "https://huggingface.co/Hebrish/Sabich-Qwen3-ASR-1.7B"
+        },
+        {
+          "id": "sabich-parakeet-110m",
+          "name": "Sabich-Parakeet-110M",
+          "base_model": "nvidia/parakeet-tdt_ctc-110m",
+          "size_label": "110M",
+          "engine": "sherpa_offline_transducer",
+          "status": "planned",
+          "platforms": ["android", "linux", "windows"],
+          "devices": ["wearable", "phone", "desktop"],
+          "requirements": {"ram_mb": 400, "gpu": null},
+          "hardware": "Any phone, an older computer, a watch or a wearable; about 0.4 GB of RAM",
+          "download_mb": 137,
+          "speed": 4,
+          "accuracy": 3,
+          "recommendation": "For older phones and wearables: a fifth of the size and faster, with more mistakes.",
+          "repo": "Hebrish/Sabich-Parakeet-110M-sherpa-onnx-int8",
+          "subdir": "",
+          "card": "https://huggingface.co/Hebrish/Sabich-Parakeet-110M",
+          "manifest_url": "https://cdn.hebrish.app/models/parakeet-sabich-110m/latest.json"
+        },
+        {
+          "id": "sabich-asr4all-m",
+          "name": "Sabich-asr4all-M",
+          "base_model": "FUTO asr4all M (56M)",
+          "size_label": "56M",
+          "engine": "asr4all",
+          "status": "planned",
+          "platforms": ["android"],
+          "devices": ["wearable", "phone"],
+          "requirements": {"ram_mb": 300, "gpu": null},
+          "hardware": "Wearables and very low-end phones; about 0.3 GB of RAM",
+          "download_mb": null,
+          "speed": 5,
+          "accuracy": 2,
+          "recommendation": "Tiny, for wearables: live text, writes numbers as words. Not published yet.",
+          "runs_on": "FUTO's asr4all runtime (ONNX or ExecuTorch), with its punctuation model. Not published yet.",
+          "card": "https://hebrish.app/models/sabich"
+        },
+        {
+          "id": "sabich-asr4all-s",
+          "name": "Sabich-asr4all-S",
+          "base_model": "FUTO asr4all S (28M)",
+          "size_label": "28M",
+          "engine": "asr4all",
+          "status": "planned",
+          "platforms": ["android"],
+          "devices": ["wearable", "phone"],
+          "requirements": {"ram_mb": 200, "gpu": null},
+          "hardware": "Wearables and very low-end phones; about 0.2 GB of RAM",
+          "download_mb": null,
+          "speed": 5,
+          "accuracy": 1,
+          "recommendation": "The smallest and fastest, for the weakest devices; writes numbers as words. Not published yet.",
+          "runs_on": "FUTO's asr4all runtime (ONNX or ExecuTorch), with its punctuation model. Not published yet.",
+          "card": "https://hebrish.app/models/sabich"
+        }
+      ]
+    },
+    {
+      "id": "jachnun",
+      "name": "Jachnun",
+      "summary": "English + Hebrew vocabulary, without the tech: teudat zehut, arnona, makolet.",
+      "card": "https://hebrish.app/models/jachnun",
+      "variants": [
+        {
+          "id": "codeswitch",
+          "name": "Jachnun",
+          "base_model": "nvidia/parakeet-tdt-0.6b-v2",
+          "size_label": "0.6B",
+          "engine": "sherpa_offline_transducer",
+          "status": "available",
+          "platforms": ["android", "linux", "windows"],
+          "devices": ["phone", "desktop"],
+          "requirements": {"ram_mb": 1500, "gpu": null},
+          "hardware": "Phone or computer, no GPU needed; about 1.5 GB of RAM",
+          "download_mb": 661,
+          "speed": 3,
+          "accuracy": 4,
+          "recommendation": "Hebrew words without the tech vocabulary. Sabich does all of this and more.",
+          "repo": "Hebrish/Jachnun-sherpa-onnx-int8",
+          "subdir": "",
+          "card": "https://hebrish.app/models/jachnun",
+          "manifest_url": "https://cdn.hebrish.app/models/parakeet-codeswitch/latest.json"
+        }
+      ]
+    },
+    {
+      "id": "shakshuka",
+      "name": "Shakshuka",
+      "summary": "Streaming: the words appear while you speak. Trained on everything Sabich is.",
+      "card": "https://hebrish.app/models/shakshuka",
+      "variants": [
+        {
+          "id": "shakshuka",
+          "name": "Shakshuka",
+          "base_model": "nvidia/nemotron-speech-streaming-en-0.6b",
+          "size_label": "0.6B",
+          "engine": "sherpa_online_transducer",
+          "engine_options": {"feature_dim": 128, "chunk_ms": 560},
+          "status": "planned",
+          "platforms": ["android", "linux", "windows"],
+          "devices": ["phone", "desktop"],
+          "streaming": true,
+          "requirements": {"ram_mb": 1500, "gpu": null},
+          "hardware": "Phone or computer, no GPU needed; about 1.5 GB of RAM",
+          "download_mb": 662,
+          "speed": 4,
+          "accuracy": 3,
+          "recommendation": "Live text while you talk; a little less accurate than Sabich.",
+          "runs_on": "sherpa-onnx's streaming recognizer (OnlineRecognizer). The Hebrish apps add it in a later release.",
+          "repo": "Hebrish/Shakshuka-sherpa-onnx-int8",
+          "subdir": "",
+          "card": "https://hebrish.app/models/shakshuka",
+          "manifest_url": "https://cdn.hebrish.app/models/parakeet-shakshuka/latest.json"
+        }
+      ]
+    },
+    {
+      "id": "stock",
+      "name": "Parakeet (stock)",
+      "summary": "Standard English, without the Hebrew words. NVIDIA's release, unchanged.",
+      "card": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2",
+      "variants": [
+        {
+          "id": "stock",
+          "name": "Parakeet (stock)",
+          "base_model": "nvidia/parakeet-tdt-0.6b-v2",
+          "size_label": "0.6B",
+          "engine": "sherpa_offline_transducer",
+          "status": "available",
+          "platforms": ["android", "linux", "windows"],
+          "devices": ["phone", "desktop"],
+          "requirements": {"ram_mb": 1500, "gpu": null},
+          "hardware": "Phone or computer, no GPU needed; about 1.5 GB of RAM",
+          "download_mb": 661,
+          "speed": 3,
+          "accuracy": 2,
+          "recommendation": "Plain English with no Hebrew words, as NVIDIA released it.",
+          "repo": "csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8",
+          "subdir": "",
+          "version_label": "v2",
+          "card": "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2"
+        }
+      ]
+    }
+  ]
+}
