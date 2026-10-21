@@ -20,7 +20,7 @@ else:
     CONFIG_DIR = _env("XDG_CONFIG_HOME", ".config") / "hebrish"
     DATA_DIR = _env("XDG_DATA_HOME", ".local/share") / "hebrish"
 CONFIG_PATH = CONFIG_DIR / "config.json"
-STATE_PATH = DATA_DIR / "state.json"          # active model, last update check
+STATE_PATH = DATA_DIR / "state.json"          # active model, last update checks, dismissed app version
 HISTORY_PATH = DATA_DIR / "history.json"
 MODELS_DIR = DATA_DIR / "models"            # models/<catalogue id>/<version>-<sha12>/
 CATALOGUE_CACHE = DATA_DIR / "catalogue-v2.json"   # last shared/catalogue.json fetched (0.6.0+)
@@ -64,6 +64,7 @@ DEFAULTS = {
     "models_dir": "",             # where model weights live; "" = DATA_DIR/models
     "update_check_hours": 24,     # 0 = never check automatically
     "auto_update": True,          # download a new model version without asking (0.5.1: default on)
+    "app_update_check": True,     # look for a new Hebrish app at start and about daily (0.6.2, app_update)
     # Old model versions are always deleted once the new one verifies (0.5.1, Daniel,
     # 2026-10-21); up to 0.5.0 `keep_old_versions` kept them, default on.
 }

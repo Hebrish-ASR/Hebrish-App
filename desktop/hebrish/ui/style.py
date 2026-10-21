@@ -63,6 +63,8 @@ QTabBar::tab:selected {{ border-bottom: 3px solid {BLUE}; font-weight: 600; }}
              font-size: 15px; color: palette(placeholder-text); padding: 18px; }}
 #dropZone:hover {{ border-color: {BLUE}; color: {BLUE}; }}
 #toast {{ background: {BRAND_GREEN}; color: white; border-radius: 14px; font-weight: 600; }}
+#updateBar {{ background: #e3f1ec; border-bottom: 1px solid #b9dccf; }}
+#updateBar QLabel {{ color: {INK}; }}
 #banner {{ background: #fff3cd; color: #5c4400; border-radius: 8px; padding: 8px; }}
 QProgressBar {{ border: 1px solid palette(mid); border-radius: 5px; text-align: center;
                height: 18px; }}

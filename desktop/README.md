@@ -99,6 +99,12 @@ on first start it adopts Voice To Hebrish's settings and downloaded model. On
 other Ubuntu releases, run `./install.sh` (a per-user venv; needs uv) or rebuild with
 `./build-deb.sh`.
 
+**Updates.** Hebrish checks for a new version at start and about once a day (Settings →
+App updates; turn it off there). On Ubuntu, from 0.6.2 the .deb adds the Hebrish APT
+repository, so *Update now* installs the new version after asking for your password, and
+Software Updater picks it up too; with an older .deb you get a link to the new one. On Windows
+you get a link to the new zip.
+
 **Windows 10/11** (x64): download the `-windows-x64.zip` from the releases, unzip it, and
 run `Hebrish.exe`. There is no installer and no admin rights are needed. Turn on
 *Start at login* under Settings if you want it in the tray at every login. Windows

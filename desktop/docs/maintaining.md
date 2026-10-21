@@ -8,6 +8,7 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | Module | Role |
 | --- | --- |
 | `model_store.py` | HF check, download/verify, installed versions. No Qt import, so it is testable and also a CLI |
+| `app_update.py` | newer-app check against `latest.json`, how this copy updates (apt / deb-manual / windows / source), the pkexec apt upgrade, relaunch (0.6.2; "App updates in the app") |
 | `engine.py` | sherpa-onnx `OfflineRecognizer` (nemo_transducer): normalise, cut at pauses (`live_cut`, `split_points`), pad, `transcribe_chunks` generator |
 | `audio.py` | sounddevice capture (pause/resume, level meter, `peek`/`consume` for live insertion), file decoding (ffmpeg, else soundfile), WAV save, beeps |
 | `hotkey.py` | the shared state machine for the two keys (toggle, push-to-talk) and the action keys, on evdev-style key names |
@@ -245,6 +246,9 @@ each part works there:
    bundles sherpa-onnx + sherpa-onnx-core, and is pinned to the build machine's python3
    minor (3.14). Then run `gh release upload desktop-v<ver> dist/*.deb`. CI can't build it
    because the GitHub runners' Ubuntu has an older python3.
+4. Publish the .deb to the APT repository: `scripts/publish-apt.sh dist/hebrish_<ver>-1_amd64.deb`
+   (see "APT repository" below). Do it after the CDN upload and `latest.json`, so the in-app
+   update notice never points at a version apt can't yet fetch.
 
 The download links live in these places. Update them when a version changes:
 - the root README;
@@ -264,6 +268,141 @@ nothing is downloaded again.
 still running when the new one first starts, the move pulls the model out from under it. The
 old app then sees no model and downloads 660 MB again into its own folder. Quit the old app
 (and purge its package) before the first Hebrish start.
+
+## APT repository (2026-10-21)
+
+Ubuntu users get app updates through apt, Discover or GNOME Software instead of reinstalling
+the .deb (Daniel, 2026-10-21). Flatpak and Snap were rejected: the app reads `/dev/input`
+(hotkeys) and writes `/dev/uinput` (paste), which a sandbox only allows with `--device=all`
+plus the `input` group (Flatpak) or classic confinement (Snap), so neither gains anything.
+
+| | |
+|---|---|
+| URL | `https://cdn.hebrish.app/apt`, suite `stable`, component `main`, `amd64` (R2 bucket `hebrish-cdn`, prefix `apt/`) |
+| Signing key | RSA 4096, no expiry, no passphrase, UID `Hebrish APT Repository <info@hebrish.app>` (project identity, no personal name), fingerprint `4745D63577C81400DBB743DFDBD1F5A22CA1B27B` |
+| Private key | 1Password "Hebrish APT signing key" (`htiwosgw63aj7hjlsteawbe6ua`), vault "API Keys & Programmatic", field `private_key` (armored); `op` returns it wrapped in quotes, the script strips them |
+| Public key | `packaging/apt/hebrish-archive-keyring.{gpg,asc}`, published at `apt/hebrish-archive-keyring.{gpg,asc}` |
+| Setup | `packaging/apt/setup.sh`, published at `apt/setup.sh`: `curl -fsSL https://cdn.hebrish.app/apt/setup.sh \| sudo sh` (checks the key fingerprint, writes the sources file, installs) |
+| Publish | `scripts/publish-apt.sh <deb>…` (no argument: re-sign what is in the pool) |
+
+- **The package enrols itself (0.6.2+).** `build-deb.sh` ships the keyring at
+  `/etc/apt/keyrings/hebrish-archive-keyring.gpg` and `/etc/apt/sources.list.d/hebrish.sources`
+  (deb822), **both conffiles**, Chrome-style. So a .deb installed from `/get/ubuntu` gets updates
+  too. A user who deletes the sources file keeps it deleted across upgrades (dpkg conffile
+  rule); `apt remove` keeps both (the repo stays usable), `apt purge` removes both. The key was
+  first planned for `/usr/share/keyrings` and moved before 0.6.2 shipped: there it is an
+  ordinary package file, so `apt remove` would delete it while keeping the conffile sources,
+  and every later `apt update` would fail on a missing Signed-By file. `setup.sh` and the manual steps on hebrish.app write a
+  **byte-identical** file, so installing the package afterwards raises no conffile prompt:
+  change all three together (the public `Hebrish-ASR/Hebrish-Agent-Skills` repo copies the
+  manual steps too).
+- **Pool**: the newest `KEEP=3` versions; older ones are deleted from R2, so apt can roll back
+  two versions. Old versions stay on GitHub releases.
+- **One suite, `stable`, not per-Ubuntu codenames**: the .deb is pinned to Ubuntu 26.04's
+  python3 minor (see Releasing). When a second Ubuntu needs its own build, add per-codename suites
+  (`resolute`, …) and point new installs at them; `stable` can stay as resolute's alias.
+- **Cache consistency** (R2 behind Cloudflare, indexes cached 60 s): upload order is pool,
+  `by-hash/`, `Packages*`, then `Release`/`Release.gpg`/`InRelease`, and Release sets
+  `Acquire-By-Hash: yes`, so apt fetches indexes by content hash and a stale or fresh InRelease
+  always finds its files. **by-hash needs SHA512 as well as SHA256** (V, 2026-10-21, apt on
+  26.04): apt asks for the strongest hash listed first; with only `by-hash/SHA256` it logged
+  `Ign:` for Packages and fell back to the plain path. MD5/SHA1 are left out of Release.
+- **Testing without root or touching the system's apt** (V, 2026-10-21):
+  ```
+  T=$(mktemp -d); mkdir -p $T/lists/partial $T/cache/archives/partial
+  sed "s|/etc/apt/keyrings/hebrish-archive-keyring.gpg|$PWD/packaging/apt/hebrish-archive-keyring.gpg|" packaging/apt/hebrish.sources > $T/s.sources
+  O="-o Dir::State::Lists=$T/lists -o Dir::Cache=$T/cache -o Dir::Etc::sourcelist=$T/s.sources -o Dir::Etc::sourceparts=- -o Debug::NoLocking=1 -o APT::Sandbox::User=$(whoami)"
+  apt-get $O update && apt-cache $O policy hebrish && apt-get $O --download-only -y install hebrish
+  ```
+  A clean run shows `Get:1 … InRelease` and `Get:2 … Packages` with no `Ign:` and no signature
+  warning.
+- Bootstrapped 2026-10-21 with 0.6.1 (which doesn't enrol itself; 0.6.2 is the first that does).
+
+## App updates in the app (0.6.2, 2026-10-21)
+
+Model updates are `model_store`'s job; `hebrish/app_update.py` (no Qt) is for the app itself.
+
+- **What it checks:** `GET https://cdn.hebrish.app/downloads/latest.json` (the manifest
+  hebrish.app's `/get/<os>` follows) and compares `files.ubuntu.version` (Linux) or
+  `files.windows.version` with `hebrish.__version__`, numerically (`parse_version`: a leading
+  `v`, a Debian revision and a suffix like `rc1` are dropped, trailing zeros ignored, so
+  0.10.0 > 0.9.0). The top-level `version` is never used: Android and desktop version
+  separately (on 2026-10-21 Android was 0.7.0, desktop 0.6.1).
+- **The GET goes through `model_store._get`**, for its `User-Agent`. Cloudflare's bot filter
+  answers 403 to urllib's default `Python-urllib/3.x` on cdn.hebrish.app (V, 2026-10-21: plain
+  `urllib.request.urlopen` → 403; `app_update.fetch()` → `files.ubuntu.version` 0.6.1).
+- **When:** 30 s after start (one GET, off the GUI thread), then whenever the 10-minute
+  `_periodic_check` finds `app_last_check` (state.json) a day old. Off: Settings → App updates
+  (`app_update_check`, default on). Manual: Settings → App updates → *Check now*, and the tray's
+  *Check for app update*.
+- **Not nagging:** a strip under the header (`#updateBar`, `MainWindow.show_app_update`), which
+  unlike `banner()` never raises the window or switches tab, with one action and *Not now*.
+  *Not now* stores `app_dismissed` = that version in state.json: the strip stays hidden until a
+  newer version (a manual check shows it anyway). The tray notification comes once per version
+  (`app_notified`), and not for a dismissed one.
+- **Classification (`install_method()`), in order:**
+
+  | Method | Rule | Offer |
+  | --- | --- | --- |
+  | `windows` | `sys.platform == "win32"` and `sys.frozen` (PyInstaller) | *Download page* → `hebrish.app/download#windows` |
+  | `source` | Windows unfrozen, or Linux where the `hebrish` package isn't under `/usr/lib/hebrish` (a checkout, `install.sh`'s venv) | text only |
+  | `apt` | under `/usr/lib/hebrish` and `/etc/apt/sources.list.d/hebrish.sources` exists | *Update now* (pkexec, below) |
+  | `deb-manual` | under `/usr/lib/hebrish`, no sources file (0.6.1 and earlier, or the user deleted it) | *Download page* → `#ubuntu`, saying the new .deb adds the repository |
+
+  The sources file is checked, not the key or apt's lists: it is what the .deb ships and what a
+  user deletes to opt out. (I) A sources file that exists but is broken (wrong key) classifies
+  as `apt`; the pkexec run then fails and the strip shows apt's last error lines plus the
+  terminal command.
+- **The `apt` update**, one pkexec call (`app_update.APT_SCRIPT`):
+
+  ```
+  pkexec sh -c 'apt-get update -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/hebrish.sources -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 && DEBIAN_FRONTEND=noninteractive apt-get install -y --only-upgrade -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold hebrish'
+  ```
+
+  Noninteractive + confdef/confold: pkexec gives no terminal, so a dpkg conffile question
+  (e.g. after the user edited `hebrish.sources`) would otherwise hang the run; the user's file wins.
+
+  Only the Hebrish source is refreshed: it is a 2-file fetch instead of every source on the
+  machine, and a broken unrelated third-party source can't fail the update. `--only-upgrade`
+  never installs anything new; dependencies resolve against the lists already on disk.
+  Verified 2026-10-21 on Ubuntu 26.04, apt 3.2.0, as a normal user (V):
+  - `--print-uris update` with those options lists 13 URIs, all on cdn.hebrish.app. The
+    relative form `Dir::Etc::sourcelist=sources.list.d/<x>.sources` (resolved against
+    `Dir::Etc`) works too; the absolute path is used for clarity.
+  - A `.sources` name is parsed as deb822.
+  - **`APT::Get::List-Cleanup=0` is required.** In a scratch `Dir::State::Lists`, an `update`
+    restricted to the Hebrish source with the default cleanup deleted the Ubuntu `InRelease`
+    and a dummy `Packages` file already there. Without the option, the real run would delete
+    every other source's lists, and the `install` (and Software Updater) would see only
+    Hebrish's packages until the next full `apt update`. With it, both files stayed.
+  - In that scratch dir, the restricted `update` fetched `InRelease` + `Packages` from the live
+    repo, and `apt-cache policy hebrish` showed candidate 0.6.1-1.
+  - **Not run with pkexec or as root (I).** Not verified: the polkit dialog's text, and the full
+    upgrade replacing the running app's files. `pkexec` exits 126 when the dialog is dismissed and
+    127 when authorisation fails (pkexec(1)); both map to a message and keep the strip, with
+    "Try again".
+- **After a 0 exit**, `dpkg-query -W -f='${Version}' hebrish` is checked, because
+  `apt-get install --only-upgrade` also exits 0 when the repo has nothing newer. That happens
+  when latest.json is updated before `publish-apt.sh` runs (hence Releasing step 4's order). It
+  then says "The Hebrish repository doesn't offer X yet".
+- **Restart:** on success, if no take is in flight, a dialog offers to restart. Otherwise there is
+  a notification, and the tray gets *Restart Hebrish to finish updating* (Settings gets a button).
+  `Controller.restart()` → `app_update.relaunch()` starts
+  `sh -c 'while kill -0 <pid>; do sleep 0.2; done; exec /usr/bin/hebrish'` in its own session,
+  then quits. Waiting for the old pid matters: started at once, the new instance would find the
+  old single-instance socket still listening, send it `show` and exit. (V, 2026-10-21: the
+  wait-then-exec loop, with a dummy pid and command; the real restart after a real upgrade is
+  (I).) Until the restart, `app_installed` stops later checks from offering the same version
+  again.
+- No pkexec (minimal installs): the strip says to run `sudo apt update && sudo apt install
+  --only-upgrade hebrish`.
+- `--selftest` (the Windows CI build) also prints `latest app:` from `app_update.fetch()`, so
+  the frozen build's TLS and User-Agent path to cdn.hebrish.app is exercised.
+- Rendered off-screen (V, 2026-10-21) through the real `Controller` with a fake `Release("0.9.0")`:
+  the strip for all four methods and the error state, Settings → App updates, dismiss (hidden,
+  stays hidden on a re-check of 0.9.0, shown for 0.9.1). Not tried on Windows.
+- Tests: `tests/test_app_update.py` (version order, latest.json parsing, classification with
+  fake paths, the apt command, the pkexec exit codes, "repo has nothing newer").
 
 ## Models
 

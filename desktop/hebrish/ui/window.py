@@ -84,6 +84,7 @@ class MainWindow(QMainWindow):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
         outer.addWidget(self._header())
+        outer.addWidget(self._app_update_bar())
 
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
@@ -139,6 +140,62 @@ class MainWindow(QMainWindow):
         text.addWidget(QLabel(TAGLINE, objectName="tagline"))
         lay.addLayout(text, 1)
         return h
+
+    def _app_update_bar(self):
+        """A new Hebrish app (0.6.2, app_update): a strip under the header with one action and
+        "Not now". Unlike banner(), it never raises the window or switches tab."""
+        bar = QFrame(objectName="updateBar")
+        bar.setAttribute(Qt.WA_StyledBackground, True)
+        lay = QHBoxLayout(bar)
+        lay.setContentsMargins(16, 8, 12, 8)
+        self.app_update_label = QLabel()
+        self.app_update_label.setWordWrap(True)
+        self.app_update_label.setTextFormat(Qt.RichText)
+        lay.addWidget(self.app_update_label, 1)
+        self.app_update_btn = QPushButton(objectName="primary")
+        self.app_update_btn.clicked.connect(self.ctl.app_update_action)
+        later = QPushButton("Not now")
+        later.clicked.connect(self.ctl.dismiss_app_update)
+        lay.addWidget(self.app_update_btn, 0, Qt.AlignVCenter)
+        lay.addWidget(later, 0, Qt.AlignVCenter)
+        bar.hide()
+        self.app_update_frame = bar
+        return bar
+
+    def show_app_update(self, rel, method, busy=False, error=""):
+        head = f"<b>{APP_NAME} {rel.version} is available</b> (you have {__version__})."
+        if method == "apt":
+            text = head + " It installs from the Hebrish repository and asks for your password."
+            btn = "Updating…" if busy else ("Try again" if error else "Update now")
+        elif method == "deb-manual":
+            text = (head + " Get the new .deb from hebrish.app. Installing it also adds the Hebrish "
+                    "repository, so later updates install from here.")
+            btn = "Download page"
+        elif method == "windows":
+            text = head + " Download the new zip from hebrish.app and replace this folder with it."
+            btn = "Download page"
+        else:
+            text = head + " You're running from source: pull the repository to update."
+            btn = ""
+        if error:
+            text += f"<br><span style='color:#a12020'>{error}</span>"
+        self.app_update_label.setText(text)
+        self.app_update_btn.setText(btn)
+        self.app_update_btn.setVisible(bool(btn))
+        self.app_update_btn.setEnabled(not busy)
+        self.app_update_frame.show()
+
+    def hide_app_update(self):
+        self.app_update_frame.hide()
+
+    def app_update_status(self, text):
+        self.app_status_label.setText(text)
+        self.btn_restart.setVisible(bool(self.ctl.app_installed))
+
+    def ask_restart(self, msg) -> bool:
+        return QMessageBox.question(
+            self, f"{APP_NAME} updated", f"{msg}\n\nRestart {APP_NAME} now to use the new version?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes) == QMessageBox.Yes
 
     @staticmethod
     def _scroll(w):
@@ -890,6 +947,32 @@ class MainWindow(QMainWindow):
         b.addWidget(self._check("auto_update", "Install new model versions automatically"))
         b.addWidget(muted("A new version replaces the old one: the old version is deleted once the "
                           "new one has downloaded and checked out, so each model is on disk once."))
+        lay.addWidget(box)
+
+        box, b = card("App updates")
+        b.addWidget(self._check("app_update_check", "Check for a new version of Hebrish (at start, then daily)"))
+        b.addWidget(muted({
+            "apt": "Installed from the Hebrish repository: an update installs from here (it asks "
+                   "for your password) or with Software Updater, like any other package.",
+            "deb-manual": "Installed from a .deb without the Hebrish repository: you'll get a link "
+                          "to the new .deb. Installing it adds the repository, so updates after "
+                          "that install from here.",
+            "windows": "The portable Windows build: you'll get a link to the new zip.",
+            "source": "Running from source: you'll be told when there's a new version.",
+        }[self.ctl.app_method]))
+        row = QHBoxLayout()
+        check = QPushButton("Check now")
+        check.clicked.connect(lambda: (self.app_status_label.setText("Checking…"),
+                                       self.ctl.check_app_update(manual=True)))
+        self.btn_restart = QPushButton(f"Restart {APP_NAME}", objectName="primary")
+        self.btn_restart.clicked.connect(self.ctl.restart)
+        self.btn_restart.hide()
+        row.addWidget(check)
+        row.addWidget(self.btn_restart)
+        row.addStretch(1)
+        b.addLayout(row)
+        self.app_status_label = muted()
+        b.addWidget(self.app_status_label)
         lay.addWidget(box)
 
         box, b = card("System")

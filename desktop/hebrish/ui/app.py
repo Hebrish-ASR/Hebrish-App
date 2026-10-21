@@ -21,7 +21,7 @@ from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from .. import audio, model_store
+from .. import __version__, app_update, audio, model_store
 from ..config import (APP_NAME, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
 from ..engine import Engine, live_cut
@@ -35,6 +35,7 @@ ICONS = Path(__file__).resolve().parent.parent / "data" / "icons"
 HISTORY_MAX = 50
 NO_SPEECH = "no speech"        # _worker -> _done: the take had audio but no speech (engine VAD)
 # The beeps mode: start, stop, a falling "doo-doo" for discard, a rising pair for retake
+APP_CHECK_S = 24 * 3600       # app update check while running: about daily (at start too)
 BEEPS = {"recording": 880, "transcribing": 620, "discarded": (660, 440), "retake": (523, 880)}
 
 
@@ -56,6 +57,8 @@ class Signals(QObject):
     checked = Signal(object, object, bool)
     progress = Signal(float, str)
     downloaded = Signal(object, object)
+    app_checked = Signal(object, object, bool)  # app_update.Release or None, error, manual
+    app_updated = Signal(bool, str)             # ok, message: the pkexec apt upgrade
 
 
 class Controller(QObject):
@@ -90,6 +93,12 @@ class Controller(QObject):
         self.sig.downloaded.connect(self._downloaded)
         self.sig.fetched.connect(self._fetched)
         self.sig.moved.connect(self._moved)
+        self.sig.app_checked.connect(self._app_checked)
+        self.sig.app_updated.connect(self._app_updated)
+        self.app_release: app_update.Release | None = None    # newer than this app, else None
+        self.app_method = app_update.install_method()         # apt | deb-manual | windows | source
+        self.app_updating = False
+        self.app_installed = ""          # version apt installed this session: waits for a restart
 
         self.inserter = make_inserter()
         self.hotkeys = make_listener(self.cfg, self.sig.start.emit, self.sig.stop.emit,
@@ -133,6 +142,8 @@ class Controller(QObject):
         self._timer = QTimer(self, interval=600_000, timeout=self._periodic_check)
         self._timer.start()
         QTimer.singleShot(4000, self._startup_warnings)
+        # After the model check, so start-up stays quiet; one small GET, off the GUI thread.
+        QTimer.singleShot(30_000, lambda: self.cfg["app_update_check"] and self.check_app_update())
 
     def _startup_warnings(self):
         msg = self.hotkeys.problem or self.inserter.error
@@ -432,6 +443,9 @@ class Controller(QObject):
         last = load_json(STATE_PATH).get("last_check", 0)
         if hours and not self.downloading and time.time() - last >= hours * 3600:
             self.check_updates()
+        last_app = load_json(STATE_PATH).get("app_last_check", 0)
+        if self.cfg["app_update_check"] and time.time() - last_app >= APP_CHECK_S:
+            self.check_app_update()
 
     def download(self, manifest):
         if self.downloading:
@@ -539,6 +553,101 @@ class Controller(QObject):
         self.set_models_dir(self._moving_to, move=False)
         self.win.status(f"Models moved to {model_store.ROOT}.")
 
+    # -- app updates (0.6.2, app_update) ---------------------------------------------
+    def check_app_update(self, manual=False):
+        def work():
+            try:
+                self.sig.app_checked.emit(app_update.fetch(), None, manual)
+            except Exception as e:
+                self.sig.app_checked.emit(None, e, manual)
+        threading.Thread(target=work, daemon=True, name="app-update").start()
+
+    def _app_checked(self, rel, err, manual):
+        log.info("app update check: latest=%s method=%s err=%r", rel and rel.version, self.app_method, err)
+        state = load_json(STATE_PATH)
+        if err:
+            if manual:
+                self._app_said(f"Couldn't check for a new {APP_NAME}: {err}")
+            return
+        state["app_last_check"] = time.time()
+        if not app_update.is_newer(rel.version):
+            self.app_release = None
+            self.win.hide_app_update()
+            save_json(STATE_PATH, state)
+            self._app_said(f"Up to date: {APP_NAME} {__version__} is the latest.", manual)
+            return
+        if self.app_installed and not app_update.is_newer(rel.version, self.app_installed):
+            save_json(STATE_PATH, state)       # already installed by apt, this copy is the old one
+            self._app_said(f"{APP_NAME} {self.app_installed} is installed. Restart {APP_NAME} to use it.", manual)
+            return
+        self.app_release = rel
+        self.win.app_update_status(f"{APP_NAME} {rel.version} is available (you have {__version__}).")
+        # Not nagging: a version the user dismissed stays hidden until a newer one (or a manual
+        # check), and the tray notification comes once per version.
+        if manual or state.get("app_dismissed") != rel.version:
+            self.win.show_app_update(rel, self.app_method)
+        if manual:
+            self.win.present_tab()
+        if not manual and state.get("app_notified") != rel.version and state.get("app_dismissed") != rel.version:
+            state["app_notified"] = rel.version
+            self.notify(f"{APP_NAME} {rel.version} is available", "Open the window to update."
+                        if self.app_method == "apt" else f"See the {APP_NAME} window for how to get it.")
+        save_json(STATE_PATH, state)
+
+    def _app_said(self, text, manual=True):
+        """A check's result: in Settings → App updates, and as a notification when the check was
+        asked for from the tray (window hidden)."""
+        self.win.app_update_status(text)
+        if manual and not self.win.isVisible():
+            self.notify(APP_NAME, text)
+
+    def dismiss_app_update(self):
+        if self.app_release:
+            state = load_json(STATE_PATH)
+            state["app_dismissed"] = self.app_release.version
+            save_json(STATE_PATH, state)
+        self.win.hide_app_update()
+
+    def app_update_action(self):
+        """The update bar's button: apt upgrades in place, else the download page."""
+        rel = self.app_release
+        if rel is None or self.app_updating:
+            return
+        if self.app_method != "apt":
+            QDesktopServices.openUrl(QUrl(app_update.download_page(self.app_method)))
+            return
+        self.app_updating = True
+        self.win.show_app_update(rel, self.app_method, busy=True)
+
+        def work():
+            try:
+                self.sig.app_updated.emit(*app_update.run_apt_upgrade(rel.version))
+            except Exception as e:
+                self.sig.app_updated.emit(False, str(e))
+        threading.Thread(target=work, daemon=True, name="apt-upgrade").start()
+
+    def _app_updated(self, ok, msg):
+        log.info("app update: ok=%s %s", ok, msg)
+        self.app_updating = False
+        if not ok:
+            self.win.show_app_update(self.app_release, self.app_method, error=msg)
+            return
+        self.app_installed = self.app_release.version if self.app_release else __version__
+        self.app_release = None
+        self.win.hide_app_update()
+        self.win.app_update_status(msg + f" Restart {APP_NAME} to use it.")
+        self._update_tray()
+        if self.state != "idle":
+            self.notify(f"{APP_NAME} updated", msg + " Restart it from the tray menu when you've finished.")
+            self._update_tray()
+            return
+        if self.win.ask_restart(msg):
+            self.restart()
+
+    def restart(self):
+        app_update.relaunch()
+        self.quit()
+
     def update_available(self) -> bool:
         return bool(self.latest and model_store.active() and model_store.needs_update(self.latest))
 
@@ -554,6 +663,8 @@ class Controller(QObject):
         m.addSeparator()
         self.act_update = m.addAction("Install update", lambda: self.latest and self.download(self.latest))
         m.addAction("Check for model update", lambda: self.check_updates(manual=True))
+        m.addAction("Check for app update", lambda: self.check_app_update(manual=True))
+        self.act_restart = m.addAction(f"Restart {APP_NAME} to finish updating", self.restart)
         m.addSeparator()
         hebrish = m.addMenu("Hebrish")
         for label, url in about.HEBRISH_LINKS:
@@ -586,6 +697,7 @@ class Controller(QObject):
         self.act_overlay.setVisible(self.overlay.available)
         self.act_overlay.setChecked(self.cfg["overlay"] != "off")
         self.act_update.setVisible(self.update_available() and not self.downloading)
+        self.act_restart.setVisible(bool(self.app_installed))
         if self.latest:
             self.act_update.setText(f"Install update ({self.latest.version})")
 
@@ -615,6 +727,7 @@ def _selftest() -> int:
               sounddevice.get_portaudio_version()[1], file=out)
         print("icons (name: failed to render):", sizes, file=out)
         print("latest model:", model_store.fetch_latest().label, file=out)
+        print("latest app:", app_update.fetch().version, "| install:", app_update.install_method(), file=out)
         if not sizes or any(sizes.values()):
             raise RuntimeError("an icon failed to load (missing Qt SVG plugin?)")
         voice = [k for k in audio.VOICE_PROMPTS if not (audio.VOICE_DIR / f"{k}.wav").is_file()]
