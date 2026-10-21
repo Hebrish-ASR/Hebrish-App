@@ -8,6 +8,10 @@ on:
 
 permissions:
   contents: write
+  # Build provenance (0.8.0): a signed statement that the APK and AAB were built here, from this
+  # commit, by this workflow. Check one: gh attestation verify Hebrish-X.Y.Z.apk -R Hebrish-ASR/Hebrish-App
+  id-token: write
+  attestations: write
 
 jobs:
   apk:
@@ -58,6 +62,11 @@ jobs:
           echo "VER=$VER" >> "$GITHUB_ENV"
           cp app/build/outputs/apk/fdroid/release/app-fdroid-release.apk "../Hebrish-${VER}.apk"
           cp app/build/outputs/bundle/playRelease/app-play-release.aab "../Hebrish-${VER}-play.aab"
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            Hebrish-${{ env.VER }}.apk
+            Hebrish-${{ env.VER }}-play.aab
       - uses: actions/upload-artifact@v4
         with:
           name: play-aab

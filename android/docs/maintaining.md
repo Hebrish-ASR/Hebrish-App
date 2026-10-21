@@ -578,6 +578,17 @@ already enforced at 35 and no screen opts out. The IME's `KEYCODE_BACK` handling
 `InputMethodService` turning predictive back into key events (I: AOSP has this compat path since
 13, not verified on a device).
 
+## Build provenance and /verify (unreleased, 2026-10-21)
+
+`android.yml` and `desktop.yml` run `actions/attest-build-provenance@v2` on the APK, the Play AAB
+and the Windows zip. That's a Sigstore-signed statement that the file was built by this workflow
+from that commit, stored on GitHub (free for public repos). Anyone can check a file with
+`gh attestation verify <file> -R Hebrish-ASR/Hebrish-App`. The .deb is built locally, so it has none.
+The model files come from ASR-Training, not this repo's CI, and have none either.
+hebrish.app/verify lists every downloadable file with its SHA-256 and VirusTotal result (website repo
+`scripts/virustotal.py` → `data/verify.json`). About links to it and to /privacy. Not yet run: the first
+attested build is the next tag.
+
 ## Not yet verified (as of 2026-10-20)
 
 - Channels / targetSdk 36 on a device: the disclosure (decline leaves settings closed, accept

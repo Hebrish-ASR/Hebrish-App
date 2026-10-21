@@ -11,6 +11,10 @@ on:
 
 permissions:
   contents: write
+  # Build provenance for the Windows zip (gh attestation verify <zip> -R Hebrish-ASR/Hebrish-App).
+  # The .deb is built locally (desktop/build-deb.sh), so it has none.
+  id-token: write
+  attestations: write
 
 jobs:
   test-linux:
@@ -68,6 +72,8 @@ jobs:
           if (-not $ver.StartsWith("v")) { $ver = "dev" }
           Compress-Archive -Path dist\Hebrish -DestinationPath "Hebrish-$ver-windows-x64.zip"
           "ZIP=Hebrish-$ver-windows-x64.zip" | Out-File -Append $env:GITHUB_ENV
+      - uses: actions/attest-build-provenance@v2
+        with: { subject-path: "desktop/${{ env.ZIP }}" }
       - uses: actions/upload-artifact@v4
         with: { name: windows-build, path: "desktop/${{ env.ZIP }}" }
       - name: Release

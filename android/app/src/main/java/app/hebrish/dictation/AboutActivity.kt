@@ -29,6 +29,10 @@ class AboutActivity : Page() {
         button(R.string.hebrish_site, r) { open(Hebrish.SITE) }
         button(R.string.about_source, r) { open(getString(R.string.url_source)) }
         button(R.string.about_terms, r) { open(getString(R.string.url_terms)) }
+        // Google Play wants the privacy policy reachable inside the app, not only in the listing (0.8.0).
+        val r2 = row()
+        button(R.string.about_privacy, r2) { open(Hebrish.PRIVACY) }
+        button(R.string.about_verify, r2) { open(Hebrish.VERIFY) }
 
         text(versionSummary(), top = 28).apply { gravity = android.view.Gravity.CENTER; alpha = 0.8f }
         small(R.string.about_private).gravity = android.view.Gravity.CENTER
