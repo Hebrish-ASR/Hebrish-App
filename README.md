@@ -26,8 +26,8 @@ run with sherpa-onnx (int8).
 
 | Model | Status | For |
 | --- | --- | --- |
-| **Jachnun** | available | English + Hebrew vocabulary (*teudat zehut*, *arnona*, *bituach leumi*), written in Latin letters. Recommended; the Android app's default since 0.6.0. [Models](https://hebrish.app/models#parakeet) |
-| **Sabich** | available | Hebrew vocabulary + tech vocabulary: code-switching plus tech terms, brand names and numbers. [Models](https://hebrish.app/models#sabich) |
+| **Sabich** | available | Hebrew vocabulary + tech vocabulary: code-switching plus tech terms, brand names and numbers. **Recommended** since 2026-10-21 (`shared/models.json` `recommended`): level with Jachnun on Hebrew words, better on tech. [Models](https://hebrish.app/models#sabich) |
+| **Jachnun** | available | English + Hebrew vocabulary (*teudat zehut*, *arnona*, *bituach leumi*), written in Latin letters. The first stable release; recommended until 2026-10-21. [Models](https://hebrish.app/models#parakeet) |
 | **Parakeet (stock)** | available | Standard English, without the Hebrew words. NVIDIA's release, unchanged |
 
 The fine-tunes are trained on **one speaker's voice**; recordings from more voices are welcome
@@ -101,10 +101,14 @@ you talk, and you're returned to HeliBoard with the text inserted. Details:
 
 Releases: tag `android-vX.Y.Z` builds the signed APK in CI. Tag `desktop-vX.Y.Z` builds the
 Windows zip in CI; the Ubuntu .deb is built with `desktop/build-deb.sh` and added to the same
-release. Then copy all three to the Hebrish CDN, `https://cdn.hebrish.app/downloads/{android,ubuntu,windows}/`,
-and rewrite `downloads/latest.json` (the `r2-upload` skill in `parakeet-finetune-ops`). hebrish.app needs no
-edit: since 2026-10-20 its buttons link `hebrish.app/get/<platform>`, which redirects to the file `latest.json`
-names. The F-Droid repository (Hebrish-ASR/Hebrish-FDroid) checks GitHub releases hourly and picks up the new APK. Adding a model needs no release:
+release. Then overwrite the one stable file per platform on the Hebrish CDN
+(`https://cdn.hebrish.app/apps/{android,ubuntu,windows}/`: `Hebrish-latest.apk`,
+`hebrish-latest-amd64.deb`, `Hebrish-latest-windows-x64.zip`; since 2026-10-21, old versions
+stay only on the GitHub releases) and rewrite `downloads/latest.json` (the `r2-upload` skill in
+`parakeet-finetune-ops`). hebrish.app needs no edit: its buttons link
+`hebrish.app/get/<platform>`, which redirects to the file `latest.json` names. The F-Droid
+repository (Hebrish-ASR/Hebrish-FDroid) builds from the GitHub releases, not the CDN; it checks
+hourly, and every Android release also runs its `publish.yml` and checks the index lists the new version. Adding a model needs no release:
 see `shared/update-protocol.md`.
 
 ## History
