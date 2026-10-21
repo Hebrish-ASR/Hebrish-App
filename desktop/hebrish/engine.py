@@ -182,7 +182,10 @@ class Engine:
     def loaded_dir(self) -> Path | None:
         return self._dir
 
-    def load(self, model_dir: Path, num_threads: int = 4):
+    def load(self, model_dir: Path, num_threads: int = 4, feature_dim: int = 128):
+        """feature_dim comes from the catalogue variant (128 for the 0.6B models, 80 for
+        Sabich-Parakeet-110M). sherpa-onnx also reads it from the encoder metadata, which wins:
+        the 110M decoded the same clip identically with 80 and 128 (2026-10-21, sherpa-onnx 1.13.8)."""
         import sherpa_onnx
         t0 = time.monotonic()
         rec = sherpa_onnx.OfflineRecognizer.from_transducer(
@@ -191,7 +194,7 @@ class Engine:
             joiner=str(model_dir / "joiner.int8.onnx"),
             tokens=str(model_dir / "tokens.txt"),
             model_type="nemo_transducer", decoding_method="greedy_search",
-            num_threads=num_threads, sample_rate=SAMPLE_RATE, feature_dim=128,
+            num_threads=num_threads, sample_rate=SAMPLE_RATE, feature_dim=feature_dim,
             provider="cpu",
         )
         with self._lock:

@@ -1,9 +1,10 @@
-"""Help me choose (0.6.0): a few questions about the device and what matters more, answered with a
-variant from the catalogue (model_store.recommend). The GPU and its VRAM are detected where that
-is cheap (nvidia-smi, Linux sysfs) and can be corrected by hand.
+"""Help me choose (0.6.0): a few questions about the device and what matters more, answered by the
+catalogue's `chooser.rules`, the same decision list as hebrish.app/models/choose
+(model_store.recommend). The GPU and its VRAM are detected where that is cheap (nvidia-smi,
+Linux sysfs) and can be corrected by hand.
 
-A recommended variant this app can't run yet is still named, with where it runs instead
-("use via llama.cpp, see the card" for Qwen3-ASR), followed by the best one this app can run."""
+A pick this app can't run yet is still named, with how to run it (the rule's `how`; "use via
+llama.cpp, see the card" for Qwen3-ASR), followed by the best one this app can run."""
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, QDoubleSpinBox,
@@ -11,9 +12,9 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDialog, QDialogButtonBox, 
 
 from .. import model_store
 
-DEVICES = [("desktop", "This computer"), ("phone", "A phone"), ("wearable", "A watch or a wearable")]
-GPUS = [("none", "None, or built-in graphics only"), ("nvidia", "NVIDIA"), ("amd", "AMD"),
-        ("intel", "Intel Arc")]
+DEVICES = [("computer", "This computer"), ("phone", "A phone"), ("wearable", "A watch or a wearable")]
+# The chooser's gpu values; Intel graphics count as none (no rule uses them).
+GPUS = [("none", "None, built-in or Intel graphics"), ("nvidia", "NVIDIA"), ("amd", "AMD")]
 PRIORITIES = [("balanced", "A balance of both"), ("speed", "Speed: text as fast as possible"),
               ("accuracy", "Accuracy: fewest mistakes")]
 
@@ -31,8 +32,8 @@ class ChooseDialog(QDialog):
         self.setWindowTitle("Help me choose a model")
         self.setMinimumWidth(520)
         lay = QVBoxLayout(self)
-        intro = QLabel("Four questions. The answer comes from the speed and accuracy tiers in the "
-                       "model list, which are estimates, not benchmark results.")
+        intro = QLabel("A few questions. The answer follows the same rules as hebrish.app/models/choose; "
+                       "speed and accuracy are estimates, not benchmark results.")
         intro.setWordWrap(True)
         lay.addWidget(intro)
         form = QFormLayout()
@@ -78,6 +79,8 @@ class ChooseDialog(QDialog):
 
     def _detect(self):
         vendor, gb = model_store.detect_gpu()
+        if vendor not in dict(GPUS):
+            vendor, gb = "none", 0.0
         self.gpu.setCurrentIndex(max(0, self.gpu.findData(vendor)))
         self.vram.setValue(gb)
         self.detected.setText(f"Detected: {dict(GPUS)[vendor]}" + (f", {gb:g} GB" if gb else "")
@@ -86,32 +89,39 @@ class ChooseDialog(QDialog):
 
     def _update(self, *_):
         device = self.device.currentData()
-        desktop = device == "desktop"
+        here_too = device == "computer"
         for w in (self.gpu, self.vram):
-            w.setEnabled(desktop)
-        picks = model_store.recommend(device, self.gpu.currentData() if desktop else "none",
-                                      self.vram.value() if desktop else 0, self.priority.currentData(),
-                                      self.live.isChecked())
+            w.setEnabled(here_too)
+        r = model_store.recommend(device, self.gpu.currentData() if here_too else "none",
+                                  self.vram.value() if here_too else 0, self.priority.currentData(),
+                                  self.live.isChecked())
         self._target = None
         self.act.hide()
-        if not picks:
+        best = r["pick"]
+        if best is None:
             self.answer.setText("Nothing in the catalogue fits that yet.")
             return
-        best = picks[0]
-        html = [f"<b style='font-size:15px'>{best.name}</b> <small style='color:gray'>{best.base_model}</small>"
-                f"<br>{best.recommendation}<br><small>{best.hardware}</small>"]
+        html = [f"<b style='font-size:15px'>{best.name}</b> <small style='color:gray'>{best.base_model}</small>"]
+        if r.get("reason"):
+            html.append(f"<br>{r['reason']}")
+        html.append(f"<br><small>{best.hardware}</small>")
         if best.card:
-            html.append(f"<br><a href='{best.card}'>Model card</a>")
-        if not desktop:
-            html.append("<br><br>On a phone, use it in the Hebrish Android app"
-                        + (" once it's there." if not best.available and best.supported else "."))
-        elif not best.supported:
-            html.append(f"<br><br><b>{where_else(best)}</b>")
-        elif not best.available:
-            html.append("<br><br>Coming soon to this app.")
-        here = next((v for v in picks if v.available), None) if desktop else None
+            html.append(f" <small><a href='{best.card}'>Model card</a></small>")
+        if r.get("how"):
+            html.append(f"<br><br><b>How:</b> {r['how']}")
+        if here_too and not best.supported:
+            html.append("<br><b>Not in this app yet.</b>" if r.get("how") else f"<br><b>{where_else(best)}</b>")
+        elif here_too and not best.available:
+            html.append("<br>Not published yet.")
+        if r.get("note"):
+            html.append(f"<br><i>{r['note']}</i>")
+        runner = r.get("runner_up")
+        if runner:
+            html.append(f"<br><br>Also good: <b>{runner.name}</b>"
+                        + (f", {r['runner_how']}" if r.get("runner_how") else "") + ".")
+        here = r["here"] if here_too else None
         if here and here is not best:
-            html.append(f"<br><br>In this app, the best fit is <b>{here.name}</b>: {here.recommendation}")
+            html.append(f"<br><br>In this app, the best fit is <b>{here.name}</b>.")
         if here:
             self._target = here
             on_disk = bool(model_store.installed(here.id))

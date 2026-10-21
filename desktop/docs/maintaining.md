@@ -501,12 +501,14 @@ for users to make sense and use the right one."
 - `current_id()` without a pick: the first downloaded supported model, recommended first, else
   `recommended`. Before 0.6.0 it was schema 1's `default` (`stock`); a user who never picked keeps
   the stock download they have.
-- **Help me choose** (`ui/choose.py`, logic in `model_store.recommend`, `fits`, `detect_gpu`):
-  device (this computer, a phone, a wearable), GPU vendor and VRAM, priority, and "words while
-  I'm talking" (streaming). Ranking and filters are in `../shared/update-protocol.md`. When the top
-  pick can't run here it is still named ("Use via llama.cpp: see the model card." for
-  `qwen3_asr`, else its `runs_on`), followed by the best variant this app can run, with a
-  Download / Switch button.
+- **Help me choose** (`ui/choose.py`, logic in `model_store.recommend`, `vram_bucket`,
+  `detect_gpu`): device (this computer, a phone, a wearable), GPU vendor and VRAM, priority, and
+  "words while I'm talking". The answer is the catalogue's `chooser.rules`, the same list as
+  hebrish.app/models/choose (`../shared/update-protocol.md`, "Catalogue v2"). 0.6.0 ranked by
+  weighted tiers instead, which disagreed with the site (no GPU + speed gave the 110M, the site
+  Sabich); 0.6.1 uses the rules. When the pick can't run here it is still named with its `how`
+  ("Use via llama.cpp: see the model card." for `qwen3_asr`, else `runs_on`), then the best
+  variant this app can run, with a Download / Switch button. Intel graphics count as `none`.
 - `detect_gpu()`: `nvidia-smi --query-gpu=memory.total` (3 s timeout), else
   `/sys/class/drm/card*/device/{vendor,mem_info_vram_total}` (amdgpu; vendor ids 0x1002 AMD,
   0x10de NVIDIA, 0x8086 Intel). (V, 2026-10-21, daniellaptop) an AMD APU reports its 1 GB
@@ -516,3 +518,7 @@ for users to make sense and use the right one."
 - Rendered off-screen and checked (V, 2026-10-21): the Models tab and the dialog, including
   "AMD, 16 GB, accuracy" → Sabich-Qwen3-ASR-1.7B + "In this app, the best fit is Sabich".
   Not tried on Windows.
+- `Engine.load(..., feature_dim)` takes the variant's `feature_dim` (0.6.1; 128 was hard-coded
+  before). Sabich-Parakeet-110M (80 mels) checked end to end on 2026-10-21 (V): fetched from its
+  CDN manifest, downloaded and verified, loaded, transcribed correctly. Its install folder name
+  has spaces (`Sabich-Parakeet-110M v1.0-9bc182a9e1b3`, from the manifest's `version`); harmless.

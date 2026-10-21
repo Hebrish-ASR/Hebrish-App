@@ -15,7 +15,7 @@ SHARED = os.path.join(ROOT, "shared", "catalogue.json")
 SHARED_V1 = os.path.join(ROOT, "shared", "models.json")
 ANDROID = os.path.join(ROOT, "android", "app")
 KT = os.path.join(ANDROID, "..", "core", "src", "main", "java", "app", "hebrish", "core")
-ENGINES = {"sherpa_offline_transducer", "sherpa_online_transducer", "qwen3_asr", "asr4all"}
+ENGINES = {"sherpa_offline_transducer", "sherpa_online_transducer", "qwen3_asr", "asr4all", "nemo_salm"}
 
 
 def v2():
@@ -56,7 +56,9 @@ def test_variants_are_well_formed():
         assert v["status"] in ("available", "planned"), v["id"]
         assert set(v["platforms"]) <= {"android", "linux", "windows"} and v["platforms"], v["id"]
         assert set(v["devices"]) <= {"wearable", "phone", "desktop"} and v["devices"], v["id"]
-        assert 1 <= v["speed"] <= 5 and 1 <= v["accuracy"] <= 5, v["id"]
+        assert 1 <= v["speed"] <= 5 and 1 <= v["accuracy"] <= 5 and 0 <= v["gradient"] <= 100, v["id"]
+        if v["engine"] == "sherpa_offline_transducer":
+            assert v["feature_dim"] in (80, 128), v["id"]
         assert v["recommendation"] and len(v["recommendation"]) <= 110, v["id"]
         assert v["hardware"] and v["card"], v["id"]
         gpu = v["requirements"]["gpu"]
@@ -97,3 +99,33 @@ def test_hebrish_ships_only_code_switching_lines_and_stock():
     assert not any("boxty" in v["id"] or v["id"] in ("tech", "personal") for v in all_variants())
     with open(SHARED_V1) as f:
         assert [m["id"] for m in json.load(f)["models"]] == ["sabich", "codeswitch", "stock"]
+
+
+def test_chooser_rules_name_catalogue_variants():
+    ids = {v["id"] for v in all_variants()}
+    rules = v2()["chooser"]["rules"]
+    assert rules[-1]["when"] == {}, "the last rule is the catch-all"
+    for r in rules:
+        assert r["pick"] in ids and r.get("runner_up", r["pick"]) in ids, r
+        assert set(r["when"]) <= {"device", "gpu", "vram", "priority", "live"}, r
+
+
+SITE = os.path.join(ROOT, "..", "Hebrish-App", "data", "variants.json")   # hebrish.app (Hebrish-Website)
+
+
+def test_numbers_and_rules_match_the_website():
+    """hebrish.app/models/choose and the apps must agree (2026-10-21). Runs only where the
+    website repo is checked out next to this one (not in CI)."""
+    import pytest
+    if not os.path.exists(SITE):
+        pytest.skip("website repo not checked out")
+    site = json.load(open(SITE))
+    idmap = {"jachnun": "codeswitch"}
+    by_id = {v["id"]: v for v in all_variants()}
+    for sv in site["variants"]:
+        v = by_id[idmap.get(sv["id"], sv["id"])]
+        assert (v["speed"], v["accuracy"], v["gradient"]) == (sv["speed"], sv["accuracy"], sv["gradient"]), sv["id"]
+    mapped = [{**r, "pick": idmap.get(r["pick"], r["pick"]),
+               **({"runner_up": idmap.get(r["runner_up"], r["runner_up"])} if "runner_up" in r else {})}
+              for r in site["rules"]]
+    assert mapped == v2()["chooser"]["rules"]

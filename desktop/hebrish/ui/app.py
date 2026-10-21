@@ -351,7 +351,7 @@ class Controller(QObject):
 
         def work():
             try:
-                self.engine.load(cur[0], threads(self.cfg))
+                self.engine.load(cur[0], threads(self.cfg), model_store.current().feature_dim)
                 self.sig.loaded.emit(None)
             except Exception as e:
                 self.sig.loaded.emit(e)

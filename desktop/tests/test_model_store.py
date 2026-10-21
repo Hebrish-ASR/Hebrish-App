@@ -173,7 +173,7 @@ def test_unsupported_engines_are_listed_but_not_models():
     select or download them; Shakshuka waits for sherpa_online_transducer (phase 2)."""
     listed = {v.id for v in ms.variants()}
     usable = {m.id for m in ms.models()}
-    assert {"sabich-qwen3-asr-1.7b", "sabich-asr4all-s", "shakshuka"} <= listed - usable
+    assert {"sabich-qwen3-asr-1.7b", "sabich-canary-qwen-2.5b", "sabich-asr4all-s", "shakshuka"} <= listed - usable
     assert {"sabich", "codeswitch", "stock", "sabich-parakeet-110m"} <= usable
     assert ms.get_model("sabich-qwen3-asr-1.7b") is None
     with pytest.raises(ValueError):
@@ -189,20 +189,24 @@ def test_no_pick_prefers_a_downloaded_model_then_recommended():
     assert ms.current_id() == "stock"                     # a 0.5.x user on schema 1's default keeps it
 
 
-@pytest.mark.parametrize("args,first", [
-    (("desktop", "amd", 16, "accuracy"), "sabich-qwen3-asr-1.7b"),
-    (("desktop", "nvidia", 4, "accuracy"), "sabich"),      # 4 GB is under Qwen's 5 GB
-    (("desktop", "none", 0, "balanced"), "sabich"),
-    (("desktop", "none", 0, "speed"), "sabich-parakeet-110m"),
-    (("phone", "none", 0, "balanced"), "sabich"),
-    (("wearable", "none", 0, "accuracy"), "sabich-parakeet-110m"),
-    (("wearable", "none", 0, "speed"), "sabich-asr4all-m"),
-    (("desktop", "none", 0, "balanced", True), "shakshuka"),
+@pytest.mark.parametrize("args,first,here", [
+    (("computer", "amd", 16, "accuracy"), "sabich-qwen3-asr-1.7b", "sabich"),
+    (("computer", "nvidia", 4, "accuracy"), "sabich-qwen3-asr-1.7b", "sabich"),   # Q8_0 GGUF fits 4 GB
+    (("computer", "nvidia", 4, "balanced"), "sabich", "sabich"),
+    (("computer", "none", 0, "balanced"), "sabich", "sabich"),
+    (("computer", "none", 0, "speed"), "sabich", "sabich"),
+    (("phone", "none", 0, "speed"), "sabich-parakeet-110m", "sabich-parakeet-110m"),
+    (("wearable", "none", 0, "accuracy"), "sabich-parakeet-110m", "sabich-parakeet-110m"),
+    (("wearable", "none", 0, "speed"), "sabich-asr4all-s", "sabich-parakeet-110m"),
+    (("computer", "none", 0, "balanced", True), "shakshuka", "sabich"),          # no streaming engine yet
 ])
-def test_recommend(args, first):
-    picks = ms.recommend(*args)
-    assert picks[0].id == first
-    assert all(p.line != "stock" for p in picks)
+def test_recommend_follows_the_shared_rules(args, first, here):
+    r = ms.recommend(*args)
+    assert r["pick"].id == first and r["here"].id == here
+
+
+def test_vram_buckets():
+    assert [ms.vram_bucket(g) for g in (0, 4, 5, 8, 11, 12, 24)] == ["4", "4", "8", "8", "12", "12", "16"]
 
 
 def test_legacy_voice_to_hebrish_install_is_adopted(monkeypatch):

@@ -1,5 +1,5 @@
 {
-  "_comment": "Model catalogue v2 (schema 2), read by Android 0.7.0+ and desktop 0.6.0+. Builds before those read models.json (schema 1) and reject any other schema, so both files are kept; desktop/tests/test_shared.py checks that every schema-1 model appears here with the same id, repo and manifest_url. Lines are what a model is trained for (Sabich = everything, Jachnun = code-switching only, Shakshuka = streaming); variants are the same line on another base model. A variant is downloadable in an app only if its engine is in that app's supported engines AND its status is 'available'; other variants are listed greyed with runs_on and a card link. Variant ids are permanent (they name the folder models/<id>/); never reuse or rename one. speed and accuracy are 1-5 tiers, estimates relative to the other Hebrish models, not benchmark results. Protocol: shared/update-protocol.md.",
+  "_comment": "Model catalogue v2 (schema 2), read by Android 0.7.0+ and desktop 0.6.0+. Builds before those read models.json (schema 1) and reject any other schema, so both files are kept; desktop/tests/test_shared.py checks that every schema-1 model appears here with the same id, repo and manifest_url. Lines are what a model is trained for (Sabich = everything, Jachnun = code-switching only, Shakshuka = streaming); variants are the same line on another base model. A variant is downloadable in an app only if its engine is in that app's supported engines AND its status is 'available'; other variants are listed greyed with runs_on and a card link. Variant ids are permanent (they name the folder models/<id>/); never reuse or rename one. speed and accuracy (1-5) and gradient (0-100) are estimates, the same numbers as hebrish.app/models/choose, not benchmark results; `chooser.rules` is that page's decision list. Protocol: shared/update-protocol.md.",
   "schema": 2,
   "catalogue_v2_url": "https://raw.githubusercontent.com/Hebrish-ASR/Hebrish-App/main/shared/catalogue.json",
   "recommended": "sabich",
@@ -9,23 +9,38 @@
   "tiers": {
     "estimate": true,
     "speed": "1 = slowest, 5 = fastest, each on the hardware it is meant for",
-    "accuracy": "1 = most mistakes, 5 = fewest, on English with Hebrew and tech words in it"
+    "accuracy": "1 = most mistakes, 5 = fewest, on English with Hebrew and tech words in it",
+    "gradient": "0 = smallest and fastest, 100 = most accurate; same numbers as hebrish.app/models/choose (Hebrish-Website data/variants.json)",
+    "note": "Positions are estimates from model size and each model's own evaluations. The models have not all been scored on the same test set, so read them as a rough order, not a ranking."
   },
   "engines": {
     "sherpa_offline_transducer": {
       "name": "sherpa-onnx (offline transducer)",
-      "files": ["encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"],
+      "files": [
+        "encoder.int8.onnx",
+        "decoder.int8.onnx",
+        "joiner.int8.onnx",
+        "tokens.txt"
+      ],
       "model_type": "nemo_transducer"
     },
     "sherpa_online_transducer": {
       "name": "sherpa-onnx (streaming transducer)",
-      "files": ["encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"]
+      "files": [
+        "encoder.int8.onnx",
+        "decoder.int8.onnx",
+        "joiner.int8.onnx",
+        "tokens.txt"
+      ]
     },
     "qwen3_asr": {
       "name": "Qwen3-ASR (GGUF: llama.cpp, transcribe.cpp)"
     },
     "asr4all": {
       "name": "FUTO asr4all (ONNX / ExecuTorch, streaming CTC)"
+    },
+    "nemo_salm": {
+      "name": "NeMo SALM (Canary-Qwen), PyTorch"
     }
   },
   "lines": [
@@ -41,14 +56,26 @@
           "base_model": "nvidia/parakeet-tdt-0.6b-v2",
           "size_label": "0.6B",
           "engine": "sherpa_offline_transducer",
+          "feature_dim": 128,
           "status": "available",
-          "platforms": ["android", "linux", "windows"],
-          "devices": ["phone", "desktop"],
-          "requirements": {"ram_mb": 1500, "gpu": null},
+          "platforms": [
+            "android",
+            "linux",
+            "windows"
+          ],
+          "devices": [
+            "phone",
+            "desktop"
+          ],
+          "requirements": {
+            "ram_mb": 1500,
+            "gpu": null
+          },
           "hardware": "Phone or computer, no GPU needed; about 1.5 GB of RAM",
           "download_mb": 661,
           "speed": 3,
           "accuracy": 4,
+          "gradient": 67,
           "recommendation": "Start here: the best all-round choice on a phone or any recent computer.",
           "repo": "Hebrish/Sabich-sherpa-onnx-int8",
           "subdir": "",
@@ -62,17 +89,67 @@
           "size_label": "1.7B",
           "engine": "qwen3_asr",
           "status": "available",
-          "platforms": ["linux", "windows"],
-          "devices": ["desktop"],
-          "requirements": {"ram_mb": 8000, "gpu": {"vram_gb": 5, "backends": ["cuda", "hip", "vulkan"]}},
-          "hardware": "Desktop with a GPU: 5 GB of VRAM or more (CUDA, ROCm/HIP or Vulkan)",
-          "download_mb": null,
-          "speed": 1,
+          "platforms": [
+            "linux",
+            "windows"
+          ],
+          "devices": [
+            "desktop"
+          ],
+          "requirements": {
+            "ram_mb": 8000,
+            "gpu": {
+              "vram_gb": 2.5,
+              "backends": [
+                "cuda",
+                "hip",
+                "vulkan"
+              ]
+            }
+          },
+          "hardware": "Desktop GPU: about 2.2 GB of VRAM for the Q8_0 GGUF, 5 GB for bf16 (CUDA, ROCm/HIP or Vulkan)",
+          "download_mb": 2186,
+          "speed": 2,
           "accuracy": 5,
+          "gradient": 95,
           "recommendation": "The most accurate, for a desktop with a GPU. Not in the Hebrish apps yet.",
-          "runs_on": "llama.cpp (CUDA, HIP or Vulkan) with the GGUF builds on a desktop GPU; transcribe.cpp in the Offline Voice Input app on Android, slow on phones.",
+          "runs_on": "llama.cpp (CUDA, HIP or Vulkan) with Hebrish/Sabich-Qwen3-ASR-1.7B-GGUF (Q8_0 + mmproj, about 2.2 GB) on a desktop GPU, or bf16 in Transformers; transcribe.cpp Q4_K_M (1.32 GB) in Offline Voice Input on Android, slow on phones.",
           "repo": "Hebrish/Sabich-Qwen3-ASR-1.7B",
           "card": "https://huggingface.co/Hebrish/Sabich-Qwen3-ASR-1.7B"
+        },
+        {
+          "id": "sabich-canary-qwen-2.5b",
+          "name": "Sabich-Canary-Qwen-2.5B",
+          "base_model": "nvidia/canary-qwen-2.5b",
+          "size_label": "2.5B",
+          "engine": "nemo_salm",
+          "status": "planned",
+          "platforms": [
+            "linux",
+            "windows"
+          ],
+          "devices": [
+            "desktop"
+          ],
+          "requirements": {
+            "ram_mb": 12000,
+            "gpu": {
+              "vram_gb": 6,
+              "backends": [
+                "cuda",
+                "hip"
+              ]
+            }
+          },
+          "hardware": "Desktop GPU with about 6 GB of VRAM (bf16; PyTorch with CUDA or ROCm)",
+          "download_mb": null,
+          "speed": 1,
+          "accuracy": 4,
+          "gradient": 88,
+          "recommendation": "Best on plain English; behind Sabich-Qwen3-ASR-1.7B on Hebrew words. Not in the apps.",
+          "runs_on": "NeMo (SALM) in PyTorch on a desktop GPU, about 6 GB of VRAM in bf16.",
+          "repo": "Hebrish/Sabich-Canary-Qwen-2.5B",
+          "card": "https://huggingface.co/Hebrish/Sabich-Canary-Qwen-2.5B"
         },
         {
           "id": "sabich-parakeet-110m",
@@ -80,14 +157,27 @@
           "base_model": "nvidia/parakeet-tdt_ctc-110m",
           "size_label": "110M",
           "engine": "sherpa_offline_transducer",
-          "status": "planned",
-          "platforms": ["android", "linux", "windows"],
-          "devices": ["wearable", "phone", "desktop"],
-          "requirements": {"ram_mb": 400, "gpu": null},
+          "feature_dim": 80,
+          "status": "available",
+          "platforms": [
+            "android",
+            "linux",
+            "windows"
+          ],
+          "devices": [
+            "wearable",
+            "phone",
+            "desktop"
+          ],
+          "requirements": {
+            "ram_mb": 400,
+            "gpu": null
+          },
           "hardware": "Any phone, an older computer, a watch or a wearable; about 0.4 GB of RAM",
           "download_mb": 137,
           "speed": 4,
           "accuracy": 3,
+          "gradient": 30,
           "recommendation": "For older phones and wearables: a fifth of the size and faster, with more mistakes.",
           "repo": "Hebrish/Sabich-Parakeet-110M-sherpa-onnx-int8",
           "subdir": "",
@@ -101,16 +191,26 @@
           "size_label": "56M",
           "engine": "asr4all",
           "status": "planned",
-          "platforms": ["android"],
-          "devices": ["wearable", "phone"],
-          "requirements": {"ram_mb": 300, "gpu": null},
+          "platforms": [
+            "android"
+          ],
+          "devices": [
+            "wearable",
+            "phone"
+          ],
+          "requirements": {
+            "ram_mb": 300,
+            "gpu": null
+          },
           "hardware": "Wearables and very low-end phones; about 0.3 GB of RAM",
           "download_mb": null,
           "speed": 5,
           "accuracy": 2,
+          "gradient": 14,
           "recommendation": "Tiny, for wearables: live text, writes numbers as words. Not published yet.",
           "runs_on": "FUTO's asr4all runtime (ONNX or ExecuTorch), with its punctuation model. Not published yet.",
-          "card": "https://hebrish.app/models/sabich"
+          "card": "https://hebrish.app/models/sabich-asr4all",
+          "repo": "Hebrish/Sabich-asr4all-M"
         },
         {
           "id": "sabich-asr4all-s",
@@ -119,16 +219,26 @@
           "size_label": "28M",
           "engine": "asr4all",
           "status": "planned",
-          "platforms": ["android"],
-          "devices": ["wearable", "phone"],
-          "requirements": {"ram_mb": 200, "gpu": null},
+          "platforms": [
+            "android"
+          ],
+          "devices": [
+            "wearable",
+            "phone"
+          ],
+          "requirements": {
+            "ram_mb": 200,
+            "gpu": null
+          },
           "hardware": "Wearables and very low-end phones; about 0.2 GB of RAM",
           "download_mb": null,
           "speed": 5,
-          "accuracy": 1,
+          "accuracy": 2,
+          "gradient": 4,
           "recommendation": "The smallest and fastest, for the weakest devices; writes numbers as words. Not published yet.",
           "runs_on": "FUTO's asr4all runtime (ONNX or ExecuTorch), with its punctuation model. Not published yet.",
-          "card": "https://hebrish.app/models/sabich"
+          "card": "https://hebrish.app/models/sabich-asr4all",
+          "repo": "Hebrish/Sabich-asr4all-S"
         }
       ]
     },
@@ -144,14 +254,26 @@
           "base_model": "nvidia/parakeet-tdt-0.6b-v2",
           "size_label": "0.6B",
           "engine": "sherpa_offline_transducer",
+          "feature_dim": 128,
           "status": "available",
-          "platforms": ["android", "linux", "windows"],
-          "devices": ["phone", "desktop"],
-          "requirements": {"ram_mb": 1500, "gpu": null},
+          "platforms": [
+            "android",
+            "linux",
+            "windows"
+          ],
+          "devices": [
+            "phone",
+            "desktop"
+          ],
+          "requirements": {
+            "ram_mb": 1500,
+            "gpu": null
+          },
           "hardware": "Phone or computer, no GPU needed; about 1.5 GB of RAM",
           "download_mb": 661,
           "speed": 3,
           "accuracy": 4,
+          "gradient": 61,
           "recommendation": "Hebrew words without the tech vocabulary. Sabich does all of this and more.",
           "repo": "Hebrish/Jachnun-sherpa-onnx-int8",
           "subdir": "",
@@ -172,17 +294,31 @@
           "base_model": "nvidia/nemotron-speech-streaming-en-0.6b",
           "size_label": "0.6B",
           "engine": "sherpa_online_transducer",
-          "engine_options": {"feature_dim": 128, "chunk_ms": 560},
-          "status": "planned",
-          "platforms": ["android", "linux", "windows"],
-          "devices": ["phone", "desktop"],
+          "engine_options": {
+            "feature_dim": 128,
+            "chunk_ms": 560
+          },
+          "status": "available",
+          "platforms": [
+            "android",
+            "linux",
+            "windows"
+          ],
+          "devices": [
+            "phone",
+            "desktop"
+          ],
           "streaming": true,
-          "requirements": {"ram_mb": 1500, "gpu": null},
+          "requirements": {
+            "ram_mb": 1500,
+            "gpu": null
+          },
           "hardware": "Phone or computer, no GPU needed; about 1.5 GB of RAM",
           "download_mb": 662,
           "speed": 4,
-          "accuracy": 3,
-          "recommendation": "Live text while you talk; a little less accurate than Sabich.",
+          "accuracy": 4,
+          "gradient": 54,
+          "recommendation": "Live text while you talk: the words appear before you finish.",
           "runs_on": "sherpa-onnx's streaming recognizer (OnlineRecognizer). The Hebrish apps add it in a later release.",
           "repo": "Hebrish/Shakshuka-sherpa-onnx-int8",
           "subdir": "",
@@ -203,14 +339,26 @@
           "base_model": "nvidia/parakeet-tdt-0.6b-v2",
           "size_label": "0.6B",
           "engine": "sherpa_offline_transducer",
+          "feature_dim": 128,
           "status": "available",
-          "platforms": ["android", "linux", "windows"],
-          "devices": ["phone", "desktop"],
-          "requirements": {"ram_mb": 1500, "gpu": null},
+          "platforms": [
+            "android",
+            "linux",
+            "windows"
+          ],
+          "devices": [
+            "phone",
+            "desktop"
+          ],
+          "requirements": {
+            "ram_mb": 1500,
+            "gpu": null
+          },
           "hardware": "Phone or computer, no GPU needed; about 1.5 GB of RAM",
           "download_mb": 661,
           "speed": 3,
           "accuracy": 2,
+          "gradient": 58,
           "recommendation": "Plain English with no Hebrew words, as NVIDIA released it.",
           "repo": "csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8",
           "subdir": "",
@@ -219,5 +367,241 @@
         }
       ]
     }
-  ]
+  ],
+  "chooser": {
+    "_doc": "Copied from hebrish.app's data/variants.json `rules` on 2026-10-21 (ids mapped: jachnun -> codeswitch) so the site's chooser and the apps' Help me choose agree. Checked in order; the first rule whose `when` matches wins; an absent key matches anything. Form values: device phone|computer|wearable; gpu none|amd|nvidia|apple; vram 4|8|12|16 (GB, rounded up to a bucket); priority speed|balanced|accuracy; live true|false. `how` names the build or runtime, `note` is an optional caveat.",
+    "rules": [
+      {
+        "when": {
+          "device": [
+            "wearable"
+          ],
+          "live": [
+            true
+          ]
+        },
+        "pick": "sabich-asr4all-s",
+        "how": "asr4all's own streaming runtime",
+        "reason": "The smallest Sabich, and it streams, so text appears while you speak.",
+        "runner_up": "sabich-parakeet-110m",
+        "runner_how": "sherpa-onnx int8 (not streaming)"
+      },
+      {
+        "when": {
+          "live": [
+            true
+          ]
+        },
+        "pick": "shakshuka",
+        "how": "NeMo cache-aware streaming, or the sherpa-onnx int8 and GGUF builds",
+        "reason": "Shakshuka is the streaming line: the words appear while you are still talking.",
+        "runner_up": "sabich",
+        "runner_how": "if you can wait a moment after you stop speaking: the Hebrish apps",
+        "note": "Shakshuka is not in the Hebrish apps yet."
+      },
+      {
+        "when": {
+          "device": [
+            "wearable"
+          ],
+          "priority": [
+            "speed"
+          ]
+        },
+        "pick": "sabich-asr4all-s",
+        "how": "asr4all's own runtime",
+        "reason": "At 28M parameters it is the smallest and fastest Sabich, built for wearables and very low-power boards. It writes numbers as words.",
+        "runner_up": "sabich-parakeet-110m",
+        "runner_how": "sherpa-onnx int8 or GGUF"
+      },
+      {
+        "when": {
+          "device": [
+            "wearable"
+          ]
+        },
+        "pick": "sabich-parakeet-110m",
+        "how": "sherpa-onnx int8 (about 137 MB) or GGUF Q8_0 (135 MB) with transcribe.cpp",
+        "reason": "NVIDIA's smallest Parakeet with all of Sabich's training: about a fifth of the size of Sabich, and it writes numbers in digits.",
+        "runner_up": "sabich-asr4all-m",
+        "runner_how": "smaller still, once published"
+      },
+      {
+        "when": {
+          "device": [
+            "phone"
+          ],
+          "priority": [
+            "speed"
+          ]
+        },
+        "pick": "sabich-parakeet-110m",
+        "how": "sherpa-onnx int8 or GGUF Q8_0 in Offline Voice Input",
+        "reason": "About a fifth of the size of Sabich, for older and low-end phones. Expect it to be less accurate.",
+        "runner_up": "sabich",
+        "runner_how": "in the Hebrish app",
+        "note": "Sabich-Parakeet-110M is not in the Hebrish apps yet."
+      },
+      {
+        "when": {
+          "device": [
+            "phone"
+          ],
+          "priority": [
+            "accuracy"
+          ]
+        },
+        "pick": "sabich",
+        "how": "the Hebrish app for Android (about 660 MB, downloaded once)",
+        "reason": "The most accurate model that runs well on a phone, and the default in the Hebrish app.",
+        "runner_up": "sabich-qwen3-asr-1.7b",
+        "runner_how": "transcribe.cpp Q4_K_M GGUF in Offline Voice Input: it runs, but slowly"
+      },
+      {
+        "when": {
+          "device": [
+            "phone"
+          ]
+        },
+        "pick": "sabich",
+        "how": "the Hebrish app for Android (about 660 MB, downloaded once)",
+        "reason": "The default for phones: code-switching plus tech vocabulary, on the device.",
+        "runner_up": "sabich-parakeet-110m",
+        "runner_how": "if your phone is short on memory or speed"
+      },
+      {
+        "when": {
+          "device": [
+            "computer"
+          ],
+          "gpu": [
+            "none"
+          ],
+          "priority": [
+            "speed"
+          ]
+        },
+        "pick": "sabich",
+        "how": "the Hebrish app for Ubuntu or Windows (int8, on the CPU)",
+        "reason": "It runs on the CPU at dictation speed, so there is no need to go smaller.",
+        "runner_up": "sabich-parakeet-110m",
+        "runner_how": "sherpa-onnx int8, on older or slower CPUs"
+      },
+      {
+        "when": {
+          "device": [
+            "computer"
+          ],
+          "gpu": [
+            "none"
+          ]
+        },
+        "pick": "sabich",
+        "how": "the Hebrish app for Ubuntu or Windows (int8, on the CPU)",
+        "reason": "Without a GPU, Sabich is the best balance: accurate and quick on the CPU.",
+        "runner_up": "sabich-qwen3-asr-1.7b",
+        "runner_how": "GGUF with llama.cpp on the CPU: it runs, but expect it to be slow"
+      },
+      {
+        "when": {
+          "device": [
+            "computer"
+          ],
+          "gpu": [
+            "apple"
+          ]
+        },
+        "pick": "sabich",
+        "how": "the MLX build with parakeet-mlx on Apple silicon",
+        "reason": "Sabich has an MLX build for Apple silicon; there is no Hebrish app for Mac yet.",
+        "runner_up": "sabich-qwen3-asr-1.7b",
+        "runner_how": "GGUF with llama.cpp's Metal backend (not tested yet)"
+      },
+      {
+        "when": {
+          "device": [
+            "computer"
+          ],
+          "gpu": [
+            "amd",
+            "nvidia"
+          ],
+          "priority": [
+            "speed"
+          ]
+        },
+        "pick": "sabich",
+        "how": "the Hebrish app for Ubuntu or Windows, or ONNX / GGUF in your own tools",
+        "reason": "Smaller and quicker than the Qwen model, and close behind it on accuracy.",
+        "runner_up": "sabich-qwen3-asr-1.7b",
+        "runner_how": "bf16 in Transformers, about 5 GB of VRAM"
+      },
+      {
+        "when": {
+          "device": [
+            "computer"
+          ],
+          "gpu": [
+            "amd",
+            "nvidia"
+          ],
+          "vram": [
+            "4"
+          ],
+          "priority": [
+            "accuracy"
+          ]
+        },
+        "pick": "sabich-qwen3-asr-1.7b",
+        "how": "GGUF Q8_0 (about 2 GB) with llama.cpp: HIP or Vulkan on AMD, CUDA on NVIDIA",
+        "reason": "The highest accuracy, and the Q8_0 GGUF fits in 4 GB of VRAM.",
+        "runner_up": "sabich",
+        "runner_how": "the Hebrish app, on the CPU",
+        "note": "The bf16 weights need about 5 GB of VRAM; the Q8_0 GGUF needs about 2.2 GB."
+      },
+      {
+        "when": {
+          "device": [
+            "computer"
+          ],
+          "gpu": [
+            "amd",
+            "nvidia"
+          ],
+          "vram": [
+            "4"
+          ]
+        },
+        "pick": "sabich",
+        "how": "the Hebrish app for Ubuntu or Windows",
+        "reason": "With 4 GB of VRAM or less, Sabich is the quicker all-round choice.",
+        "runner_up": "sabich-qwen3-asr-1.7b",
+        "runner_how": "GGUF Q8_0 (about 2 GB) with llama.cpp"
+      },
+      {
+        "when": {
+          "device": [
+            "computer"
+          ],
+          "gpu": [
+            "amd",
+            "nvidia"
+          ]
+        },
+        "pick": "sabich-qwen3-asr-1.7b",
+        "how": "bf16 in Transformers (about 5 GB of VRAM; PyTorch ROCm on AMD, CUDA on NVIDIA), or GGUF with llama.cpp",
+        "reason": "Your GPU has room for it, so you get the highest accuracy at a good speed.",
+        "runner_up": "sabich",
+        "runner_how": "the Hebrish app, if you want dictation in every app now"
+      },
+      {
+        "when": {},
+        "pick": "sabich",
+        "how": "the Hebrish apps",
+        "reason": "The default: code-switching plus tech vocabulary.",
+        "runner_up": "codeswitch",
+        "runner_how": "code-switching only"
+      }
+    ]
+  }
 }

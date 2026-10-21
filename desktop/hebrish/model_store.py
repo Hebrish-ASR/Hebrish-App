@@ -65,6 +65,7 @@ class Model:
     manifest_url: str = ""           # CDN manifest; preferred over repo when set (0.2.2+)
     line: str = ""                   # line id (sabich, jachnun, shakshuka, stock)
     engine: str = "sherpa_offline_transducer"
+    feature_dim: int = 128           # mel features for sherpa (80 for Sabich-Parakeet-110M)
     base_model: str = ""
     size_label: str = ""
     platforms: list = field(default_factory=lambda: ["android", "linux", "windows"])
@@ -74,6 +75,7 @@ class Model:
     download_mb: int | None = None
     speed: int = 0                   # 1-5, estimate
     accuracy: int = 0                # 1-5, estimate
+    gradient: int = 0                # 0 = smallest and fastest, 100 = most accurate (estimate)
     recommendation: str = ""
     runs_on: str = ""                # where an unsupported variant runs instead
     streaming: bool = False
@@ -187,32 +189,31 @@ def current_id() -> str:
 
 # -- help me choose (0.6.0) --------------------------------------------------
 
-GPU_BACKENDS = {"nvidia": ["cuda", "vulkan"], "amd": ["hip", "vulkan"], "intel": ["vulkan"], "none": []}
-PRIORITY_WEIGHTS = {"speed": (3, 1), "balanced": (1, 1), "accuracy": (1, 3)}
+def vram_bucket(gb: float) -> str:
+    """The chooser's VRAM buckets (GB, rounded up): 4, 8, 12, 16."""
+    return next((b for b in ("4", "8", "12") if gb <= int(b)), "16")
 
 
-def fits(v: Model, device: str, gpu: str = "none", vram_gb: float = 0) -> bool:
-    """Whether variant v suits a device ("wearable" | "phone" | "desktop") with that GPU."""
-    if device not in v.devices:
-        return False
-    need = (v.requirements or {}).get("gpu")
-    if need:
-        if device != "desktop" or vram_gb < need.get("vram_gb", 0):
-            return False
-        if not set(need.get("backends", [])) & set(GPU_BACKENDS.get(gpu, [])):
-            return False
-    return True
+def _matches(when: dict, form: dict) -> bool:
+    return all(form.get(k) in v for k, v in when.items())
 
 
 def recommend(device: str, gpu: str = "none", vram_gb: float = 0, priority: str = "balanced",
-              live: bool = False) -> list[Model]:
-    """Variants that fit, best first: speed and accuracy tiers weighted by the priority. Lines
-    with a streaming variant are only considered when live text is wanted, and then only those.
-    Stock Parakeet is left out (it has no Hebrew words). Ties keep catalogue order, so the
-    recommended model wins a tie. The first entry may be one this app can't run (see .supported)."""
-    ws, wa = PRIORITY_WEIGHTS.get(priority, (1, 1))
-    pool = [v for v in variants() if v.line != "stock" and v.streaming == live and fits(v, device, gpu, vram_gb)]
-    return sorted(pool, key=lambda v: -(ws * v.speed + wa * v.accuracy))
+              live: bool = False) -> dict:
+    """The catalogue's `chooser.rules`, the same list as hebrish.app/models/choose: the first
+    rule whose `when` matches the form wins. device is phone | computer | wearable, gpu none |
+    amd | nvidia | apple. Returns the rule with `pick` / `runner_up` resolved to Models (either
+    may be one this app can't run: check .available) and `here`, the best variant this app can
+    download: the pick, else the runner-up, else the recommended model."""
+    form = {"device": device, "gpu": gpu, "vram": vram_bucket(vram_gb), "priority": priority, "live": live}
+    rule = next((r for r in catalogue().get("chooser", {}).get("rules", [])
+                 if _matches(r.get("when", {}), form)), None)
+    rec = get_model(recommended_id())
+    if rule is None:
+        return {"pick": rec, "runner_up": None, "here": rec, "how": "", "reason": "", "note": ""}
+    pick, runner = get_variant(rule["pick"]), get_variant(rule.get("runner_up", ""))
+    here = next((m for m in (pick, runner) if m and m.available), rec)
+    return {**rule, "pick": pick, "runner_up": runner, "here": here}
 
 
 def detect_gpu() -> tuple[str, float]:
