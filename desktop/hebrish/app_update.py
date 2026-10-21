@@ -50,7 +50,7 @@ METHODS = ("apt", "deb-manual", "windows", "source")
 # any unrelated third-party source is broken.
 # No terminal under pkexec, so a dpkg conffile question would hang the run: noninteractive, and
 # keep the user's version of any changed conffile (confdef, else confold).
-APT_SCRIPT = (f"apt-get update -o Dir::Etc::sourcelist={SOURCES} -o Dir::Etc::sourceparts=- "
+APT_SCRIPT = (f"apt-get update -o Dir::Etc::sourcelist={SOURCES.as_posix()} -o Dir::Etc::sourceparts=- "
               "-o APT::Get::List-Cleanup=0 && DEBIAN_FRONTEND=noninteractive apt-get install -y "
               "--only-upgrade -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold hebrish")
 # What to run by hand when pkexec isn't there or fails
