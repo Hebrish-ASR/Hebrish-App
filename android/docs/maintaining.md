@@ -429,6 +429,14 @@ register, and falls back to the https link) and `ContactActivity`. Setup checks 
 screens are in `Setup` (MainActivity.kt). Every screen but home has `parentActivityName`
 `.MainActivity` and an Up arrow. Prefs keys did not change, so 0.3.0 settings carry over.
 
+## Version and tag (2026-10-21)
+
+Release with `scripts/release-tag.sh android <ver> --push` (repo root): it sets `versionName`
+to `<ver>` and `versionCode` + 1 in `app/build.gradle.kts`, commits only that file and
+`.github/android-release-notes.md` (which must start with `**<ver>`), and pushes the annotated
+tag `android-v<ver>`. The tag is the source of truth; `android.yml`'s first step, "Tag matches
+version", fails a tag whose name differs from `versionName`. Don't tag by hand.
+
 ## Signing
 
 The release key is **not** in the repo. GitHub Actions secrets: `RELEASE_KEYSTORE_B64`

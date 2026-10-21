@@ -28,7 +28,7 @@ LIB="$ROOT/usr/lib/$PKG"
 mkdir -p "$ROOT/DEBIAN" "$LIB" "$ROOT/usr/bin" "$ROOT/usr/share/applications" \
          "$ROOT/usr/share/icons/hicolor/scalable/apps" \
          "$ROOT/usr/share/doc/$PKG" "$ROOT/usr/lib/udev/rules.d" \
-         "$ROOT/etc/apt/keyrings" "$ROOT/etc/apt/sources.list.d"
+         "$ROOT/etc/apt/keyrings" "$ROOT/etc/apt/sources.list.d" "$ROOT/usr/share/metainfo"
 
 uv pip install --quiet --python "$PY" --target "$LIB" --no-deps "sherpa-onnx>=1.12" sherpa-onnx-core
 uv pip install --quiet --python "$PY" --target "$LIB" --no-deps .
@@ -38,6 +38,9 @@ bundled=$(cd "$LIB" && ls -d sherpa*.dist-info | sed 's/\.dist-info$//' | tr '\n
 
 install -m755 packaging/debian/$PKG packaging/debian/$PKG-model "$ROOT/usr/bin/"
 install -m644 packaging/$PKG.desktop "$ROOT/usr/share/applications/"
+# AppStream listing (Discover, GNOME Software): this build's version is its <release>.
+sed "s|@RELEASES@|    <release version=\"$VERSION\" date=\"$(date -u +%F)\"><url>https://hebrish.app/changelog</url></release>|" \
+    packaging/$PKG.metainfo.xml > "$ROOT/usr/share/metainfo/app.hebrish.Dictation.metainfo.xml"
 install -m644 hebrish/data/icons/hebrish.svg "$ROOT/usr/share/icons/hicolor/scalable/apps/"
 install -m644 packaging/debian/70-$PKG-uinput.rules "$ROOT/usr/lib/udev/rules.d/"
 install -m644 README.md packaging/debian/README.Debian "$ROOT/usr/share/doc/$PKG/"

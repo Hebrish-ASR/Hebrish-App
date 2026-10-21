@@ -237,9 +237,15 @@ each part works there:
 
 ## Releasing
 
-1. Bump `__version__` in `hebrish/__init__.py` and write
-   `../.github/desktop-release-notes.md`.
-2. Push the tag `desktop-v<ver>`. CI (`.github/workflows/desktop.yml`) runs the tests on
+1. Write `../.github/desktop-release-notes.md` (first line `**<ver>: …**`).
+2. `scripts/release-tag.sh desktop <ver> --push` (repo root). It sets `__version__`, commits
+   only that file and the notes, makes the annotated tag `desktop-v<ver>` and pushes both.
+   **The tag is the version's source of truth** (Daniel, 2026-10-21: "using tags to have
+   consistent versioning"): the script refuses a version that isn't newer than the last tag,
+   and CI's first step, "Tag matches version", fails a tag that differs from `__version__`; the
+   Windows job `needs` it, so a mismatched tag never produces a release. Don't tag by hand.
+   (Tags need `-a`: plain `git tag` fails here with "no tag message?" because of the git
+   config, seen 2026-10-21.) CI (`.github/workflows/desktop.yml`) then runs the tests on
    Linux and Windows, builds the Windows zip with PyInstaller, runs the frozen exe's
    `--selftest`, and creates the release with the zip attached.
 3. On Ubuntu 26.04, run `./build-deb.sh`. It writes `dist/hebrish_<ver>-1_amd64.deb`,
@@ -249,6 +255,8 @@ each part works there:
 4. Publish the .deb to the APT repository: `scripts/publish-apt.sh dist/hebrish_<ver>-1_amd64.deb`
    (see "APT repository" below). Do it after the CDN upload and `latest.json`, so the in-app
    update notice never points at a version apt can't yet fetch.
+5. Screenshots: `.venv/bin/python scripts/screenshots.py`, then upload them (see
+   "Screenshots and the AppStream listing").
 
 The download links live in these places. Update them when a version changes:
 - the root README;
@@ -268,6 +276,35 @@ nothing is downloaded again.
 still running when the new one first starts, the move pulls the model out from under it. The
 old app then sees no model and downloads 660 MB again into its own folder. Quit the old app
 (and purge its package) before the first Hebrish start.
+
+## Version footer and screenshots (0.6.3, 2026-10-21)
+
+- **Footer**: the main window's bottom row is the status text on the left and
+  `Hebrish <__version__>` on the right in brand blue, linking to hebrish.app/changelog
+  (`MainWindow.version_label`, style `#footer`, `#version`). Daniel asked for the version to be
+  "more prominently displayed at the bottom"; before 0.6.3 it was only on Settings and the splash.
+
+### Screenshots and the AppStream listing
+
+- `scripts/screenshots.py` renders Dictate, File, Models, Settings and About **off-screen**
+  (`QT_QPA_PLATFORM=offscreen`, `QT_SCALE_FACTOR=2`, 1200x1440) into
+  `../docs/screenshots/desktop-*.png`, so nothing appears on the desktop and no real settings
+  change: config and data are a temp dir, with `~/.local/share/hebrish/models` symlinked in and
+  `state.json`'s `active`/`model` copied. **Run it with `.venv/bin/python`**: system python3 has
+  no sherpa-onnx (only the .deb's `/usr/lib/hebrish` does), so the model never loads and the
+  script waits forever (V, 2026-10-21). The File tab shows Sabich's real output on public sample
+  clip `cdn.hebrish.app/samples/clips/20261015T104852Z_zntv22.wav` ("I need to go to the iriya
+  to pay my arnona bill."), never typed text. Careful: `Controller()` runs
+  `model_store.prune_all()` on the symlinked real models dir, exactly as the app does at start;
+  harmless only because `state.json`'s active versions are copied.
+- **AppStream** (`packaging/hebrish.metainfo.xml` → `/usr/share/metainfo/app.hebrish.Dictation.metainfo.xml`):
+  what Discover and GNOME Software show for the installed app: summary, description,
+  screenshots, links. `build-deb.sh` stamps `<release version=$VERSION>`. Screenshot URLs are
+  `https://cdn.hebrish.app/apps/screenshots/desktop-{dictate,file,model,settings}.png`: upload
+  each release's files there (R2 key `apps/screenshots/`, `--cache-control "public,
+  max-age=3600"`, `image/png`). `appstreamcli validate --no-net` passes (one pedantic note).
+  Not done: DEP-11 metadata in the APT repo, which software centres would need to show the
+  listing **before** install; today it appears once the package is installed.
 
 ## APT repository (2026-10-21)
 

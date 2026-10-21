@@ -18,6 +18,13 @@ jobs:
     defaults: { run: { working-directory: desktop } }
     steps:
       - uses: actions/checkout@v4
+      - name: Tag matches version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          # scripts/release-tag.sh sets both together; a hand-made tag that disagrees fails here.
+          code=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' hebrish/__init__.py)
+          [ "desktop-v$code" = "$GITHUB_REF_NAME" ] || { echo "::error::tag $GITHUB_REF_NAME but __version__ is $code"; exit 1; }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: sudo apt-get install -y -q libportaudio2
@@ -25,6 +32,7 @@ jobs:
       - run: python -m pytest -q tests
 
   windows:
+    needs: test-linux            # includes "Tag matches version": no release from a mismatched tag
     runs-on: windows-latest
     defaults: { run: { working-directory: desktop, shell: pwsh } }
     steps:

@@ -46,6 +46,8 @@ QTabBar::tab:selected {{ border-bottom: 3px solid {BLUE}; font-weight: 600; }}
 #card {{ background: palette(base); border: 1px solid palette(mid); border-radius: 10px; }}
 #cardTitle {{ font-weight: 700; font-size: 13px; }}
 #muted {{ color: palette(placeholder-text); }}
+#footer {{ border-top: 1px solid palette(mid); }}
+#version {{ font-size: 12px; font-weight: 600; }}
 #transcript {{ font-size: 13px; }}
 
 #record {{ border-radius: 52px; font-size: 15px; font-weight: 700; color: white;

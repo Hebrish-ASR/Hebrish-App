@@ -71,6 +71,9 @@ def ago(ts: float) -> str:
     return time.strftime("%d %b %H:%M", time.localtime(ts))
 
 
+CHANGELOG_URL = "https://hebrish.app/changelog"
+
+
 class MainWindow(QMainWindow):
     def __init__(self, ctl):
         super().__init__()
@@ -108,10 +111,21 @@ class MainWindow(QMainWindow):
         self._meter_timer.start()
         outer.addWidget(self.tabs, 1)
 
+        # Footer: status on the left, the app version always visible on the right (0.6.3,
+        # Daniel 2026-10-21: "more prominently displayed at the bottom"). It links to the changelog.
+        footer = QWidget(objectName="footer")
+        fl = QHBoxLayout(footer)
+        fl.setContentsMargins(16, 4, 12, 8)
         self.status_label = muted()
-        self.status_label.setContentsMargins(16, 4, 16, 8)
         self.status_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        outer.addWidget(self.status_label)
+        fl.addWidget(self.status_label, 1)
+        self.version_label = QLabel(f'<a href="{CHANGELOG_URL}" style="color:{BLUE}; text-decoration:none">'
+                                    f'{APP_NAME} {__version__}</a>',
+                                    objectName="version")
+        self.version_label.setOpenExternalLinks(True)
+        self.version_label.setToolTip("What changed in this version")
+        fl.addWidget(self.version_label, 0, Qt.AlignRight | Qt.AlignVCenter)
+        outer.addWidget(footer)
         self.setCentralWidget(root)
 
         self._pulse = QTimer(self, interval=550, timeout=self._do_pulse)

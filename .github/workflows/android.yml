@@ -16,6 +16,12 @@ jobs:
         working-directory: android
     steps:
       - uses: actions/checkout@v4
+      - name: Tag matches version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          # scripts/release-tag.sh sets both together; a hand-made tag that disagrees fails here.
+          code=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' app/build.gradle.kts)
+          [ "android-v$code" = "$GITHUB_REF_NAME" ] || { echo "::error::tag $GITHUB_REF_NAME but versionName is $code"; exit 1; }
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream listing (0.6.3): what Discover and GNOME Software show for the installed app.
+     build-deb.sh installs it as /usr/share/metainfo/app.hebrish.Dictation.metainfo.xml and
+     replaces @RELEASES@ with this version's <release>. Screenshots are scripts/screenshots.py
+     output, uploaded to cdn.hebrish.app/apps/screenshots/ (see docs/maintaining.md,
+     "Screenshots and the AppStream listing"). Validate the built file:
+     appstreamcli validate on usr/share/metainfo/app.hebrish.Dictation.metainfo.xml (offline: its
+     no-net option; a double hyphen is not allowed inside an XML comment) -->
+<component type="desktop-application">
+  <id>app.hebrish.Dictation</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Hebrish</name>
+  <summary>On-device English dictation that gets the Hebrew words right</summary>
+  <developer id="app.hebrish">
+    <name>Hebrish</name>
+  </developer>
+  <description>
+    <p>
+      Hebrish is dictation for English speakers in Israel. It writes the Hebrew words you drop
+      into English, like arnona, makolet or teudat zehut, in one consistent romanized spelling,
+      and it runs entirely on your computer: no audio leaves the machine.
+    </p>
+    <ul>
+      <li>Press a hotkey or a foot pedal, talk, and the text is pasted at your cursor in any app</li>
+      <li>Tap to start and stop, or hold to talk</li>
+      <li>Transcribe audio files into an editable text box</li>
+      <li>Choose a model: Sabich (Hebrew words and tech vocabulary, recommended), Jachnun or stock Parakeet</li>
+      <li>Works offline once the model is downloaded</li>
+    </ul>
+    <p>A one-person, not-for-profit project. Free for personal and non-commercial use.</p>
+  </description>
+  <launchable type="desktop-id">hebrish.desktop</launchable>
+  <icon type="stock">hebrish</icon>
+  <url type="homepage">https://hebrish.app</url>
+  <url type="bugtracker">https://github.com/Hebrish-ASR/Hebrish-App/issues</url>
+  <url type="help">https://hebrish.app/faq</url>
+  <url type="vcs-browser">https://github.com/Hebrish-ASR/Hebrish-App</url>
+  <url type="contact">https://hebrish.app/contact</url>
+  <categories>
+    <category>Utility</category>
+    <category>Accessibility</category>
+  </categories>
+  <keywords>
+    <keyword>dictation</keyword>
+    <keyword>speech recognition</keyword>
+    <keyword>transcription</keyword>
+    <keyword>Hebrew</keyword>
+    <keyword>offline</keyword>
+  </keywords>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Dictate with a hotkey; the text goes to the app you are typing in</caption>
+      <image type="source" width="1200" height="1440">https://cdn.hebrish.app/apps/screenshots/desktop-dictate.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Transcribe an audio file</caption>
+      <image type="source" width="1200" height="1440">https://cdn.hebrish.app/apps/screenshots/desktop-file.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Pick a model: speed and accuracy for each version</caption>
+      <image type="source" width="1200" height="1440">https://cdn.hebrish.app/apps/screenshots/desktop-model.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Hotkeys, output and sounds</caption>
+      <image type="source" width="1200" height="1440">https://cdn.hebrish.app/apps/screenshots/desktop-settings.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
+  <releases>
+@RELEASES@
+  </releases>
+</component>
