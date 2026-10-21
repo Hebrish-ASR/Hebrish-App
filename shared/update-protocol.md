@@ -41,8 +41,8 @@ Shape (abridged; `_comment` in the file is the field reference):
   only), `shakshuka` (streaming), `stock`. **Variants** are the line on a base model, named
   `<Line>-<Base>-<Size>` (ASR-Training `docs/training.md`, "Variants on other bases keep the line
   name"). Variant ids are the permanent ids of schema 1 (`sabich`, `codeswitch`, `stock`) plus new
-  ones (`sabich-parakeet-110m`, `sabich-qwen3-asr-1.7b`, `sabich-asr4all-m`, `sabich-asr4all-s`,
-  `shakshuka`); they name `models/<id>/`, so never rename or reuse one.
+  ones (`sabich-parakeet-110m`, `sabich-qwen3-asr-1.7b`, `sabich-canary-qwen-2.5b`,
+  `sabich-asr4all-m`, `sabich-asr4all-s`, `shakshuka`); they name `models/<id>/`, so never rename or reuse one.
 - **Supported engines.** Each app has a set (`SUPPORTED_ENGINES`: Android `Catalogue.kt`, desktop
   `model_store.py`; the test keeps them equal). Both are `{"sherpa_offline_transducer"}` as of
   0.7.0 / 0.6.0. A variant is downloadable only if its engine is supported, the app's platform
@@ -52,25 +52,42 @@ Shape (abridged; `_comment` in the file is the field reference):
   paths below never see the others; `lines()` / `Data.lines` hold all of them for display.
 - `status` is about publication, independent of the engine: Qwen3-ASR is `available` (published
   on HF) but no app can run it yet.
-- **`speed` and `accuracy` are 1–5 tiers, estimates** relative to the other Hebrish models on the
-  hardware each is meant for, not benchmark results; both apps print "(estimates)". Starting
-  points (2026-10-21): best val WER from ASR-Training `data/checkpoints.json`: Sabich r7-all 4.63%,
-  Shakshuka r8-nemotron-all 6.66%, Sabich-Parakeet-110M r8-ctc110m-all 9.43% (I: val, not test).
+- **`speed`, `accuracy` (1–5) and `gradient` (0 = smallest and fastest, 100 = most accurate) are
+  estimates**, the same numbers as hebrish.app/models/choose (Hebrish-Website
+  `data/variants.json`); both apps print "(estimates)". `test_shared.py`
+  `test_numbers_and_rules_match_the_website` compares them when the website repo is checked out
+  next to this one (skipped in CI). For reference, best val WER (ASR-Training
+  `data/checkpoints.json`; val, not test): Sabich r7-all 4.63%, Shakshuka r8-nemotron-all 6.66%,
+  Sabich-Parakeet-110M r8-ctc110m-all 9.43%.
 - `requirements.gpu` is `null` or `{vram_gb, backends}` (`cuda`, `hip`, `vulkan`); `devices` is a
-  subset of `wearable`, `phone`, `desktop`. The desktop "Help me choose" dialog
-  (`model_store.recommend`) filters on those and ranks by `speed`/`accuracy` weighted by the
-  user's priority (speed 3:1, balanced 1:1, accuracy 1:3); ties keep catalogue order, so the
-  recommended variant wins a tie. Streaming variants (`streaming: true`) are offered only when the
-  user asks for live text, and then only those. Stock is never recommended there.
+  subset of `wearable`, `phone`, `desktop`. Display only; the chooser does not read them.
+- **`chooser.rules`** is the site's decision list, copied verbatim except `jachnun` → `codeswitch`
+  (2026-10-21): checked in order, first match wins, an absent `when` key matches anything. Form:
+  device `phone|computer|wearable`, gpu `none|amd|nvidia|apple`, vram bucket `4|8|12|16` (GB,
+  rounded up), priority `speed|balanced|accuracy`, live `true|false`. Each rule has `pick`, `how`,
+  `reason`, optional `runner_up`, `runner_how`, `note`. The desktop's Help me choose
+  (`model_store.recommend`) uses it; when the pick isn't runnable in the app it names it with its
+  `how`, then the best variant the app can run (pick, else runner-up, else `recommended`). **Edit
+  the rules on the site and here together.**
+- `feature_dim` (offline sherpa variants): 128 for the 0.6B models, 80 for Sabich-Parakeet-110M;
+  both apps pass it to sherpa-onnx. (V, 2026-10-21, sherpa-onnx 1.13.8 Python) sherpa-onnx also
+  reads it from the NeMo encoder metadata and that wins: the 110M decoded the stock repo's
+  `test_wavs/0.wav` identically with 80 and 128, so desktop builds before 0.6.1 (which pass 128)
+  and Android 0.7.0 (which passes 80 for every model) run it correctly.
 - No pick yet: the first downloaded supported model (recommended first), else `recommended`. So
   a desktop install that ran on schema 1's `default` (`stock`) without an explicit pick keeps it.
-- **Publishing a planned variant** (e.g. Sabich-Parakeet-110M once
-  `https://cdn.hebrish.app/models/parakeet-sabich-110m/latest.json` returns 200): flip its
-  `status` to `available` and push; no app release, because its engine is already supported. The
-  HF repos of the new variants are **gated** (checked 2026-10-21: `…-110M-sherpa-onnx-int8`,
-  `Shakshuka-sherpa-onnx-int8`), so the apps can only use the CDN `manifest_url`. A variant whose
-  engine no app has (Shakshuka: `sherpa_online_transducer`; Qwen3-ASR; asr4all) needs an app
-  release that adds the engine (phase 2).
+- **Publishing a planned variant**: flip its `status` to `available` and push; no app release when
+  its engine is already supported. Done for Sabich-Parakeet-110M on 2026-10-21 once
+  `https://cdn.hebrish.app/models/parakeet-sabich-110m/latest.json` returned 200 (V: desktop code
+  path fetched it, downloaded 136 MB, SHA-256 checked, loaded at 80 mels and transcribed
+  correctly). The HF sherpa repos of the new variants are **gated** (checked 2026-10-21:
+  `…-110M-sherpa-onnx-int8`, `Shakshuka-sherpa-onnx-int8`), so the apps can only use the CDN
+  `manifest_url`. The CDN manifests carry extra keys (`recognizer`, `model_type`, `feature_dim`,
+  `chunk_ms`) that the apps ignore. A variant whose engine no app has needs an app release that
+  adds it (phase 2): Shakshuka (`sherpa_online_transducer`, published and `available`, 560 ms
+  chunks, 128 mels), Sabich-Qwen3-ASR-1.7B (`qwen3_asr`), Sabich-Canary-Qwen-2.5B (`nemo_salm`),
+  Sabich-asr4all-S/-M (`asr4all`; `planned` until `huggingface.co/Hebrish/Sabich-asr4all-S` returns
+  200, which it did not on 2026-10-21; Canary likewise).
 
 ## The catalogue (schema 1, builds up to Android 0.6.0 / desktop 0.5.2)
 
