@@ -24,17 +24,18 @@ app copies Parlance's settings (not its hotkey) and hardlinks its downloaded mod
 Models come in **lines**, named for what they are trained on, and each line has **versions on
 different base models**, from the most accurate to the fastest. Both apps show them that way
 (Android 0.7.0+, desktop 0.6.0+): pick a line, then a version, with a speed and accuracy rating
-(1–5, estimates), the download size, the hardware it needs and a one-line "who it's for". The
+(1–5, estimates, the same as [hebrish.app/models/choose](https://hebrish.app/models/choose)), the download size, the hardware it needs and a one-line "who it's for". The
 desktop app also has **Help me choose**: device, graphics card and VRAM (detected where it can
-be), and whether speed or accuracy matters more. The list is `shared/catalogue.json`.
+be), and whether speed or accuracy matters more, and answers with the same rules as the website's chooser. The list is `shared/catalogue.json`.
 
 ![Help me choose: an AMD GPU with 16 GB and accuracy first suggests Sabich-Qwen3-ASR-1.7B via llama.cpp, and Sabich in the app](docs/screenshots/desktop-choose.png)
 
 | Line | Version | Base model | Status in the apps | For |
 | --- | --- | --- | --- | --- |
 | **Sabich** (everything: Hebrew words + tech vocabulary) | **Sabich** | Parakeet TDT 0.6B v2 | available, **recommended** | Start here: phone or any recent computer, no GPU. [Models](https://hebrish.app/models#sabich) |
-| | Sabich-Qwen3-ASR-1.7B | Qwen3-ASR 1.7B | listed; not runnable in the apps yet | Most accurate. Desktop GPU, 5 GB+ VRAM, via llama.cpp (GGUF) |
-| | Sabich-Parakeet-110M | Parakeet TDT-CTC 110M | coming soon | Older phones, wearables: a fifth of the size, faster, more mistakes |
+| | Sabich-Qwen3-ASR-1.7B | Qwen3-ASR 1.7B | listed; not runnable in the apps yet | Most accurate. Desktop GPU: about 2.2 GB VRAM for the Q8_0 GGUF via llama.cpp, 5 GB for bf16 |
+| | Sabich-Canary-Qwen-2.5B | Canary-Qwen 2.5B | listed; not published yet | Best on plain English, behind Qwen3-ASR on Hebrew words. Desktop GPU, about 6 GB VRAM (NeMo) |
+| | Sabich-Parakeet-110M | Parakeet TDT-CTC 110M | available | Older phones, wearables: a fifth of the size (137 MB), faster, more mistakes |
 | | Sabich-asr4all-M / -S | FUTO asr4all 56M / 28M | listed; not published | Tiny, for wearables; writes numbers as words |
 | **Jachnun** (code-switching only) | **Jachnun** | Parakeet TDT 0.6B v2 | available | English + Hebrew vocabulary (*teudat zehut*, *arnona*, *bituach leumi*), in Latin letters. Recommended until 2026-10-21. [Models](https://hebrish.app/models#parakeet) |
 | **Shakshuka** (streaming) | **Shakshuka** | Nemotron speech streaming 0.6B | listed; needs the streaming engine (next release) | Live text while you talk |

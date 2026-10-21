@@ -4,8 +4,8 @@
  "commit": "4425f94",
  "released": {
   "android": "0.7.0",
-  "ubuntu": "0.6.0",
-  "windows": "0.6.0"
+  "ubuntu": "0.6.1",
+  "windows": "0.6.1"
  },
  "features": [
   {
@@ -466,7 +466,7 @@
     "evidence": "desktop/hebrish/ui/choose.py; GPU detection NVIDIA only",
     "verified": false
    },
-   "notes": ""
+   "notes": "Uses the catalogue's chooser.rules, the same as hebrish.app/models/choose, since 0.6.1 (0.6.0 ranked by weighted tiers)."
   },
   {
    "id": "streaming-engine",
@@ -926,7 +926,9 @@
   }
  ],
  "unreleased": {
-  "android": [],
+  "android": [
+   "Transcriber passes the catalogue feature_dim (0.7.0 passes 80 and relies on the model metadata; no behaviour change)"
+  ],
   "desktop": []
  },
  "twin_lag": {
