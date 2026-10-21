@@ -50,7 +50,8 @@ class ControlsActivity : Page(), SharedPreferences.OnSharedPreferenceChangeListe
         heading(R.string.controls_buttons)
         text(R.string.controls_buttons_body)
         bubbleWarning = text(R.string.controls_needs_bubble, top = 8)
-        for (a in Remote.Action.entries) {
+        // The Play build can't see hardware keys (no flagRequestFilterKeyEvents): intents only there.
+        if (Channel.hardwareKeys) for (a in Remote.Action.entries) {
             subheading(actionName(a))
             val r = row()
             keyLabels[a] = TextView(this).apply { setPadding(0, 0, dp(12), 0) }.also {
@@ -59,7 +60,7 @@ class ControlsActivity : Page(), SharedPreferences.OnSharedPreferenceChangeListe
             button(R.string.controls_learn, r) { Prefs.setLearning(this, a) }
             button(R.string.controls_clear, r) { Prefs.setKeyFor(this, a, 0); if (Prefs.learning(this) == a.name) Prefs.setLearning(this, null) }
         }
-        small(R.string.controls_buttons_hint)
+        if (Channel.hardwareKeys) small(R.string.controls_buttons_hint)
 
         heading(R.string.controls_intents)
         text(R.string.controls_intents_body)

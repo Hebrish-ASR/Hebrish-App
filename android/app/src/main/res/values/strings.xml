@@ -382,4 +382,18 @@
     <string name="setup_try_title">Try it</string>
     <string name="setup_try">Tap, talk, tap again. No keyboard setup needed for this.</string>
     <string name="setup_guide_button">Guide with pictures</string>
+
+    <!-- Floating mic disclosure (0.8.0): shown before Accessibility settings, as Google Play requires. -->
+    <string name="title_consent">Before you turn on the floating mic</string>
+    <string name="consent_intro">The floating mic uses Android\'s accessibility service. This screen says what that lets Hebrish do and what Hebrish does with it.</string>
+    <string name="consent_reads_title">What it reads</string>
+    <string name="consent_reads">Which text field has focus, and the editable fields in the window on screen. Hebrish uses this only to show the mic while you are in a text field and to put your transcript in at the cursor. It never reads or writes password fields.</string>
+    <string name="consent_does_title">What it does</string>
+    <string name="consent_does">It shows the mic button over other apps and types the text you dictated into the field. It acts only when you tap the mic or one of its buttons, never on its own.</string>
+    <string name="consent_keys">It also sees hardware key presses, so a Bluetooth remote or keyboard key can start and stop takes. It acts only on keys you bind on the Sound, mic and buttons screen; every other key passes through untouched.</string>
+    <string name="consent_data_title">Where your data goes</string>
+    <string name="consent_data">Nowhere. Audio, transcripts and what is in your text fields stay on this phone. Nothing is collected, sent or shared. Privacy policy: hebrish.app/privacy.</string>
+    <string name="consent_accept">Accept and open settings</string>
+    <string name="consent_decline">No thanks</string>
+    <string name="consent_privacy">Privacy policy</string>
 </resources>

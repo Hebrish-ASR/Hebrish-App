@@ -3,7 +3,6 @@ package app.hebrish.dictation
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.drawable.GradientDrawable
-import android.provider.Settings
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
@@ -36,7 +35,7 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
     override fun build() {
         status = text()
         guideBtn = button(R.string.bubble_guide) { startActivity(Intent(this, FloatingMicGuideActivity::class.java)) }
-        button(R.string.bubble_enable) { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        button(R.string.bubble_enable) { FloatingMicConsentActivity.openSettings(this) }
 
         heading(R.string.bubble_how_title)
         text(R.string.bubble_body)

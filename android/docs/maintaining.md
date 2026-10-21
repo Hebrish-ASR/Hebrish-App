@@ -517,7 +517,55 @@ to the left and then the timer can be to the right".
   paused, the switch applies on Resume.
 - Compiled, not run on a device.
 
+## Build channels: `fdroid` and `play` flavors, targetSdk 36 (unreleased, 2026-10-21)
+
+For Google Play (plan: Hebrish-ASR/Hebrish-App-Planning `google-play.md`). One flavor dimension,
+`channel`, in `app/build.gradle.kts`:
+
+- **`fdroid`**: the build every channel used before: GitHub release APK, CDN, fdroid.hebrish.app.
+  CI: `assembleFdroidRelease` → `apk/fdroid/release/app-fdroid-release.apk`, renamed to
+  `Hebrish-X.Y.Z.apk` as before (Hebrish-FDroid's `fetch_apks.sh` matches the asset name, unchanged).
+- **`play`**: the Google Play AAB. CI: `bundlePlayRelease` → workflow artifact `play-aab`
+  (`Hebrish-X.Y.Z-play.aab`), not attached to the GitHub release. It is signed with the upload key from
+  secrets `PLAY_UPLOAD_KEYSTORE_B64` / `PLAY_UPLOAD_KEYSTORE_PASSWORD` / `PLAY_UPLOAD_KEY_ALIAS`, or
+  with the release key when those don't exist. Play App Signing accepts the app signing key as the upload key.
+- Same `applicationId`, `versionCode`, `versionName` and app signing key in both, so a phone can move
+  between channels without reinstalling (plan §4).
+
+What `play` drops, and why (Play policy, plan §5 to §7):
+
+| Removed in `play` | Where | UI effect ([Channel]) |
+| --- | --- | --- |
+| `MANAGE_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, `requestLegacyExternalStorage` | `src/play/AndroidManifest.xml` (`tools:node="remove"`) | Models → no "Choose location"; setup step `files` hidden. Models stay in `filesDir/models` |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | same | Battery buttons open `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` (the list), label and text from `src/play/res/values/strings.xml` |
+| `flagRequestFilterKeyEvents`, `canRequestFilterKeyEvents` | `src/play/res/xml/floating_mic.xml` (keep its other attributes identical to main) | Controls → no Learn/Clear per action; intents only |
+| Install screen (F-Droid repo) | code only | Hidden from home and the side menu (Play doesn't allow pointing users at another store) |
+
+Verified 2026-10-21 by building both flavors (JDK 21) and dumping them with `aapt2`:
+`play` has only `INTERNET`, `MODIFY_AUDIO_SETTINGS`, `RECORD_AUDIO`, `VIBRATE`,
+`requestLegacyExternalStorage=false`, and `accessibilityFlags=0x42` (no key filter). `fdroid` keeps
+all seven permissions and `0x62`. `bundlePlayRelease` builds a 12.8 MB AAB.
+
+**Floating mic disclosure** (both flavors): `FloatingMicConsentActivity`. Play requires an in-app
+disclosure plus an explicit accept before the user turns on an accessibility service that isn't an
+accessibility tool, and `android:description` doesn't count. Every button that opens Accessibility
+settings for the mic calls `FloatingMicConsentActivity.openSettings`. The disclosure shows until it is
+accepted (pref `a11y_consent`), and No thanks just closes it. The key-press paragraph (`consent_keys`)
+has a play override. Don't set `isAccessibilityTool`: Hebrish's main audience isn't disabled users,
+and claiming it invites a misrepresentation rejection.
+
+**targetSdk 36** (Play has required it for new apps and updates since 2026-08-31). Changes made:
+the side menu's Back. Targeting 36, Android 13+ no longer calls `onBackPressed` (predictive back),
+so `Page` registers an `OnBackInvokedCallback` while the menu is open. Not changed: edge-to-edge was
+already enforced at 35 and no screen opts out. The IME's `KEYCODE_BACK` handling relies on
+`InputMethodService` turning predictive back into key events (I: AOSP has this compat path since
+13, not verified on a device).
+
 ## Not yet verified (as of 2026-10-20)
+
+- Channels / targetSdk 36 on a device: the disclosure (decline leaves settings closed, accept
+  opens them and isn't shown again), Back closing the side menu on Android 13+, the IME's Back
+  ("switch keyboard") on Android 16, the play build's battery list and missing location button.
 
 - 0.7.2 on a device: the bar order on both edges, the chip's width with a long headset name,
   switching Bluetooth ↔ internal mid-take (does the SCO link come up fast enough that the first

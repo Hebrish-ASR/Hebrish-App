@@ -62,9 +62,24 @@ abstract class Page : Activity() {
         return super.onOptionsItemSelected(item)
     }
 
+    /**
+     * Back closes the side menu first. Targeting 36 (0.8.0), Android 13+ no longer calls
+     * onBackPressed (predictive back), so the menu registers this callback while it is open;
+     * onBackPressed stays for Android 9 to 12.
+     */
+    private val closeDrawer: Any? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        android.window.OnBackInvokedCallback { toggleDrawer(false) } else null
+
     @Deprecated("Activity.onBackPressed")
     override fun onBackPressed() {
         if (drawer?.visibility == View.VISIBLE) toggleDrawer(false) else @Suppress("DEPRECATION") super.onBackPressed()
+    }
+
+    private fun trackBack(open: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val cb = closeDrawer as android.window.OnBackInvokedCallback
+        if (open) onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, cb)
+        else onBackInvokedDispatcher.unregisterOnBackInvokedCallback(cb)
     }
 
     /**
@@ -120,7 +135,7 @@ abstract class Page : Activity() {
         screen(R.string.title_bubble, FloatingMicActivity::class.java)
         screen(R.string.title_dictation, DictationActivity::class.java)
         screen(R.string.title_controls, ControlsActivity::class.java)
-        screen(R.string.title_install, InstallActivity::class.java)
+        if (Channel.installScreen) screen(R.string.title_install, InstallActivity::class.java)
         divider()
         entry(R.string.menu_lexicon) { open(Hebrish.LEXICON) }
         entry(R.string.menu_contribute) { open(Hebrish.CONTRIBUTE) }
@@ -140,6 +155,7 @@ abstract class Page : Activity() {
     private fun toggleDrawer(show: Boolean) {
         val d = drawer ?: return
         val s = scrim ?: return
+        trackBack(show)
         val w = dp(290).toFloat()
         if (show) {
             d.visibility = View.VISIBLE

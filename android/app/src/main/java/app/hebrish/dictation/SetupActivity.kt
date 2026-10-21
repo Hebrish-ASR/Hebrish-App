@@ -49,7 +49,9 @@ class SetupActivity : Page() {
         }
         step("battery", R.string.setup_battery_title, R.string.setup_battery, { Setup.batteryExempt(this) }) { r ->
             button(R.string.guide_battery_button, r) {
-                runCatching {
+                // The Play build has no exemption permission: the system list instead ([Channel]).
+                if (!Channel.batteryPrompt) startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                else runCatching {
                     startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
                 }.onFailure { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
             }
@@ -62,7 +64,8 @@ class SetupActivity : Page() {
                     }.onFailure { appInfo() }
                 }
             }
-            step("files", R.string.setup_files_title, R.string.setup_files, { Environment.isExternalStorageManager() }) { r ->
+            // Optional, and not in the Play build, which has no all-files access ([Channel]).
+            if (Channel.sharedFolder) step("files", R.string.setup_files_title, R.string.setup_files, { Environment.isExternalStorageManager() }) { r ->
                 button(R.string.setup_files_button, r) {
                     startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:$packageName")))
                 }

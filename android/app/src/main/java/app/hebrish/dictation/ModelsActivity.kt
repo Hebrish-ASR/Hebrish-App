@@ -51,7 +51,8 @@ class ModelsActivity : Page() {
         heading(R.string.location_title)
         locationStatus = text()
         val r = row()
-        button(R.string.choose_location, r) { chooseLocation() }
+        // The Play build has no all-files access, so models stay in app storage there ([Channel]).
+        if (Channel.sharedFolder) button(R.string.choose_location, r) { chooseLocation() }
         resetLocationBtn = button(R.string.reset_location, r) { confirmReset() }
     }
 

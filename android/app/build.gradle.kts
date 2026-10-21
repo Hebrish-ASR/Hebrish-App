@@ -34,17 +34,29 @@ tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(fetchSherpaAa
 
 android {
     namespace = "app.hebrish.dictation"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "app.hebrish.dictation"
         minSdk = 28
-        targetSdk = 35
+        // 36 since 0.8.0: Google Play refuses new apps and updates below it from 2026-08-31.
+        targetSdk = 36
         versionCode = 13
         versionName = "0.7.2"
         // Phones only: x86 libs would add ~25 MB for emulator use nobody needs here.
         ndk { abiFilters += "arm64-v8a" }
     }
+
+    // Two channels from one codebase (0.8.0, plan: Hebrish-App-Planning google-play.md). Same
+    // applicationId, versions and app signing key in both, so a phone can move between them.
+    // fdroid: the GitHub release APK (also on the CDN and fdroid.hebrish.app). play: the Google
+    // Play AAB, without what Play policy refuses (src/play/AndroidManifest.xml). Code checks [Channel].
+    flavorDimensions += "channel"
+    productFlavors {
+        create("fdroid") { dimension = "channel" }
+        create("play") { dimension = "channel" }
+    }
+    buildFeatures { buildConfig = true }
 
     signingConfigs {
         create("release") {

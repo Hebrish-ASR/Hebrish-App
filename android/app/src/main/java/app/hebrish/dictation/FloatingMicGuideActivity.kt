@@ -24,7 +24,7 @@ class FloatingMicGuideActivity : Page() {
 
         heading(R.string.guide_step1_title)
         text(R.string.guide_step1)
-        button(R.string.bubble_enable) { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        button(R.string.bubble_enable) { FloatingMicConsentActivity.openSettings(this) }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             heading(R.string.guide_step2_title)
@@ -34,7 +34,7 @@ class FloatingMicGuideActivity : Page() {
             }
             heading(R.string.guide_step3_title)
             text(R.string.guide_step3)
-            button(R.string.bubble_enable) { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+            button(R.string.bubble_enable) { FloatingMicConsentActivity.openSettings(this) }
         }
 
         val micTitle = heading(R.string.guide_mic_title)
@@ -47,7 +47,9 @@ class FloatingMicGuideActivity : Page() {
         batteryStatus = text()
         button(R.string.guide_battery_button) {
             // The direct prompt; if a ROM refuses it, the list of apps' battery settings.
-            runCatching {
+            // The Play build has no exemption permission: the system list instead ([Channel]).
+            if (!Channel.batteryPrompt) startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            else runCatching {
                 startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
             }.onFailure { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
         }

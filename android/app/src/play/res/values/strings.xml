@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Google Play build only (0.8.0): strings that differ because the permission behind them is not in this build. -->
+<resources>
+    <string name="guide_battery_button">Battery settings</string>
+    <string name="guide_battery">Some phones (OnePlus, Xiaomi, Samsung and others) stop background apps to save battery, and the floating mic disappears until you turn it on again. In Battery settings, show all apps, pick Hebrish and choose Don\'t optimise. On OnePlus, also check App info → Battery → Unrestricted.</string>
+    <string name="controls_buttons_body">Other apps (Tasker, a launcher, a remote\'s companion app) can start and stop takes with the broadcast intents below. Binding hardware keys directly is in the F-Droid and APK builds only.</string>
+    <string name="consent_keys">It does not see your key presses.</string>
+</resources>

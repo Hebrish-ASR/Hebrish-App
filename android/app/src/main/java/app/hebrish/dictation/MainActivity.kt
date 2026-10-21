@@ -59,7 +59,7 @@ class MainActivity : Page() {
         nav(R.string.nav_dictation, { setText(R.string.nav_dictation_summary) }, DictationActivity::class.java)
         nav(R.string.nav_controls, { setText(R.string.nav_controls_summary) }, ControlsActivity::class.java)
         heading(R.string.home_more)
-        nav(R.string.nav_install, { setText(R.string.nav_install_summary) }, InstallActivity::class.java)
+        if (Channel.installScreen) nav(R.string.nav_install, { setText(R.string.nav_install_summary) }, InstallActivity::class.java)
         nav(R.string.nav_contact, { setText(R.string.nav_contact_summary) }, ContactActivity::class.java)
         nav(R.string.title_about, { setText(R.string.nav_about_summary) }, AboutActivity::class.java)
 

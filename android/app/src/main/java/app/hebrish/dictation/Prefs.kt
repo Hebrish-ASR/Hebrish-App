@@ -18,6 +18,10 @@ object Prefs {
     fun backSwitches(ctx: Context) = sp(ctx).getBoolean("back_switches", true)
     fun setBackSwitches(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("back_switches", v).apply()
 
+    /** Accepted the floating mic's accessibility disclosure (0.8.0, [FloatingMicConsentActivity]). */
+    fun a11yConsent(ctx: Context) = sp(ctx).getBoolean("a11y_consent", false)
+    fun setA11yConsent(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("a11y_consent", v).apply()
+
     /** IME id the keyboard key returns to; null = automatic (see VoiceImeService.switchBack). */
     fun returnIme(ctx: Context): String? = sp(ctx).getString("return_ime", null)
     fun setReturnIme(ctx: Context, v: String?) = sp(ctx).edit().putString("return_ime", v).apply()

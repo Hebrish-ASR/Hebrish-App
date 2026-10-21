@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Google Play build only (0.8.0): src/main/res/xml/floating_mic.xml without
+     flagRequestFilterKeyEvents / canRequestFilterKeyEvents. Seeing hardware key events reads as
+     keylogging to Play review, so in this build remotes work only through the broadcast intents,
+     and ControlsActivity hides Learn. Keep every other attribute identical to the main file. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeViewFocused|typeWindowStateChanged|typeWindowsChanged|typeViewTextSelectionChanged|typeViewTextChanged|typeViewClicked"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
+    android:canRetrieveWindowContent="true"
+    android:notificationTimeout="100"
+    android:description="@string/a11y_description" />

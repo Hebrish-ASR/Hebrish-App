@@ -17,6 +17,7 @@ object Hebrish {
     const val DOWNLOAD_PAGE = "$SITE/download#fdroid"
     /** The setup guide; steps have ids `step-mic`, `step-model`, … matching SetupActivity's order. */
     const val SETUP_GUIDE = "$SITE/setup"
+    const val PRIVACY = "$SITE/privacy"
     const val LEXICON = "$SITE/lexicon"
     /** Ways to help: recordings, words, donations (side menu "Contribute"). */
     const val CONTRIBUTE = "$SITE/support"
