@@ -143,7 +143,7 @@
           },
           "hardware": "Desktop GPU with about 6 GB of VRAM (bf16; PyTorch with CUDA or ROCm)",
           "download_mb": null,
-          "speed": 1,
+          "speed": 2,
           "accuracy": 4,
           "gradient": 88,
           "recommendation": "Best on plain English; behind Sabich-Qwen3-ASR-1.7B on Hebrew words. Not in the apps.",
@@ -381,7 +381,7 @@
           ]
         },
         "pick": "sabich-asr4all-s",
-        "how": "asr4all's own streaming runtime",
+        "how": "the ONNX bundle with ONNX Runtime, or Transformers remote code, on the CPU (streaming)",
         "reason": "The smallest Sabich, and it streams, so text appears while you speak.",
         "runner_up": "sabich-parakeet-110m",
         "runner_how": "sherpa-onnx int8 (not streaming)"
@@ -409,7 +409,7 @@
           ]
         },
         "pick": "sabich-asr4all-s",
-        "how": "asr4all's own runtime",
+        "how": "the ONNX bundle with ONNX Runtime, or Transformers remote code, on the CPU",
         "reason": "At 28M parameters it is the smallest and fastest Sabich, built for wearables and very low-power boards. It writes numbers as words.",
         "runner_up": "sabich-parakeet-110m",
         "runner_how": "sherpa-onnx int8 or GGUF"
@@ -424,7 +424,7 @@
         "how": "sherpa-onnx int8 (about 137 MB) or GGUF Q8_0 (135 MB) with transcribe.cpp",
         "reason": "NVIDIA's smallest Parakeet with all of Sabich's training: about a fifth of the size of Sabich, and it writes numbers in digits.",
         "runner_up": "sabich-asr4all-m",
-        "runner_how": "smaller still, once published"
+        "runner_how": "smaller still: the ONNX bundle on the CPU, numbers as words"
       },
       {
         "when": {
