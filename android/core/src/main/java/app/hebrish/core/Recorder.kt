@@ -20,6 +20,7 @@ import android.media.MediaRecorder
  */
 class Recorder(
     private val onLevel: (Float) -> Unit,
+    /** The take reached [maxSeconds], or the microphone stopped delivering audio. Capture thread. */
     private val onLimit: () -> Unit,
     private val onSegment: ((FloatArray) -> Unit)? = null,
 ) {
@@ -84,17 +85,39 @@ class Recorder(
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, maxOf(minBuf, rate),
         )
         // API checks keep this compiling for Hebrish Keyboard (minSdk 21); the app is minSdk 28.
+        // An AudioRecord that couldn't get the mic is STATE_UNINITIALIZED, and startRecording() on
+        // it throws. Up to 0.7.0 `running` was set first and stayed true after that throw, so a later
+        // Resume returned at once and "recorded" with no capture thread.
+        if (record.state != AudioRecord.STATE_INITIALIZED) {
+            record.release()
+            throw IllegalStateException("couldn't open the microphone")
+        }
         val want = preferredDevice
         if (want != null && Build.VERSION.SDK_INT >= 23) record.setPreferredDevice(want)
+        try {
+            record.startRecording()
+        } catch (e: Exception) {
+            record.release()
+            throw e
+        }
         running = true
-        record.startRecording()
         if (Build.VERSION.SDK_INT >= 24) routedDevice = record.routedDevice
         thread = Thread {
             val buf = ShortArray(rate / 10)
             try {
                 while (running) {
                     val n = record.read(buf, 0, buf.size)
-                    if (n <= 0) continue
+                    if (n < 0) {
+                        // The mic went away (ERROR_DEAD_OBJECT: a Bluetooth headset switched off, the
+                        // audio server restarted). Up to 0.7.0 this spun on read() at full CPU until
+                        // Stop. End the take like the length limit does, so what was heard is decoded.
+                        if (running) {
+                            running = false
+                            onLimit()
+                        }
+                        break
+                    }
+                    if (n == 0) continue
                     val chunk = buf.copyOf(n)
                     chunks.add(chunk)
                     samples += n

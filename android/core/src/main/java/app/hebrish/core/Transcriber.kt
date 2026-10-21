@@ -83,11 +83,16 @@ object Transcriber {
         }
     }
 
-    /** Blocking. [samples] are mono floats in [-1, 1] at [SAMPLE_RATE]. */
+    /**
+     * Blocking. [samples] are mono floats in [-1, 1] at [SAMPLE_RATE]. Holds [lock] for the decode:
+     * [load] of another model (a preload after the selection changed) or [unload] releases the
+     * native recognizer, and up to 0.7.0 that could happen under a decode still using it.
+     */
     fun transcribe(ctx: Context, samples: FloatArray): String {
-        val rec = load(ctx)
         val speech = trim(samples)
-        return decode(rec, speech + FloatArray((SAMPLE_RATE * PAD_SECONDS).toInt()))
+        synchronized(lock) {
+            return decode(load(ctx), speech + FloatArray((SAMPLE_RATE * PAD_SECONDS).toInt()))
+        }
     }
 
     private fun decode(rec: OfflineRecognizer, audio: FloatArray): String {

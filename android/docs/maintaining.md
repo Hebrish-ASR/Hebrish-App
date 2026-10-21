@@ -416,6 +416,25 @@ than 4 threads: the Nord 3's Dimensity 9000 has 4 big cores, and the little core
 parallel op down. A true streaming model would show text while you speak; the Nemotron
 streaming fine-tune (no name yet) is the candidate.
 
+## Capture and decode robustness (0.7.1, 2026-10-21)
+
+From a review of speed and reliability of inference (code review, compiled; I: not run on a device).
+
+- `Recorder.start` checks `AudioRecord.state` and only sets `running` after `startRecording()`
+  succeeded. Up to 0.7.0 a failed start (mic held by another app, `STATE_UNINITIALIZED`) left
+  `running = true`, so the next Resume returned without a capture thread and the take silently
+  stopped growing.
+- A negative `read()` (`ERROR_DEAD_OBJECT`: Bluetooth headset off, audio server restart) ends the
+  take through `onLimit`, so what was heard is decoded. Up to 0.7.0 the capture thread spun on
+  `read()` at full CPU until Stop.
+- `Transcriber.transcribe` holds the recognizer lock for the decode. `load` of another model
+  (e.g. `preload` on field focus after the selection changed) and `unload` call `release()` on
+  the native recognizer under that lock; a decode outside it could use freed native memory.
+- Not changed, for a device test first: desktop skips takes with no speech (`engine.has_speech`,
+  stray "Yeah." from silence) and stretches 0.12–0.6 s pauses (sentences dropped after short
+  gaps). Android does neither; its `trim` decodes a speechless take whole. Both thresholds were
+  measured on a desktop mic, and Android's `VOICE_RECOGNITION` source levels are unmeasured.
+
 ## App screens (0.4.0, 2026-10-20)
 
 The single setup screen (`activity_main.xml`, removed) became a home screen plus one screen

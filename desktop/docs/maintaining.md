@@ -211,6 +211,15 @@ each part works there:
 - Long takes were decoded in ≤30 s pieces, cut at the quietest 100 ms window in the last
   5 s of each piece. The 56 s test decoded in 4.4 s on the laptop CPU (V). **Replaced in 0.4.0**
   by pause cuts every ~10–25 s: see "Live insertion and pause cuts".
+- **Inference speed review (V, 2026-10-21, Sabich v1.0, sherpa-onnx 1.13.8, Ryzen 7 5700U).**
+  Nothing changed; recorded so it isn't re-measured. (1) `decode_stream` releases the GIL:
+  a Python thread ticking every 5 ms during a 20 s decode saw at most a 24 ms gap, so a
+  live-insertion decode doesn't starve the sounddevice callback. (2) Batching pieces with
+  `decode_streams` is no faster and changes output (six 7–10 s clips: 4 threads 3.65 s
+  sequential vs 5.02 s batched, 8 threads 4.66 vs 4.30; 1 of 6 transcripts differed, from the
+  padding). Keep one piece at a time. (3) Threads on 48 s of speech, min of 3: 2 → 7.22 s,
+  4 → 4.91, 6 → 4.69, 8 → 4.43, which confirms the auto default (`config.threads`). Single
+  runs vary by ±0.5 s, so compare minima of several runs.
 - **The venv must use `/usr/bin/python3` (V).** `uv venv --system-site-packages` without
   `--python` picked a uv-managed 3.13, and then `gi` and `evdev` (distro packages built
   for 3.14) didn't import. `install.sh` pins the interpreter.
