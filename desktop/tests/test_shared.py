@@ -38,10 +38,10 @@ def test_android_offline_fallbacks_are_available_models():
 
 
 def test_hebrish_ships_only_stock_and_code_switching_models():
-    """Hebrish is the code-switching app: the code-switching fine-tunes, listed first (Jachnun is
-    recommended; Daniel, 2026-10-20), and stock Parakeet last
+    """Hebrish is the code-switching app: the code-switching fine-tunes, listed first (Sabich, the
+    complete model, is recommended and listed first since 2026-10-21; Daniel), and stock Parakeet last
     (Jachnun = `codeswitch`, and Sabich = `sabich`, the kitchen-sink line with code-switching
     plus tech; Daniel, 2026-10-20), nothing else. The fine-tunes without Hebrew (Boxty, tech,
     personal) belong to Parlance (danielrosehill/Parlance-Dictation)."""
     with open(SHARED) as f:
-        assert [m["id"] for m in json.load(f)["models"]] == ["codeswitch", "sabich", "stock"]
+        assert [m["id"] for m in json.load(f)["models"]] == ["sabich", "codeswitch", "stock"]

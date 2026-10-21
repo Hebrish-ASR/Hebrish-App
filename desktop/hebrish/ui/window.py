@@ -20,7 +20,7 @@ from ..inserter import copy_to_clipboard, parse_chord
 from . import about
 from .app import icon
 from .meter import LevelMeter, verdict
-from .style import BLUE
+from .style import BLUE, BRAND_GREEN
 
 OVERLAY = [("off", "Off"), ("active", "While dictating"), ("always", "Always (a mic button)")]
 LIVE = [(0, "Off: everything when you stop"), (10, "Every ~10 seconds"), (15, "Every ~15 seconds"),
@@ -449,8 +449,9 @@ class MainWindow(QMainWindow):
         lay.setContentsMargins(16, 14, 16, 14)
         lay.setSpacing(12)
         box, b = card("Models")
-        b.addWidget(muted("Download any of them; each is about 660 MB, downloads once and then "
-                          "works offline. “Use” switches the model you dictate with."))
+        self.models_intro = muted()
+        self.models_intro.setTextFormat(Qt.RichText)
+        b.addWidget(self.models_intro)
         self.model_rows_box = QVBoxLayout()
         self.model_rows_box.setSpacing(0)
         b.addLayout(self.model_rows_box)
@@ -499,10 +500,8 @@ class MainWindow(QMainWindow):
 
     def _model_row(self, m) -> dict:
         f = QFrame(objectName="modelRow")
-        f.setStyleSheet("#modelRow { border-bottom: 1px solid palette(midlight); }"
-                        "#modelRow QLabel { border: none; }")
         outer = QHBoxLayout(f)
-        outer.setContentsMargins(2, 10, 2, 10)
+        outer.setContentsMargins(10, 10, 10, 10)
         outer.setSpacing(12)
         pic = QLabel()
         ic = icon(f"model-{m.id}")
@@ -515,7 +514,7 @@ class MainWindow(QMainWindow):
         name = QLabel(f"<b style='font-size:15px'>{m.name}</b>")
         head.addWidget(name)
         chip = QLabel(objectName="chip")
-        chip.setStyleSheet(f"background: {BLUE}; color: white; border-radius: 9px; padding: 1px 8px;"
+        chip.setStyleSheet(f"background: {BRAND_GREEN}; color: white; border-radius: 9px; padding: 1px 8px;"
                            " font-size: 11px; font-weight: 600;")
         head.addWidget(chip)
         rec = QLabel("Recommended")
@@ -544,7 +543,7 @@ class MainWindow(QMainWindow):
         btns.setSpacing(4)
         dl = QPushButton(QIcon.fromTheme("download"), "Download", objectName="primary")
         dl.clicked.connect(lambda _=False, mid=m.id: self._download_model(mid))
-        use = QPushButton("Use")
+        use = QPushButton(f"Switch to {m.name}")
         use.clicked.connect(lambda _=False, mid=m.id: self.ctl.use_model(mid))
         rm = QPushButton("Delete")
         rm.clicked.connect(lambda _=False, mid=m.id: self._delete_model(mid))
@@ -553,7 +552,8 @@ class MainWindow(QMainWindow):
         btns.addStretch(1)
         outer.addLayout(btns)
         self.model_rows_box.addWidget(f)
-        return {"frame": f, "chip": chip, "status": status, "pbar": pbar, "dl": dl, "use": use, "rm": rm}
+        return {"frame": f, "chip": chip, "status": status, "pbar": pbar, "dl": dl, "use": use, "rm": rm,
+                "rec": m.id == model_store.catalogue().get("recommended")}
 
     def _download_model(self, mid):
         m = model_store.get_model(mid)
@@ -615,11 +615,28 @@ class MainWindow(QMainWindow):
                 r["frame"].deleteLater()
             self.model_rows = {m.id: self._model_row(m) for m in cat}
         busy = bool(ctl.downloading or ctl.downloading_id)
+        rec = model_store.get_model(model_store.catalogue().get("recommended") or "")
+        self.models_intro.setText(
+            (f"<b>{rec.name}</b> is the recommended model. " if rec else "")
+            + "Each model is about 660 MB, downloads once and then works offline. "
+            "The one you dictate with is outlined in green; switch any time.")
         for m in cat:
             r, inst = self.model_rows[m.id], model_store.active(m.id)
             in_use = m.id == sel.id
-            r["chip"].setText("In use")
-            r["chip"].setVisible(in_use and inst is not None)
+            # The row in use is tinted and outlined in brand green, so it reads as "this one" rather
+            # than as a row with its buttons missing (Daniel, 2026-10-21: the in-use row looked greyed
+            # out next to rows that had Use / Delete buttons).
+            active = in_use and inst is not None
+            r["chip"].setText("✓ In use")
+            r["chip"].setVisible(active)
+            r["frame"].setStyleSheet(
+                (f"#modelRow {{ border: 2px solid {BRAND_GREEN}; border-radius: 10px;"
+                 " background: rgba(15, 107, 92, 0.08); }" if active else
+                 "#modelRow { border: none; border-bottom: 1px solid palette(midlight); }")
+                + " #modelRow QLabel { border: none; background: transparent; }")
+            r["use"].setObjectName("primary" if r["rec"] else "")
+            r["use"].style().unpolish(r["use"])
+            r["use"].style().polish(r["use"])
             here = ctl.downloading_id == m.id
             if here:
                 text = "<b>Downloading…</b>"

@@ -406,7 +406,10 @@ from his Voice Notepad app (`AI-Transcription-Notepad`: `tts_announcer.py`, `mic
 - **Models tab:** one row per available catalogue model (`_model_row`), rebuilt only when the
   catalogue's ids change. Download → `Controller.download_model(mid)` (fetch the manifest off
   the GUI thread, then the usual `download`); `downloading_id` says which row shows progress.
-  Use → `use_model` (only for a downloaded model). Icons: `data/icons/model-<id>.svg`;
+  Use → `use_model` (only for a downloaded model). The row in use has no buttons, so it is
+  tinted and outlined in brand green with a "✓ In use" chip (2026-10-21: as a plain row it read
+  as greyed out next to rows with buttons); the recommended model's "Switch to …" button is
+  `primary`, and the card's intro line names the catalogue's `recommended` model. Icons: `data/icons/model-<id>.svg`;
   Jachnun's and Sabich's are copies of `Hebrish-Mgmt/brand/logo/{jachnun,sabich}.svg`, stock's
   is a plain hand-drawn wave (not a brand mark).
 - **Model folder** (`models_dir`, "" = `config.MODELS_DIR`): `model_store.ROOT` replaces the

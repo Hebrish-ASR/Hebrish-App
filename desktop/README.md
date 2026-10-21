@@ -62,9 +62,10 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
 **Also included:**
 - **Start-up screen** while the model loads (not when started in the tray at login).
 - **Tray icon:** closing the window leaves the app in the tray. Middle-click the tray icon to start or stop dictation.
-- **Models tab:** one card per model, with its icon: Jachnun (code-switching, recommended),
-  Sabich (code-switching plus tech vocabulary) and stock Parakeet. Each has its own
-  **Download**, **Use** and **Delete**, so you can download a model without switching to it.
+- **Models tab:** one card per model, with its icon: Sabich (the complete model: code-switching
+  plus tech vocabulary; recommended), Jachnun (code-switching only) and stock Parakeet. The model
+  you dictate with is outlined in green with an **In use** badge; the others have their own
+  **Download**, **Switch to …** and **Delete**, so you can download a model without switching to it.
   The other fine-tunes are in Parlance (danielrosehill/Parlance-Dictation). A new version
   appears by itself (the app re-reads the catalogue from this repo).
   - Each model (~660 MB) downloads once, on request, with its SHA-256 checked.
