@@ -1,6 +1,7 @@
-**0.5.1: one copy of each model, updated automatically.**
+**0.5.2: clearer Models tab; Sabich recommended.**
 
-- When a new version of a model comes out, Hebrish downloads it and deletes the old one once the new one has checked out, so each model is on your disk once. Old versions kept by earlier releases are cleared on first start (the one in use stays).
-- Model updates install automatically by default (Settings → Model updates turns that off). The versions list on the Models tab is gone.
-- Everything in 0.5.0: dictate into the window, spoken prompts, a level meter with a clip lamp, voice detection, Esc to discard and double-tap to start again, model cards with their own Download buttons, a choice of model folder, and a Diagnostics tab. See the [0.5.0 release](https://github.com/Hebrish-ASR/Hebrish-App/releases/tag/desktop-v0.5.0).
+- The model you dictate with is now outlined in green with an "In use" badge, so it no longer looks greyed out next to the others.
+- The other downloaded models have a "Switch to …" button instead of "Use".
+- Sabich, the complete model (the Hebrew words plus tech vocabulary, brand names and numbers), is listed first and recommended. On the first round of tests it was level with Jachnun on Hebrew words and better on tech dictation. Jachnun is still there; if one doesn't give you good results, try the other.
+- Everything in 0.5.1: one copy of each model, updated automatically. See the [0.5.1 release](https://github.com/Hebrish-ASR/Hebrish-App/releases/tag/desktop-v0.5.1).
 - Ubuntu 26.04 .deb and a portable Windows zip. Not yet tested on Windows hardware. Downloads: [hebrish.app/download](https://hebrish.app/download).
