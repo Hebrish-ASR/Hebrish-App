@@ -62,6 +62,7 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
 **Also included:**
 - **Start-up screen** while the model loads (not when started in the tray at login).
 - **Tray icon:** closing the window leaves the app in the tray. Middle-click the tray icon to start or stop dictation.
+- **Start at login** (Settings → System, or the tray menu): starts Hebrish in the tray when you log in, on Ubuntu (an XDG autostart entry) and Windows (the per-user Run key). It follows the app if you move it, for example a Windows zip unzipped to a new folder.
 - **Models tab:** one card per model, with its icon: Sabich (the complete model: code-switching
   plus tech vocabulary; recommended), Jachnun (code-switching only) and stock Parakeet. The model
   you dictate with is outlined in green with an **In use** badge; the others have their own
@@ -107,7 +108,7 @@ you get a link to the new zip.
 
 **Windows 10/11** (x64): download the `-windows-x64.zip` from the releases, unzip it, and
 run `Hebrish.exe`. There is no installer and no admin rights are needed. Turn on
-*Start at login* under Settings if you want it in the tray at every login. Windows
+*Start at login* (Settings → System, or the tray menu) if you want it in the tray at every login. Windows
 SmartScreen may warn you because the build is unsigned.
 
 **Alongside Parlance.** Up to 0.1.2 this app was called Parlance internally (package, command

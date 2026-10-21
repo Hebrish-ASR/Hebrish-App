@@ -21,7 +21,7 @@ from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from .. import __version__, app_update, audio, model_store
+from .. import __version__, app_update, audio, autostart, model_store
 from ..config import (APP_NAME, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
 from ..engine import Engine, live_cut
@@ -142,6 +142,10 @@ class Controller(QObject):
         self._timer = QTimer(self, interval=600_000, timeout=self._periodic_check)
         self._timer.start()
         QTimer.singleShot(4000, self._startup_warnings)
+        try:
+            autostart.refresh()                  # follow this copy if the app moved
+        except OSError:
+            log.exception("refreshing start at login failed")
         # After the model check, so start-up stays quiet; one small GET, off the GUI thread.
         QTimer.singleShot(30_000, lambda: self.cfg["app_update_check"] and self.check_app_update())
 
@@ -656,10 +660,17 @@ class Controller(QObject):
         self.tray = QSystemTrayIcon(icon("tray-idle"), self)
         self.tray.setToolTip(APP_NAME)
         m = QMenu()
+        # Checkable actions connect triggered() themselves: PySide's addAction(text, slot) calls
+        # the slot without the checked state, so a slot that takes it raised TypeError.
         self.act_toggle = m.addAction("Start dictation", self.toggle)
-        self.act_overlay = m.addAction("Show overlay", self._tray_overlay)
+        self.act_overlay = m.addAction("Show overlay")
         self.act_overlay.setCheckable(True)
+        self.act_overlay.triggered.connect(self._tray_overlay)
         m.addAction("Show window", self.win.present_tab)
+        self.act_autostart = m.addAction("Start at login")
+        self.act_autostart.setCheckable(True)
+        self.act_autostart.triggered.connect(self.set_autostart)
+        self.act_autostart.setChecked(autostart.enabled())
         m.addSeparator()
         self.act_update = m.addAction("Install update", lambda: self.latest and self.download(self.latest))
         m.addAction("Check for model update", lambda: self.check_updates(manual=True))
@@ -681,6 +692,17 @@ class Controller(QObject):
         self.cfg.set("overlay", "always" if on else "off")
         self._overlay_push()
         self._update_tray()
+
+    def set_autostart(self, on: bool):
+        """Tray menu and Settings both land here, so the two stay in step."""
+        try:
+            autostart.set_enabled(on)
+        except OSError as e:
+            log.exception("start at login")
+            self.win.banner(f"Couldn't change start at login: {e}")
+        on = autostart.enabled()
+        self.act_autostart.setChecked(on)
+        self.win.sync_autostart(on)
 
     def _tray_click(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.Trigger:

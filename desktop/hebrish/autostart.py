@@ -1,4 +1,8 @@
-"""Start at login: an XDG autostart entry on Linux, the HKCU Run key on Windows."""
+"""Start at login: an XDG autostart entry on Linux, the HKCU Run key on Windows.
+
+The entry stores the launch command as it was when it was turned on. refresh() rewrites it at
+every start, so it follows the app when that changes: a portable Windows zip unzipped to a new
+folder for a new version, or a switch between a source checkout and the .deb."""
 
 import os
 import shutil
@@ -33,6 +37,19 @@ def enabled() -> bool:
     return _DESKTOP.exists()
 
 
+def _entry() -> str:
+    return ("[Desktop Entry]\nType=Application\n"
+            f"Name={APP_NAME}\nComment=Start {APP_NAME} in the tray\n"
+            f"Exec={_command()}\nIcon=hebrish\nTerminal=false\n"
+            "X-GNOME-Autostart-enabled=true\n")
+
+
+def refresh():
+    """If start at login is on, point it at this copy of the app."""
+    if enabled():
+        set_enabled(True)
+
+
 def set_enabled(on: bool):
     if sys.platform == "win32":
         import winreg
@@ -49,7 +66,6 @@ def set_enabled(on: bool):
         _DESKTOP.unlink(missing_ok=True)
         return
     _DESKTOP.parent.mkdir(parents=True, exist_ok=True)
-    _DESKTOP.write_text("[Desktop Entry]\nType=Application\n"
-                        f"Name={APP_NAME}\nExec={_command()}\nIcon=hebrish\n"
-                        "X-GNOME-Autostart-enabled=true\n")
+    if not _DESKTOP.exists() or _DESKTOP.read_text() != _entry():
+        _DESKTOP.write_text(_entry())
 

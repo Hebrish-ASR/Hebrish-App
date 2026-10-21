@@ -14,7 +14,7 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | `hotkey.py` | the shared state machine for the two keys (toggle, push-to-talk) and the action keys, on evdev-style key names |
 | `hotkey_evdev.py` / `hotkey_win.py` | per-OS key sources: `/dev/input` on Linux, a pynput low-level hook on Windows |
 | `inserter.py` + `inserter_linux.py` / `inserter_win.py` | clipboard, then a paste chord (uinput / SendInput) |
-| `autostart.py` | XDG autostart entry / HKCU `Run` key |
+| `autostart.py` | XDG autostart entry / HKCU `Run` key, toggled from Settings → System or the tray's *Start at login* (both go through `Controller.set_autostart`). `refresh()` rewrites the stored command at every start, because it is the path at the time it was turned on: a portable Windows zip unzipped to a new folder for a new version left the Run key starting the old exe (I, from the code; not seen on Windows hardware). Checkable tray actions connect `triggered` themselves: PySide's `addAction(text, slot)` calls the slot with no `checked` argument, so up to 0.6.3 the tray's *Show overlay* raised `TypeError` and did nothing (V, off-screen, 2026-10-21) |
 | `ui/app.py` | `Controller`, tray, single instance + `--toggle` over `QLocalServer`, `--selftest`, `main()` |
 | `ui/overlay.py` | the floating overlay widget, `OverlayHost` (in-process or an XWayland child), and the child's `__main__` |
 | `ui/splash.py` | the start-up screen |

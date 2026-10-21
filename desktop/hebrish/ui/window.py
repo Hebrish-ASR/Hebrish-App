@@ -990,9 +990,9 @@ class MainWindow(QMainWindow):
         lay.addWidget(box)
 
         box, b = card("System")
-        auto = QCheckBox("Start at login, in the tray", checked=autostart.enabled())
-        auto.toggled.connect(autostart.set_enabled)
-        b.addWidget(auto)
+        self.chk_autostart = QCheckBox("Start at login, in the tray", checked=autostart.enabled())
+        self.chk_autostart.toggled.connect(self.ctl.set_autostart)
+        b.addWidget(self.chk_autostart)
         path = muted(f"Config file: {CONFIG_PATH}<br>App version {__version__}")
         path.setTextInteractionFlags(Qt.TextSelectableByMouse)
         b.addWidget(path)
@@ -1082,6 +1082,11 @@ class MainWindow(QMainWindow):
 
     def status(self, text):
         self.status_label.setText(text)
+
+    def sync_autostart(self, on: bool):
+        self.chk_autostart.blockSignals(True)
+        self.chk_autostart.setChecked(on)
+        self.chk_autostart.blockSignals(False)
 
     def banner(self, text):
         self.banner_label.setText(text)
