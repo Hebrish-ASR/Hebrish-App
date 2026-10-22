@@ -6,6 +6,20 @@ which share `desktop/`; Android). A sprint ends with a release. Parity is the ai
 D-2026-10-22-05): an item done on one platform gets a matching item in the other sprint, unless
 it makes no sense there. Agents add to sprints with the `queue-sprint` skill.
 
+## Sprint plan (2026-10-22)
+
+Daniel, 2026-10-22: "as many as you can; we can break this up into sprints", so long as the task
+list is organised here. Each sprint ends with a release per platform. Items keep their ids; the
+tables below hold the detail and status.
+
+| Sprint | Desktop (Ubuntu + Windows) | Android | Release |
+| --- | --- | --- | --- |
+| 1 (now) | B-8 tray icons, B-23 output mode from tray/shortcut, B-26 retention, I-1 pending indicator, I-3 mid-sentence lowercase, I-8 clipboard guard, B-31 short version labels; plus the unreleased B-1, B-2, B-6, B-7, B-12, B-14, B-15 | B-9 horizontal offset, B-3 interval presets, B-4 stop and send, B-11 voices and cue muting | desktop 0.7.0 (B-5), Android 0.8.0 |
+| 2 | B-22 shortcut presets and rebinding, B-24 "Download models" setup, I-11 VAD toggle decision | B-13 Shakshuka streaming, B-19 history, B-28 retention, B-27 headset button (Yealink), B-10 design pass | desktop 0.8.0, Android 0.9.0 |
+| 3 | B-25 long-form mode, B-16 semantic search, B-17 Drive backup, I-9 long form to Google Docs, B-30 Meorav TTS pane | I-10 long form, B-20 Drive backup, B-30 Meorav TTS pane | desktop 0.9.0, Android 0.10.0 |
+| 4 | B-18 accounts, I-7 sync, I-12 report a word, I-13 personal dictionary | B-21 accounts, the same three | needs a server side on hebrish.app |
+| Later | I-4 live streaming with corrections, I-6 fewer models, I-2 Enter guard, I-5 a model per mode | B-26/N1 Google Play submission (Daniel, private tracker) | |
+
 ## Sprint: desktop (Ubuntu + Windows), toward 0.7.0
 
 | Id | Item | Status |
@@ -26,12 +40,15 @@ it makes no sense there. Agents add to sprints with the `queue-sprint` skill.
 | B-24 | **"Download models" setup.** First run and the model screen offer models to download rather than one to choose: a streaming model (Shakshuka) for dictation and a non-streaming one (Sabich) for recordings, with recommendations for the computer's hardware (see I-5). R-2026-10-22-26 | planned |
 | B-25 | **Long-form mode.** A text-editor-like module for long dictation: record up to ~90 minutes (chunked, each chunk saved to disk as it is captured, VAD and downsampling during capture) or pick a file; transcribe with the non-streaming model; autosave at once; then tidy and save. Builds on the Transcribe tab and History. R-2026-10-22-27 | planned |
 | B-26 | **Retention.** Audio of a take whose transcription failed is kept for retry (the last three); otherwise audio is kept only with `keep_audio` on. Settings to truncate the history (by age or count; default stays unlimited, D-2026-10-22-13). R-2026-10-22-30; D-2026-10-22-17 | planned |
+| B-31 | **Short version labels.** The UI shows "Sabich v2.0", not the commit or the training run (Daniel, 2026-10-22: "too much information"). Android shipped in 0.7.4 | done (unreleased) |
+| B-30 | **Experimental TTS pane (Meorav).** A pane in every app (and on hebrish.app) that reads typed text aloud with the latest Meorav checkpoint. Meorav (Qwen3-TTS 1.7B) can't run on a phone and needs PyTorch and ideally a GPU on desktop, so the proposal is a hosted ZeroGPU Space the apps call, with a local desktop path for GPU owners later. Design to confirm with Daniel | planned |
 | B-5 | **Release desktop 0.7.0** with the items above (B-16 to B-18 can move to the next release if 0.7.0 is otherwise ready) | planned |
 
 ## Sprint: Android
 
 | Id | Item | Status |
 | --- | --- | --- |
+| B-29 | **Floating mic: no ×.** The 0.7.3 × sat where a finger grabs the mic, so every drag closed it; removed, the floating mic is hidden only by turning it off. Model labels shortened (B-31). R-2026-10-22-36 | released android 0.7.4 |
 | B-9 | **Floating mic: horizontal offset.** Today the floating mic can be moved up and down the screen edge. Add a horizontal offset: by default the mic sits a little in from the screen edge (hard to reach right at the edge), and the user adjusts from there: negative puts it flush with the edge, positive moves it further in. Applies on whichever side it is snapped to. R-2026-10-22-9 | planned |
 | B-10 | **Design pass.** The app is taking shape, and splitting settings over many pages works well, but the screens need visual design: consistent cards, spacing, headers and icons, using the brand standard (Hebrish-Mgmt `brand/`). R-2026-10-22-7 | planned |
 | B-3 | **Interval presets.** Android's *Type as you go* is on/off with a fixed interval; give it the same Fast / Normal / Relaxed / Custom choice (parity with B-1) | planned |
