@@ -276,7 +276,7 @@ class DiagnosticsPage(QScrollArea):
         parts = []
         for k in audio.VOICE_PROMPTS:
             try:
-                with wave.open(str(audio.VOICE_DIR / f"{k}.wav")) as w:
+                with wave.open(str(audio.VOICE_DIR / "herman" / f"{k}.wav")) as w:
                     parts += [np.frombuffer(w.readframes(w.getnframes()), "<i2").astype(np.float32) / 32768, gap]
             except (OSError, wave.Error):
                 continue

@@ -9,6 +9,40 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-22-09: Backlog work is queued in one sprint per platform
+
+- **Decision:** `backlog.md` has a sprint per platform (desktop = Ubuntu + Windows; Android),
+  each ending in a release, plus *Ideas for future versions*. Batches of requests are split
+  across them with the `queue-sprint` skill. Parity follow-ups go into the other sprint.
+- **Why:** Requests arrive in batches, often mid-work, for different platforms. One flat list
+  mixed them up and hid what each release would contain.
+- **By:** Daniel. Request R-2026-10-22-10.
+
+### D-2026-10-22-08: The mic ignores its own prompts
+
+- **Decision:** While a beep or spoken prompt plays with the mic open (start, retake, resume),
+  the recorder drops input for the prompt's length plus 150 ms (`CUE_MARGIN_S`).
+- **Why:** Spoken prompts were being transcribed into the user's text. Dropping is simpler
+  and safer than echo cancellation, and the prompts are at most about 1.5 s long.
+- **Alternatives:** Playing the prompt before opening the mic (rejected: it delays the start
+  of every take by the prompt's length, even for people who start talking before it ends).
+- **By:** Daniel asked for an offset; the mechanism is the agent's, implementing it. R-2026-10-22-6.
+
+### D-2026-10-22-07: Voice feedback uses Herman, Corn and Hilbert; the stock voice goes
+
+- **Decision:** Voice feedback offers three voices: Herman (default), Corn and Hilbert, the My
+  Weird Prompts podcast characters (Daniel's own voice clones). They replace the Microsoft
+  edge-tts voice used since 0.5.0, so existing Voice users hear Herman after updating.
+  Hilbert has slightly longer lines for three prompts ("Dictation paused.", "Take discarded.",
+  "Copied to the clipboard."), because the voice model garbles those single words in his voice.
+- **Why:** Character voices are more fun, Daniel asked for exactly three options, and the clips
+  are generated once from voices he owns, which avoids redistributing a third-party TTS voice.
+- **Alternatives:** Keeping the stock voice as a fourth option (not done: three was the ask).
+  Smaller formats such as Opus (not done: all three packs are 764 KB as WAV, and the player
+  reads WAV with no extra dependency).
+- **By:** Daniel (voices, three options); agent (replacing the stock voice, Hilbert's lines,
+  WAV). R-2026-10-22-5.
+
 ### D-2026-10-22-06: Pending indicator, Enter guard and mid-sentence lowercase are ideas, not scheduled
 
 - **Decision:** Backlog items I-1, I-2 and I-3 go under *Ideas for future versions*. The work now

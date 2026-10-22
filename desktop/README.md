@@ -32,7 +32,9 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
   (physical cores, at most 8).
 - **Sounds** (Settings → Sounds): *Beeps* (start and stop), *Voice* (short spoken prompts:
   "Recording", "Paused", "Resumed", "Transcribing", "Discarded", and "Copied" when the output is
-  the clipboard; nothing when the text arrives) or *Off*; one volume, and quiet hours.
+  the clipboard; nothing when the text arrives) or *Off*; one volume, and quiet hours. Since 0.7.0
+  the voice is **Herman**, **Corn** or **Hilbert** (the My Weird Prompts podcast characters), and
+  the microphone ignores a prompt while it plays, so it never ends up in the transcript.
 - **Voice detection** (Dictate tab, on by default): a take with no speech is not decoded (no
   stray "Yeah."), and silences longer than 1.5 s are shortened before decoding.
 - Settings apply as you change them; a short *Settings saved* toast confirms it.

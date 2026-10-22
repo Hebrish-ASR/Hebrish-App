@@ -9,14 +9,14 @@ what is being worked on next, and why things were decided the way they were.
 | File | What |
 | --- | --- |
 | [requests.md](requests.md) | Feature requests received, from users and from Daniel, with where each one went |
-| [backlog.md](backlog.md) | The working list: now, next, and ideas for future versions |
+| [backlog.md](backlog.md) | The working list: one sprint per platform (desktop, Android), and ideas for future versions |
 | [decisions.md](decisions.md) | The decision log, newest first |
 
 ## How to use it
 
 - **A request comes in** → add a row to `requests.md` (date, where it came from, the ask in
   one line). When it is triaged, link the backlog item it became, or say why not.
-- **Work is chosen** → it goes in `backlog.md` under *Now* or *Next*. Things worth doing but not
+- **Work is chosen** → it goes into a sprint in `backlog.md` (one per platform: desktop, Android; agents use the `queue-sprint` skill). Things worth doing but not
   scheduled go under *Ideas for future versions*. Not everything can be built at once; that
   section is the honest answer to "will you add X?".
 - **A decision is made** (a default, a trade-off, a scope call, "not this way") → append it to

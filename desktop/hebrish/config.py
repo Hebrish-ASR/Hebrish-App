@@ -55,7 +55,8 @@ DEFAULTS = {
     "insert": "paste",            # paste | clipboard | app (the Dictate tab's text box only)
     "paste_chord": "ctrl+v",      # e.g. ctrl+shift+v if you dictate mostly into terminals
     "trailing_space": True,
-    "feedback": "beeps",          # beeps | voice (spoken status: data/voice/) | off
+    "feedback": "beeps",          # beeps | voice (spoken status: data/voice/<voice>/) | off
+    "voice": "herman",            # herman | corn | hilbert (audio.VOICES; 0.7.0)
     "beep_volume": 50,            # %; 50 = the 0.3.x level; also the voice volume
     "quiet_hours": False,         # no beeps or voice between quiet_from and quiet_to (may cross midnight)
     "quiet_from": "22:00",

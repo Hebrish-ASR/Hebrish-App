@@ -20,7 +20,8 @@ agents. So:
 
 `planning/` holds feature requests (`requests.md`), the working backlog (`backlog.md`, including
 *Ideas for future versions*) and the decision log (`decisions.md`). When a decision is made, log
-it with the `log-decision` skill. When a request comes in, add it to `requests.md`.
+it with the `log-decision` skill. When requests come in (often in batches), queue them with the
+`queue-sprint` skill: one sprint per platform in `backlog.md`.
 
 Feature parity across Android, Ubuntu and Windows is the standing aim (D-2026-10-22-05).
 `desktop/` is shared by Ubuntu and Windows, and `docs/feature-parity.json` is the matrix.

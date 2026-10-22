@@ -36,6 +36,10 @@ HISTORY_MAX = 50
 NO_SPEECH = "no speech"        # _worker -> _done: the take had audio but no speech (engine VAD)
 # The beeps mode: start, stop, a falling "doo-doo" for discard, a rising pair for retake
 APP_CHECK_S = 24 * 3600       # app update check while running: about daily (at start too)
+# Cues play through the speakers while the mic is open (start, resume): the recorder drops
+# input for the cue's length plus this, for output latency (0.7.0, Daniel 2026-10-22: spoken
+# prompts were ending up in the transcript).
+CUE_MARGIN_S = 0.15
 BEEPS = {"recording": 880, "transcribing": 620, "discarded": (660, 440), "retake": (523, 880)}
 
 
@@ -181,19 +185,21 @@ class Controller(QObject):
             self.notify("Microphone error", str(e))
             return
         self._take += 1
-        self.cue(cue)
+        self.recorder.mute(self.cue(cue) + CUE_MARGIN_S)
         self.set_state("recording")
 
-    def cue(self, event: str):
+    def cue(self, event: str) -> float:
         """Audible feedback (config `feedback`): beeps for start and stop, or a spoken prompt
-        for each event (audio.VOICE_PROMPTS). Nothing when the text arrives: it is visible."""
+        for each event (audio.VOICE_PROMPTS) in the chosen `voice`. Nothing when the text
+        arrives: it is visible. Returns how long it plays (seconds), for Recorder.mute."""
         mode, vol = self.cfg["feedback"], self.cfg["beep_volume"] / 100
         if mode == "off" or not vol or in_quiet_hours(self.cfg):
-            return
+            return 0.0
         if mode == "voice":
-            audio.say(event, volume=0.5 * vol)
-        elif event in BEEPS:
-            audio.beep(BEEPS[event], volume=0.5 * vol)
+            return audio.say(event, self.cfg["voice"], volume=0.5 * vol)
+        if event in BEEPS:
+            return audio.beep(BEEPS[event], volume=0.5 * vol)
+        return 0.0
 
     def cancel(self, quiet=False):
         """Discard the take. With live insertion, text already inserted stays."""
@@ -207,7 +213,9 @@ class Controller(QObject):
     def pause(self):
         if self.state == "recording":
             self.recorder.resume() if self.recorder.paused else self.recorder.pause()
-            self.cue("paused" if self.recorder.paused else "resumed")
+            played = self.cue("paused" if self.recorder.paused else "resumed")
+            if not self.recorder.paused:
+                self.recorder.mute(played + CUE_MARGIN_S)
             self._overlay_push()
             self.win.update_state()
 
@@ -769,7 +777,8 @@ def _selftest() -> int:
         print("latest app:", app_update.fetch().version, "| install:", app_update.install_method(), file=out)
         if not sizes or any(sizes.values()):
             raise RuntimeError("an icon failed to load (missing Qt SVG plugin?)")
-        voice = [k for k in audio.VOICE_PROMPTS if not (audio.VOICE_DIR / f"{k}.wav").is_file()]
+        voice = [f"{v}/{k}" for v, _ in audio.VOICES for k in audio.VOICE_PROMPTS
+                 if not (audio.VOICE_DIR / v / f"{k}.wav").is_file()]
         print("voice prompts missing:", voice, file=out)
         if voice:
             raise RuntimeError("voice prompts not bundled (package-data data/voice/*.wav)")

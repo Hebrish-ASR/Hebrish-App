@@ -64,15 +64,15 @@
    "ubuntu": {
     "status": "present",
     "since": "0.5.0",
-    "evidence": "desktop/hebrish/audio.py say; data/voice/*.wav"
+    "evidence": "desktop/hebrish/audio.py say; data/voice/<voice>/*.wav"
    },
    "windows": {
     "status": "present",
     "since": "0.5.0",
-    "evidence": "desktop/hebrish/audio.py say; data/voice/*.wav",
+    "evidence": "desktop/hebrish/audio.py say; data/voice/<voice>/*.wav",
     "verified": false
    },
-   "notes": ""
+   "notes": "0.7.0 (unreleased): voices Herman, Corn, Hilbert replace the edge-tts voice; input is muted while a cue plays. Android: the same WAVs could ship (planning/backlog.md)."
   },
   {
    "id": "beep-volume",

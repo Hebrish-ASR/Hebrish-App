@@ -66,3 +66,15 @@ def test_cuts_at_fast_interval():
     x = np.concatenate([speech(4.5), silence(0.8), speech(1)])
     cut = live_cut(x, 5)
     assert cut is not None and 4.5 * SR < cut < 5.3 * SR
+
+
+def test_recorder_drops_input_while_a_cue_plays():
+    from hebrish.audio import Recorder
+    r = Recorder()
+    block = np.full((160, 1), 0.1, np.float32)
+    r.mute(10)
+    r._cb(block, 160, None, None)
+    assert r.peek().size == 0 and r.level > 0      # the meter still moves
+    r._mute_until = 0.0
+    r._cb(block, 160, None, None)
+    assert r.peek().size == 160

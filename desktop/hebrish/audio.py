@@ -30,7 +30,9 @@ def input_devices() -> list[str]:
 
 VOICE_DIR = Path(__file__).resolve().parent / "data" / "voice"
 VOICE_PROMPTS = ("recording", "paused", "resumed", "transcribing", "discarded", "retake",
-                 "copied", "no_speech", "failed")      # data/voice/<key>.wav, made by scripts/make_voice.py
+                 "copied", "no_speech", "failed")      # data/voice/<voice>/<key>.wav
+# Character voices (0.7.0), made by scripts/make_voice_characters.py. Config `voice`.
+VOICES = [("herman", "Herman"), ("corn", "Corn"), ("hilbert", "Hilbert")]
 # Level zones for the meter, in dBFS of the block RMS (speech guidance from Voice Notepad's mic
 # test: aim for -30 to -12) and of the block peak (clipping).
 QUIET_DB, LOUD_DB, CLIP_PEAK = -40.0, -12.0, 0.98
@@ -40,14 +42,16 @@ def db(x: float) -> float:
     return 20 * math.log10(x) if x > 1e-6 else -120.0
 
 
-def _play(samples: np.ndarray, sr: int):
+def _play(samples: np.ndarray, sr: int) -> float:
+    """Start playing (returns at once); returns how long it plays, in seconds."""
     # 25 ms of silence first: PipeWire/Pulse often swallow or click the first few ms of a
     # fresh stream, which is what made the 0.4.0 pips sound clipped and odd.
     lead = np.zeros(int(sr * 0.025), np.float32)
     try:
         sd.play(np.concatenate([lead, samples.astype(np.float32)]), sr)
     except sd.PortAudioError:
-        pass
+        return 0.0
+    return (len(lead) + len(samples)) / sr
 
 
 def default_input_name() -> str:
@@ -79,7 +83,7 @@ def _pip(freq: float, ms: int, volume: float, sr: int) -> np.ndarray:
     return tone
 
 
-def beep(freq: float | tuple, ms: int = 110, volume: float = 0.25):
+def beep(freq: float | tuple, ms: int = 110, volume: float = 0.25) -> float:
     """A soft pip: sine plus a quiet octave, raised-cosine attack (12 ms) and release (45 ms).
     A tuple of frequencies plays them in turn, 40 ms apart (discard's falling "doo-doo").
     Up to 0.4.0 it was a 70 ms bare sine with 10 ms linear fades."""
@@ -88,17 +92,18 @@ def beep(freq: float | tuple, ms: int = 110, volume: float = 0.25):
     parts = []
     for f in (freq if isinstance(freq, tuple) else (freq,)):
         parts += [_pip(f, ms, volume, sr), gap]
-    _play(np.concatenate(parts[:-1]), sr)
+    return _play(np.concatenate(parts[:-1]), sr)
 
 
-def say(key: str, volume: float = 0.5):
-    """Play a spoken status prompt (data/voice/<key>.wav). Missing file: silent."""
+def say(key: str, voice: str = "herman", volume: float = 0.5) -> float:
+    """Play a spoken status prompt (data/voice/<voice>/<key>.wav); returns its length in
+    seconds. Missing file: silent, 0."""
     try:
-        with wave.open(str(VOICE_DIR / f"{key}.wav"), "rb") as w:
+        with wave.open(str(VOICE_DIR / voice / f"{key}.wav"), "rb") as w:
             sr, raw = w.getframerate(), w.readframes(w.getnframes())
     except (OSError, wave.Error):
-        return
-    _play(np.frombuffer(raw, "<i2").astype(np.float32) / 32768 * min(1.0, volume * 1.6), sr)
+        return 0.0
+    return _play(np.frombuffer(raw, "<i2").astype(np.float32) / 32768 * min(1.0, volume * 1.6), sr)
 
 
 class Recorder:
@@ -113,6 +118,7 @@ class Recorder:
         self.peak = 0.0             # peak of the last block
         self.clipped_at = 0.0       # time.monotonic() of the last block that hit CLIP_PEAK
         self.paused = False
+        self._mute_until = 0.0      # time.monotonic(): drop input until then (mute())
 
     @property
     def active(self) -> bool:
@@ -138,8 +144,13 @@ class Recorder:
             self._chunks = [buf[n:]] if len(buf) > n else []
         return buf[:n]
 
+    def mute(self, seconds: float):
+        """Drop the next `seconds` of input: our own beep or spoken prompt playing through the
+        speakers, which the mic would otherwise record (and the model transcribe)."""
+        self._mute_until = max(self._mute_until, time.monotonic() + seconds)
+
     def start(self, device: str = ""):
-        self._chunks, self._n, self.paused = [], 0, False
+        self._chunks, self._n, self.paused, self._mute_until = [], 0, False, 0.0
         self._open(device)
 
     def _open(self, device):
@@ -168,6 +179,8 @@ class Recorder:
         if self.peak >= CLIP_PEAK:
             self.clipped_at = time.monotonic()
         self.level = min(1.0, self.rms * 4)
+        if time.monotonic() < self._mute_until:
+            return
         with self._lock:
             if self._n < self._max:
                 self._chunks.append(block.copy())

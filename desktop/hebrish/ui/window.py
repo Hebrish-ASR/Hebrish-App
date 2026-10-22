@@ -912,7 +912,12 @@ class MainWindow(QMainWindow):
         box, b = card("Sounds")
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignRight)
-        form.addRow("Feedback", self._combo("feedback", FEEDBACK, lambda: self.ctl.cue("recording")))
+        form.addRow("Feedback", self._combo("feedback", FEEDBACK, lambda: (
+            voice.setEnabled(self.cfg["feedback"] == "voice"), self.ctl.cue("recording"))))
+        voice = self._combo("voice", audio.VOICES, lambda: self.ctl.cue("recording"))
+        voice.setEnabled(self.cfg["feedback"] == "voice")
+        voice.setToolTip("Herman, Corn and Hilbert are the voices of the My Weird Prompts podcast")
+        form.addRow("Voice", voice)
         row = QHBoxLayout()
         vol = QSlider(Qt.Horizontal, minimum=0, maximum=100, value=self.cfg["beep_volume"])
         vol_lbl = QLabel(f"{self.cfg['beep_volume']} %")
@@ -925,8 +930,10 @@ class MainWindow(QMainWindow):
         form.addRow("Volume", row)
         b.addLayout(form)
         b.addWidget(muted("Voice says “Recording”, “Paused”, “Resumed”, “Transcribing”, "
-                          "“Discarded”, and “Copied” when Output is the clipboard. Nothing is "
-                          "said when the text arrives: you can see it."))
+                          "“Discarded”, and “Copied” when Output is the clipboard, in Herman's, "
+                          "Corn's or Hilbert's voice. Nothing is said when the text arrives: you "
+                          "can see it. The microphone ignores the prompt while it plays, so it "
+                          "never ends up in your text."))
         b.addWidget(self._check("quiet_hours", "Quiet hours: no sounds between"))
         row = QHBoxLayout()
         for key in ("quiet_from", "quiet_to"):
