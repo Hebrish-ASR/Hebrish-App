@@ -93,7 +93,7 @@ def test_unset_keys_do_nothing():
     assert r.events == []
 
 
-V05 = {"feedback": "beeps", "keep_history": False, "live_insert_s": 10}   # what upgrade() gives a pre-0.5.0 config
+V05 = {"feedback": "beeps", "keep_history": False, "live_insert_s": 7}    # what upgrade() gives a pre-0.5.0 config (0.7.0: 10 -> 7)
 
 
 def test_upgrade_old_modes():
@@ -108,7 +108,7 @@ def test_upgrade_to_0_5_0_defaults():
     installs too; `beeps` became `feedback`. A config that already has `feedback` is left alone."""
     from hebrish.config import upgrade
     assert upgrade({"beeps": False, "live_insert_s": 0, "keep_history": True}) == \
-        {"feedback": "off", "live_insert_s": 10, "keep_history": False}
+        {"feedback": "off", "live_insert_s": 7, "keep_history": False}   # 10 in 0.5.0, then 0.7.0 Normal
     assert upgrade({"beeps": True, "live_insert_s": 20})["live_insert_s"] == 20
     kept = {"feedback": "voice", "live_insert_s": 0, "keep_history": True}
     assert upgrade(dict(kept)) == kept
@@ -160,6 +160,15 @@ def test_action_keys_fire_on_press_only():
     r.tap("KEY_F15")
     r.tap("KEY_F16")
     assert acts == ["pause", "retake"] and r.events == []
+
+
+def test_stop_and_send_key_is_an_action():
+    r = Rig("toggle")
+    acts = []
+    r.m._action = acts.append
+    r.m._cfg["key_send"] = "KEY_F17"
+    r.tap("KEY_F17")
+    assert acts == ["send"] and r.events == []
 
 
 def test_action_key_does_not_cancel_a_modifier_take():

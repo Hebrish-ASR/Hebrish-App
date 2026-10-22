@@ -41,6 +41,10 @@ class WindowsInserter:
         if method != "paste":
             return
         time.sleep(0.08)
+        self.press(chord)
+
+    def press(self, chord: str):
+        """Tap a chord (the paste shortcut, or Stop and send's Enter)."""
         keys = parse_chord(chord)
         for k in keys:
             self._kb.press(k)

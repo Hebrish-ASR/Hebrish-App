@@ -73,7 +73,7 @@ saved.
   older take are decoded as empty (dropped). The final job emits `transcribed` with all of the
   take's pieces joined, for the history. Pieces before the final one are inserted with a
   trailing space whatever `trailing_space` says.
-- **Live insertion** (`live_insert_s`, 0 = off; 10 by default since 0.5.0): a 500 ms timer while recording
+- **Live insertion** (`live_insert_s`, 0 = off; 10 by default from 0.5.0, 7 from 0.7.0): a 500 ms timer while recording
   calls `engine.live_cut(recorder.peek(), interval)`. Once the unconsumed audio is at least
   `interval` long, it looks in the last 6 s (not the newest 0.3 s) for the longest quiet run. If
   that run is at least 0.6 s, it cuts in its middle. With no such pause by interval + 15 s, it
@@ -363,6 +363,34 @@ plus the `input` group (Flatpak) or classic confinement (Snap), so neither gains
   A clean run shows `Get:1 … InRelease` and `Get:2 … Packages` with no `Ign:` and no signature
   warning.
 - Bootstrapped 2026-10-21 with 0.6.1 (which doesn't enrol itself; 0.6.2 is the first that does).
+
+## Insert-as-you-go presets, Stop and send (0.7.0, 2026-10-22)
+
+Daniel asked (2026-10-22) for text to arrive sooner during a take, and for a way to submit a
+chat box (his case: Claude Code) without losing the words still being transcribed when he hits
+Enter. Decisions: `planning/decisions.md` in this repo.
+
+- **Presets:** `live_insert_s` stays a number of seconds. Settings shows `ui/window.py` `LIVE`:
+  Off 0, Fast 5, Normal 7 (default; the old 10 cut by a third), Relaxed 10, and Custom (data
+  `-1`, which reveals a 3–60 s spin box). Any stored value that is not a preset (15, 20 and 30
+  were the old choices) shows as Custom with that value, so nothing is lost.
+- **Migration:** `config.upgrade()` moves a stored 10 to 7 once, only for configs without
+  `send_chord` (that key is the 0.7.0 marker). Up to 0.6.3 10 was the default and every config is
+  saved whole, so a 10 says nothing about a choice. A 10 picked from Relaxed after 0.7.0 stays.
+- **`live_cut` at 5 s** needs no constant changes: it searches the last `LIVE_SEARCH_S` = 6 s, so
+  at 5 s the whole take is searched; the 0.6 s pause rule still applies. Test:
+  `tests/test_live.py::test_cuts_at_fast_interval`. Not measured: how much accuracy Fast costs
+  (shorter pieces, less context per decode, more cut points).
+- **Stop and send:** action `send` in `hotkey.ACTIONS`, slot `key_send`. `Controller.do_action`
+  sets `_send_take = _take` and stops; pressed while the take is already stopped and still
+  decoding (`state == "busy"` and `_stopped_at` set), it marks that take. The decode worker, after
+  the final piece's paste, calls `_send()`: 150 ms wait, then `inserter.press(send_chord)`. Only
+  when output is `paste` and the take produced text (`parts`). `press()` is new on both inserters
+  (`LinuxInserter` via uinput, `WindowsInserter` via pynput), split out of `insert()`.
+- **Key sources never grab**, so a Stop and send key also reaches the focused app. Don't bind
+  it to Enter itself: that Enter would submit at once. Use a spare key or pedal (F13–F24).
+- **Not verified on Windows** (no machine; CI tests only). Android has no equivalent yet:
+  `planning/backlog.md`.
 
 ## App updates in the app (0.6.2, 2026-10-21)
 

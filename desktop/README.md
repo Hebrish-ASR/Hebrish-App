@@ -20,8 +20,13 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
 - **Action keys** (optional, Settings → Action keys), for a macropad or foot pedals: one key
   each for **Start** (also resumes a paused take), **Stop**, **Pause/Resume**, **Retake** and
   **Discard**. A key can hold one job only; assigning it elsewhere moves it.
-- **Insert as you go** (Settings → Speed, on by default since 0.5.0, every ~10 s): the take is
-  decoded while you are still talking and the text is inserted every ~10–30 s, at a pause, so a
+- **Stop and send** (0.7.0, optional action key): stops, waits for the last words to be pasted,
+  then presses the **Send key** (`enter` by default; `ctrl+enter` or `shift+enter` where Enter
+  makes a new line). For chat boxes and Claude Code, where an Enter pressed while the last piece
+  is still being transcribed would submit without it. Paste output only.
+- **Insert as you go** (Settings → Speed, on by default since 0.5.0): presets *Fast* (~5 s),
+  *Normal* (~7 s, the default since 0.7.0; was ~10 s), *Relaxed* (~10 s), *Off*, or *Custom*
+  (3–60 s). The take is decoded while you are still talking and the text is inserted at a pause, so a
   long take on a CPU-only computer shows up as you go and only the last few seconds are left when you stop. Text
   already inserted stays if you then Discard or Retake. *CPU threads* defaults to Auto
   (physical cores, at most 8).

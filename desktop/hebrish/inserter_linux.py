@@ -59,6 +59,12 @@ class LinuxInserter:
         if method != "paste" or self._ui is None:
             return
         time.sleep(0.12)          # let the compositor see the new clipboard owner
+        self.press(chord)
+
+    def press(self, chord: str):
+        """Tap a chord (the paste shortcut, or Stop and send's Enter)."""
+        if self._ui is None:
+            return
         codes = parse_chord(chord)
         for c in codes:
             self._ui.write(ecodes.EV_KEY, c, 1)

@@ -28,7 +28,7 @@
     "evidence": "desktop/hebrish/ui/app.py _live_tick",
     "verified": false
    },
-   "notes": "Default differs: desktop ON (~10 s) since 0.5.0 (Daniel, 2026-10-21); Android OFF."
+   "notes": "Default differs: desktop ON since 0.5.0 (~10 s), presets Fast 5 / Normal 7 (default) / Relaxed 10 / Custom since 0.7.0 (Daniel, 2026-10-22, unreleased); Android OFF, on/off only with a fixed interval (presets: planning/backlog.md)."
   },
   {
    "id": "start-stop-beeps",
@@ -662,6 +662,27 @@
     "verified": false
    },
    "notes": "Per-OS key source: evdev on Linux, pynput hook on Windows."
+  },
+  {
+   "id": "stop-and-send",
+   "group": "insertion",
+   "name": "Stop and send (stop, insert the last text, then press a send key, default Enter)",
+   "android": {
+    "status": "missing",
+    "evidence": "no equivalent; planning/backlog.md"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.7.0 (unreleased)",
+    "evidence": "desktop/hebrish/ui/app.py Controller._send; hotkey.ACTIONS send"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.7.0 (unreleased)",
+    "evidence": "desktop/hebrish/inserter_win.py WindowsInserter.press",
+    "verified": false
+   },
+   "notes": "Added 2026-10-22 (Daniel). Send key configurable (send_chord)."
   },
   {
    "id": "floating-overlay",

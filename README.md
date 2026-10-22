@@ -81,7 +81,7 @@ build and the Android app have not yet been tried on real hardware.
 ## Desktop app (Linux and Windows)
 
 - **Dictate**: press a hotkey anywhere (or Talk in the window), talk, and the text is pasted
-  where your cursor is, inserted as you go every ~10 s. Output can also be the clipboard or the
+  where your cursor is, inserted as you go every ~7 s (Fast, Normal, Relaxed or a custom interval). An optional Stop and send key submits only once the last words are in. Output can also be the clipboard or the
   window's text box. The Dictate tab shows the microphone in use, a switcher, a level meter with
   a clip lamp, and a voice-detection toggle. Feedback is beeps, short spoken prompts, or off.
   Two hotkeys, any key or a foot pedal: a toggle key (tap to start, tap to stop; holding it
@@ -115,6 +115,8 @@ you talk, and you're returned to HeliBoard with the text inserted. Details:
 | `shared/catalogue.json` | The model catalogue (schema 2: lines and variants) both apps bundle and re-fetch since Android 0.7.0 / desktop 0.6.0; a test fails if either app's copy drifts |
 | `shared/models.json` | The schema-1 catalogue, kept for older builds; a test fails if it disagrees with `catalogue.json` |
 | `shared/update-protocol.md` | How models are listed, downloaded and updated, and the quirks both apps work around |
+| `planning/` | Public project tracking: feature requests, backlog (with ideas for future versions), decision log |
+| `CLAUDE.md`, `.claude/skills/` | The agent workspace, public on purpose: repo instructions and skills contributors can use (`log-decision`, `android-release`) |
 
 Releases: tag `android-vX.Y.Z` builds the signed APK in CI. Tag `desktop-vX.Y.Z` builds the
 Windows zip in CI; the Ubuntu .deb is built with `desktop/build-deb.sh` and added to the same

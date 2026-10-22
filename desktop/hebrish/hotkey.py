@@ -12,6 +12,8 @@ config.upgrade() maps old files.
 
 Action keys (0.4.0), each "" = off, for a macropad or pedals: key_start, key_stop, key_pause
 (pause / resume), key_retake, key_discard. They act on press, independently of the two above.
+key_send (0.7.0) is Stop and send: stop, insert the last text, then press `send_chord` (Enter by
+default), so a chat box is submitted only once the whole take is in it.
 
 Built in (0.5.0, both on by default): Esc while a take is recording discards it
 (`escape_discards`; the Esc still reaches the focused app, key sources never grab), and a
@@ -27,7 +29,7 @@ import time
 MODIFIERS = {"KEY_LEFTCTRL", "KEY_RIGHTCTRL", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT",
              "KEY_LEFTALT", "KEY_RIGHTALT", "KEY_LEFTMETA", "KEY_RIGHTMETA"}
 ACTIONS = [("start", "Start"), ("stop", "Stop"), ("pause", "Pause / resume"),
-           ("retake", "Retake"), ("discard", "Discard")]
+           ("retake", "Retake"), ("discard", "Discard"), ("send", "Stop and send")]
 SLOTS = ["hotkey", "ptt_hotkey"] + [f"key_{a}" for a, _ in ACTIONS]   # one key per slot, at most
 
 

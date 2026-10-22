@@ -110,6 +110,7 @@ class Controller(QObject):
         # pieces of the take while it is still recording; stop() queues the rest as final.
         # A discarded take bumps self._take, so its queued pieces are dropped.
         self._take = 0
+        self._send_take = 0             # Stop and send: the take whose last text gets send_chord
         self._jobs: queue.Queue = queue.Queue()
         threading.Thread(target=self._worker, daemon=True, name="decode").start()
         self._live_timer = QTimer(self, interval=500, timeout=self._live_tick)
@@ -238,6 +239,12 @@ class Controller(QObject):
         elif action == "retake":
             self.cancel(quiet=True)
             self.start(cue="retake")
+        elif action == "send":
+            # While recording: stop, and send once the last text is in. Already stopped and
+            # still transcribing (_stopped_at is set): send this take when it lands.
+            if self.state == "recording" or (self.state == "busy" and self._stopped_at):
+                self._send_take = self._take
+                self.stop()
 
     def overlay_changed(self):
         self._overlay_push()
@@ -292,6 +299,8 @@ class Controller(QObject):
                     space = " " if not final or self.cfg["trailing_space"] else ""
                     if self.cfg["insert"] != "app":
                         self.inserter.insert(text + space, self.cfg["insert"], self.cfg["paste_chord"])
+                if final and live and parts and job == self._send_take and self.cfg["insert"] == "paste":
+                    self._send()
                 if final:
                     heard = parts or len(samples) < audio.SAMPLE_RATE // 2 or not live
                     self.sig.transcribed.emit(" ".join(parts), None if heard else NO_SPEECH)
@@ -300,6 +309,14 @@ class Controller(QObject):
                     self.sig.transcribed.emit(" ".join(parts), e)
                 else:
                     log.exception("live piece failed")
+
+    def _send(self):
+        """Stop and send: press send_chord after the take's last paste (decode thread)."""
+        time.sleep(0.15)          # let the target app take the paste before the Enter
+        try:
+            self.inserter.press(self.cfg["send_chord"])
+        except Exception:
+            log.exception("send chord %r failed", self.cfg["send_chord"])
 
     def _done(self, text, err):
         log.info("transcript %r err=%r", text, err)

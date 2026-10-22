@@ -52,3 +52,17 @@ def test_old_default_threads_become_auto():
     assert upgrade({"num_threads": 4})["num_threads"] == 0
     assert upgrade({"num_threads": 4, "live_insert_s": 0})["num_threads"] == 4
     assert threads({"num_threads": 3}) == 3 and 1 <= threads({"num_threads": 0}) <= 8
+
+
+def test_old_default_interval_becomes_normal():
+    # 0.7.0: ~10 s was the default before send_chord existed; a chosen value stays
+    assert upgrade({"feedback": "beeps", "live_insert_s": 10})["live_insert_s"] == 7
+    assert upgrade({"feedback": "beeps", "live_insert_s": 15})["live_insert_s"] == 15
+    assert upgrade({"send_chord": "enter", "live_insert_s": 10})["live_insert_s"] == 10
+    assert DEFAULTS["live_insert_s"] == 7 and DEFAULTS["send_chord"] == "enter"
+
+
+def test_cuts_at_fast_interval():
+    x = np.concatenate([speech(4.5), silence(0.8), speech(1)])
+    cut = live_cut(x, 5)
+    assert cut is not None and 4.5 * SR < cut < 5.3 * SR

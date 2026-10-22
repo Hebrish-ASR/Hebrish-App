@@ -42,10 +42,13 @@ DEFAULTS = {
     "key_pause": "",              # pause / resume
     "key_retake": "",
     "key_discard": "",
+    "key_send": "",               # Stop and send: stop, insert, then press send_chord
+    "send_chord": "enter",        # e.g. ctrl+enter for apps where Enter is a new line
     "double_tap_retake": True,    # double tap of the toggle key while recording = Retake
     "double_tap_ms": 300,         # how long a stopping tap waits for the second tap
     "escape_discards": True,      # Esc while recording discards the take
-    "live_insert_s": 10,          # decode while recording and insert every ~N s, at a pause; 0 = off
+    "live_insert_s": 7,           # decode while recording and insert every ~N s, at a pause; 0 = off
+                                  # presets Fast 5, Normal 7, Relaxed 10 (0.7.0; was 10), else Custom
     "overlay": "off",             # off | active (while dictating) | always
     "overlay_pos": None,          # [x, y] of the overlay's top-left; None = bottom centre
     "overlay_opacity": 85,        # idle opacity %, "always" mode
@@ -170,6 +173,10 @@ def upgrade(stored: dict) -> dict:
         if not stored.get("live_insert_s"):
             stored["live_insert_s"] = 10
         stored["keep_history"] = False
+    # 0.7.0 (Daniel, 2026-10-22): Normal insert-as-you-go is ~7 s, not ~10. A config without
+    # `send_chord` predates that, and its 10 was the old default, not a choice: move it once.
+    if stored and "send_chord" not in stored and stored.get("live_insert_s") == 10:
+        stored["live_insert_s"] = 7
     return stored
 
 
@@ -218,7 +225,8 @@ class Config(dict):
     def __init__(self):
         super().__init__(DEFAULTS)
         stored = load_json(CONFIG_PATH)
-        old = "mode" in stored or "keep_old_versions" in stored or ("feedback" not in stored and bool(stored))
+        old = bool(stored) and ("mode" in stored or "keep_old_versions" in stored
+                                or "feedback" not in stored or "send_chord" not in stored)
         self.update({k: v for k, v in upgrade(stored).items() if k in DEFAULTS})
         if old or not CONFIG_PATH.exists():
             self.save()

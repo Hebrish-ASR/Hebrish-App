@@ -23,8 +23,10 @@ from .meter import LevelMeter, verdict
 from .style import BLUE, BRAND_GREEN
 
 OVERLAY = [("off", "Off"), ("active", "While dictating"), ("always", "Always (a mic button)")]
-LIVE = [(0, "Off: everything when you stop"), (10, "Every ~10 seconds"), (15, "Every ~15 seconds"),
-        (20, "Every ~20 seconds"), (30, "Every ~30 seconds")]
+# Insert-as-you-go presets (0.7.0, Daniel 2026-10-22: Normal is the old ~10 s cut by a third).
+# Any other value is Custom; -1 is the Custom entry's own data.
+LIVE = [(0, "Off: everything when you stop"), (5, "Fast: every ~5 seconds"),
+        (7, "Normal: every ~7 seconds"), (10, "Relaxed: every ~10 seconds"), (-1, "Custom…")]
 OUTPUT = [("paste", "Paste at the cursor"), ("clipboard", "Clipboard only"),
           ("app", "This window's text box only")]
 FEEDBACK = [("beeps", "Beeps (start and stop)"), ("voice", "Voice (“Recording”, “Paused”, “Transcribing”…)"),
@@ -879,18 +881,26 @@ class MainWindow(QMainWindow):
         form.setLabelAlignment(Qt.AlignRight)
         for a, label in ACTIONS:
             form.addRow(label, self._hotkey_row(f"key_{a}"))
+        send = QLineEdit(self.cfg["send_chord"])
+        send.setToolTip("enter for most chat boxes; ctrl+enter or shift+enter where Enter "
+                        "starts a new line")
+        send.textChanged.connect(lambda t: self._on_chord(send, t, "send_chord"))
+        form.addRow("Send key", send)
         b.addLayout(form)
+        b.addWidget(muted("Stop and send stops dictation, waits for the last words to be "
+                          "inserted, then presses the send key, so nothing is cut off when you "
+                          "submit (a chat box, Claude Code, a terminal). Paste output only."))
         lay.addWidget(box)
 
         box, b = card("Speed")
-        b.addWidget(muted("Inserting as you go (on by default, every ~10 seconds) decodes the take "
+        b.addWidget(muted("Inserting as you go (on by default, Normal: every ~7 seconds) decodes the take "
                           "while you are still talking, at a pause, so text appears as you speak "
                           "and only the last few seconds are left when you stop. Text already "
                           "inserted stays if you then Discard or Retake. Off: everything is "
                           "inserted at once when you stop."))
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignRight)
-        form.addRow("Insert as you go", self._combo("live_insert_s", LIVE))
+        form.addRow("Insert as you go", self._live_row())
         th = QSpinBox(minimum=0, maximum=os.cpu_count() or 16, value=self.cfg["num_threads"])
         th.setSpecialValueText(f"Auto ({threads({'num_threads': 0})})")
         reload = QTimer(self, singleShot=True, interval=900, timeout=self.ctl.load_model)   # once, after the last click
@@ -1019,11 +1029,35 @@ class MainWindow(QMainWindow):
         c.currentIndexChanged.connect(changed)
         return c
 
-    def _on_chord(self, entry, text):
+    def _live_row(self):
+        """Preset combo, plus a seconds box shown for Custom (any value not in LIVE)."""
+        row = QHBoxLayout()
+        c = QComboBox()
+        for val, label in LIVE:
+            c.addItem(label, val)
+        presets = [v for v, _ in LIVE if v >= 0]
+        cur = self.cfg["live_insert_s"]
+        spin = QSpinBox(minimum=3, maximum=60, suffix=" s", value=cur if cur not in presets else 7)
+        c.setCurrentIndex(c.findData(cur if cur in presets else -1))
+        spin.setVisible(cur not in presets)
+
+        def changed(_i):
+            custom = c.currentData() == -1
+            spin.setVisible(custom)
+            self.cfg.set("live_insert_s", spin.value() if custom else c.currentData())
+            self.update_state()
+        c.currentIndexChanged.connect(changed)
+        spin.valueChanged.connect(lambda v: c.currentData() == -1 and self.cfg.set("live_insert_s", v))
+        row.addWidget(c)
+        row.addWidget(spin)
+        row.addStretch(1)
+        return row
+
+    def _on_chord(self, entry, text, key="paste_chord"):
         try:
             parse_chord(text)
             entry.setStyleSheet("")
-            self.cfg.set("paste_chord", text.strip().lower())
+            self.cfg.set(key, text.strip().lower())
         except ValueError:
             entry.setStyleSheet("border: 1px solid #D62828;")
 

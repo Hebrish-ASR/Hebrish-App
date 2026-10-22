@@ -221,7 +221,7 @@ def test_legacy_voice_to_hebrish_install_is_adopted(monkeypatch):
     (old_cfg / "config.json").write_text(json.dumps({"hotkey": "KEY_F14", "junk": 1}))
     config.CONFIG_PATH.unlink(missing_ok=True)
     config.migrate_legacy()
-    assert json.loads(config.CONFIG_PATH.read_text()) == {"hotkey": "KEY_F14", **{"feedback": "beeps", "keep_history": False, "live_insert_s": 10}}
+    assert json.loads(config.CONFIG_PATH.read_text()) == {"hotkey": "KEY_F14", **{"feedback": "beeps", "keep_history": False, "live_insert_s": 7}}
     assert ms.current_id() == "codeswitch"
     assert ms.active()[0].name == m.dirname and ms.active()[1].model == "codeswitch"
     shutil.rmtree(old_data)
