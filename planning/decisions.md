@@ -9,6 +9,32 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-22-11: Outreach skills are for the maintainer and authorised representatives only
+
+- **Decision:** `outreach-email`, `community-fyi` and `newsletter` ask first whether the user is
+  the maintainer or someone Daniel has authorised to represent the project, and stop for anyone
+  else. Others can suggest a contact in an issue titled "Outreach: <who>".
+- **Why:** Outreach speaks for the project. A public skill that let anyone draft or send it, even
+  as a "personal recommendation", invites messages the project never approved.
+- **Alternatives:** A personal-recommendation mode for anyone (first draft; removed).
+- **By:** Daniel.
+
+### D-2026-10-22-10: One public plugin, `hebrish-maintainers`, in the `hebrish` marketplace
+
+- **Decision:** All project skills ship in one plugin, `hebrish-maintainers`, in the public
+  marketplace Hebrish-ASR/Hebrish-Claude-Plugins: app reviews and releases, parity, planning,
+  training data, website, outreach and Hugging Face. Each skill states its access tier. The
+  user-facing install skills stay a separate entry, `hebrish-setup`, pointing at
+  Hebrish-Agent-Skills. Maintainer-only specifics live in the private Hebrish-Mgmt repo
+  (`docs/maintainer-agent-notes.md`). The skills were moved out of Daniel's private plugins and
+  this repo's `.claude/skills/`. The marketplace is linked from hebrish.app/docs and llms.txt,
+  and Daniel's plugin catalogue indexes it.
+- **Why:** Contributors need one install, and the project's skills should not sit in a personal
+  account. The name follows Daniel's wording; many skills inside are open to anyone.
+- **Alternatives:** Four plugins (dev, data, website, outreach; first layout, merged the same
+  day: more to explain, no gain).
+- **By:** Daniel (public marketplace, one plugin); agent (layout, access tiers, notes file).
+
 ### D-2026-10-22-09: Backlog work is queued in one sprint per platform
 
 - **Decision:** `backlog.md` has a sprint per platform (desktop = Ubuntu + Windows; Android),
