@@ -48,6 +48,9 @@ def icon(name: str) -> QIcon:
     return QIcon(str(ICONS / f"{name}.svg"))
 
 
+# State flag: the one-time move of pre-0.7.0 installs to the desktop default (Shakshuka).
+STREAMING_DEFAULT_FLAG = "streaming_default_0_7"
+
 class Signals(QObject):
     start = Signal()
     stop = Signal()
@@ -133,6 +136,8 @@ class Controller(QObject):
         self.sig.progress.connect(self.win.progress)
         self._build_tray()
         self.pending_download: str | None = None   # model the user asked to download
+        # (model, model it replaces): the one-time switch to the streaming default (0.7.0)
+        self.switch_after_download: tuple[str, str] | None = None
         if model_store.active() is None:
             self._close_splash()
             self.win.show()                      # first run: straight to the Model tab
@@ -508,7 +513,38 @@ class Controller(QObject):
             self.win.present_tab("model")      # first run: pick a model, then Download
             self.check_updates(manual=True)
         else:
+            self._streaming_default()
             self._periodic_check()
+
+    def _streaming_default(self):
+        """Once, on an install from before 0.7.0: move dictation to the desktop default, Shakshuka
+        (streaming), which is quicker to type with (Daniel, 2026-10-22: "would make the biggest
+        difference to speed"). The current model keeps working while Shakshuka downloads in the
+        background; the switch happens when it is ready, and is never repeated, so a later pick of
+        another model sticks. A failed download leaves the flag unset and is retried next start."""
+        state = load_json(STATE_PATH)
+        if state.get(STREAMING_DEFAULT_FLAG):
+            return
+        rec, cur = model_store.recommended_id(), model_store.current_id()
+        m = model_store.get_model(rec)
+        if rec == cur or not m or not m.available:
+            state[STREAMING_DEFAULT_FLAG] = True
+            save_json(STATE_PATH, state)
+            return
+        if model_store.active(rec):
+            self._switch_to_default(rec)
+        elif not self.downloading:
+            self.switch_after_download = (rec, cur)
+            self.download_model(rec)
+
+    def _switch_to_default(self, mid: str):
+        self.use_model(mid)
+        state = load_json(STATE_PATH)
+        state[STREAMING_DEFAULT_FLAG] = True
+        save_json(STATE_PATH, state)
+        name = model_store.get_model(mid).name
+        self.notify(f"Dictation now uses {name}",
+                    f"{name} streams: words appear while you speak. Switch back any time in Models.")
 
     def _periodic_check(self):
         hours = self.cfg["update_check_hours"]
@@ -539,6 +575,8 @@ class Controller(QObject):
 
     def _downloaded(self, manifest, err):
         self.downloading = self.downloading_id = None
+        if err:
+            self.switch_after_download = None      # retried at the next start (flag still unset)
         if isinstance(err, model_store.Cancelled):
             self.win.status("Download cancelled. It resumes where it stopped next time.")
         elif err:
@@ -549,6 +587,11 @@ class Controller(QObject):
             self.win.status(f"Installed {manifest.full_label}.")
             if manifest.model == model_store.current_id():
                 self.load_model()
+            elif self.switch_after_download and self.switch_after_download[0] == manifest.model:
+                mid, was = self.switch_after_download
+                self.switch_after_download = None
+                if model_store.current_id() == was:     # the user hasn't picked another meanwhile
+                    self._switch_to_default(mid)
         self.win.progress(-1, "")
         self.win.update_model()
         self._update_tray()

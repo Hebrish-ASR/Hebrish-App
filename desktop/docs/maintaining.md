@@ -435,6 +435,23 @@ desktop; Sabich stays the default on Android and the pick for transcribing recor
   Not measured: Shakshuka's streaming WER on the full test set (ASR-Training `evaluate --stream
   70,6`), and pasting ~2 times a second into every kind of target app.
 
+### Existing installs move to Shakshuka once (0.7.0, 2026-10-22)
+
+`recommended_by_platform` only decides for an install with no pick, so on its own it would leave
+every existing user (Daniel included, on Sabich) where they were. Daniel, 2026-10-22: Shakshuka for
+the typing mode "would make the biggest difference to speed and performance". So
+`HebrishApp._streaming_default()` (called from `_first_check`, about 10 s after start, only when a
+model is already active) runs once per install, guarded by the state flag
+`streaming_default_0_7` in `state.json`:
+- current model is already the default, or the default isn't available: set the flag, nothing else;
+- Shakshuka already downloaded: `use_model` it, notify, set the flag;
+- otherwise `download_model` it in the background (the current model keeps dictating) with
+  `switch_after_download = (shakshuka, previous)`; `_downloaded` switches only if the pick is still
+  `previous`, so a choice made during the download wins. A failed or cancelled download clears
+  the pending switch and leaves the flag unset, so it is retried at the next start.
+Never repeated after it succeeds: picking another model afterwards sticks. The File tab uses the
+same model; a separate model per mode is I-5. Tests pass; not run interactively (I).
+
 ## Dictation history: SQLite, search, word counts (0.7.0, 2026-10-22)
 
 Daniel, 2026-10-22 (D-2026-10-22-13, R-2026-10-22-13/14/15): the Dictate tab's text box collected
