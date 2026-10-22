@@ -6,7 +6,7 @@
     <string name="url_heliboard">https://github.com/HeliBorg/HeliBoard/releases</string>
     <string name="url_source">https://github.com/Hebrish-ASR/Hebrish-App</string>
     <string name="url_terms">https://hebrish.app/terms</string>
-    <string name="download_terms">By downloading the code-switching model you agree to the Hebrish terms of use: free for personal and non-commercial use; commercial use, including telephony, needs a licence.</string>
+    <string name="download_terms">By downloading the code-switching model you agree to the Hebrish terms of use: free for personal, research, education and non-profit use; commercial use, including telephony, needs a licence.</string>
     <string name="terms_title">Terms of use</string>
     <string name="terms_body">The Hebrish models are free for personal, research, education and non-profit use. Commercial use, including telephony and call centres, needs a commercial licence: access@hebrish.app. Hebrish is experimental and trained on one speaker\'s voice; transcripts can be wrong, so check them before relying on them. It is provided as is, without warranty. Your audio stays on this phone.</string>
     <string name="open_terms">Read the terms of use</string>
@@ -61,7 +61,7 @@
     <string name="hebrish_samples">Send voice samples</string>
     <string name="hebrish_involved">Get involved</string>
 
-    <string name="ime_listening_time">Listening… %1$d:%2$02d. Tap ■ to insert.</string>
+    <string name="ime_listening_time">Listening… %1$d:%2$02d · tap ■ to insert</string>
     <string name="ime_paused">Paused at %1$d:%2$02d. Resume, or tap ■ to insert.</string>
     <string name="ime_discarded">Take discarded. Tap the mic to speak.</string>
     <string name="ime_switch_after">Inserting, then switching back…</string>
@@ -70,7 +70,7 @@
     <string name="ime_no_field">Tap a text field first, then Insert last.</string>
     <string name="pause">Pause</string>
     <string name="resume">Resume</string>
-    <string name="restart">Restart</string>
+    <string name="restart">Retake</string>
     <string name="discard">Discard</string>
     <string name="insert_last">Insert last transcript</string>
     <string name="back_switches">Back returns to my keyboard</string>
@@ -140,7 +140,7 @@
     <string name="bubble_colour">Mic colour</string>
     <string name="bubble_colour_cd">Mic colour %1$d</string>
     <string name="bubble_colour_hint">While you talk the mic is always red.</string>
-    <string name="bubble_options_hint">Long takes, and whether text goes in while you talk, are set on the Dictation screen.</string>
+    <string name="bubble_options_hint">Long takes, type as you go and ALL CAPS are set on the Dictation screen.</string>
     <string name="bubble_needs_mic">It also needs the microphone: see the guide.</string>
     <string name="bubble_on_clipboard">This field doesn\'t accept dictation; the text is on the clipboard.</string>
     <!-- Screens (0.4.0): home and the screens it links to -->
@@ -157,7 +157,7 @@
     <string name="nav_keyboard">Voice keyboard</string>
     <string name="nav_bubble">Floating mic</string>
     <string name="nav_dictation">Dictation</string>
-    <string name="nav_dictation_summary">Long takes, and typing as you talk</string>
+    <string name="nav_dictation_summary">Long takes, typing as you talk, ALL CAPS</string>
     <string name="nav_install">Install and updates</string>
     <string name="nav_install_summary">Get updates automatically with F-Droid</string>
     <string name="nav_contact">Help and contact</string>
@@ -172,7 +172,7 @@
     <string name="home_bubble_on">On</string>
     <string name="home_bubble_off">Off. Optional: a mic over every app.</string>
 
-    <string name="models_intro">Each family is what a model is trained for; under it are its versions, from most accurate to fastest, with who each one is for. Sabich is the one to start with. Models download once and then work offline; you can keep several and switch any time. Speed and accuracy dots are estimates.</string>
+    <string name="models_intro">Each family is what a model is trained for; under it are its variants, from most accurate to fastest, with who each one is for. Sabich is the one to start with. Models download once and then work offline; you can keep several and switch any time. Speed and accuracy dots are estimates.</string>
     <string name="models_line_about">About %1$s</string>
     <string name="models_tiers">Speed %1$s &#160;&#160;Accuracy %2$s &#160;(estimates)</string>
     <string name="models_size_mb">%1$d MB</string>
@@ -184,7 +184,6 @@
     <string name="models_download_all_size">Download all (%1$d, about %2$d MB)</string>
     <string name="models_all_downloaded">All models downloaded</string>
     <string name="models_cancel_all">Cancel downloads</string>
-    <string name="models_in_use">%1$s (in use)</string>
     <string name="model_coming_soon_long">Coming soon.</string>
     <string name="models_queued">Waiting: downloads after the current one.</string>
     <string name="models_downloaded">Downloaded: %1$s, %2$d MB.</string>
@@ -219,6 +218,8 @@
     <string name="dictation_long">Takes can run up to %1$d minutes. While you talk, each stretch of speech is transcribed at the next pause, so when you tap stop only the last few seconds are left to do. The keyboard, the floating mic and Try it all work this way.</string>
     <string name="dictation_type_as_you_go">Type as you go</string>
     <string name="dictation_type_as_you_go_hint">Off: the whole take goes in when you tap stop, and Discard throws all of it away. On: each part goes in as soon as it is transcribed, so long dictations appear while you talk; Discard then only drops the part not yet typed.</string>
+    <string name="dictation_all_caps">ALL CAPS</string>
+    <string name="dictation_all_caps_hint">Everything you dictate is typed in capitals, in the keyboard, the floating mic and Try it. Just for fun. Applies from your next take.</string>
     <string name="dictation_speed_title">Speed</string>
     <string name="dictation_speed">The model is loaded once and kept in memory. The floating mic loads it as soon as a text field gets focus, so it is ready by the time you tap. Silence at the start and end of a take is skipped. The very first take after the phone restarts still waits a few seconds for the model to load.</string>
     <string name="dictation_missed_title">If the text has nowhere to go</string>
@@ -246,7 +247,7 @@
 
     <!-- Try it (TryActivity) -->
     <string name="try_open">Try it now: no setup needed</string>
-    <string name="try_open_hint">Hear what it does before you set it up as a keyboard.</string>
+    <string name="try_open_hint">See what it does before you set it up as a keyboard.</string>
     <string name="try_open_no_model">Try it (download the model first)</string>
     <string name="try_title">Try Hebrish</string>
     <string name="try_instructions">Tap the mic, say a sentence, then tap again to stop. The text appears below. Nothing leaves your phone.</string>
@@ -262,7 +263,7 @@
     <string name="try_copy">Copy</string>
     <string name="try_share">Share</string>
     <string name="try_clear">Clear</string>
-    <string name="try_setup">Use it in any app: back to the app</string>
+    <string name="try_setup">Set it up for every app</string>
     <string name="try_loading">Loading the model… (a few seconds, the first time only)</string>
     <string name="try_load_failed">Couldn\'t load the model: %1$s</string>
     <string name="try_no_model">Download a model on the Models screen first (about 660 MB, one time).</string>
@@ -288,14 +289,14 @@
     <string name="mic_bluetooth">Bluetooth: %1$s</string>
     <string name="mic_wired">Wired headset</string>
     <string name="mic_usb">USB: %1$s</string>
-    <string name="mic_internal">Internal</string>
+    <string name="mic_internal">Phone</string>
     <string name="mic_bt_short">BT %1$s</string>
     <string name="mic_wired_short">Wired</string>
     <string name="mic_usb_short">USB %1$s</string>
     <string name="bubble_mic_cd">Microphone: %1$s. Tap to switch between Bluetooth and the phone\'s mic.</string>
     <string name="bubble_no_headset">No Bluetooth or headset mic is connected.</string>
     <string name="controls_sound">Sounds and vibration</string>
-    <string name="controls_beeps">Beep when a take starts, stops or restarts</string>
+    <string name="controls_beeps">Beep when a take starts, stops, is retaken or discarded</string>
     <string name="controls_beeps_hint">Start: a rising pip. Stop: a falling pip. Retake: a quick double pip. Discard: a low pip.</string>
     <string name="controls_test_start">Start</string>
     <string name="controls_test_stop">Stop</string>
@@ -359,7 +360,7 @@
     <string name="setup_mic">Hebrish needs it to hear you. Audio stays on the phone.</string>
     <string name="setup_mic_button">Allow microphone</string>
     <string name="setup_model_title">Download a model</string>
-    <string name="setup_model">Jachnun (English + Hebrew vocabulary) is recommended. About 660 MB, once; use Wi-Fi.</string>
+    <string name="setup_model">Sabich (English with Hebrew words and tech vocabulary) is recommended. About 660 MB, once; use Wi-Fi.</string>
     <string name="setup_model_button">Choose and download</string>
     <string name="setup_keyboard_title">Turn on the voice keyboard</string>
     <string name="setup_keyboard">Switch on Hebrish in your keyboard settings. Then the mic key on Hebrish Keyboard or HeliBoard opens it. You need this or the floating mic, or both.</string>
@@ -382,7 +383,7 @@
     <string name="consent_reads">Which text field has focus, and the editable fields in the window on screen. Hebrish uses this only to show the mic while you are in a text field and to put your transcript in at the cursor. It never reads or writes password fields.</string>
     <string name="consent_does_title">What it does</string>
     <string name="consent_does">It shows the mic button over other apps and types the text you dictated into the field. It acts only when you tap the mic or one of its buttons, never on its own.</string>
-    <string name="consent_keys">It also sees hardware key presses, so a Bluetooth remote or keyboard key can start and stop takes. It acts only on keys you bind on the Sound, mic and buttons screen; every other key passes through untouched.</string>
+    <string name="consent_keys">It also sees hardware key presses, so a Bluetooth remote or keyboard key can start and stop takes. It acts only on keys you bind on the Sound, microphone and buttons screen; every other key passes through untouched.</string>
     <string name="consent_data_title">Where your data goes</string>
     <string name="consent_data">Nowhere. Audio, transcripts and what is in your text fields stay on this phone. Nothing is collected, sent or shared. Privacy policy: hebrish.app/privacy.</string>
     <string name="consent_accept">Accept and open settings</string>

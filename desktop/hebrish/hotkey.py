@@ -60,7 +60,7 @@ def describe(cfg) -> str:
         parts.append("Esc discards")
     if keys:
         parts.append("Keys: " + ", ".join(keys))
-    return ". ".join(parts) or "No hotkey set: use the button, the tray or the overlay"
+    return ". ".join(parts) + "." if parts else "No hotkey set: use the button, the tray or the overlay."
 
 
 class HotkeyMachine:

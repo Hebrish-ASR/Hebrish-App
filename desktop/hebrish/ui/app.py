@@ -313,10 +313,15 @@ class Controller(QObject):
 
     def _worker(self):
         take, parts, stream, heard_audio, held = None, [], None, [], False
+        out = str             # how text leaves the app: as is, or ALL CAPS (read once per take)
         while True:
             job, samples, final, pause = self._jobs.get()
             if job != take:
                 take, parts, stream, heard_audio, held = job, [], None, [], False
+                # ALL CAPS (0.7.2, Daniel 2026-10-22, "just for fun"): applied only to what is pasted
+                # and shown in the text box, so the seam and release rules still see case, and
+                # History (which can become training data) keeps the normal case.
+                out = str.upper if self.cfg["all_caps"] else str
             heard_audio.append(samples)
             whole_take = (lambda: np.concatenate(heard_audio)) if final else None
             try:
@@ -329,12 +334,12 @@ class Controller(QObject):
                     space = " " if final and self.cfg["trailing_space"] else ""
                     if text:
                         parts.append(text)
-                        self.sig.piece.emit(text)
+                        self.sig.piece.emit(out(text))
                         if self.cfg["insert"] != "app":
-                            self.inserter.insert(text + space, self.cfg["insert"], self.cfg["paste_chord"])
+                            self.inserter.insert(out(text + space), self.cfg["insert"], self.cfg["paste_chord"])
                     elif space and parts and not stream.sent.endswith(" ") and self.cfg["insert"] == "paste":
                         # the last words went out at a pause, without the space after them
-                        self.inserter.insert(space, "paste", self.cfg["paste_chord"])
+                        self.inserter.insert(out(space), "paste", self.cfg["paste_chord"])
                     if final and live and parts and job == self._send_take and self.cfg["insert"] == "paste":
                         self._send()
                     if final:
@@ -354,17 +359,17 @@ class Controller(QObject):
                         parts[-1] += "."
                 elif held and final:
                     lead, parts[-1] = "." + end, parts[-1] + "."
-                    self.sig.piece.emit(lead)
+                    self.sig.piece.emit(out(lead))
                     if self.cfg["insert"] != "app":
-                        self.inserter.insert(lead, self.cfg["insert"], self.cfg["paste_chord"])
+                        self.inserter.insert(out(lead), self.cfg["insert"], self.cfg["paste_chord"])
                 if text:
                     held = not final and hold_stop(text, pause)
                     text = text[:-1] if held else text
                     parts.append(text)
-                    self.sig.piece.emit(lead + text)
+                    self.sig.piece.emit(out(lead + text))
                     space = "" if held else " " if not final else end
                     if self.cfg["insert"] != "app":
-                        self.inserter.insert(lead + text + space, self.cfg["insert"], self.cfg["paste_chord"])
+                        self.inserter.insert(out(lead + text + space), self.cfg["insert"], self.cfg["paste_chord"])
                 if final and live and parts and job == self._send_take and self.cfg["insert"] == "paste":
                     self._send()
                 if final:
@@ -388,7 +393,7 @@ class Controller(QObject):
         log.info("transcript %r err=%r", text, err)
         if err == NO_SPEECH:
             self.cue("no_speech")
-            self.win.status("No speech heard, so nothing was inserted. (Voice detection: Settings.)")
+            self.win.status("No speech heard, so nothing was inserted. (Voice detection is on the Dictate tab.)")
         elif err:
             self.cue("failed")
             self.notify("Transcription failed", str(err))
@@ -489,7 +494,7 @@ class Controller(QObject):
         self.win.update_model()
 
     def check_updates(self, manual=False):
-        self.win.status("Checking Hugging Face for a newer model…")
+        self.win.status("Checking for a newer model…")
         mid = model_store.current_id()
 
         def work():
@@ -569,7 +574,7 @@ class Controller(QObject):
         name = model_store.get_model(mid).name
         self.notify(f"Dictation is back on {name}",
                     f"{name} is the default for dictation again. {was.name if was else 'The streaming model'} "
-                    "stays downloaded: pick it in Models, or use it for the File tab.")
+                    "stays downloaded: switch back to it in Models if you prefer it.")
 
     def _periodic_check(self):
         hours = self.cfg["update_check_hours"]

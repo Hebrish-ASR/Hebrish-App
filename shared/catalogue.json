@@ -81,7 +81,7 @@
           "speed": 3,
           "accuracy": 4,
           "gradient": 67,
-          "recommendation": "Start here on a phone. On a computer, use it for transcribing recordings, where nothing needs to appear live.",
+          "recommendation": "The default, on a phone or a computer: Hebrew words and tech vocabulary, with text at each pause.",
           "repo": "Hebrish/Sabich-sherpa-onnx-int8",
           "subdir": "",
           "card": "https://hebrish.app/models/sabich",
@@ -213,7 +213,7 @@
           "accuracy": 2,
           "gradient": 14,
           "recommendation": "Tiny, for wearables: live text, writes numbers as words.",
-          "runs_on": "FUTO's asr4all runtime (streaming CTC on the CPU, ONNX bundle on Hugging Face), with its punctuation model.",
+          "runs_on": "The asr4all runtime (streaming CTC on the CPU, ONNX bundle on Hugging Face), with its punctuation model.",
           "card": "https://huggingface.co/Hebrish/Sabich-asr4all-M",
           "repo": "Hebrish/Sabich-asr4all-M"
         },
@@ -241,7 +241,7 @@
           "accuracy": 2,
           "gradient": 4,
           "recommendation": "The smallest and fastest, for the weakest devices; writes numbers as words.",
-          "runs_on": "FUTO's asr4all runtime (streaming CTC on the CPU, ONNX bundle on Hugging Face), with its punctuation model.",
+          "runs_on": "The asr4all runtime (streaming CTC on the CPU, ONNX bundle on Hugging Face), with its punctuation model.",
           "card": "https://huggingface.co/Hebrish/Sabich-asr4all-S",
           "repo": "Hebrish/Sabich-asr4all-S"
         }
@@ -323,8 +323,8 @@
           "speed": 4,
           "accuracy": 4,
           "gradient": 54,
-          "recommendation": "The pick for dictating on a computer: the words appear while you talk.",
-          "runs_on": "The Hebrish desktop app (0.7.0 and later). On Android: sherpa-onnx's streaming recognizer (OnlineRecognizer); the Android app adds it in a later release.",
+          "recommendation": "An option for dictating on a computer: the words appear while you talk. Sabich is the default.",
+          "runs_on": "The Hebrish desktop app (0.7.0 and later). Coming to Android in a later release.",
           "repo": "Hebrish/Shakshuka-sherpa-onnx-int8",
           "subdir": "",
           "card": "https://hebrish.app/models/shakshuka",
@@ -517,7 +517,7 @@
           ]
         },
         "pick": "sabich",
-        "how": "the MLX build with parakeet-mlx on Apple silicon",
+        "how": "the MLX build (Sabich v1.0; v2.0 has no MLX build yet) with parakeet-mlx on Apple silicon",
         "reason": "Sabich has an MLX build for Apple silicon; there is no Hebrish app for Mac yet.",
         "runner_up": "sabich-qwen3-asr-1.7b",
         "runner_how": "GGUF with llama.cpp's Metal backend (not tested yet)"
@@ -536,7 +536,7 @@
           ]
         },
         "pick": "sabich",
-        "how": "the Hebrish app for Ubuntu or Windows, or ONNX / GGUF in your own tools",
+        "how": "the Hebrish app for Ubuntu or Windows, or the F16 GGUF (v2.0) or ONNX (v1.0) in your own tools",
         "reason": "Smaller and quicker than the Qwen model, and close behind it on accuracy.",
         "runner_up": "sabich-qwen3-asr-1.7b",
         "runner_how": "bf16 in Transformers, about 5 GB of VRAM"

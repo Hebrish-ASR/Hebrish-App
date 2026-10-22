@@ -602,6 +602,31 @@ hebrish.app/verify lists every downloadable file with its SHA-256 and VirusTotal
 `scripts/virustotal.py` → `data/verify.json`). About links to it and to /privacy. Not yet run: the first
 attested build is the next tag.
 
+## ALL CAPS, and the 0.7.5 polish pass (2026-10-22)
+
+**ALL CAPS** (Daniel, 2026-10-22, R-2026-10-22-40, B-34: "just for fun"): `core`
+`OutputStyle` (pref `all_caps` in the shared `prefs` file), a switch on the Dictation screen.
+`TakeDecoder` reads it once per take and upper-cases every segment and the tail it hands over,
+so the keyboard, the floating mic and Try it all get it without changes of their own; the stored
+last transcript ("Insert last") is in capitals too. `uppercase()` is locale-independent (no
+Turkish dotted İ). Desktop has the same setting (`desktop/docs/maintaining.md`, "ALL CAPS").
+
+**Polish pass** (R-2026-10-22-41), from a read-only review; nothing here was tried on a device:
+- Try it: a microphone error (busy mic, a call) shows the error instead of crashing the screen.
+- Every Grant button (Setup, the keyboard page, the floating mic guide) uses `Setup.askMic`,
+  which opens App info once the permission was refused for good; before, only Setup did.
+- Floating mic: with type as you go and no field focused, the "held" toast shows once per take,
+  not once per segment.
+- Strings: Setup recommends Sabich (was Jachnun); the keyboard's Restart is Retake like
+  everywhere else; the mic chip says Phone (was Internal); terms summary matches the terms page;
+  the controls consent names the real screen; smaller wording fixes.
+- TalkBack no longer reads "Hebrish" twice in the keyboard bar; Try's example padding is in dp;
+  the Models green comes from `R.color.hebrish_green`.
+- Left for later: Setup's keyboard step stays unticked for floating-mic-only users; the two near
+  identical version lines on the home screen; Hebrew words in Try's example sentences (need the
+  canonical romanizations); dead code (`ModelDownload.start`, `Data.versionFile`); comments that
+  say "0.8.0" for things that shipped in 0.7.3.
+
 ## Not yet verified (as of 2026-10-20)
 
 - Channels / targetSdk 36 on a device: the disclosure (decline leaves settings closed, accept

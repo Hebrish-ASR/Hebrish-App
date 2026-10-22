@@ -21,7 +21,7 @@ class KeyboardActivity : Page() {
 
         heading(R.string.step_mic)
         micStatus = text()
-        micBtn = button(R.string.grant) { requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC) }
+        micBtn = button(R.string.grant) { Setup.askMic(this, REQ_MIC) }
 
         heading(R.string.step_ime)
         imeStatus = text()

@@ -73,7 +73,7 @@ class TryActivity : Activity() {
         for (ex in resources.getStringArray(R.array.try_examples)) {
             examples.addView(TextView(this).apply {
                 setText("“$ex”")
-                setPadding(0, 6, 0, 6)
+                (6 * resources.displayMetrics.density).toInt().let { setPadding(0, it, 0, it) }
                 setOnClickListener { Toast.makeText(this@TryActivity, R.string.try_example_toast, Toast.LENGTH_SHORT).show() }
             })
         }
@@ -130,8 +130,12 @@ class TryActivity : Activity() {
         try {
             recorder.start()
         } catch (e: Exception) {
+            // Mic busy (a call, another recorder): say so, as the keyboard does, instead of crashing.
             Mic.release(this)
-            throw e
+            decoder?.cancel()
+            decoder = null
+            setState(State.IDLE, getString(R.string.ime_mic_error, e.message ?: "?"))
+            return
         }
         Feedback.cue(this, Feedback.Cue.START)
         micName = Mic.label(this, recorder.routedDevice)

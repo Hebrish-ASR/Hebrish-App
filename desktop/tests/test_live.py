@@ -232,7 +232,7 @@ def _run_worker(texts, jobs, cfg=None):
     it = iter(texts)
     ctl = SimpleNamespace(
         engine=SimpleNamespace(streaming=False, transcribe=lambda s, vad=False: next(it)),
-        cfg={"vad": False, "trailing_space": True, "insert": "paste", "paste_chord": "ctrl+v", **(cfg or {})},
+        cfg={"vad": False, "trailing_space": True, "all_caps": False, "insert": "paste", "paste_chord": "ctrl+v", **(cfg or {})},
         sig=sig, inserter=SimpleNamespace(insert=lambda t, how, chord: pastes.append(t)),
         _take=1, _send_take=0, _jobs=queue.Queue())
     for pause, final in jobs:
@@ -254,3 +254,12 @@ def test_worker_joins_a_sentence_cut_at_a_short_pause():
 def test_worker_pastes_a_held_full_stop_at_stop():
     pastes, text = _run_worker(["We are done.", ""], [(0.7, False), (None, True)])
     assert pastes == ["We are done", ". "] and text == "We are done."
+
+
+def test_worker_all_caps_keeps_the_seams():
+    # 0.7.2: capitals only in what is pasted, so the held full stop still joins, and History
+    # (possible training data) keeps the normal case
+    pastes, text = _run_worker(["Do it after the kids are asleep.", "So nothing runs.", ""],
+                               [(0.7, False), (0.7, False), (None, True)], {"all_caps": True})
+    assert pastes == ["DO IT AFTER THE KIDS ARE ASLEEP", " SO NOTHING RUNS", ". "]
+    assert text == "Do it after the kids are asleep so nothing runs."

@@ -593,7 +593,7 @@ def main():
     if a.cmd == "status":
         return
     latest = fetch_latest(mid)
-    print("latest on HF:", latest.debug_label)
+    print("latest:", latest.debug_label)
     if not needs_update(latest):
         print("up to date")
         return

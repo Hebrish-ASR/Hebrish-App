@@ -121,7 +121,7 @@ class ModelsActivity : Page() {
         text = android.text.SpannableString(label).apply {
             setSpan(android.text.style.UnderlineSpan(), 0, length, 0)
         }
-        setTextColor(0xFF0F6B5C.toInt())
+        setTextColor(getColor(R.color.hebrish_green))
         setPadding(0, dp(4), 0, dp(4))
         setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }
     }

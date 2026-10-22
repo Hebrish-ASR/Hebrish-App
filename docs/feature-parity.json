@@ -990,6 +990,28 @@
     "verified": false
    },
    "notes": "Desktop kept old versions up to 0.5.0."
+  },
+  {
+   "id": "all-caps",
+   "group": "insertion",
+   "name": "ALL CAPS: type everything in capitals",
+   "android": {
+    "status": "present",
+    "since": "0.7.5",
+    "evidence": "android/core/src/main/java/app/hebrish/core/OutputStyle.kt; TakeDecoder applies it"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.7.2",
+    "evidence": "desktop/hebrish/ui/app.py Controller._worker (out), config all_caps"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.7.2",
+    "evidence": "desktop/hebrish/ui/app.py Controller._worker (out), config all_caps",
+    "verified": false
+   },
+   "notes": "R-2026-10-22-40, B-34. Applied where text leaves the app; read once per take."
   }
  ],
  "engine_rules": [

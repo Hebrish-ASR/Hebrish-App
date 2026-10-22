@@ -24,7 +24,7 @@ from .meter import LevelMeter, verdict
 from .style import BLUE, BRAND_GREEN
 
 OVERLAY = [("off", "Off"), ("active", "While dictating"), ("always", "Always (a mic button)")]
-# Insert-as-you-go presets (0.7.0, Daniel 2026-10-22: Normal is the old ~10 s cut by a third).
+# Insert-as-you-go presets (0.7.1: Fast 3, Normal 5, Relaxed 8 s; 0.7.0 had 5/7/10).
 # Any other value is Custom; -1 is the Custom entry's own data.
 LIVE = [(0, "Off: everything when you stop"), (3, "Fast: every ~3 seconds"),
         (5, "Normal: every ~5 seconds"), (8, "Relaxed: every ~8 seconds"), (-1, "Custom…")]
@@ -121,6 +121,7 @@ class MainWindow(QMainWindow):
         self.pages["history"] = self._history_page()
         self.pages["model"] = self._scroll(self._model_page())
         self.pages["settings"] = self._scroll(self._settings_page())
+        self.pages["settings"].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)   # labels wrap, never scroll sideways
         from .diagnostics import DiagnosticsPage
         self.pages["diagnostics"] = DiagnosticsPage(ctl, card, muted)
         self.pages["about"] = self._about_page()
@@ -376,7 +377,7 @@ class MainWindow(QMainWindow):
         name = self.cfg["audio_device"]
         if not name:
             real = audio.default_input_name()
-            name = f"System default: {real}" if real else "System default"
+            name = f"{real} (system default)" if real else "System default"
         self.mic_in_use.setText(f"In use: {name}")
 
     def _on_mic(self, _i):
@@ -939,7 +940,7 @@ class MainWindow(QMainWindow):
 
         if cur is None:
             text = (f"<b>{sel.name} isn't downloaded yet.</b> Download it above, or download "
-                    "another model and click Use.")
+                    "another model and click Switch to.")
         else:
             text = f"In use: <b>{sel.name}</b> {cur[1].label}"
             if ctl.engine.loaded_dir != cur[0]:
@@ -959,8 +960,8 @@ class MainWindow(QMainWindow):
         self.store_label.setText(
             f"<b>{model_store.ROOT}</b><br><small>"
             + ("A folder you chose. " if custom else "The default folder. ")
-            + "Each model is a subfolder named by its id (codeswitch = Jachnun, sabich = Sabich, "
-            "stock = Parakeet), with the version in use inside it.</small>")
+            + "Each model is a subfolder named by its id (Jachnun's is codeswitch), with the "
+            "version in use inside it.</small>")
         self.btn_store_default.setVisible(custom)
 
     def progress(self, frac: float, text: str):
@@ -996,9 +997,9 @@ class MainWindow(QMainWindow):
                               "pedal: pick ones nothing else uses (F13–F24 are ideal). With "
                               "double-tap on, a single tap stops ~0.3 s later, while it waits "
                               "for a second tap."))
-        form.addRow("", self._check("escape_discards", "Esc discards the take while dictating "
-                                                       "(Esc also reaches the app you're in)",
-                                    self.update_state))
+        esc = self._check("escape_discards", "Esc discards the take while dictating", self.update_state)
+        esc.setToolTip("Esc also reaches the app you're in.")
+        form.addRow("", esc)
         chord = QLineEdit(self.cfg["paste_chord"])
         chord.setToolTip("ctrl+v for most apps; ctrl+shift+v for terminals")
         chord.textChanged.connect(lambda t: self._on_chord(chord, t))
@@ -1007,10 +1008,13 @@ class MainWindow(QMainWindow):
         b.addWidget(muted("Output (paste, clipboard or the text box) and the microphone are on "
                           "the Dictate tab."))
         b.addWidget(self._check("trailing_space", "Add a space after each transcript"))
+        caps = self._check("all_caps", "Dictate in ALL CAPS (from the next take)")
+        caps.setToolTip("Just for fun: everything you dictate is pasted in capitals. History and the "
+                        "File tab keep the normal case.")
+        b.addWidget(caps)
         b.addWidget(self._check("clear_each_take", "Start the Dictate tab's text box empty for each "
                                                    "take (earlier takes are in History)"))
-        b.addWidget(self._check("keep_history", "Keep a history of every transcript (the History tab: "
-                                                "searchable, saved on this computer)", self._on_history_setting))
+        b.addWidget(self._check("keep_history", "Keep a history of every transcript (History tab)", self._on_history_setting))
         b.addWidget(self._check("keep_audio", "Keep the audio of each take too (about 2 MB a minute)",
                                 self.show_history))
         b.addWidget(muted("With the audio kept, corrected transcripts can become training data."))

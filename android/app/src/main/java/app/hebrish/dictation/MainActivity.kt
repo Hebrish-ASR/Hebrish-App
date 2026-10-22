@@ -152,6 +152,20 @@ class MainActivity : Page() {
 object Setup {
     fun hasMic(ctx: Context) = ctx.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
+    /**
+     * Asks for the microphone. Once it has been refused for good, Android no longer shows the
+     * prompt and only App info can grant it, so that opens instead. Used by every Grant button
+     * (Setup, the keyboard page, the floating mic guide); before 0.7.5 only Setup did this.
+     */
+    fun askMic(a: android.app.Activity, requestCode: Int = 1) {
+        if (Prefs.micAsked(a) && !a.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) return appInfo(a)
+        Prefs.setMicAsked(a)
+        a.requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), requestCode)
+    }
+
+    fun appInfo(ctx: Context) = ctx.startActivity(
+        android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${ctx.packageName}")))
+
     fun imeEnabled(ctx: Context) = (ctx.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
         .enabledInputMethodList.any { it.packageName == ctx.packageName }
 

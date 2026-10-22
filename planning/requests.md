@@ -6,6 +6,9 @@ credited), or an issue link. Outcome links the backlog item, or says why not.
 
 | Id | Date | From | Platforms | Request | Outcome |
 | --- | --- | --- | --- | --- | --- |
+| R-2026-10-22-42 | 2026-10-22 | Daniel | Desktop | GPU acceleration on AMD (his desktop: ROCm). "A variant optimized for throughput", any base model, integrated into the Ubuntu app; "much higher priority than figuring out which is best on the laptop" | [B-35](backlog.md#sprint-desktop-ubuntu--windows-toward-070) |
+| R-2026-10-22-41 | 2026-10-22 | Daniel | All | A quick UI polish and code-quality review across the apps, shipped with ALL CAPS as one coordinated release | desktop 0.7.2, Android 0.7.5 |
+| R-2026-10-22-40 | 2026-10-22 | Daniel | All | An ALL CAPS mode: a text transformation that outputs everything in capitals, on desktop and Android. "Just for fun" | [B-34](backlog.md#sprint-desktop-ubuntu--windows-toward-070) |
 | R-2026-10-22-39 | 2026-10-22 | Daniel | Desktop | Tune insert as you go for both models: Sabich's text comes too late and its breaks don't make sense (jagged); Shakshuka's needs tuning for typing. Not word by word (jarring), not so rarely that you wonder whether it's working. Then ship a release | [B-33](backlog.md#sprint-desktop-ubuntu--windows-toward-070); D-2026-10-22-19; desktop 0.7.1 |
 | R-2026-10-22-38 | 2026-10-22 | Daniel | Desktop | Let the user choose the model for each mode (dictation, and the File tab) | [I-5](backlog.md#ideas-for-future-versions), parked |
 | R-2026-10-22-37 | 2026-10-22 | Daniel | Desktop | Shakshuka in dictation is distracting: two or three words at a time, the screen flickers on every paste, and words held in the buffer don't come out when you pause for thought. Parakeet works better for dictation, so make it the default again until streaming works well, and paste streaming text in bigger pieces | [B-32](backlog.md#sprint-desktop-ubuntu--windows-toward-070); D-2026-10-22-18 |

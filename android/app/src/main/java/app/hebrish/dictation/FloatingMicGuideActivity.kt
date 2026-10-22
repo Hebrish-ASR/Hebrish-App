@@ -39,7 +39,7 @@ class FloatingMicGuideActivity : Page() {
 
         val micTitle = heading(R.string.guide_mic_title)
         val micText = text(R.string.guide_mic)
-        val micBtn: Button = button(R.string.grant) { requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1) }
+        val micBtn: Button = button(R.string.grant) { Setup.askMic(this) }
         micStep = listOf(micTitle, micText, micBtn)
 
         heading(R.string.guide_battery_title)

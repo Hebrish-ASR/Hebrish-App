@@ -101,9 +101,9 @@ class AboutPage(QScrollArea):
 
         box, b = card("Private by design")
         b.addWidget(_rich(
-            "Everything runs on this computer: NVIDIA's <b>Parakeet TDT 0.6B v2</b> (600 million "
-            "parameters) on your CPU, through sherpa-onnx. Nothing you say leaves the machine. "
-            "The only network traffic is the model download and the check for a newer version."))
+            "Everything runs on this computer: the model you picked in Models, through sherpa-onnx. "
+            "Nothing you say leaves the machine. The only network traffic is model downloads and "
+            "the checks for newer versions."))
         lay.addWidget(box)
 
         box, b = card("Models")

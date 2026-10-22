@@ -49,14 +49,15 @@ DEFAULTS = {
     "double_tap_ms": 300,         # how long a stopping tap waits for the second tap
     "escape_discards": True,      # Esc while recording discards the take
     "live_insert_s": 5,           # decode while recording and insert every ~N s, at a pause; 0 = off
-    "stream_release": "phrase",   # streaming models: paste every word | phrase | sentence (engine.STREAM_RELEASE; 0.7.1)
                                   # presets Fast 3, Normal 5, Relaxed 8 (0.7.1; 0.7.0: 5/7/10), else Custom
+    "stream_release": "phrase",   # streaming models: paste every word | phrase | sentence (engine.STREAM_RELEASE; 0.7.1)
     "overlay": "off",             # off | active (while dictating) | always
     "overlay_pos": None,          # [x, y] of the overlay's top-left; None = bottom centre
     "overlay_opacity": 85,        # idle opacity %, "always" mode
     "insert": "paste",            # paste | clipboard | app (the Dictate tab's text box only)
     "paste_chord": "ctrl+v",      # e.g. ctrl+shift+v if you dictate mostly into terminals
     "trailing_space": True,
+    "all_caps": False,            # type everything in capitals, just for fun (0.7.2)
     "feedback": "beeps",          # beeps | voice (spoken status: data/voice/<voice>/) | off
     "voice": "herman",            # herman | corn | hilbert (audio.VOICES; 0.7.0)
     "beep_volume": 50,            # %; 50 = the 0.3.x level; also the voice volume
@@ -223,7 +224,7 @@ def in_quiet_hours(cfg, now: time.struct_time | None = None) -> bool:
 
 def load_json(path: Path, default=None):
     try:
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {} if default is None else default
 
@@ -231,7 +232,7 @@ def load_json(path: Path, default=None):
 def save_json(path: Path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")   # not the Windows code page
     tmp.replace(path)
 
 

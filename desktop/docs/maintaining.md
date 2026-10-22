@@ -428,7 +428,8 @@ desktop; Sabich stays the default on Android and the pick for transcribing recor
   full stop. Raw and gain-normalised audio decoded identically. So `transcribe_chunks` skips it
   when `engine.streaming`; whole-take text then equals the live text on all six clips.
 - **Silence:** 5 s of low noise produced no text, so streaming takes skip the VAD check.
-- **Recommendation:** catalogue `recommended_by_platform` (`linux`, `windows`: `shakshuka`) is
+- **Recommendation** (superseded in 0.7.1, D-2026-10-22-18: Sabich is the default again; see
+  "Back to Parakeet" below): catalogue `recommended_by_platform` (`linux`, `windows`: `shakshuka`) is
   read by `model_store.recommended_id()` before `recommended` (still `sabich`, which Android and
   0.6.x read). A new desktop install defaults to Shakshuka; an install with a pick, or with a
   model already downloaded, keeps it (`current_id`).
@@ -439,6 +440,9 @@ desktop; Sabich stays the default on Android and the pick for transcribing recor
   70,6`), and pasting ~2 times a second into every kind of target app.
 
 ### Existing installs move to Shakshuka once (0.7.0, 2026-10-22)
+
+Superseded in 0.7.1 (D-2026-10-22-18): those installs are moved back to Sabich once; see "Back to
+Parakeet" below.
 
 `recommended_by_platform` only decides for an install with no pick, so on its own it would leave
 every existing user (Daniel included, on Sabich) where they were. Daniel, 2026-10-22: Shakshuka for
@@ -465,7 +469,7 @@ when he paused for thought the last words didn't come out. Parakeet did better f
   up to the last space, because the result grows in BPE pieces. The last word therefore waited
   for the next word to start, and during a pause nothing new arrived to release it.
 - **Default:** catalogue `recommended_by_platform` is `sabich` again (copy in
-  `hebrish/data/catalogue.json`). `HebrishApp._parakeet_default()` replaces
+  `hebrish/data/catalogue.json`). `Controller._parakeet_default()` replaces
   `_streaming_default()`: once (state flag `parakeet_default_0_7_1`), an install with 0.7.0's
   flag `streaming_default_0_7` that dictates with a streaming model is moved to the recommended
   model, downloading it in the background first if needed (same `switch_after_download` path).
@@ -543,6 +547,29 @@ has more, which is where the held full stop matters most. **Not yet tried in rea
 Known limits: a sentence that really ends at a short pause and whose next sentence starts with a
 `CONTINUES` word ("So…", "And…") is joined into one sentence; a mid-sentence pause of 1 s or more
 still gives ". Capital" unless the next word is in `CONTINUES`.
+
+## ALL CAPS, and the 0.7.2 polish pass (2026-10-22)
+
+**ALL CAPS** (Daniel, 2026-10-22, R-2026-10-22-40, B-34: "just for fun"): config `all_caps`,
+Settings → Dictation, "Dictate in ALL CAPS". `Controller._worker` reads it once per take into `out`
+(`str` or `str.upper`) and applies it only to what is pasted (`inserter.insert`) and shown
+(`sig.piece`), after the seam and release rules, which need the real case (a capitalised first word
+decides `after_held_stop`). History keeps the normal case: it can become training data (Correct,
+`keep_audio`), and capitals would teach the wrong case. The File tab ignores it. Android has the same
+setting (`core` `OutputStyle`, applied in `TakeDecoder`, which is shared by every output path there,
+so on Android the stored last transcript is in capitals). Test:
+`tests/test_live.py::test_worker_all_caps_keeps_the_seams`.
+
+**Polish pass** (R-2026-10-22-41): a read-only review of both apps the same evening, fixes applied
+where they were safe without a device. Desktop: catalogue text no longer says Shakshuka is the
+pick for dictation (shared with Android; installed apps re-fetch it), the chooser rules match the
+website again (`test_shared`), Settings never scrolls sideways (horizontal bar off, shorter labels,
+details in tooltips), About's privacy text names no model, JSON files are read and written as UTF-8
+(Windows code page), the start-at-login command quotes the path, assorted stale strings. Left for
+later (need a decision or Windows hardware): Windows ignores neither its own Ctrl+V nor Parlance's
+when the hotkey is a modifier (pynput >= 1.8 `injected` flag), MB vs MiB on the Models tab, About's
+Jachnun-only benchmark section, letter hotkeys under the Hebrew layout on Windows, a locked Windows
+clipboard silently dropping a piece.
 
 ## Dictation history: SQLite, search, word counts (0.7.0, 2026-10-22)
 

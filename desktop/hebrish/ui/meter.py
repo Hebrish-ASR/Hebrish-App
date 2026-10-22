@@ -56,7 +56,7 @@ class LevelMeter(QWidget):
     def paintEvent(self, _ev):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        lamp = 22
+        lamp = 30                           # wide enough for the bold "CLIP"
         w, h = self.width() - lamp - 6, self.height()
         for lo, hi, col in ZONES:           # faint zone bands
             c = QColor(col)

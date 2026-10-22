@@ -2,7 +2,7 @@
 the system palette, so the window follows light and dark themes."""
 
 BLUE = "#24527A"
-BLUE_HOVER = "#1a4fd0"
+BLUE_HOVER = "#1c4264"    # a darker BLUE, not a different blue
 RED = "#D62828"
 RED_PULSE = "#ef4b4b"
 AMBER = "#E8A317"
@@ -36,7 +36,7 @@ QSS = f"""
 #header {{ background: {BLUE}; }}
 #header QLabel {{ color: white; }}
 #title {{ font-size: 20px; font-weight: 700; }}
-#tagline {{ font-size: 12px; opacity: 0.85; }}
+#tagline {{ font-size: 12px; }}
 
 QTabWidget::pane {{ border: none; }}
 QTabBar::tab {{ padding: 8px 18px; margin: 0 2px; border: none;

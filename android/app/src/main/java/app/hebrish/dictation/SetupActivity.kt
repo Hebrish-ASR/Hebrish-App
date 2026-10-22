@@ -104,14 +104,9 @@ class SetupActivity : Page() {
         if (grantResults.firstOrNull() == PackageManager.PERMISSION_DENIED && !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) appInfo()
     }
 
-    private fun askMic() {
-        // Once refused for good, Android no longer shows the prompt: only App info can grant it.
-        if (Prefs.micAsked(this) && !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) return appInfo()
-        Prefs.setMicAsked(this)
-        requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1)
-    }
+    private fun askMic() = Setup.askMic(this)
 
-    private fun appInfo() = startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+    private fun appInfo() = Setup.appInfo(this)
 
     private fun render() {
         steps.forEachIndexed { i, s ->

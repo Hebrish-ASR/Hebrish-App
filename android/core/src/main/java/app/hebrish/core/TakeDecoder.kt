@@ -11,12 +11,14 @@ import java.util.concurrent.Executors
  *
  * With [onText] set, each segment's text is handed over as soon as it is decoded ("type as you
  * go"), and [finish] returns only what has not been handed over yet. Without it, [finish] returns
- * the whole take. Callbacks run on the worker thread.
+ * the whole take. Callbacks run on the worker thread. Text goes through [OutputStyle], read once
+ * per take, so a take never changes style halfway.
  */
 class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) {
     private val app = ctx.applicationContext
     private val worker = Executors.newSingleThreadExecutor()
     private val held = StringBuilder()
+    private val allCaps = OutputStyle.allCaps(app)
     @Volatile private var cancelled = false
     @Volatile private var failure: Throwable? = null
     @Volatile var segmentsDecoded = 0
@@ -33,7 +35,8 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
         runCatching { worker.execute {
             if (cancelled || failure != null) return@execute
             runCatching { Transcriber.transcribe(app, samples) }
-                .onSuccess { text ->
+                .onSuccess { decoded ->
+                    val text = OutputStyle.apply(decoded, allCaps)
                     segmentsDecoded++
                     if (text.isEmpty() || cancelled) return@onSuccess
                     if (onText != null) onText.invoke(text) else held.append(if (held.isEmpty()) "" else " ").append(text)
@@ -50,7 +53,7 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
         worker.execute {
             val result = runCatching {
                 failure?.let { throw it }
-                val last = if (tail.size >= minTail) Transcriber.transcribe(app, tail) else ""
+                val last = if (tail.size >= minTail) OutputStyle.apply(Transcriber.transcribe(app, tail), allCaps) else ""
                 listOf(held.toString(), last).filter { it.isNotEmpty() }.joinToString(" ")
             }
             if (!cancelled) done(result)

@@ -20,7 +20,7 @@ def _command() -> str:
         return f'"{sys.executable}" --hidden'
     exe = shutil.which("hebrish")
     if exe:
-        return f"{exe} --hidden"
+        return f'"{exe}" --hidden'          # quoted: the path may contain a space
     py = sys.executable.replace("python.exe", "pythonw.exe")
     return f'"{py}" -m hebrish --hidden'
 

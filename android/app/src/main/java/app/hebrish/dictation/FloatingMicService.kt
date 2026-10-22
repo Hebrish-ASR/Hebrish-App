@@ -712,9 +712,10 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     /** No field took [text]: keep it for the Insert button, and on the clipboard. */
     private fun hold(text: String) {
+        val first = pending == null
         pending = pending?.let { "$it $text" } ?: text
         copy(pending!!)
-        toast(getString(R.string.bubble_held))
+        if (first) toast(getString(R.string.bubble_held))     // once, not again for every segment
         render()
     }
 
