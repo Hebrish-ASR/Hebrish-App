@@ -255,7 +255,10 @@ each part works there:
    Windows job `needs` it, so a mismatched tag never produces a release. Don't tag by hand.
    (Tags need `-a`: plain `git tag` fails here with "no tag message?" because of the git
    config, seen 2026-10-21.) CI (`.github/workflows/desktop.yml`) then runs the tests on
-   Linux and Windows, builds the Windows zip with PyInstaller, runs the frozen exe's
+   Linux and Windows (Linux CI has no PySide6: a test importing `hebrish.ui` must
+   `pytest.importorskip("PySide6")`, or the tag fails, as 0.7.1's first tag did on 2026-10-22;
+   that tag was deleted and re-made, since nothing had been released from it), builds the
+   Windows zip with PyInstaller, runs the frozen exe's
    `--selftest`, and creates the release with the zip attached.
 3. On Ubuntu 26.04, run `./build-deb.sh`. It writes `dist/hebrish_<ver>-1_amd64.deb`,
    bundles sherpa-onnx + sherpa-onnx-core, and is pinned to the build machine's python3

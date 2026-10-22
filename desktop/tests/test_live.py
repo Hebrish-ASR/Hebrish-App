@@ -218,7 +218,10 @@ def test_finish_releases_the_rest():
 
 
 def _run_worker(texts, jobs, cfg=None):
-    """Drive Controller._worker with a scripted Parakeet engine; return (pastes, transcript)."""
+    """Drive Controller._worker with a scripted Parakeet engine; return (pastes, transcript).
+    Skipped where PySide6 isn't installed (Linux CI), as in test_overlay."""
+    import pytest
+    pytest.importorskip("PySide6")
     import queue
     import threading
     from types import SimpleNamespace
