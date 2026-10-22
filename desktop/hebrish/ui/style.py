@@ -49,6 +49,7 @@ QTabBar::tab:selected {{ border-bottom: 3px solid {BLUE}; font-weight: 600; }}
 #footer {{ border-top: 1px solid palette(mid); }}
 #version {{ font-size: 12px; font-weight: 600; }}
 #transcript {{ font-size: 13px; }}
+#statBig {{ font-size: 18px; font-weight: 700; }}
 
 #record {{ border-radius: 52px; font-size: 15px; font-weight: 700; color: white;
           background: {BLUE}; border: 4px solid palette(base); }}

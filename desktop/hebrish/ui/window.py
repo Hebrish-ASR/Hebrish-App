@@ -1,5 +1,6 @@
 """Main window: header, then Dictate / File / [History] / Models / Settings / About tabs.
-History is there only while "Keep a history" is on (off by default since 0.5.0)."""
+History is there only while "Keep a history" is on (on by default again since 0.7.0, now
+every transcript in a searchable SQLite file: hebrish.history)."""
 
 import os
 import time
@@ -9,7 +10,7 @@ from pathlib import Path
 from PySide6.QtCore import QSize, Qt, QTime, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout,
-                               QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit,
+                               QInputDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit,
                                QProgressBar, QPushButton, QScrollArea, QSlider, QSpinBox,
                                QTabWidget, QTimeEdit, QToolButton, QVBoxLayout, QWidget)
 
@@ -73,6 +74,24 @@ def ago(ts: float) -> str:
     return time.strftime("%d %b %H:%M", time.localtime(ts))
 
 
+def human_size(n: float) -> str:
+    for unit in ("bytes", "KB", "MB", "GB"):
+        if n < 1024 or unit == "GB":
+            return f"{n:.0f} {unit}" if unit == "bytes" else f"{n:.1f} {unit}"
+        n /= 1024
+
+
+def stat_tile(title: str) -> tuple[QFrame, QLabel, QLabel]:
+    """A small card: a big number (words) and a muted line under it (dictations, time)."""
+    box, b = card(title)
+    big = QLabel("0", objectName="statBig")
+    small = muted()
+    b.addWidget(big)
+    b.addWidget(small)
+    return box, big, small
+
+
+HISTORY_PAGE = 100      # rows shown at a time in the History tab; "Show more" adds another page
 CHANGELOG_URL = "https://hebrish.app/changelog"
 
 
@@ -390,6 +409,11 @@ class MainWindow(QMainWindow):
                                      f"<span style='color:gray'>{self.meter.rms_db:.0f} dB · peak "
                                      f"{self.meter.peak_db:.0f} dB</span>")
 
+    def new_take(self):
+        """A take is starting: with `clear_each_take` the text box starts empty (0.7.0, Daniel
+        2026-10-22: it used to collect every take into one long blob). The text is in History."""
+        self.text.clear()
+
     def _append_piece(self, text):
         cur = self.text.toPlainText()
         sep = "" if not cur or cur.endswith((" ", "\n")) else " "
@@ -412,25 +436,38 @@ class MainWindow(QMainWindow):
             Path(path).write_text(self.text.toPlainText() + "\n", encoding="utf-8")
             self.status(f"Saved {path}")
 
-    # -- history (optional) ------------------------------------------------------------
+    # -- history -----------------------------------------------------------------------
     def _history_page(self):
+        """Search box, word counts (today / 7 days / all time), the transcripts, and where they
+        are stored. Everything comes from ctl.history (hebrish.history, SQLite + FTS5)."""
         page = QWidget()
         lay = QVBoxLayout(page)
         lay.setContentsMargins(16, 14, 16, 8)
+        lay.setSpacing(10)
+
+        tiles = QHBoxLayout()
+        tiles.setSpacing(10)
+        self.stat_tiles = {}
+        for key, title in (("today", "Today"), ("week", "Last 7 days"), ("all", "All time")):
+            box, big, small = stat_tile(title)
+            self.stat_tiles[key] = (big, small)
+            tiles.addWidget(box, 1)
+        lay.addLayout(tiles)
+
         box, blay = card()
         head = QHBoxLayout()
-        head.addWidget(QLabel("Recent transcripts", objectName="cardTitle"))
-        head.addStretch(1)
-        self.btn_copy_all = QPushButton("Copy all")
-        self.btn_copy_all.clicked.connect(
-            lambda: copy_to_clipboard("\n\n".join(h["text"] for h in reversed(self.ctl.history))))
+        self.hist_search = QLineEdit()
+        self.hist_search.setPlaceholderText("Search your dictations (all words, beginnings match: “shak” finds Shakshuka)")
+        self.hist_search.setClearButtonEnabled(True)
+        self._search_timer = QTimer(self, singleShot=True, interval=250, timeout=self.show_history)
+        self.hist_search.textChanged.connect(lambda _t: self._search_timer.start())
+        head.addWidget(self.hist_search, 1)
         self.btn_clear = QPushButton(QIcon.fromTheme("edit-clear-history"), "Clear history")
         self.btn_clear.clicked.connect(self._confirm_clear)
-        head.addWidget(self.btn_copy_all)
         head.addWidget(self.btn_clear)
         blay.addLayout(head)
-        blay.addWidget(muted("Kept because “Keep a history” is on in Settings: the last 50 "
-                             "transcripts, saved on this computer."))
+        self.hist_count = muted()
+        blay.addWidget(self.hist_count)
         self.hist_box = QVBoxLayout()
         self.hist_box.setSpacing(6)
         inner = QWidget()
@@ -439,32 +476,105 @@ class MainWindow(QMainWindow):
         sc.setMinimumHeight(180)
         blay.addWidget(sc, 1)
         lay.addWidget(box, 1)
+
+        box, b = card("Stored on this computer")
+        self.hist_where = muted()
+        self.hist_where.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.hist_where.setWordWrap(True)
+        b.addWidget(self.hist_where)
+        row = QHBoxLayout()
+        opn = QPushButton(QIcon.fromTheme("folder-open"), "Open folder")
+        opn.clicked.connect(lambda: QDesktopServices.openUrl(
+            QUrl.fromLocalFile(str(self.ctl.history.path.parent))))
+        exp = QPushButton(QIcon.fromTheme("document-export"), "Export…")
+        exp.setToolTip("Every transcript as JSON Lines, oldest first")
+        exp.clicked.connect(self._export_history)
+        row.addWidget(opn)
+        row.addWidget(exp)
+        row.addStretch(1)
+        b.addLayout(row)
+        lay.addWidget(box)
+        self._hist_limit = HISTORY_PAGE
         return page
 
     def _on_history_setting(self):
         on = self.cfg["keep_history"]
         self.tabs.setTabVisible(self.tabs.indexOf(self.pages["history"]), on)
-        if not on and self.ctl.history and QMessageBox.question(
+        if not on and self.ctl.history.count() and QMessageBox.question(
                 self, "History", "Also delete the saved history?") == QMessageBox.Yes:
             self.ctl.clear_history()
 
     def _confirm_clear(self):
-        n = len(self.ctl.history)
+        n = self.ctl.history.count()
         if n and QMessageBox.question(
-                self, "Clear history", f"Delete {n} transcript{'s' if n > 1 else ''}? This can't be undone."
+                self, "Clear history", f"Delete all {n:,} transcript{'s' if n > 1 else ''}"
+                f"{' and their audio' if self.ctl.history.audio_dir.is_dir() else ''}? This can't be undone."
         ) == QMessageBox.Yes:
             self.ctl.clear_history()
 
-    def show_history(self):
+    def _export_history(self):
+        name = time.strftime("hebrish-history-%Y-%m-%d.jsonl")
+        path, _ = QFileDialog.getSaveFileName(self, "Export history", str(Path.home() / name),
+                                              "JSON Lines (*.jsonl);;All files (*)")
+        if path:
+            n = self.ctl.history.export_jsonl(Path(path))
+            self.status(f"Exported {n:,} transcripts to {path}")
+
+    def _edit_entry(self, h):
+        text, ok = QInputDialog.getMultiLineText(
+            self, "Correct the transcript",
+            "Fix any words the model got wrong. The original is kept alongside, so corrections "
+            "can become training data.", h["text"])
+        if ok and text.strip() and text.strip() != h["text"]:
+            self.ctl.history.update_text(h["id"], text)
+            self.show_history()
+
+    def _delete_entry(self, h):
+        self.ctl.history.delete(h["id"])
+        self.show_history()
+
+    def _more(self):
+        self._hist_limit += HISTORY_PAGE
+        self.show_history(keep_limit=True)
+
+    def _show_stats(self):
+        st = self.ctl.history.stats()
+        for key, (big, small) in self.stat_tiles.items():
+            a = st[key]
+            big.setText(f"{a['words']:,} words")
+            mins = a["seconds"] / 60
+            spoken = f" · {mins / 60:.1f} h" if mins >= 90 else f" · {mins:.0f} min" if mins >= 1 else ""
+            small.setText(f"{a['dictations']:,} dictation{'s' if a['dictations'] != 1 else ''}{spoken}")
+        if st["since"]:
+            self.stat_tiles["all"][1].setToolTip(
+                f"Since {time.strftime('%d %b %Y', time.localtime(st['since']))}, "
+                f"on {st['days_active']} day{'s' if st['days_active'] != 1 else ''}")
+
+    def show_history(self, keep_limit=False):
+        hist = self.ctl.history
         while self.hist_box.count():
             w = self.hist_box.takeAt(0).widget()
             if w:
+                w.hide()                # deleteLater waits for the event loop; don't paint it meanwhile
                 w.deleteLater()
-        if not self.ctl.history:
-            empty = muted("Nothing yet. Transcripts are added here from now on.")
+        if not keep_limit:
+            self._hist_limit = HISTORY_PAGE
+        q = self.hist_search.text().strip()
+        rows = hist.search(q, self._hist_limit + 1) if q else hist.recent(self._hist_limit + 1)
+        more = len(rows) > self._hist_limit
+        rows = rows[:self._hist_limit]
+        total = hist.count()
+        if q:
+            self.hist_count.setText(f"{len(rows)}{'+' if more else ''} match{'es' if len(rows) != 1 else ''} "
+                                    f"for “{q}”, best first")
+        else:
+            self.hist_count.setText(f"{total:,} transcript{'s' if total != 1 else ''}, newest first"
+                                    if total else "")
+        if not rows:
+            empty = muted("No matches." if q else "Nothing yet. Every transcript is added here from now on.")
             empty.setAlignment(Qt.AlignCenter)
             self.hist_box.addWidget(empty)
-        for h in self.ctl.history:
+        for h in rows:
             row = QFrame()
             row.setStyleSheet("QFrame { border-bottom: 1px solid palette(midlight); }"
                               "QLabel, QToolButton { border: none; }")
@@ -472,26 +582,51 @@ class MainWindow(QMainWindow):
             rl.setContentsMargins(4, 6, 4, 6)
             col = QVBoxLayout()
             col.setSpacing(2)
-            t = QLabel(h["text"], objectName="transcript")
+            shown = h.get("snippet") or h["text"]
+            t = QLabel(objectName="transcript")
+            if h.get("snippet"):
+                esc = shown.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                t.setText(esc.replace("[", f"<b style='color:{BLUE}'>").replace("]", "</b>"))
+            else:
+                t.setTextFormat(Qt.PlainText)
+                t.setText(shown)
             t.setWordWrap(True)
             t.setTextInteractionFlags(Qt.TextSelectableByMouse)
             col.addWidget(t)
-            col.addWidget(muted(ago(h["at"])))
+            bits = [ago(h["at"]), f"{h['words']} words"]
+            if h["seconds"]:
+                bits.append(f"{h['seconds']:.0f} s")
+            if h["source"] != "dictate":
+                bits.append({"file": "from a file", "import": "imported"}.get(h["source"], h["source"]))
+            if h["original"]:
+                bits.append("corrected")
+            if h["audio"]:
+                bits.append("audio kept")
+            col.addWidget(muted(" · ".join(bits)))
             rl.addLayout(col, 1)
-            b = QToolButton()
-            b.setIcon(QIcon.fromTheme("edit-copy"))
-            b.setText("Copy")
-            b.setToolTip("Copy")
-            b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon if QIcon.hasThemeIcon("edit-copy")
-                                 else Qt.ToolButtonTextOnly)
-            b.setIconSize(QSize(16, 16))
-            b.clicked.connect(lambda _=False, s=h["text"]: copy_to_clipboard(s))
-            rl.addWidget(b, 0, Qt.AlignTop)
+            for name, label, fn in (("edit-copy", "Copy", lambda _=False, s=h["text"]: copy_to_clipboard(s)),
+                                    ("document-edit", "Correct", lambda _=False, e=h: self._edit_entry(e)),
+                                    ("edit-delete", "Delete", lambda _=False, e=h: self._delete_entry(e))):
+                b = QToolButton()
+                b.setIcon(QIcon.fromTheme(name))
+                b.setText(label)
+                b.setToolTip(label)
+                b.setToolButtonStyle(Qt.ToolButtonIconOnly if QIcon.hasThemeIcon(name)
+                                     else Qt.ToolButtonTextOnly)
+                b.setIconSize(QSize(16, 16))
+                b.clicked.connect(fn)
+                rl.addWidget(b, 0, Qt.AlignTop)
             self.hist_box.addWidget(row)
+        if more:
+            b = QPushButton("Show more")
+            b.clicked.connect(self._more)
+            self.hist_box.addWidget(b, 0, Qt.AlignHCenter)
         self.hist_box.addStretch(1)
-        has = bool(self.ctl.history)
-        self.btn_clear.setEnabled(has)
-        self.btn_copy_all.setEnabled(has)
+        self.btn_clear.setEnabled(bool(total))
+        self._show_stats()
+        audio_note = (f" Audio: {hist.audio_dir}." if self.cfg["keep_audio"] or hist.audio_dir.is_dir() else "")
+        self.hist_where.setText(f"{hist.path} ({human_size(hist.size_bytes())}).{audio_note} "
+                                "Nothing leaves this computer.")
 
     def _do_pulse(self):
         self.rec.setProperty("pulse", not self.rec.property("pulse"))
@@ -869,8 +1004,13 @@ class MainWindow(QMainWindow):
         b.addWidget(muted("Output (paste, clipboard or the text box) and the microphone are on "
                           "the Dictate tab."))
         b.addWidget(self._check("trailing_space", "Add a space after each transcript"))
-        b.addWidget(self._check("keep_history", "Keep a history of transcripts (adds a History tab, "
-                                                "saved on this computer)", self._on_history_setting))
+        b.addWidget(self._check("clear_each_take", "Start the Dictate tab's text box empty for each "
+                                                   "take (earlier takes are in History)"))
+        b.addWidget(self._check("keep_history", "Keep a history of every transcript (the History tab: "
+                                                "searchable, saved on this computer)", self._on_history_setting))
+        b.addWidget(self._check("keep_audio", "Keep the audio of each take too (about 2 MB a minute), "
+                                              "so corrected transcripts can become training data",
+                                self.show_history))
         lay.addWidget(box)
 
         box, b = card("Action keys")

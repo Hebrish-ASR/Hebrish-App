@@ -21,7 +21,8 @@ else:
     DATA_DIR = _env("XDG_DATA_HOME", ".local/share") / "hebrish"
 CONFIG_PATH = CONFIG_DIR / "config.json"
 STATE_PATH = DATA_DIR / "state.json"          # active model, last update checks, dismissed app version
-HISTORY_PATH = DATA_DIR / "history.json"
+HISTORY_PATH = DATA_DIR / "history.json"     # 0.6.x history (last 50); imported into HISTORY_DB once
+HISTORY_DB = DATA_DIR / "history.db"         # 0.7.0+: every transcript (hebrish.history)
 MODELS_DIR = DATA_DIR / "models"            # models/<catalogue id>/<version>-<sha12>/
 CATALOGUE_CACHE = DATA_DIR / "catalogue-v2.json"   # last shared/catalogue.json fetched (0.6.0+)
 # DATA_DIR / "catalogue.json" is the schema-1 models.json cached by 0.5.x and earlier; left alone.
@@ -64,7 +65,10 @@ DEFAULTS = {
     "audio_device": "",           # "" = system default; else a sounddevice name
     "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad)
     "num_threads": 0,             # decoder threads; 0 = auto (physical cores, at most 8)
-    "keep_history": False,        # keep a History tab of transcripts, saved across restarts
+    "keep_history": True,         # keep every transcript in history.db (History tab); 0.7.0: on
+    "keep_audio": False,          # also keep each take's audio (history-audio/), for correcting
+                                  # transcripts into training data
+    "clear_each_take": True,      # the Dictate tab's text box starts empty for each take (0.7.0)
     "models_dir": "",             # where model weights live; "" = DATA_DIR/models
     "update_check_hours": 24,     # 0 = never check automatically
     "auto_update": True,          # download a new model version without asking (0.5.1: default on)
@@ -178,6 +182,11 @@ def upgrade(stored: dict) -> dict:
     # `send_chord` predates that, and its 10 was the old default, not a choice: move it once.
     if stored and "send_chord" not in stored and stored.get("live_insert_s") == 10:
         stored["live_insert_s"] = 7
+    # 0.7.0 (Daniel, 2026-10-22, D-2026-10-22-13): history is on by default, kept in full and
+    # searchable. A config without `clear_each_take` predates that, and since 0.5.0 its
+    # keep_history False was almost always the forced default: switch it on once.
+    if stored and "clear_each_take" not in stored:
+        stored["keep_history"] = True
     return stored
 
 
@@ -227,7 +236,8 @@ class Config(dict):
         super().__init__(DEFAULTS)
         stored = load_json(CONFIG_PATH)
         old = bool(stored) and ("mode" in stored or "keep_old_versions" in stored
-                                or "feedback" not in stored or "send_chord" not in stored)
+                                or "feedback" not in stored or "send_chord" not in stored
+                                or "clear_each_take" not in stored)
         self.update({k: v for k, v in upgrade(stored).items() if k in DEFAULTS})
         if old or not CONFIG_PATH.exists():
             self.save()

@@ -16,15 +16,17 @@ import threading
 import time
 from pathlib import Path
 
+import numpy as np
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from .. import __version__, app_update, audio, autostart, model_store
-from ..config import (APP_NAME, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
+from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
 from ..engine import Engine, live_cut
+from ..history import History
 from ..hotkey import make_listener
 from ..inserter import make_inserter
 from . import about
@@ -32,7 +34,6 @@ from .overlay import OverlayHost
 
 log = logging.getLogger("hebrish")
 ICONS = Path(__file__).resolve().parent.parent / "data" / "icons"
-HISTORY_MAX = 50
 NO_SPEECH = "no speech"        # _worker -> _done: the take had audio but no speech (engine VAD)
 # The beeps mode: start, stop, a falling "doo-doo" for discard, a rising pair for retake
 APP_CHECK_S = 24 * 3600       # app update check while running: about daily (at start too)
@@ -53,7 +54,7 @@ class Signals(QObject):
     cancel = Signal()
     action = Signal(str)
     captured = Signal(str)
-    transcribed = Signal(str, object)
+    transcribed = Signal(str, object, object)   # text, error, the take's samples (for history)
     piece = Signal(str)             # each decoded piece of a take, for the Dictate tab's text box
     fetched = Signal(object, object)    # manifest or None, error: download_model()
     moved = Signal(object)          # error or None: move_models()
@@ -84,7 +85,11 @@ class Controller(QObject):
         self.latencies: deque[float] = deque(maxlen=200)   # stop -> text inserted, seconds
         self.splash = splash
         self._overlay_done = False
-        self.history: list[dict] = (load_json(HISTORY_PATH, []) if self.cfg["keep_history"] else [])
+        # Every transcript (0.7.0): SQLite with a full-text index, hebrish.history. The 0.6.x
+        # history.json (last 50) is imported once.
+        self.history = History(HISTORY_DB)
+        if HISTORY_PATH.is_file():
+            log.info("imported %d transcripts from history.json", self.history.import_json(HISTORY_PATH))
 
         self.sig = Signals()
         self.sig.start.connect(self.start)
@@ -185,6 +190,8 @@ class Controller(QObject):
             self.notify("Microphone error", str(e))
             return
         self._take += 1
+        if self.cfg["clear_each_take"]:
+            self.win.new_take()
         self.recorder.mute(self.cue(cue) + CUE_MARGIN_S)
         self.set_state("recording")
 
@@ -299,11 +306,13 @@ class Controller(QObject):
             self._jobs.put((self._take, self.recorder.consume(cut), False))
 
     def _worker(self):
-        take, parts, stream = None, [], None
+        take, parts, stream, heard_audio = None, [], None, []
         while True:
             job, samples, final = self._jobs.get()
             if job != take:
-                take, parts, stream = job, [], None
+                take, parts, stream, heard_audio = job, [], None, []
+            heard_audio.append(samples)
+            whole_take = (lambda: np.concatenate(heard_audio)) if final else None
             try:
                 live = job == self._take
                 if live and self.engine.streaming and (stream or not final):
@@ -322,7 +331,7 @@ class Controller(QObject):
                     if final:
                         whole = "".join(parts).strip()
                         heard = whole or len(samples) < audio.SAMPLE_RATE // 2
-                        self.sig.transcribed.emit(whole, None if heard else NO_SPEECH)
+                        self.sig.transcribed.emit(whole, None if heard else NO_SPEECH, whole_take())
                     continue
                 text = self.engine.transcribe(samples, vad=self.cfg["vad"]) if live else ""
                 if text:
@@ -335,10 +344,10 @@ class Controller(QObject):
                     self._send()
                 if final:
                     heard = parts or len(samples) < audio.SAMPLE_RATE // 2 or not live
-                    self.sig.transcribed.emit(" ".join(parts), None if heard else NO_SPEECH)
+                    self.sig.transcribed.emit(" ".join(parts), None if heard else NO_SPEECH, whole_take())
             except Exception as e:
                 if final:
-                    self.sig.transcribed.emit("".join(parts).strip() if stream else " ".join(parts), e)
+                    self.sig.transcribed.emit("".join(parts).strip() if stream else " ".join(parts), e, None)
                 else:
                     log.exception("live piece failed")
 
@@ -350,7 +359,7 @@ class Controller(QObject):
         except Exception:
             log.exception("send chord %r failed", self.cfg["send_chord"])
 
-    def _done(self, text, err):
+    def _done(self, text, err, samples=None):
         log.info("transcript %r err=%r", text, err)
         if err == NO_SPEECH:
             self.cue("no_speech")
@@ -365,25 +374,33 @@ class Controller(QObject):
             QTimer.singleShot(1100, self._overlay_clear_done)
             if self.cfg["insert"] == "clipboard":
                 self.cue("copied")
-            if self.cfg["keep_history"]:
-                self.history.insert(0, {"text": text, "at": time.time()})
-                del self.history[HISTORY_MAX:]
-                self._save_history()
-                self.win.show_history()
+            self.remember(text, samples)
         self._stopped_at = 0.0
         self.set_state("idle")
         if self.reload_pending:
             self.load_model()
 
-    def clear_history(self):
-        self.history.clear()
-        self._save_history()
-        HISTORY_PATH.unlink(missing_ok=True)
+    def remember(self, text, samples=None, source="dictate", seconds=None):
+        """Add a transcript to the history (when `keep_history`), with its audio when
+        `keep_audio`. The File tab calls this too, with source="file" and no samples (the file
+        itself is the audio)."""
+        if not self.cfg["keep_history"] or not text.strip():
+            return
+        cur = model_store.active()
+        model = f"{cur[1].model} {cur[1].version}" if cur else ""
+        if samples is not None:
+            seconds = len(samples) / audio.SAMPLE_RATE
+        try:
+            self.history.add(text, seconds=seconds, model=model, source=source,
+                             samples=samples if self.cfg["keep_audio"] else None)
+        except Exception:
+            log.exception("couldn't save the transcript to history")
+            return
         self.win.show_history()
 
-    def _save_history(self):
-        if self.cfg["keep_history"]:
-            save_json(HISTORY_PATH, self.history)
+    def clear_history(self):
+        self.history.clear()
+        self.win.show_history()
 
     def set_state(self, state):
         log.info("state %s -> %s", self.state, state)

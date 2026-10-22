@@ -166,6 +166,8 @@ class TranscribePage(QWidget):
             QMessageBox.warning(self, "Transcription failed", str(result))
             return
         audio_s, took, cancelled = result
+        if not cancelled:
+            self.ctl.remember(self.text.toPlainText(), source="file", seconds=audio_s)
         msg = f"Transcribed {_clock(audio_s)} of audio in {took:.1f} s"
         self.ctl.win.status(msg + (" (cancelled part-way)." if cancelled else "."))
 

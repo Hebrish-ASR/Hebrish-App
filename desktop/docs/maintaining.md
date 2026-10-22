@@ -435,6 +435,42 @@ desktop; Sabich stays the default on Android and the pick for transcribing recor
   Not measured: Shakshuka's streaming WER on the full test set (ASR-Training `evaluate --stream
   70,6`), and pasting ~2 times a second into every kind of target app.
 
+## Dictation history: SQLite, search, word counts (0.7.0, 2026-10-22)
+
+Daniel, 2026-10-22 (D-2026-10-22-13, R-2026-10-22-13/14/15): the Dictate tab's text box collected
+every take into one blob; history was the last 50 transcripts in `history.json`, off by default.
+Now:
+
+- **Text box clears per take** (`clear_each_take`, default on): `Controller.start()` calls
+  `MainWindow.new_take()` before recording, so the last result stays visible until the next take.
+- **Every transcript is kept** (`keep_history`, default on again) in `DATA_DIR/history.db`
+  (`hebrish/history.py`): table `dictations` (`uid`, `at`, `text`, `words`, `seconds`, `model`,
+  `source` dictate|file|import, `audio`, `original`), an FTS5 index `dictations_fts` kept in step
+  by triggers, and `meta` (`schema`, a random `device` id, `created`). `uid` and `device` exist
+  so rows can later be merged across devices or backed up without collisions (Drive backup,
+  accounts: backlog). The 0.6.x `history.json` is imported once, then renamed
+  `history.json.imported`. Configs saved before 0.7.0 (no `clear_each_take`) get
+  `keep_history` on once: since 0.5.0 their `false` was the forced default.
+- **Search** is FTS5 keyword search: every word must match, each as a prefix, ranked by bm25,
+  with matches bolded from `snippet()`. Not semantic: that is a backlog item, because it needs a
+  text-embedding model the app doesn't ship (sherpa-onnx has none, and the .deb bundles no
+  Python onnxruntime).
+- **Word counts**: today, the last 7 days (today included) and all time, from local midnight
+  (`History.stats`), with audio minutes and days active.
+- **Audio** (`keep_audio`, default off): the decode worker keeps each live piece's samples and
+  passes the whole take with `transcribed`; `history-audio/<uid>.wav`, 16 kHz mono int16, about
+  1.9 MB a minute. **Correct** in the History tab stores the edited text and keeps the model's
+  text in `original` (first edit only), so (audio, original, corrected) triples can become
+  training data.
+- File-tab transcripts go in too (`source` file, no audio: the file is the audio).
+- The History tab shows the database path and size, with Open folder and Export (JSON Lines).
+- Rows are hidden before `deleteLater()` when the list refreshes: off-screen renders (and any
+  refresh without a trip through the event loop) otherwise painted old rows under new ones.
+
+Verified 2026-10-22: `tests/test_history.py`, and an off-screen render with sample rows (search,
+counts, a simulated take with audio). **Not yet verified:** a real take on the installed app,
+and query speed on a database of tens of thousands of rows (FTS5 should be fine; untested).
+
 ## Insert-as-you-go presets, Stop and send (0.7.0, 2026-10-22)
 
 Daniel asked (2026-10-22) for text to arrive sooner during a take, and for a way to submit a

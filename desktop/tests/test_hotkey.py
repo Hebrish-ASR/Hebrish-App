@@ -93,7 +93,7 @@ def test_unset_keys_do_nothing():
     assert r.events == []
 
 
-V05 = {"feedback": "beeps", "keep_history": False, "live_insert_s": 7}    # what upgrade() gives a pre-0.5.0 config (0.7.0: 10 -> 7)
+V05 = {"feedback": "beeps", "keep_history": True, "live_insert_s": 7}    # what upgrade() gives a pre-0.5.0 config (0.7.0: 10 -> 7, history on)
 
 
 def test_upgrade_old_modes():
@@ -108,11 +108,21 @@ def test_upgrade_to_0_5_0_defaults():
     installs too; `beeps` became `feedback`. A config that already has `feedback` is left alone."""
     from hebrish.config import upgrade
     assert upgrade({"beeps": False, "live_insert_s": 0, "keep_history": True}) == \
-        {"feedback": "off", "live_insert_s": 7, "keep_history": False}   # 10 in 0.5.0, then 0.7.0 Normal
+        {"feedback": "off", "live_insert_s": 7, "keep_history": True}    # 0.5.0 off, 0.7.0 on again; 10 then 7
     assert upgrade({"beeps": True, "live_insert_s": 20})["live_insert_s"] == 20
     kept = {"feedback": "voice", "live_insert_s": 0, "keep_history": True}
     assert upgrade(dict(kept)) == kept
     assert upgrade({}) == {}
+
+
+def test_upgrade_to_0_7_0_turns_history_on_once():
+    """Daniel, 2026-10-22 (D-2026-10-22-13): history on by default. A config without
+    `clear_each_take` predates 0.7.0, so its keep_history False was the forced 0.5.0 default.
+    One saved by 0.7.0 keeps whatever the user chose."""
+    from hebrish.config import upgrade
+    assert upgrade({"feedback": "beeps", "send_chord": "enter", "keep_history": False})["keep_history"] is True
+    chosen = {"feedback": "beeps", "send_chord": "enter", "clear_each_take": True, "keep_history": False}
+    assert upgrade(dict(chosen)) == chosen
 
 
 def test_vad_skips_silence_and_shortens_long_pauses():
