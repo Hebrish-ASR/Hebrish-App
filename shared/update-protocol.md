@@ -120,7 +120,7 @@ checked by size, like the HF tree). `revision` is kept equal to the HF commit th
 from, so an install from Hugging Face is the same version (`v1.0-bb137e504b97`) and is not
 re-downloaded. Version folders under `models/<model>/<version>/` on the CDN never change; a new
 version is a new folder plus a new `latest.json` (cache 5 min). `repo` stays in the entry for
-apps up to 0.2.1. Uploading: the `r2-upload` skill (voice-ops).
+apps up to 0.2.1. Uploading: the `r2-upload` skill (voice-model-training).
 
 **2026-10-19: moved to the mirror.** The main repo `danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching`
 became **gated** (manual access requests), so its `sherpa-onnx/int8/` returns 401 to the apps.
