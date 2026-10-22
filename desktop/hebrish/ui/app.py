@@ -18,7 +18,7 @@ from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QIcon
+from PySide6.QtGui import QActionGroup, QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
@@ -820,6 +820,7 @@ class Controller(QObject):
         self.act_overlay.setCheckable(True)
         self.act_overlay.triggered.connect(self._tray_overlay)
         m.addAction("Show window", self.win.present_tab)
+        self._build_output_menu(m.addMenu("Output"))
         self.act_autostart = m.addAction("Start at login")
         self.act_autostart.setCheckable(True)
         self.act_autostart.triggered.connect(self.set_autostart)
@@ -840,6 +841,40 @@ class Controller(QObject):
         self.tray.activated.connect(self._tray_click)
         self.tray.show()
         self._update_tray()
+
+    def _build_output_menu(self, menu):
+        """Output mode and paste shortcut, so switching to a terminal (ctrl+shift+v) or to
+        clipboard-only doesn't mean opening Settings. Checks are re-read from the config each
+        time the menu opens, so changes made in the window show here too."""
+        from .window import OUTPUT, PASTE_CHORDS
+        self._output_acts, self._chord_acts = {}, {}
+        for acts, options, slot in ((self._output_acts, OUTPUT, self._tray_output),
+                                    (self._chord_acts, PASTE_CHORDS, self._tray_chord)):
+            group = QActionGroup(menu)
+            for val, label in options:
+                a = menu.addAction(label)
+                a.setCheckable(True)
+                group.addAction(a)
+                a.triggered.connect(lambda _on, v=val, f=slot: f(v))
+                acts[val] = a
+            if acts is self._output_acts:
+                menu.addSeparator()
+        menu.aboutToShow.connect(self._sync_output_menu)
+
+    def _sync_output_menu(self):
+        for val, a in self._output_acts.items():
+            a.setChecked(self.cfg["insert"] == val)
+        for val, a in self._chord_acts.items():   # a custom chord leaves both unchecked
+            a.setChecked(self.cfg["paste_chord"] == val)
+            a.setEnabled(self.cfg["insert"] == "paste")
+
+    def _tray_output(self, value):
+        self.cfg.set("insert", value)
+        self.win.sync_output()
+
+    def _tray_chord(self, value):
+        self.cfg.set("paste_chord", value)
+        self.win.sync_output()
 
     def _tray_overlay(self, on):
         self.cfg.set("overlay", "always" if on else "off")

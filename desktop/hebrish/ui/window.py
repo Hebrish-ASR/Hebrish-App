@@ -32,6 +32,7 @@ STREAM = [("phrase", "A phrase at a time"),
           ("sentence", "A sentence at a time"), ("word", "Every word")]
 OUTPUT = [("paste", "Paste at the cursor"), ("clipboard", "Clipboard only"),
           ("app", "This window's text box only")]
+PASTE_CHORDS = [("ctrl+v", "Paste with Ctrl+V"), ("ctrl+shift+v", "Paste with Ctrl+Shift+V (terminals)")]
 FEEDBACK = [("beeps", "Beeps (start and stop)"), ("voice", "Voice (“Recording”, “Paused”, “Transcribing”…)"),
             ("off", "Off")]
 # Saved silently, so no toast: moving the overlay
@@ -1002,7 +1003,7 @@ class MainWindow(QMainWindow):
         esc = self._check("escape_discards", "Esc discards the take while dictating", self.update_state)
         esc.setToolTip("Esc also reaches the app you're in.")
         form.addRow("", esc)
-        chord = QLineEdit(self.cfg["paste_chord"])
+        self.chord_entry = chord = QLineEdit(self.cfg["paste_chord"])
         chord.setToolTip("ctrl+v for most apps; ctrl+shift+v for terminals")
         chord.textChanged.connect(lambda t: self._on_chord(chord, t))
         form.addRow("Paste shortcut", chord)
@@ -1274,6 +1275,17 @@ class MainWindow(QMainWindow):
 
     def status(self, text):
         self.status_label.setText(text)
+
+    def sync_output(self):
+        """Output and paste shortcut were changed from the tray menu."""
+        for w in (self.output_combo, self.chord_entry):
+            w.blockSignals(True)
+        self.output_combo.setCurrentIndex(max(0, self.output_combo.findData(self.cfg["insert"])))
+        self.chord_entry.setText(self.cfg["paste_chord"])
+        self.chord_entry.setStyleSheet("")
+        for w in (self.output_combo, self.chord_entry):
+            w.blockSignals(False)
+        self.update_state()
 
     def sync_autostart(self, on: bool):
         self.chk_autostart.blockSignals(True)
