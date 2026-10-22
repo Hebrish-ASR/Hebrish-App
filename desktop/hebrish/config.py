@@ -68,8 +68,6 @@ DEFAULTS = {
     "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad)
     "num_threads": 0,             # decoder threads; 0 = auto (physical cores, at most 8)
     "keep_history": True,         # keep every transcript in history.db (History tab); 0.7.0: on
-    "keep_audio": False,          # also keep each take's audio (history-audio/), for correcting
-                                  # transcripts into training data
     "clear_each_take": True,      # the Dictate tab's text box starts empty for each take (0.7.0)
     "models_dir": "",             # where model weights live; "" = DATA_DIR/models
     "update_check_hours": 24,     # 0 = never check automatically
@@ -189,6 +187,8 @@ def upgrade(stored: dict) -> dict:
     # keep_history False was almost always the forced default: switch it on once.
     if stored and "clear_each_take" not in stored:
         stored["keep_history"] = True
+    # 0.7.3 (Daniel, 2026-10-22, D-2026-10-22-20): the app keeps no audio; the setting is gone.
+    stored.pop("keep_audio", None)
     # 0.7.1 (Daniel, 2026-10-22: text "a bit too long" in coming): each preset is shorter, Fast
     # 5 -> 3, Normal 7 -> 5, Relaxed 10 -> 8. A config without `stream_release` predates that:
     # keep the preset it was on, once. Custom values stay.

@@ -9,6 +9,19 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-22-20: The app keeps no audio; History is text only
+
+- **Decision:** The desktop setting `keep_audio` is removed, and audio that 0.7.0-0.7.2 kept in
+  `history-audio/` is deleted on the first start of 0.7.3 (the text stays). History keeps text,
+  the model version and the exact weights (`model_rev`). Supersedes the opt-in part of
+  D-2026-10-22-17 and D-2026-10-22-13; D-2026-10-22-17's small retry buffer for *failed* takes
+  (the last three, B-26) is unchanged.
+- **Why:** Daniel, 2026-10-22: he doesn't want audio kept, and "the app should not be retaining
+  audio, deliberately. It'll quickly eat up a lot of disk space." Mistranscriptions are tracked
+  from the text (his corrections and near-miss terms per model version) instead.
+- **Alternatives:** keep the opt-in setting off by default (rejected: deliberately not offered).
+- **By:** Daniel, 2026-10-22. Request R-2026-10-22-44; backlog B-26, B-37.
+
 ### D-2026-10-22-19: Insert as you go follows pauses, and is quicker by default
 
 - **Decision:** On desktop, a pause of 1 s or more inserts what was said at once, whatever the

@@ -423,9 +423,9 @@ class Controller(QObject):
         return d
 
     def remember(self, text, samples=None, source="dictate", seconds=None):
-        """Add a transcript to the history (when `keep_history`), with its audio when
-        `keep_audio`. The File tab calls this too, with source="file" and no samples (the file
-        itself is the audio)."""
+        """Add a transcript to the history (when `keep_history`): text only, never audio (0.7.3,
+        D-2026-10-22-20); samples only give the take's length. The File tab calls this too, with
+        source="file" and no samples."""
         if not self.cfg["keep_history"] or not text.strip():
             return
         cur = model_store.active()
@@ -434,7 +434,6 @@ class Controller(QObject):
             seconds = len(samples) / audio.SAMPLE_RATE
         try:
             self.history.add(text, seconds=seconds, model=model, source=source,
-                             samples=samples if self.cfg["keep_audio"] else None,
                              model_rev=cur[1].revision if cur else None, decode=self._decode_info(source))
         except Exception:
             log.exception("couldn't save the transcript to history")

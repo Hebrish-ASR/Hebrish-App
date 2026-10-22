@@ -1,7 +1,7 @@
-**0.7.2: ALL CAPS, and a polish pass.**
+**0.7.3: History is text only, exports to CSV, and records the exact model.**
 
-- **ALL CAPS** (Settings → Dictation): everything you dictate is pasted in capitals. Just for fun. History keeps the normal case.
-- The Models tab no longer calls Shakshuka the pick for dictation: Sabich is the default, Shakshuka an option for words while you talk.
-- Settings fits the window (no sideways scrolling); long explanations moved into tooltips.
-- Smaller fixes: the notice after a silent take points to the right tab, the microphone line reads "… (system default)", the level meter's CLIP lamp fits its label, a darker hover colour on blue buttons, settings files are always saved as UTF-8 (Windows), and start at login works from a folder with a space in its name.
+- **No audio is kept.** The "keep the audio of each take" setting is gone, and audio that earlier versions saved is deleted on the first start. Your transcripts stay.
+- **Export to CSV** (History → Export…): timestamp, transcription and model version for every transcript, for a spreadsheet or your own analysis. JSON Lines is still there.
+- Each transcript now records exactly which model weights produced it and how it was decoded, so mistakes can be traced to a model version.
+- Also in this release (0.7.2): ALL CAPS (Settings → Dictation), and a polish pass: Settings fits the window, clearer model descriptions, smaller fixes.
 - Ubuntu 26.04 .deb and a portable Windows zip. Not yet tested on Windows hardware. Downloads: [hebrish.app/download](https://hebrish.app/download).

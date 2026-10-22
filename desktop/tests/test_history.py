@@ -2,9 +2,7 @@
 
 import json
 import time
-import wave
 
-import numpy as np
 
 from hebrish.history import History, fts_query
 
@@ -49,15 +47,33 @@ def test_correction_keeps_original_once(tmp_path):
     assert h.search("shuk") and not h.search("shook")
 
 
-def test_audio_kept_and_deleted(tmp_path):
+def test_audio_left_by_older_versions_is_deleted(tmp_path):
+    # 0.7.3 (D-2026-10-22-20): no audio is kept; what 0.7.0-0.7.2 kept goes, the text stays
     h = make(tmp_path)
-    rid = h.add("hello", samples=np.zeros(16000, dtype=np.float32), seconds=1.0)
-    r = h.recent()[0]
-    f = h.audio_dir / r["audio"]
-    with wave.open(str(f)) as w:
-        assert (w.getframerate(), w.getnchannels(), w.getnframes()) == (16000, 1, 16000)
-    h.delete(rid)
-    assert not f.exists() and h.count() == 0
+    rid = h.add("hello", seconds=1.0)
+    h.audio_dir.mkdir()
+    (h.audio_dir / "x.wav").write_bytes(b"RIFF")
+    with h.db:
+        h.db.execute("UPDATE dictations SET audio = 'x.wav' WHERE id = ?", (rid,))
+    h.close()
+    h = make(tmp_path)
+    assert not h.audio_dir.exists()
+    assert [(r["text"], r["audio"]) for r in h.recent()] == [("hello", None)]
+
+
+def test_export_csv(tmp_path):
+    import csv
+    h = make(tmp_path)
+    h.add("Shalom, \"quoted\", and a comma", model="sabich Sabich v2.0", model_rev="e" * 40, at=1_000_000)
+    rid = h.add("second", at=1_000_100)
+    h.update_text(rid, "second take")
+    p = tmp_path / "h.csv"
+    assert h.export_csv(p) == 2
+    rows = list(csv.DictReader(open(p, encoding="utf-8-sig", newline="")))
+    assert list(rows[0]) == list(h.CSV_COLUMNS)
+    assert rows[0]["text"] == 'Shalom, "quoted", and a comma' and rows[0]["model_rev"] == "e" * 40
+    assert rows[1]["text"] == "second take" and rows[1]["original"] == "second"
+    assert rows[0]["timestamp"].startswith("1970-01-1")
 
 
 def test_import_json_once_and_clear(tmp_path):

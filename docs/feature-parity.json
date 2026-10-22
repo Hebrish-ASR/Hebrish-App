@@ -466,7 +466,7 @@
     "evidence": "desktop/hebrish/history.py; ui/window.py _history_page",
     "verified": false
    },
-   "notes": "Optional audio per take (keep_audio)."
+   "notes": "Text only: 0.7.3 removed keep_audio and deletes audio older versions kept (D-2026-10-22-20). Export to CSV or JSON Lines; each row records the exact weights (model_rev) from 0.7.3."
   },
   {
    "id": "text-box-clears-per-take",

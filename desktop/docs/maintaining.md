@@ -573,6 +573,15 @@ clipboard silently dropping a piece.
 
 ## Dictation history: SQLite, search, word counts (0.7.0, 2026-10-22)
 
+**Text only, CSV export (0.7.3, 2026-10-22, D-2026-10-22-20, B-37):** `keep_audio` and its
+Settings checkbox are gone (`config.upgrade` drops the key); `History.__init__` deletes any
+`history-audio/` left by 0.7.0-0.7.2 and sets those rows' `audio` to NULL (`drop_audio`). The
+`audio` column stays, always NULL, so the schema needn't change again. History → Export… offers
+CSV (`History.export_csv`, columns `History.CSV_COLUMNS`: local ISO timestamp, text as corrected,
+model label, model_rev, the model's original text when corrected, seconds, words, source, uid;
+UTF-8 with a BOM for spreadsheets) next to JSON Lines (every column). Tests:
+`tests/test_history.py::test_audio_left_by_older_versions_is_deleted`, `::test_export_csv`.
+
 **Schema 2 (0.7.3, 2026-10-22, R-2026-10-22-43, B-36):** each row also records `model_rev`, the exact
 weights (the active version's manifest `revision`, the Hugging Face commit its files came from), and
 `decode`, a JSON object: `app` version, `engine`, `device`, `threads`, `vad`, `all_caps`, and for

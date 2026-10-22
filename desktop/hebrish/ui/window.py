@@ -512,16 +512,19 @@ class MainWindow(QMainWindow):
         n = self.ctl.history.count()
         if n and QMessageBox.question(
                 self, "Clear history", f"Delete all {n:,} transcript{'s' if n > 1 else ''}"
-                f"{' and their audio' if self.ctl.history.audio_dir.is_dir() else ''}? This can't be undone."
+                "? This can't be undone."
         ) == QMessageBox.Yes:
             self.ctl.clear_history()
 
     def _export_history(self):
-        name = time.strftime("hebrish-history-%Y-%m-%d.jsonl")
-        path, _ = QFileDialog.getSaveFileName(self, "Export history", str(Path.home() / name),
-                                              "JSON Lines (*.jsonl);;All files (*)")
+        """CSV (0.7.3: timestamp, transcription, model version and exact weights, for a
+        spreadsheet or your own analysis) or JSON Lines (every column)."""
+        name = time.strftime("hebrish-history-%Y-%m-%d.csv")
+        path, chosen = QFileDialog.getSaveFileName(self, "Export history", str(Path.home() / name),
+                                                   "CSV (*.csv);;JSON Lines (*.jsonl);;All files (*)")
         if path:
-            n = self.ctl.history.export_jsonl(Path(path))
+            jsonl = path.endswith(".jsonl") or (chosen.startswith("JSON") and not path.endswith(".csv"))
+            n = (self.ctl.history.export_jsonl if jsonl else self.ctl.history.export_csv)(Path(path))
             self.status(f"Exported {n:,} transcripts to {path}")
 
     def _edit_entry(self, h):
@@ -628,8 +631,7 @@ class MainWindow(QMainWindow):
         self.hist_box.addStretch(1)
         self.btn_clear.setEnabled(bool(total))
         self._show_stats()
-        audio_note = (f" Audio: {hist.audio_dir}." if self.cfg["keep_audio"] or hist.audio_dir.is_dir() else "")
-        self.hist_where.setText(f"{hist.path} ({human_size(hist.size_bytes())}).{audio_note} "
+        self.hist_where.setText(f"{hist.path} ({human_size(hist.size_bytes())}). Text only, no audio. "
                                 "Nothing leaves this computer.")
 
     def _do_pulse(self):
@@ -1015,9 +1017,6 @@ class MainWindow(QMainWindow):
         b.addWidget(self._check("clear_each_take", "Start the Dictate tab's text box empty for each "
                                                    "take (earlier takes are in History)"))
         b.addWidget(self._check("keep_history", "Keep a history of every transcript (History tab)", self._on_history_setting))
-        b.addWidget(self._check("keep_audio", "Keep the audio of each take too (about 2 MB a minute)",
-                                self.show_history))
-        b.addWidget(muted("With the audio kept, corrected transcripts can become training data."))
         lay.addWidget(box)
 
         box, b = card("Action keys")
