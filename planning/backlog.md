@@ -21,6 +21,11 @@ it makes no sense there. Agents add to sprints with the `queue-sprint` skill.
 | B-16 | **Semantic search.** Find dictations by meaning, not only by words. Design: a small multilingual text-embedding model, downloaded on demand like the speech models (catalogue + CDN); vectors stored in `history.db`, computed in the background; results ranked by a mix of meaning and keyword match. Needs onnxruntime (Python) and a tokenizer in the .deb and the Windows zip. R-2026-10-22-15 | planned |
 | B-17 | **Back up history to Google Drive.** Opt-in: sign in with Google (desktop OAuth, `drive.file` scope, so the app sees only its own files), then upload a consistent snapshot of `history.db` (SQLite backup API) and the kept audio to a Hebrish folder, on a schedule and on demand, with restore. Needs a Google Cloud OAuth client for Hebrish. R-2026-10-22-18 | planned |
 | B-18 | **Accounts, invite-only.** An optional Hebrish account (sign-in via hebrish.app), allowed only for invited addresses; at first the list holds only Daniel. Without an account nothing changes. The account is the anchor for later cross-device sync (I-7). All platforms; needs a small server side on hebrish.app. R-2026-10-22-20; D-2026-10-22-14 | planned |
+| B-22 | **Shortcut settings, basic and advanced.** Basic: a laptop-friendly preset (Enter / Escape style). Advanced: every action (start/stop tap-tap, push-to-talk, cancel, retake, eject, escape) can be bound to any key, F13 and up included, so a macro pad or a USB HID button can drive it. No action hard-wired to Escape. R-2026-10-22-23; D-2026-10-22-16 | planned |
+| B-23 | **Output mode from the tray and a shortcut.** The output-mode setting (clipboard + type, clipboard only, type only) gets a tray-menu entry and bindable shortcuts to switch or cycle it, with a notification of the new mode. R-2026-10-22-24; D-2026-10-22-15 | planned |
+| B-24 | **"Download models" setup.** First run and the model screen offer models to download rather than one to choose: a streaming model (Shakshuka) for dictation and a non-streaming one (Sabich) for recordings, with recommendations for the computer's hardware (see I-5). R-2026-10-22-26 | planned |
+| B-25 | **Long-form mode.** A text-editor-like module for long dictation: record up to ~90 minutes (chunked, each chunk saved to disk as it is captured, VAD and downsampling during capture) or pick a file; transcribe with the non-streaming model; autosave at once; then tidy and save. Builds on the Transcribe tab and History. R-2026-10-22-27 | planned |
+| B-26 | **Retention.** Audio of a take whose transcription failed is kept for retry (the last three); otherwise audio is kept only with `keep_audio` on. Settings to truncate the history (by age or count; default stays unlimited, D-2026-10-22-13). R-2026-10-22-30; D-2026-10-22-17 | planned |
 | B-5 | **Release desktop 0.7.0** with the items above (B-16 to B-18 can move to the next release if 0.7.0 is otherwise ready) | planned |
 
 ## Sprint: Android
@@ -36,6 +41,8 @@ it makes no sense there. Agents add to sprints with the `queue-sprint` skill.
 | B-19 | **Dictation history on Android** (parity with B-14, B-15): keep every transcript (Room/SQLite with FTS), a History screen with search and word counts (today / 7 days / all time), Correct and Delete, export, and where it is stored. Check whether the Try screen's text box should also clear per take. R-2026-10-22-14, -16 | planned |
 | B-20 | **Google Drive backup on Android** (parity with B-17) | planned |
 | B-21 | **Accounts on Android** (parity with B-18): sign in to an invited account | planned |
+| B-27 | **One headset button.** Bind a single Bluetooth headset button (media button) to start and stop dictation, tap-tap. Test with a Yealink headset. R-2026-10-22-33; D-2026-10-22-16 | planned |
+| B-28 | **Retention on Android** (parity with B-26): keep only failed takes' audio for retry; history truncation settings, with B-19. R-2026-10-22-30 | planned |
 
 ## Ideas for future versions
 
@@ -50,3 +57,9 @@ Worth doing, not scheduled. Ordered roughly by value.
 | I-5 | **A model per mode.** Dictation uses Shakshuka (streaming) while the Transcribe tab uses Sabich for recordings, each chosen separately, so neither mode needs a switch. Costs a second loaded model (~1.5 GB RAM) or a reload when changing tab. R-2026-10-22-12 | Desktop | idea |
 | I-6 | **Fewer models.** Narrow the catalogue to a few models the project stands behind, e.g. not both a Parakeet and a Qwen version of Sabich. Needs results on one test-set revision first. R-2026-10-22-12; D-2026-10-22-12 | All, and hebrish.app | idea |
 | I-7 | **Sync history across devices.** Your history follows your account across Android, Ubuntu and Windows (merging by each row's `uid`). Deferred until accounts (B-18) exist: it needs server storage and account creation. R-2026-10-22-19; D-2026-10-22-14 | All platforms | idea |
+| I-8 | **Clipboard race guard.** If the clipboard changed while a take was being transcribed, don't overwrite it: keep the text in History and notify ("transcription held back"). R-2026-10-22-25 | Desktop | idea |
+| I-9 | **Long form to Google Docs.** Name a long-form transcription and create a Google Doc from it. R-2026-10-22-28 | Desktop | idea |
+| I-10 | **Long form on Android** (parity with B-25). First check that chunked local storage works without the all-files permission (a Google Play blocker). R-2026-10-22-27, -35 | Android | idea |
+| I-11 | **VAD toggle.** Whether voice activity detection should be a user toggle on desktop, and whether Android can have it; speed of inference comes first. R-2026-10-22-29 | All platforms | idea |
+| I-12 | **Report a word.** Send a misrecognized word (and a note) from the app; reports become a corrections dataset that feeds the training recordings. Needs a small server side on hebrish.app. R-2026-10-22-31 | All platforms | idea |
+| I-13 | **Personal dictionary.** Use Android's personal dictionary in inference (if the engine can take hints), offer one on desktop, and sync it with accounts (B-18, I-7). R-2026-10-22-32 | All platforms | idea |

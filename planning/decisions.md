@@ -9,6 +9,44 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-22-17: Recordings are not kept, except failed takes for retry
+
+- **Decision:** Audio is deleted once its transcription succeeds. A take whose transcription
+  failed keeps its audio for retry (the last three). Keeping all audio stays opt-in
+  (`keep_audio`, off, D-2026-10-22-13). History gets truncation settings; the default stays
+  unlimited.
+- **Why:** Daniel's strong preference: voice recordings sitting around take space and make him
+  uncomfortable; the only reason to keep one is not to lose words.
+- **Alternatives:** Keep audio by default (rejected in D-2026-10-22-13 too).
+- **By:** Daniel, voice note 2026-10-22 (59:26). Request R-2026-10-22-30; backlog B-26, B-28.
+
+### D-2026-10-22-16: Every shortcut is remappable; Android starts with one button, tap-tap
+
+- **Decision:** Desktop shortcuts come in two levels: a basic laptop preset (Enter / Escape
+  style) and advanced binding where every action, the escape action included, can be bound to any
+  key (F13 and up too). On Android the first button support is a single headset button that
+  starts and stops (tap-tap).
+- **Why:** A system-wide dictation tool collides with global shortcuts unless every key is
+  movable; a macro pad or a USB HID button sending F13 avoids conflicts altogether. Daniel uses
+  about six actions (start/stop, push-to-talk, cancel, retake, eject, escape), more than a foot
+  pedal has. Holding a button on an earphone is awkward, so tap-tap.
+- **Alternatives:** Fixed keys with a few options (rejected: conflicts). Push-to-talk on the
+  headset (rejected: holding the button).
+- **By:** Daniel, voice note 2026-10-22 (41:04, 43:34); remapping the escape action was Claude's
+  suggestion, accepted. Requests R-2026-10-22-23, -33; backlog B-22, B-27.
+
+### D-2026-10-22-15: All three output modes stay; the toggle moves to the tray and a shortcut
+
+- **Decision:** Desktop keeps three output modes: clipboard + type (default), clipboard only,
+  type only. The mode can be changed from the tray menu and with bindable shortcuts.
+- **Why:** In the voice note Daniel first called "always use the clipboard" and then retracted
+  it: with History as a fallback, a clipboard-free mode is useful when the transcription would
+  overwrite something just copied. His typed correction the same day: the toggle exists but is
+  hard to reach, so put it in the tray and on a shortcut.
+- **Alternatives:** Clipboard always as a backup, no modes (retracted in the same note).
+- **By:** Daniel, voice note 2026-10-22 (56:00) and typed correction. Request R-2026-10-22-24;
+  backlog B-23.
+
 ### D-2026-10-22-14: Accounts are invite-only, starting with the maintainer; cross-device sync waits
 
 - **Decision:** Hebrish gets accounts as a construct now (B-18), optional and invite-only: an
