@@ -6,6 +6,7 @@ credited), or an issue link. Outcome links the backlog item, or says why not.
 
 | Id | Date | From | Platforms | Request | Outcome |
 | --- | --- | --- | --- | --- | --- |
+| R-2026-10-22-43 | 2026-10-22 | Daniel | All | Record the exact model weights in each History row, and push his own history to a private dataset, to see across versions which words are mistranscribed and prioritise them in the training data | [B-36](backlog.md#sprint-desktop-ubuntu--windows-toward-070); the pushing and mining live in Daniel's private tooling |
 | R-2026-10-22-42 | 2026-10-22 | Daniel | Desktop | GPU acceleration on AMD (his desktop: ROCm). "A variant optimized for throughput", any base model, integrated into the Ubuntu app; "much higher priority than figuring out which is best on the laptop" | [B-35](backlog.md#sprint-desktop-ubuntu--windows-toward-070) |
 | R-2026-10-22-41 | 2026-10-22 | Daniel | All | A quick UI polish and code-quality review across the apps, shipped with ALL CAPS as one coordinated release | desktop 0.7.2, Android 0.7.5 |
 | R-2026-10-22-40 | 2026-10-22 | Daniel | All | An ALL CAPS mode: a text transformation that outputs everything in capitals, on desktop and Android. "Just for fun" | [B-34](backlog.md#sprint-desktop-ubuntu--windows-toward-070) |

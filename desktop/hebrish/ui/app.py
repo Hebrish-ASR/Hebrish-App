@@ -410,6 +410,18 @@ class Controller(QObject):
         if self.reload_pending:
             self.load_model()
 
+    def _decode_info(self, source: str) -> dict:
+        """What produced a transcript, for History's `decode` column (schema 2, 0.7.3): enough to
+        tell two takes of the same weights apart when the app's cut and release rules change."""
+        m = model_store.current()
+        d = {"app": __version__, "engine": m.engine if m else "", "device": getattr(self.engine, "device", "CPU"),
+             "threads": self.engine.threads, "vad": self.cfg["vad"], "all_caps": self.cfg["all_caps"]}
+        if source == "dictate":
+            d["live_insert_s"] = self.cfg["live_insert_s"]
+            if self.engine.streaming:
+                d["stream_release"] = self.cfg["stream_release"]
+        return d
+
     def remember(self, text, samples=None, source="dictate", seconds=None):
         """Add a transcript to the history (when `keep_history`), with its audio when
         `keep_audio`. The File tab calls this too, with source="file" and no samples (the file
@@ -422,7 +434,8 @@ class Controller(QObject):
             seconds = len(samples) / audio.SAMPLE_RATE
         try:
             self.history.add(text, seconds=seconds, model=model, source=source,
-                             samples=samples if self.cfg["keep_audio"] else None)
+                             samples=samples if self.cfg["keep_audio"] else None,
+                             model_rev=cur[1].revision if cur else None, decode=self._decode_info(source))
         except Exception:
             log.exception("couldn't save the transcript to history")
             return

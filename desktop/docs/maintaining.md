@@ -573,6 +573,17 @@ clipboard silently dropping a piece.
 
 ## Dictation history: SQLite, search, word counts (0.7.0, 2026-10-22)
 
+**Schema 2 (0.7.3, 2026-10-22, R-2026-10-22-43, B-36):** each row also records `model_rev`, the exact
+weights (the active version's manifest `revision`, the Hugging Face commit its files came from), and
+`decode`, a JSON object: `app` version, `engine`, `device`, `threads`, `vad`, `all_caps`, and for
+dictation `live_insert_s` and (streaming) `stream_release`. Daniel wants to see, as model versions
+iterate, which words keep being mistranscribed; the label alone ("sabich Sabich v2.0") can't tell two
+builds of one version apart, and the app's cut and release rules change between app versions.
+`History._migrate` adds both columns to a schema-1 database once (`ALTER TABLE`; older rows stay
+NULL). History export includes them. Consumer: Daniel's private `dictation-history-dataset` skill
+(`mine_history.py versions`). Tests: `tests/test_history.py::test_rows_record_the_exact_weights_and_decode`,
+`::test_schema_1_database_gains_the_columns_once`.
+
 Daniel, 2026-10-22 (D-2026-10-22-13, R-2026-10-22-13/14/15): the Dictate tab's text box collected
 every take into one blob; history was the last 50 transcripts in `history.json`, off by default.
 Now:

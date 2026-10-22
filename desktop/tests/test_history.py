@@ -75,3 +75,37 @@ def test_import_json_once_and_clear(tmp_path):
 def test_device_id_is_stable(tmp_path):
     d = make(tmp_path).device
     assert d and make(tmp_path).device == d
+
+
+def test_rows_record_the_exact_weights_and_decode(tmp_path):
+    # schema 2 (0.7.3): model_rev + decode JSON, exported with each row
+    h = History(tmp_path / "h.db")
+    h.add("Shalom", model="sabich Sabich v2.0", model_rev="eebf26d8c3f9" + "0" * 28,
+          decode={"app": "0.7.3", "engine": "sherpa_offline_transducer", "live_insert_s": 5})
+    h.add("No metadata")
+    out = tmp_path / "x.jsonl"
+    h.export_jsonl(out)
+    rows = {r["text"]: r for r in map(json.loads, out.read_text().splitlines())}
+    assert rows["Shalom"]["model_rev"].startswith("eebf26d8c3f9")
+    assert json.loads(rows["Shalom"]["decode"])["live_insert_s"] == 5
+    assert rows["No metadata"]["model_rev"] is None and rows["No metadata"]["decode"] is None
+
+
+def test_schema_1_database_gains_the_columns_once(tmp_path):
+    import sqlite3
+    p = tmp_path / "old.db"
+    db = sqlite3.connect(p)            # a 0.7.0-0.7.2 database: schema 1, no model_rev/decode
+    db.executescript("""CREATE TABLE dictations (id INTEGER PRIMARY KEY, uid TEXT NOT NULL UNIQUE,
+        at REAL NOT NULL, text TEXT NOT NULL, words INTEGER NOT NULL, seconds REAL,
+        model TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT 'dictate', audio TEXT, original TEXT);
+        CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        INSERT INTO meta VALUES ('schema', '1'), ('device', 'abc');
+        INSERT INTO dictations(uid, at, text, words, model) VALUES ('u1', 1, 'old take', 2, 'sabich Sabich v2.0');""")
+    db.commit()
+    db.close()
+    h = History(p)
+    assert h.meta("schema") == "2" and h.device == "abc"
+    h.add("new take", model_rev="r" * 40, decode={"app": "0.7.3"})
+    rows = [dict(r) for r in h.db.execute("SELECT text, model_rev FROM dictations ORDER BY id")]
+    assert rows == [{"text": "old take", "model_rev": None}, {"text": "new take", "model_rev": "r" * 40}]
+    History(p)                           # opening again changes nothing

@@ -24,7 +24,7 @@ from pathlib import Path
 
 import numpy as np
 
-SCHEMA = 1
+SCHEMA = 2      # 2 (0.7.3): model_rev and decode, so mistakes can be traced to exact weights
 SAMPLE_RATE = 16000
 
 _DDL = """
@@ -38,7 +38,9 @@ CREATE TABLE IF NOT EXISTS dictations (
     model   TEXT NOT NULL DEFAULT '',   -- catalogue id and version, e.g. "shakshuka v1.0"
     source  TEXT NOT NULL DEFAULT 'dictate',   -- dictate | file | import
     audio   TEXT,                       -- file name in history-audio/, or NULL
-    original TEXT                       -- the model's text, set when the user first edits it
+    original TEXT,                      -- the model's text, set when the user first edits it
+    model_rev TEXT,                     -- exact weights: the model version's commit (manifest revision); NULL before schema 2
+    decode  TEXT                        -- JSON: app version, engine, device and the decode settings in force
 );
 CREATE INDEX IF NOT EXISTS dictations_at ON dictations(at);
 CREATE VIRTUAL TABLE IF NOT EXISTS dictations_fts USING fts5(
@@ -89,6 +91,17 @@ class History:
             self.set_meta("schema", str(SCHEMA))
             self.set_meta("device", uuid.uuid4().hex)
             self.set_meta("created", str(time.time()))
+            return
+        if int(cur) < 2:
+            # 0.7.3 (Daniel, 2026-10-22): record the exact weights and decode settings per row, so
+            # a word the model gets wrong can be tied to a model version as versions iterate.
+            # Older rows keep NULL: their `model` label is all that is known.
+            cols = {r[1] for r in self.db.execute("PRAGMA table_info(dictations)")}
+            with self.db:
+                for col in ("model_rev", "decode"):
+                    if col not in cols:
+                        self.db.execute(f"ALTER TABLE dictations ADD COLUMN {col} TEXT")
+            self.set_meta("schema", "2")
 
     def meta(self, key):
         r = self.db.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
@@ -104,7 +117,8 @@ class History:
 
     # -- writing ----------------------------------------------------------------------
     def add(self, text: str, *, seconds: float | None = None, model: str = "",
-            source: str = "dictate", samples: np.ndarray | None = None, at: float | None = None) -> int:
+            source: str = "dictate", samples: np.ndarray | None = None, at: float | None = None,
+            model_rev: str | None = None, decode: dict | None = None) -> int:
         text = text.strip()
         if not text:
             return 0
@@ -112,9 +126,10 @@ class History:
         name = self._save_audio(uid, samples) if samples is not None and len(samples) else None
         with self.db:
             cur = self.db.execute(
-                "INSERT INTO dictations(uid, at, text, words, seconds, model, source, audio) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (uid, at or time.time(), text, count_words(text), seconds, model, source, name))
+                "INSERT INTO dictations(uid, at, text, words, seconds, model, source, audio, model_rev, decode) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (uid, at or time.time(), text, count_words(text), seconds, model, source, name,
+                 model_rev or None, json.dumps(decode, sort_keys=True) if decode else None))
         return cur.lastrowid
 
     def _save_audio(self, uid: str, samples: np.ndarray) -> str:
