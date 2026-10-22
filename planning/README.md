@@ -11,6 +11,7 @@ what is being worked on next, and why things were decided the way they were.
 | [requests.md](requests.md) | Feature requests received, from users and from Daniel, with where each one went |
 | [backlog.md](backlog.md) | The working list: one sprint per platform (desktop, Android), and ideas for future versions |
 | [decisions.md](decisions.md) | The decision log, newest first |
+| [voice-notes/](voice-notes/README.md) | Daniel's spoken ideas and updates (audio and transcript), the source of many requests. New ones go in `voice-notes/inbox/` |
 
 ## How to use it
 
