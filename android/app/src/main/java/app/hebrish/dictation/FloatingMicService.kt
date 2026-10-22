@@ -65,6 +65,13 @@ import android.widget.Toast
  * was hit by every attempt to grab and drag the mic, so turning the floating mic off in settings
  * is the only way to hide it (Daniel, 2026-10-22).
  *
+ * Minimise (0.7.7): double-tap the idle mic and it shrinks to a dot a third of its size, at the
+ * same spot and at idle opacity, for when it is in the way of what you are writing. Tap the dot
+ * (or double-tap it) to bring it back. It never goes away: a take started from a remote, or a
+ * held transcript, shows the full mic and bar until it is done, then the dot again. The cost is that a single tap on the idle mic now waits
+ * for the double-tap timeout (~300 ms) before it starts a take; Stop during a take is immediate.
+ * Daniel, 2026-10-23: "just make it a bit small, get out of the way".
+ *
  * Same engine and process as the voice keyboard, so both share one loaded model. Recording needs
  * no foreground service: see docs/maintaining.md, "Floating mic".
  *
@@ -115,6 +122,13 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private var swallowUp = KeyEvent.KEYCODE_UNKNOWN
     /** Until this uptime the bar shows the retake flash (amber, "New take") instead of the timer. */
     private var flashUntil = 0L
+    /** A single tap on the idle mic, waiting to see if a second tap makes it a double-tap. */
+    private val singleTap = Runnable { singleTapPending = false; onTap() }
+    private var singleTapPending = false
+    /** Whether [place] last laid the mic out as the dot; render() re-places when that changes. */
+    private var placedMini = false
+    /** Until this uptime mic taps are ignored: the second tap of a double-tap that restored the dot. */
+    private var ignoreTapsUntil = 0L
     /** While recording the mic's colour breathes, so a take in progress is obvious at a glance. */
     private val pulse = ValueAnimator.ofInt(255, 120).apply {
         duration = 700
@@ -273,7 +287,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             background = micBg
             elevation = dp(6).toFloat()
             contentDescription = getString(R.string.cd_mic)
-            setOnTouchListener(Drag(::onTap, ::onLongPress))
+            setOnTouchListener(Drag(::onMicTap, ::onLongPress))
         }
         timer = TextView(themed).apply {
             setTextColor(getColor(R.color.ime_text))
@@ -345,6 +359,15 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         render()
     }
 
+    /** True while the mic is shown as the small dot: minimised, idle and holding nothing. */
+    private fun mini() = Prefs.bubbleMinimised(this) && state == State.IDLE && pending == null
+
+    /** Diameter of the mic in px: the set size, or the dot's when minimised. */
+    private fun micSize(): Int {
+        val full = Prefs.bubbleSize(this)
+        return dp(if (mini()) maxOf(full / Prefs.MINI_DIVISOR, Prefs.MINI_MIN) else full)
+    }
+
     /** Left edge of the mic in px, from Prefs: parked on an edge (with the edge gap) or free. */
     private fun micLeft(size: Int): Int {
         val w = resources.displayMetrics.widthPixels
@@ -362,7 +385,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
      */
     private fun place(attached: Boolean = true) {
         val r = root ?: return
-        val size = dp(Prefs.bubbleSize(this))
+        placedMini = mini()
+        val size = micSize()
         val w = resources.displayMetrics.widthPixels
         val pad = dp(PAD_DP)
         val x = micLeft(size)
@@ -391,7 +415,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
      * listener snaps it there). Free: the exact spot.
      */
     private fun savePosition() {
-        val size = dp(Prefs.bubbleSize(this))
+        val size = micSize()
         val m = resources.displayMetrics
         val pad = dp(PAD_DP)
         val anchoredLeft = params.gravity and Gravity.HORIZONTAL_GRAVITY_MASK == Gravity.LEFT
@@ -465,6 +489,39 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             }
             return true
         }
+    }
+
+    /**
+     * A tap on the mic. Minimised: bring it back. Idle: wait [ViewConfiguration.getDoubleTapTimeout]
+     * for a second tap, which minimises it; no second tap starts a take. Otherwise (Stop, a held
+     * transcript) at once.
+     */
+    private fun onMicTap() {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (now < ignoreTapsUntil) return
+        when {
+            mini() -> {
+                ignoreTapsUntil = now + ViewConfiguration.getDoubleTapTimeout()
+                setMinimised(false)
+            }
+            state != State.IDLE || pending != null -> onTap()
+            singleTapPending -> {
+                main.removeCallbacks(singleTap)
+                singleTapPending = false
+                setMinimised(true)
+            }
+            else -> {
+                singleTapPending = true
+                main.postDelayed(singleTap, ViewConfiguration.getDoubleTapTimeout().toLong())
+            }
+        }
+    }
+
+    /** The bubble_ prefs listener re-places and re-renders it at the new size. */
+    private fun setMinimised(v: Boolean) {
+        if (Prefs.bubbleMinimised(this) == v) return
+        mic.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        Prefs.setBubbleMinimised(this, v)
     }
 
     private fun hasMic() = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
@@ -765,6 +822,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     private fun render() {
         val r = root ?: return
+        // A take or a held transcript shows the full mic and bar; the dot comes back after.
+        if (mini() != placedMini) place()
         val waiting = pending != null && state == State.IDLE
         val wanted = !Prefs.bubbleOnlyTyping(this) || editableFocused || stuck
         val show = wanted || state != State.IDLE || waiting

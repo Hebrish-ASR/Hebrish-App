@@ -642,6 +642,34 @@ missing characters restored as line breaks. Not covered: an app that trims the t
 no cursor (-1); that still appends at the end with a space. Investigation:
 `docs/debug-log/2026-10-23-overlay-eats-line-break.md`.
 
+## Floating mic: double-tap to minimise (0.8.0, 2026-10-23)
+
+Daniel, 2026-10-23: the overlay should stay on all the time, but sometimes it is in the way of an
+email being written; dragging it off-screen loses it, and a snooze/timer means it is gone when
+wanted. Asked for a gesture that makes it "simmer down" into an unobtrusive state and a gesture to
+bring it back.
+
+- **Double-tap the idle mic** → it shrinks to a dot, `bubbleSize / Prefs.MINI_DIVISOR` (3), at
+  least `Prefs.MINI_MIN` (16 dp), at the same spot, idle opacity, haptic tick. **Tap the dot**
+  (single or double) → full size again. Taps for one double-tap timeout after restoring are
+  ignored, so the second tap of a double-tap doesn't queue a take. Long-press and drag work on the
+  dot as on the mic.
+- Double-tap rather than long-press: long-press on the idle mic already re-inserts the last
+  transcript (0.3.0), and a × was rejected in 0.7.4 because it was hit when grabbing the mic.
+- State: `Prefs.bubbleMinimised` (`bubble_minimised`, kept across restarts; the `bubble_` prefix
+  makes the service re-place itself). Not a setting on any screen. `mini()` is minimised **and**
+  idle **and** no held transcript: a take from a remote/key, or a held transcript, shows the full
+  mic and bar, then the dot comes back. `render()` calls `place()` when `mini()` changes
+  (`placedMini`); `place()`/`savePosition()` use `micSize()`, the dot's diameter when minimised.
+- **Trade-off (accepted by asking for a tap pattern):** a single tap on the idle, full-size mic now
+  waits `ViewConfiguration.getDoubleTapTimeout()` (300 ms default) before it starts a take, to tell
+  it from a double-tap (`onMicTap`, `singleTap`). Stop during a take, Insert, and remote/key
+  actions are immediate. If the start delay is noticed, the alternative is to minimise on a
+  different gesture (e.g. a swipe towards the edge).
+- Compiled, not run on a device (I). To verify: double-tap speed on a phone, the dot's position on
+  each edge and with "free", y drift between dot and full size (the saved height is a fraction of
+  `screen − size`, so it shifts by up to ~two thirds of the size), dragging the dot.
+
 ## Not yet verified (as of 2026-10-20)
 
 - Channels / targetSdk 36 on a device: the disclosure (decline leaves settings closed, accept

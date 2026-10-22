@@ -123,6 +123,16 @@ object Prefs {
     fun bubbleOnlyTyping(ctx: Context) = sp(ctx).getBoolean("bubble_only_typing", false)
     fun setBubbleOnlyTyping(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("bubble_only_typing", v).apply()
 
+    /**
+     * The floating mic is minimised (0.7.7): double-tap the idle mic to shrink it to a small dot
+     * ([MINI_DIVISOR] of its size), tap the dot to bring it back. Kept across restarts.
+     */
+    fun bubbleMinimised(ctx: Context) = sp(ctx).getBoolean("bubble_minimised", false)
+    fun setBubbleMinimised(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("bubble_minimised", v).apply()
+    const val MINI_DIVISOR = 3
+    /** Smallest the minimised dot gets, in dp, so it can still be found and hit. */
+    const val MINI_MIN = 16
+
     fun listen(ctx: Context, l: SharedPreferences.OnSharedPreferenceChangeListener) = sp(ctx).registerOnSharedPreferenceChangeListener(l)
     fun unlisten(ctx: Context, l: SharedPreferences.OnSharedPreferenceChangeListener) = sp(ctx).unregisterOnSharedPreferenceChangeListener(l)
 }
