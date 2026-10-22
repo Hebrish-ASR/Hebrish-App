@@ -4,9 +4,9 @@
   "catalogue_v2_url": "https://raw.githubusercontent.com/Hebrish-ASR/Hebrish-App/main/shared/catalogue.json",
   "recommended": "sabich",
  "recommended_by_platform": {
-  "_doc": "Desktop builds 0.7.0+ read this before `recommended` (Daniel, 2026-10-22: Shakshuka is the default for dictation on a computer; Sabich stays the default on Android and for transcribing recordings). Android and older desktop builds read only `recommended`.",
-  "linux": "shakshuka",
-  "windows": "shakshuka"
+  "_doc": "Desktop builds 0.7.0+ read this before `recommended`. 0.7.0 shipped with Shakshuka here (D-2026-10-22-12); Daniel reversed that the same day (D-2026-10-22-18): Parakeet (Sabich) dictates better, and Shakshuka stays a choice. Android and older desktop builds read only `recommended`.",
+  "linux": "sabich",
+  "windows": "sabich"
  },
   "version_file": "version.json",
   "sample_rate": 16000,
@@ -402,7 +402,7 @@
         "reason": "Shakshuka is the streaming line: the words appear while you are still talking.",
         "runner_up": "sabich",
         "runner_how": "if you can wait a moment after you stop speaking: the Hebrish apps",
-        "note": "Shakshuka streams in the Hebrish desktop app (0.7.0+, Ubuntu and Windows), where it is the default for dictation; not on Android yet."
+        "note": "Shakshuka streams in the Hebrish desktop app (0.7.0+, Ubuntu and Windows) as an option for dictation; Sabich is the default. Not on Android yet."
       },
       {
         "when": {

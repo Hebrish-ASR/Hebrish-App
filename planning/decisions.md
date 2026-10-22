@@ -9,6 +9,21 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-22-18: Parakeet (Sabich) is the desktop dictation default again
+
+- **Decision:** Supersedes the default in D-2026-10-22-12. On Linux and Windows the default model
+  is Sabich again. Installs that 0.7.0 moved to Shakshuka are moved back once. Shakshuka stays
+  in the catalogue as a choice and is still first in line for streaming work; it comes back as
+  the default once its live insertion works well.
+- **Why:** After using 0.7.0's Shakshuka dictation the same day, Daniel found it distracting:
+  words appeared two or three at a time, the screen flickered on each paste, and text held back
+  waiting for the next word did not come out during a pause. Parakeet "gave better performance
+  for the dictation use case".
+- **Alternatives:** Keep Shakshuka as the default and fix the release logic first (the
+  phrase-at-a-time release in B-32 is that fix, but it hasn't been tried in real dictation).
+  A model per mode (I-5): wanted, parked.
+- **By:** Daniel, 2026-10-22. Request R-2026-10-22-37; backlog B-32.
+
 ### D-2026-10-22-17: Recordings are not kept, except failed takes for retry
 
 - **Decision:** Audio is deleted once its transcription succeeds. A take whose transcription

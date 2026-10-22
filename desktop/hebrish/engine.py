@@ -170,23 +170,40 @@ def live_cut(x: np.ndarray, interval_s: float) -> int | None:
     return None
 
 
+# How much text one paste of a streaming take holds (config `stream_release`, 0.7.1). Daniel,
+# 2026-10-22: a paste every word or two "is very jarring", and each paste flickers the screen.
+# (boundary punctuation, pause s, longest hold s): release up to the last boundary mark; else
+# everything once the text has stopped growing for `pause` s (the speaker paused) or the oldest
+# held word is `hold` s old. "word" releases every whole word, as 0.7.0 did.
+STREAM_RELEASE = {
+    "word": None,
+    "phrase": (",;:.?!", 1.0, 4.0),
+    "sentence": (".?!", 1.5, 10.0),
+}
+
+
 class LiveStream:
     """One streaming take (Shakshuka): feed audio as it is recorded, get back the new text.
 
     Cache-aware streaming with greedy decoding only ever appends to its result, so text is
     inserted once and never revised (measured 2026-10-22 on two code-switched clips: no
-    update rewrote earlier text; research/streaming-revision). The result arrives in BPE
-    pieces ("ask Av", "i for"), so only text up to the last space is released while the take
-    runs; finish() releases the rest. Punctuation stays with its word ("Reminder," goes out
-    with the next word)."""
+    update rewrote earlier text; research/streaming-revision). Because it only appends, any
+    prefix of the result can be released: the next release continues it exactly, even
+    mid-word. The result arrives in BPE pieces ("ask Av", "i for"), so without a pause only
+    text up to the last space is released while the take runs; finish() releases the rest.
+    `release` (STREAM_RELEASE) holds words back so they go out a phrase or sentence at a time."""
 
-    def __init__(self, engine: "Engine"):
+    def __init__(self, engine: "Engine", release: str = "phrase"):
         self._engine = engine
         with engine._lock:
             self._s = engine._rec.create_stream()
         self.sent = ""
         self.audio_s = 0.0
         self.decode_s = 0.0
+        self._rule = STREAM_RELEASE.get(release, STREAM_RELEASE["phrase"])
+        self._text = ""          # the whole result so far
+        self._grew_at = 0.0      # when it last grew
+        self._held_at = None     # when the oldest unreleased text appeared
 
     def _decode(self, samples: np.ndarray, last: bool) -> str:
         eng = self._engine
@@ -206,18 +223,39 @@ class LiveStream:
         self.audio_s += len(samples) / SAMPLE_RATE
         return text
 
-    def _release(self, text: str, last: bool) -> str:
-        ready = text if last else text[: text.rfind(" ") + 1]
+    def _ready(self, text: str, last: bool, now: float) -> str:
+        """The prefix of text to have released by now."""
+        if text != self._text:
+            self._text, self._grew_at = text, now
+        if last:
+            return text
+        if self._held_at is None and text.strip() != self.sent.strip():
+            self._held_at = now
+        if self._rule is None:
+            return text[: text.rfind(" ") + 1]
+        marks, pause, hold = self._rule
+        if self._held_at is not None and (now - self._grew_at >= pause or now - self._held_at >= hold):
+            return text
+        cut = max(text.rfind(m + " ") for m in marks)
+        return text[: cut + 2] if cut >= 0 else ""
+
+    def _release(self, text: str, last: bool, now: float | None = None) -> str:
+        now = time.monotonic() if now is None else now
+        ready = self._ready(text, last, now)
+        if len(ready) <= len(self.sent):
+            return ""
         if not ready.startswith(self.sent):
             # Not seen with greedy decoding; if a runtime ever revises, keep what is on screen
             # and append nothing that would contradict it.
             log.warning("streaming result changed earlier text: %r -> %r", self.sent[-40:], ready[-40:])
             return ""
-        new, self.sent = ready[len(self.sent):], max(ready, self.sent, key=len)
+        new, self.sent = ready[len(self.sent):], ready
+        # What is still held started arriving about now.
+        self._held_at = None if text.strip() == self.sent.strip() else now
         return new
 
     def feed(self, samples: np.ndarray) -> str:
-        """Text completed since the last call (whole words, ending in a space), or ""."""
+        """Text released since the last call (STREAM_RELEASE), or ""."""
         return self._release(self._decode(samples, last=False), last=False)
 
     def finish(self, samples: np.ndarray) -> str:
@@ -275,11 +313,11 @@ class Engine:
         with self._lock:
             self._rec, self._dir, self.streaming = None, None, False
 
-    def live(self) -> LiveStream:
-        """A streaming take (only when self.streaming)."""
+    def live(self, release: str = "phrase") -> LiveStream:
+        """A streaming take (only when self.streaming); release: a STREAM_RELEASE key."""
         if self._rec is None:
             raise RuntimeError("Model not loaded")
-        return LiveStream(self)
+        return LiveStream(self, release)
 
     def _decode_piece(self, x: np.ndarray):
         """One piece, already padded: (text, tokens). Caller holds the lock."""

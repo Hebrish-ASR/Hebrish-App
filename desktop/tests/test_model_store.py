@@ -192,8 +192,8 @@ def test_no_pick_prefers_a_downloaded_model_then_recommended():
     state = ms.load_json(ms.STATE_PATH)
     state.pop("model", None)
     ms.save_json(ms.STATE_PATH, state)
-    assert ms.recommended_id() == "shakshuka"             # the desktop pick; Android's stays Sabich
-    assert ms.current_id() == "shakshuka"                 # nothing on disk: the recommended model
+    assert ms.recommended_id() == "sabich"                # desktop default again since 0.7.1 (D-2026-10-22-18)
+    assert ms.current_id() == "sabich"                    # nothing on disk: the recommended model
     install(ms.manifest_from_tree(ms.get_model("stock"), "s" * 40, STOCK_TREE, None))
     assert ms.current_id() == "stock"                     # a 0.5.x user on schema 1's default keeps it
 

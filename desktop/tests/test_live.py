@@ -110,7 +110,7 @@ def test_streaming_releases_whole_words_only():
     e = Engine()
     e._rec, e.streaming = _FakeRec(["Reminder", "Reminder, ask Av", "Reminder, ask Avi for",
                                     "Reminder, ask Avi for a dgima."]), True
-    ls, chunk = e.live(), np.zeros(SR // 2, np.float32)
+    ls, chunk = e.live("word"), np.zeros(SR // 2, np.float32)
     out = [ls.feed(chunk), ls.feed(chunk), ls.feed(chunk)]
     assert out == ["", "Reminder, ask ", "Avi "]
     out.append(ls.finish(chunk))
@@ -123,6 +123,57 @@ def test_streaming_never_rewrites_inserted_text():
     from hebrish.engine import Engine
     e = Engine()
     e._rec, e.streaming = _FakeRec(["Hi Ann ", "Hi, I'm confirming "]), True
-    ls, chunk = e.live(), np.zeros(SR // 2, np.float32)
+    ls, chunk = e.live("word"), np.zeros(SR // 2, np.float32)
     assert ls.feed(chunk) == "Hi Ann "
     assert ls.feed(chunk) == ""
+
+
+# -- streaming release (engine.STREAM_RELEASE, 0.7.1) --------------------------------------
+
+from hebrish.engine import LiveStream  # noqa: E402
+
+
+def _stream(release):
+    s = LiveStream.__new__(LiveStream)
+    s.sent, s._text, s._grew_at, s._held_at = "", "", 0.0, None
+    from hebrish.engine import STREAM_RELEASE
+    s._rule = STREAM_RELEASE[release]
+    return s
+
+
+def test_word_release_holds_the_last_word():
+    s = _stream("word")
+    assert s._release("Reminder, ask Av", False, now=0) == "Reminder, ask "
+    assert s._release("Reminder, ask Avi for", False, now=10) == "Avi "     # never at a pause
+
+
+def test_phrase_release_waits_for_punctuation():
+    s = _stream("phrase")
+    assert s._release("Reminder, ask", False, now=0) == "Reminder, "
+    assert s._release("Reminder, ask Avi", False, now=0.5) == ""
+
+
+def test_phrase_release_flushes_at_a_pause():
+    # Daniel, 2026-10-22: pausing for thought left the last words unsent
+    s = _stream("phrase")
+    assert s._release("I think we should", False, now=0) == ""
+    assert s._release("I think we should", False, now=0.6) == ""
+    assert s._release("I think we should", False, now=1.1) == "I think we should"
+    assert s._release("I think we should go", False, now=2) == ""
+    assert s._release("I think we should go", False, now=3.1) == " go"      # continues exactly
+
+
+def test_phrase_release_caps_the_hold():
+    s = _stream("phrase")
+    words = ""
+    out = []
+    for i in range(10):          # a new word every 0.5 s, no punctuation, no pause
+        words += f"w{i} "
+        out.append(s._release(words.strip(), False, now=i * 0.5))
+    assert "".join(out) and "".join(out) == words.strip()[: len("".join(out))]
+
+
+def test_finish_releases_the_rest():
+    s = _stream("sentence")
+    assert s._release("Hello there", False, now=0) == ""
+    assert s._release("Hello there friend.", True, now=0.2) == "Hello there friend."

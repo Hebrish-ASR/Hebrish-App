@@ -49,7 +49,8 @@ def icon(name: str) -> QIcon:
 
 
 # State flag: the one-time move of pre-0.7.0 installs to the desktop default (Shakshuka).
-STREAMING_DEFAULT_FLAG = "streaming_default_0_7"
+STREAMING_DEFAULT_FLAG = "streaming_default_0_7"   # set by 0.7.0 once it moved dictation to Shakshuka
+PARAKEET_DEFAULT_FLAG = "parakeet_default_0_7_1"   # 0.7.1 moved it back (_parakeet_default)
 
 class Signals(QObject):
     start = Signal()
@@ -323,14 +324,17 @@ class Controller(QObject):
                 if live and self.engine.streaming and (stream or not final):
                     # Shakshuka with live insertion: pieces are whole words that continue the
                     # text exactly (they carry their own spaces), so nothing is added between them.
-                    stream = stream or self.engine.live()
+                    stream = stream or self.engine.live(self.cfg["stream_release"])
                     text = stream.finish(samples) if final else stream.feed(samples)
+                    space = " " if final and self.cfg["trailing_space"] else ""
                     if text:
                         parts.append(text)
                         self.sig.piece.emit(text)
-                        space = " " if final and self.cfg["trailing_space"] else ""
                         if self.cfg["insert"] != "app":
                             self.inserter.insert(text + space, self.cfg["insert"], self.cfg["paste_chord"])
+                    elif space and parts and not stream.sent.endswith(" ") and self.cfg["insert"] == "paste":
+                        # the last words went out at a pause, without the space after them
+                        self.inserter.insert(space, "paste", self.cfg["paste_chord"])
                     if final and live and parts and job == self._send_take and self.cfg["insert"] == "paste":
                         self._send()
                     if final:
@@ -513,22 +517,25 @@ class Controller(QObject):
             self.win.present_tab("model")      # first run: pick a model, then Download
             self.check_updates(manual=True)
         else:
-            self._streaming_default()
+            self._parakeet_default()
             self._periodic_check()
 
-    def _streaming_default(self):
-        """Once, on an install from before 0.7.0: move dictation to the desktop default, Shakshuka
-        (streaming), which is quicker to type with (Daniel, 2026-10-22: "would make the biggest
-        difference to speed"). The current model keeps working while Shakshuka downloads in the
-        background; the switch happens when it is ready, and is never repeated, so a later pick of
-        another model sticks. A failed download leaves the flag unset and is retried next start."""
+    def _parakeet_default(self):
+        """Once: undo 0.7.0's move of dictation to Shakshuka. Daniel, 2026-10-22, after a day of
+        use: Parakeet "gave better performance for the dictation use case" and the default
+        "should remain parakeet". Only an install that 0.7.0 ran on (its flag is set) and that
+        dictates with a streaming model is moved, to the recommended model (Sabich): downloaded
+        in the background first if needed, the current model dictating meanwhile. 0.7.0 didn't
+        record whether Shakshuka was its switch or the user's pick, so both move; the
+        notification says how to go back. A failed download leaves the flag unset (retried)."""
         state = load_json(STATE_PATH)
-        if state.get(STREAMING_DEFAULT_FLAG):
+        if state.get(PARAKEET_DEFAULT_FLAG):
             return
         rec, cur = model_store.recommended_id(), model_store.current_id()
-        m = model_store.get_model(rec)
-        if rec == cur or not m or not m.available:
-            state[STREAMING_DEFAULT_FLAG] = True
+        m, now = model_store.get_model(rec), model_store.get_model(cur)
+        streaming = now is not None and now.engine == "sherpa_online_transducer"
+        if not state.get(STREAMING_DEFAULT_FLAG) or not streaming or rec == cur or not m or not m.available:
+            state[PARAKEET_DEFAULT_FLAG] = True
             save_json(STATE_PATH, state)
             return
         if model_store.active(rec):
@@ -538,13 +545,15 @@ class Controller(QObject):
             self.download_model(rec)
 
     def _switch_to_default(self, mid: str):
+        was = model_store.get_model(model_store.current_id())
         self.use_model(mid)
         state = load_json(STATE_PATH)
-        state[STREAMING_DEFAULT_FLAG] = True
+        state[PARAKEET_DEFAULT_FLAG] = True
         save_json(STATE_PATH, state)
         name = model_store.get_model(mid).name
-        self.notify(f"Dictation now uses {name}",
-                    f"{name} streams: words appear while you speak. Switch back any time in Models.")
+        self.notify(f"Dictation is back on {name}",
+                    f"{name} is the default for dictation again. {was.name if was else 'The streaming model'} "
+                    "stays downloaded: pick it in Models, or use it for the File tab.")
 
     def _periodic_check(self):
         hours = self.cfg["update_check_hours"]

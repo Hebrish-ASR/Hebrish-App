@@ -49,6 +49,7 @@ DEFAULTS = {
     "double_tap_ms": 300,         # how long a stopping tap waits for the second tap
     "escape_discards": True,      # Esc while recording discards the take
     "live_insert_s": 7,           # decode while recording and insert every ~N s, at a pause; 0 = off
+    "stream_release": "phrase",   # streaming models: paste every word | phrase | sentence (engine.STREAM_RELEASE; 0.7.1)
                                   # presets Fast 5, Normal 7, Relaxed 10 (0.7.0; was 10), else Custom
     "overlay": "off",             # off | active (while dictating) | always
     "overlay_pos": None,          # [x, y] of the overlay's top-left; None = bottom centre

@@ -452,6 +452,34 @@ model is already active) runs once per install, guarded by the state flag
 Never repeated after it succeeds: picking another model afterwards sticks. The File tab uses the
 same model; a separate model per mode is I-5. Tests pass; not run interactively (I).
 
+### Back to Parakeet; Shakshuka pastes by phrase (0.7.1, unreleased, 2026-10-22)
+
+Daniel, the same day, after dictating with 0.7.0 (D-2026-10-22-18, R-2026-10-22-37): Shakshuka was
+"very jarring": text came two or three words at a time, the screen flickered on every paste, and
+when he paused for thought the last words didn't come out. Parakeet did better for dictation.
+
+- **Why the pause held words (V, from the code):** 0.7.0's `LiveStream._release` sent only text
+  up to the last space, because the result grows in BPE pieces. The last word therefore waited
+  for the next word to start, and during a pause nothing new arrived to release it.
+- **Default:** catalogue `recommended_by_platform` is `sabich` again (copy in
+  `hebrish/data/catalogue.json`). `HebrishApp._parakeet_default()` replaces
+  `_streaming_default()`: once (state flag `parakeet_default_0_7_1`), an install with 0.7.0's
+  flag `streaming_default_0_7` that dictates with a streaming model is moved to the recommended
+  model, downloading it in the background first if needed (same `switch_after_download` path).
+  0.7.0 didn't record whether Shakshuka was its switch or the user's own pick, so both move; the
+  notification says it stays downloaded. Installs that never ran 0.7.0 are left alone.
+- **Release rule (`engine.STREAM_RELEASE`, config `stream_release`, default `phrase`):** because the
+  result only appends, any prefix can be released and the next release continues it exactly, even
+  mid-word. `phrase` releases up to the last `, ; : . ? !` followed by a space; or everything once
+  the result hasn't grown for 1.0 s (a pause) or the oldest held text is 4 s old. `sentence`: `. ? !`,
+  1.5 s, 10 s. `word` is 0.7.0's behaviour. At Stop, if the last release was at a pause (no
+  trailing space), the worker pastes the trailing space on its own. Unit tests in
+  `tests/test_live.py` (with an explicit `now`); **not yet tried in real dictation (I)**, and the
+  setting has no UI (config key only).
+- **Flicker:** fewer pastes should mean less of it, but the cause of the flicker itself isn't
+  established (the clipboard tool, the compositor or the target app repainting). Not measured.
+- **Parked:** a model per mode (I-5, R-2026-10-22-38).
+
 ## Dictation history: SQLite, search, word counts (0.7.0, 2026-10-22)
 
 Daniel, 2026-10-22 (D-2026-10-22-13, R-2026-10-22-13/14/15): the Dictate tab's text box collected
