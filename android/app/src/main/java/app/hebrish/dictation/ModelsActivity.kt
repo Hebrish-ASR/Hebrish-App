@@ -198,12 +198,12 @@ class ModelsActivity : Page() {
             active -> {
                 s as ModelDownload.Status.Running
                 getString(R.string.model_downloading_version,
-                    listOfNotNull(m.name, ModelDownload.target?.second?.version).joinToString(" "), mb(s.done), mb(s.total))
+                    listOfNotNull(m.name, ModelDownload.target?.second?.label).joinToString(" "), mb(s.done), mb(s.total))
             }
             ModelDownload.queued(m.id) -> getString(R.string.models_queued)
             s is ModelDownload.Status.Failed && ModelDownload.failedId == m.id -> getString(R.string.model_failed, s.message)
-            ready && update != null -> getString(R.string.update_available, update.version, mb(update.totalBytes), installed!!.version)
-            ready -> getString(R.string.models_downloaded, installed!!.version, mb(installed.totalBytes))
+            ready && update != null -> getString(R.string.update_available, update.label, mb(update.totalBytes), installed!!.label)
+            ready -> getString(R.string.models_downloaded, installed!!.label, mb(installed.totalBytes))
             else -> getString(R.string.models_not_downloaded, mb(size(m)))
         }
         if (active) {
@@ -221,7 +221,7 @@ class ModelsActivity : Page() {
             !ready -> button(R.string.download, r) { ModelDownload.download(this, m); render() }
         }
         if (ready && !inUse) button(R.string.models_use, r) { use(m) }
-        if (ready && update != null && s !is ModelDownload.Status.Running) button(getString(R.string.update_button, update.version), r) {
+        if (ready && update != null && s !is ModelDownload.Status.Running) button(getString(R.string.update_button, update.label), r) {
             ModelDownload.update(this, m)
         }
         if (ready && !inUse && !active) button(R.string.delete, r) { confirmDelete(m) }

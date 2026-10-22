@@ -29,6 +29,13 @@ object ModelStore {
         val dirName: String get() = "$version-${revision.take(12)}"
 
         /**
+         * What the UI shows: just the version, "v2.0". A CDN manifest's version may repeat the
+         * model name ("Sabich v2.0"), and a "rev abc1234" fallback (no version.json) shows
+         * nothing: no commits in the UI (Daniel, 2026-10-22).
+         */
+        val label: String get() = version.substringAfterLast(' ').takeUnless { version.startsWith("rev ") } ?: ""
+
+        /**
          * Same weights, whatever the commit. Model-card and eval commits move `main` without
          * touching the files, so comparing revisions would offer a pointless 660 MB update.
          */

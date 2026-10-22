@@ -251,16 +251,19 @@ everything below that describes runtime behaviour).
   `R.color.accent`, green `#0F6B5C`, purple, orange, slate, black; no red, which means
   recording). Compiled with `assembleDebug` (V, 2026-10-20, JDK 21: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`,
   the shell's default `JAVA_HOME` points at a missing JDK 17 path); not run on a device (I).
-- **Stays up, closes with × (0.7.3, Daniel, 2026-10-22: "if I exit out a bit, I lose the
+- **Stays up (0.7.3, Daniel, 2026-10-22: "if I exit out a bit, I lose the
   overlay … I can't reposition it", R-2026-10-22-36):** with *only while typing* on, visibility
   used to follow `editableFocused` both ways, so the bubble vanished as soon as the field lost
   focus (keyboard dismissed to read what it covered, or focus lost during a drag) and could not be
   moved out of the way before tapping. Now only the rising edge counts: a field getting focus sets
-  `stuck` and clears `closed`; losing focus changes nothing. A × (`closeBtn`, `R.color.ime_key`
-  circle, 3/5 of the mic, at least 32 dp, next to the mic on the bar side) shows while idle with
-  nothing pending; it sets `closed`, which hides the idle bubble in either mode until a field next
-  gets focus. A take started from a remote also clears `closed`. Compiled with `assembleDebug`
-  (V, 2026-10-22); not run on a device (I).
+  `stuck`; losing focus changes nothing, so once shown it stays up.
+- **No close button (0.7.4, Daniel, 2026-10-22, testing 0.7.3 on his phone):** 0.7.3 put a × next
+  to the idle mic that hid it until the next field focus. It sat where a finger lands to grab the
+  mic, so every attempt to drag the mic hit × and closed it: there was no way to move it without
+  closing it. The × is gone; the only way to hide the floating mic is to turn it off in settings
+  (Daniel's choice over a deliberate gesture such as a pull-down to close). Move it first, then
+  tap: `savePosition` stores the drag and `place()` opens the bar from there, towards the middle
+  of the screen. If a close is ever wanted again, it must not be a target next to the mic.
 - **Missed field (0.4.0):** when `deliver` finds no editable focused node, or the node refuses
   both SET_TEXT and PASTE, the text goes into `pending` (appended if something is already
   waiting) and onto the clipboard, and the bar shows **Insert** + ×. Insert runs the same
@@ -679,3 +682,14 @@ account: Vercel Hobby cannot deploy a private org-owned repo). Local clones move
 `.../Hebrish-App` and `.../Hebrish-Website`. Checked the same day: the old raw `shared/models.json` URL and
 the old release-asset URL still return 200, so apps already installed keep their `catalogue_url`. All
 references in the Hebrish repos were updated; the Hebrish-Keyboard submodule URL points at the new name.
+
+## Model version labels: no commits in the UI (0.7.4, 2026-10-22)
+
+Daniel: showing the commit number (and the training-run name) next to the model is "too much
+information"; the UI shows only the version, e.g. "Sabich v2.0". `ModelStore.Manifest.label`
+(Android, `android/core`) and `Manifest.label` (desktop, `desktop/hebrish/model_store.py`) take
+the manifest's `version`, drop a leading model name (the CDN manifest for Sabich says
+`"version": "Sabich v2.0"`) and show nothing for the `rev abc1234` fallback. `revision` and `run`
+are still stored and used for directory names and same-weights checks; the desktop keeps them in
+`Manifest.debug_label` for logs and the CLI. Compiled (`assembleDebug`) and desktop tests pass (V);
+not run on a device (I).

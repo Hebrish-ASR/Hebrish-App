@@ -111,7 +111,7 @@ class MainActivity : Page() {
         val (done, of) = Checklist.progress(this)
         setupSummary.text = if (done == of) getString(R.string.setup_all_done) else getString(R.string.setup_progress_home, done, of)
         version.text = if (installed != null)
-            getString(R.string.version_line, versionName(), model.name, installed.version, installed.revision.take(12))
+            getString(R.string.version_line, versionName(), model.name, installed.label)
         else getString(R.string.version_line_none, versionName(), model.name)
         tryBtn.setText(if (ready) R.string.try_open else R.string.try_open_no_model)
 
@@ -124,7 +124,7 @@ class MainActivity : Page() {
         modelsSummary.text = when {
             s is ModelDownload.Status.Running && !ModelDownload.moving -> getString(R.string.home_models_downloading,
                 ModelDownload.target?.first?.name ?: "", s.done / 1_000_000, s.total / 1_000_000)
-            ready -> getString(R.string.home_models_ready, model.name, installed!!.version) +
+            ready -> getString(R.string.home_models_ready, model.name, installed!!.label) +
                 (if (others > 0) getString(R.string.home_models_others, others) else "") +
                 (if (ModelDownload.updateAvailable(this) != null) getString(R.string.home_models_update) else "")
             else -> getString(R.string.home_models_missing, model.name)

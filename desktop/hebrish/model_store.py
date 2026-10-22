@@ -282,13 +282,25 @@ class Manifest:
 
     @property
     def label(self) -> str:
+        """What the UI shows: just the version, "v2.0". No run name or commit (Daniel, 2026-10-22:
+        "too much information"); those stay in [debug_label] for logs. A CDN manifest's version may
+        repeat the model name ("Sabich v2.0"), so it is dropped here; a "rev abc1234" fallback
+        (no version.json) shows nothing."""
+        m = get_model(self.model)
+        v = self.version
+        if m and v.lower().startswith(m.name.lower() + " "):
+            v = v[len(m.name) + 1:]
+        return "" if v.startswith("rev ") else v
+
+    @property
+    def debug_label(self) -> str:
         run = f", {self.run}" if self.run else ""
         return f"{self.version}{run} (rev {self.revision[:7]})"
 
     @property
     def full_label(self) -> str:
         m = get_model(self.model)
-        return f"{m.name if m else self.model} {self.label}"
+        return f"{m.name if m else self.model} {self.label}".strip()
 
     @property
     def total_size(self) -> int:
@@ -581,7 +593,7 @@ def main():
     if a.cmd == "status":
         return
     latest = fetch_latest(mid)
-    print("latest on HF:", latest.label)
+    print("latest on HF:", latest.debug_label)
     if not needs_update(latest):
         print("up to date")
         return

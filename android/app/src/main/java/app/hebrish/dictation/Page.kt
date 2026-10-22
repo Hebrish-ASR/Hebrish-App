@@ -175,7 +175,7 @@ abstract class Page : Activity() {
         val model = app.hebrish.core.Catalogue.selected(this)
         val installed = app.hebrish.core.ModelStore.installed(this, model)
         return if (installed != null && app.hebrish.core.ModelStore.isReady(this, model = model))
-            getString(R.string.version_summary, versionName(), model.name, installed.version)
+            getString(R.string.version_summary, versionName(), model.name, installed.label)
         else getString(R.string.version_summary_none, versionName())
     }
 

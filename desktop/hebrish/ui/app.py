@@ -476,7 +476,7 @@ class Controller(QObject):
         threading.Thread(target=work, daemon=True).start()
 
     def _checked(self, latest, err, manual):
-        log.info("update check: latest=%s err=%r", latest and latest.label, err)
+        log.info("update check: latest=%s err=%r", latest and latest.debug_label, err)
         if err:
             self.win.status(f"Update check failed: {err}")
             if manual:
@@ -816,7 +816,7 @@ def _selftest() -> int:
         print("sherpa-onnx", sherpa_onnx.__version__, "| portaudio",
               sounddevice.get_portaudio_version()[1], file=out)
         print("icons (name: failed to render):", sizes, file=out)
-        print("latest model:", model_store.fetch_latest().label, file=out)
+        print("latest model:", model_store.fetch_latest().debug_label, file=out)
         print("latest app:", app_update.fetch().version, "| install:", app_update.install_method(), file=out)
         if not sizes or any(sizes.values()):
             raise RuntimeError("an icon failed to load (missing Qt SVG plugin?)")

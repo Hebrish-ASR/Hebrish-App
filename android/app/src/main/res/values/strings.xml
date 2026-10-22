@@ -12,8 +12,8 @@
     <string name="open_terms">Read the terms of use</string>
 
     <string name="intro">Voice typing in English that gets the Hebrew words right. It all runs on your phone; your voice never leaves it.</string>
-    <string name="version_line">App %1$s · %2$s %3$s (HF rev %4$s) · sherpa-onnx int8</string>
-    <string name="version_line_none">App %1$s · %2$s · sherpa-onnx int8</string>
+    <string name="version_line">App %1$s · %2$s %3$s</string>
+    <string name="version_line_none">App %1$s · %2$s</string>
 
     <string name="manage_confirm">Delete %1$s from this phone? You can download it again later.</string>
     <string name="delete">Delete</string>
@@ -121,7 +121,6 @@
     <string name="bubble_insert">Insert</string>
     <string name="bubble_insert_cd">Insert the transcript into the focused text field</string>
     <string name="bubble_dismiss">Dismiss the transcript</string>
-    <string name="bubble_close">Close the floating mic until you next tap a text field</string>
     <string name="bubble_held">No text field to type into. Tap one, then tap Insert on the mic. The text is on the clipboard too.</string>
     <string name="bubble_tap_field">Tap a text field first, then Insert.</string>
     <string name="bubble_guide">How to turn it on</string>

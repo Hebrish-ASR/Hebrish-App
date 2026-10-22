@@ -1,5 +1,5 @@
-**0.7.3: the floating mic stays where you can reach it.**
+**0.7.4: the floating mic can be moved without closing it.**
 
-- With "Show only while a text field is focused" on, the floating mic used to vanish as soon as the field lost focus, for example when you closed the keyboard to read, or while dragging it. Now it stays up once it has appeared, so you can drag it off what you are reading and then tap it.
-- A small × next to the idle mic closes it. It comes back the next time you tap into a text field (or start a take from a remote or bound key).
+- The × next to the floating mic is gone. It sat where your finger lands to grab the mic, so trying to drag the mic closed it instead. Now you can drag the mic anywhere first, then tap it: the bar opens from where you left it. To hide the floating mic, turn it off in settings.
+- Model versions are shown simply, for example "Sabich v2.0", without the commit number or training-run name.
 - Not yet tested on a device. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).

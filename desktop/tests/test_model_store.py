@@ -61,12 +61,20 @@ def test_parse_tree():
     assert set(m.files) == set(ms.FILES)
     assert m.files["tokens.txt"]["sha256"] is None       # plain git file, size only
     assert m.dirname == "v4-aaaaaaaaaaaa"
-    assert m.label == "v4, r4-en30 (rev aaaaaaa)"
+    assert m.label == "v4"                                # no run or commit in the UI
+    assert m.debug_label == "v4, r4-en30 (rev aaaaaaa)"
+
+
+def test_label_drops_model_name():
+    m = manifest(version="Sabich v2.0")
+    m.model = "sabich"
+    assert m.label == "v2.0" and m.full_label == "Sabich v2.0"
 
 
 def test_label_without_version_json():
     m = ms.manifest_from_tree(CS, "b" * 40, TREE, None)
     assert m.version == "rev bbbbbbb" and m.dirname == "rev-bbbbbbbbbbbb"
+    assert m.label == ""
 
 
 def test_stock_root_level_tree_and_label():
