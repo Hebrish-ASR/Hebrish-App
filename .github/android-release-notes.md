@@ -1,8 +1,4 @@
-**0.7.5: ALL CAPS, and a polish pass.**
+**0.7.6: the floating mic keeps your line breaks.**
 
-- **ALL CAPS** (Settings → Dictation): everything you dictate is typed in capitals, in the keyboard, the floating mic and Try it. Just for fun.
-- Try it no longer closes when the microphone is busy (during a call, say): it shows the error instead.
-- Grant on the keyboard and floating mic screens now opens App info when Android won't ask again, as Setup already did.
-- The floating mic shows "held" once per take, not once for every part, when no text field is focused.
-- Setup recommends Sabich; the keyboard's Restart button is now Retake, as everywhere else; clearer wording on several screens; TalkBack no longer reads "Hebrish" twice in the keyboard bar.
+- Fixed: with the floating mic, a line break typed before dictating (a new paragraph, say) was deleted when the text arrived, and replaced by a space. In apps that don't report their trailing line breaks, the text is now pasted at the cursor, so nothing before it is touched.
 - Not yet tested on a device. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).

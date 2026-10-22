@@ -681,33 +681,59 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         return current.length <= PLACEHOLDER_MAX && '\n' !in current && (s == -1 || (s == 0 && e == 0))
     }
 
-    /** True if [text] went into [node]; tries SET_TEXT, then clipboard + PASTE. */
+    /**
+     * True if [text] went into [node]; tries SET_TEXT, then clipboard + PASTE.
+     * A cursor past the end of the reported text means the app reports less than the field holds
+     * (trailing line breaks, seen 0.7.5: a blank line before the take was deleted and replaced by a
+     * space). SET_TEXT would rewrite the field without what it cannot see, so PASTE goes first there:
+     * it inserts at the field's own cursor and deletes nothing. See docs/debug-log/2026-10-23-*.
+     */
     private fun insertInto(node: AccessibilityNodeInfo, text: String): Boolean {
         val reported = node.text?.toString() ?: ""
         val placeholder = isPlaceholder(node, reported, firstPart = takeText.length <= text.length)
         val current = if (placeholder) "" else reported
         var start = node.textSelectionStart
         var end = node.textSelectionEnd
+        if (!placeholder && maxOf(start, end) > current.length) {
+            Log.i(TAG, "Cursor ${maxOf(start, end)} past reported text (${current.length} chars): pasting")
+            copy(text)
+            if (node.performAction(AccessibilityNodeInfo.ACTION_PASTE)) return true
+            // Paste refused: rewrite, restoring the unseen tail as line breaks (the case seen).
+            val missing = "\n".repeat(maxOf(start, end) - current.length)
+            val full = current + missing
+            return setText(node, full, full.length, full.length, text)
+        }
         if (start !in 0..current.length || end !in 0..current.length) { start = current.length; end = current.length }
         if (start > end) start = end.also { end = start }
         val before = current.substring(0, start)
         val insert = (if (before.isNotEmpty() && !before.last().isWhitespace()) " " else "") + text
-        val set = Bundle().apply {
-            putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, before + insert + current.substring(end))
-        }
-        if (node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, set)) {
+        if (setText(node, current, start, end, text)) {
             if (placeholder) Log.i(TAG, "Replaced placeholder text (${reported.length} chars)")
-            val cursor = start + insert.length
-            node.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, Bundle().apply {
-                putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor)
-                putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor)
-            })
             return true
         }
         // A background service can't read the clipboard (Android 10+), so the user's old clip
         // can't be restored; the transcript is left there, which is also the useful fallback.
         copy(insert)
         return node.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+    }
+
+    /**
+     * ACTION_SET_TEXT with [current] (what the field holds) with [start]..[end] replaced by [text],
+     * a space first if it would follow a word; then the cursor goes to the end of the insert.
+     */
+    private fun setText(node: AccessibilityNodeInfo, current: String, start: Int, end: Int, text: String): Boolean {
+        val before = current.substring(0, start)
+        val insert = (if (before.isNotEmpty() && !before.last().isWhitespace()) " " else "") + text
+        val set = Bundle().apply {
+            putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, before + insert + current.substring(end))
+        }
+        if (!node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, set)) return false
+        val cursor = start + insert.length
+        node.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, Bundle().apply {
+            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor)
+            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor)
+        })
+        return true
     }
 
     /** No field took [text]: keep it for the Insert button, and on the clipboard. */

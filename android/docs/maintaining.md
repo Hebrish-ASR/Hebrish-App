@@ -298,7 +298,8 @@ everything below that describes runtime behaviour).
   (re-checked with `refresh()`), else the field found at insert time. `ACTION_SET_TEXT` replaces the
   whole field, so it builds `before + [space] + text + after` from `text` and
   `textSelectionStart/End` (an empty field's hint is excluded via `isShowingHintText`), then
-  `ACTION_SET_SELECTION` to the end of the insert. Fallback: clipboard + `ACTION_PASTE`; the
+  `ACTION_SET_SELECTION` to the end of the insert. When the cursor lies past the reported text
+  (0.7.6), PASTE goes first so nothing the app doesn't report is deleted. Fallback: clipboard + `ACTION_PASTE`; the
   old clip is not restored because a background service can't read the clipboard on Android
   10+. Password nodes are skipped.
 - **No foreground service for the mic.** The system binds every enabled accessibility service
@@ -626,6 +627,20 @@ Turkish dotted İ). Desktop has the same setting (`desktop/docs/maintaining.md`,
   identical version lines on the home screen; Hebrew words in Try's example sentences (need the
   canonical romanizations); dead code (`ModelDownload.start`, `Data.versionFile`); comments that
   say "0.8.0" for things that shipped in 0.7.3.
+
+## Floating mic keeps line breaks before the insert (0.7.6, 2026-10-23)
+
+Daniel, 2026-10-23: a blank line typed before a take was gone when the transcript arrived, as if
+a backspace had been sent. Cause (I, from the code; no device on the laptop): `insertInto`
+rewrites the whole field with `ACTION_SET_TEXT`, built from the text the app *reports*. Some apps
+report the text without its trailing line breaks while the cursor index still counts them; the
+cursor was then clamped to the end of the shorter text and the rewrite dropped the breaks (and
+added a space). Rule now: **a cursor past the end of the reported text means the reported text is
+incomplete, so the overlay pastes at the field's own cursor instead of rewriting** (clipboard is
+overwritten, as in the existing paste fallback). If the paste is refused it rewrites with the
+missing characters restored as line breaks. Not covered: an app that trims the text *and* reports
+no cursor (-1); that still appends at the end with a space. Investigation:
+`docs/debug-log/2026-10-23-overlay-eats-line-break.md`.
 
 ## Not yet verified (as of 2026-10-20)
 
