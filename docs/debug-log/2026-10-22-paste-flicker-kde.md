@@ -74,7 +74,9 @@ Commit `99bd061`, released as desktop 0.7.4 (tag `desktop-v0.7.4`).
   a message split across reads; tool choice for wlr, ext-only, none, no xclip, X11). The full
   suite passed: 144 locally, and Linux CI on the tag.
 - (V) 0.7.4 installed from the APT repo on the reporting machine and restarted.
-- (I) The flicker is gone by eye: awaiting Daniel's confirmation.
+- (V) Hebrish no longer causes a focus change (KWin activation log, 2026-10-22). Pasting into a
+  terminal running Claude Code still flickers, because Claude Code's own `wl-paste` takes focus:
+  [2026-10-22-paste-flicker-claude-code.md](2026-10-22-paste-flicker-claude-code.md).
 - (I) GNOME behaves the same as before (it already used xclip); not run on GNOME.
 - If a later wl-clipboard learns ext data-control, wl-copy would work on KWin again. There is no
   need to switch back: xclip works everywhere XWayland runs.
