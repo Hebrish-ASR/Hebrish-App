@@ -1,6 +1,6 @@
 """Which clipboard tool the Linux paste uses (inserter_linux.clipboard_command) and the Wayland
 registry probe it decides by. wl-copy without zwlr data-control steals focus on every paste
-(docs/maintaining.md, "Paste flicker on KDE (0.7.4)")."""
+(docs/maintaining.md, "Paste flicker on KDE (0.7.4)"; docs/debug-log/2026-10-22-paste-flicker-kde.md)."""
 
 import os
 import socket

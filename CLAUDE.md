@@ -32,6 +32,7 @@ something it would answer, and write to the one that fits.
 | `research/` | Agent-led investigations that end in a recommendation: one folder per topic, indexed in `research/README.md`, which also sets the format |
 | `desktop/docs/maintaining.md`, `android/docs/maintaining.md` | The engineering record: how each app works, what was tried, what was measured |
 | `docs/` | Shared reference: `feature-parity.json`, screenshots |
+| `docs/debug-log/` | One file per bug that took diagnosis: symptom, cause, how it was found, wrong turns, fix, what is verified. Index and format in its `README.md`; lasting rules still go in `maintaining.md`. Skill: `debug-log` |
 | `shared/` | Data and protocols both apps read (`catalogue.json`, `update-protocol.md`) |
 | `hebrish-maintainers` plugin | The project's skills (reviews, parity, planning, data, website, outreach, Hugging Face): see above |
 

@@ -170,7 +170,7 @@ each part works there:
 | Raising the window from a second launch | the second instance forwards its `XDG_ACTIVATION_TOKEN` over the local socket (`show <token>`); the first puts it in its environment, where Qt's Wayland plugin uses it once for xdg-activation. Without a token, compositors refuse to raise and may only flash the taskbar entry | (I) |
 | Hotkeys | evdev from `/dev/input` (needs the `input` group): compositor-independent, reports release | (V) KDE; (I) GNOME, same kernel path |
 | Paste | Ctrl+V through a uinput device | (V) KWin; (I) Mutter, same kernel path |
-| Clipboard while unfocused | `inserter_linux.clipboard_command()`: `wl-copy` only where the compositor advertises `zwlr_data_control_manager_v1` (wlroots, Hyprland), checked by `wayland_globals()`; everywhere else `xclip` first (KWin 6.6, Mutter), because Ubuntu's wl-copy 2.2.1 can't use `ext_data_control_manager_v1` and its fallback grabs focus with a temporary toplevel. See "Paste flicker on KDE (0.7.4)". The .deb Depends on both | (V) KDE 6.6; (I) GNOME |
+| Clipboard while unfocused | `inserter_linux.clipboard_command()`: `wl-copy` only where the compositor advertises `zwlr_data_control_manager_v1` (wlroots, Hyprland), checked by `wayland_globals()`; everywhere else `xclip` first (KWin 6.6, Mutter), because Ubuntu's wl-copy 2.2.1 can't use `ext_data_control_manager_v1` and its fallback grabs focus with a temporary toplevel. See "Paste flicker on KDE (0.7.4)" and `docs/debug-log/`. The .deb Depends on both | (V) KDE 6.6; (I) GNOME |
 | Overlay | XWayland override-redirect child, above | (I) live |
 | Splash | a normal toplevel; the compositor places it (usually centred) | (V) KDE |
 | Tray | StatusNotifierItem over D-Bus. Ubuntu's GNOME shows it through its default-enabled AppIndicator extension; stock GNOME without that extension has no tray (close leaves the app running: start it again or use `hebrish --toggle`) | (V) KDE; (I) Ubuntu GNOME |
@@ -486,29 +486,14 @@ when he paused for thought the last words didn't come out. Parakeet did better f
 
 ### Paste flicker on KDE (0.7.4, 2026-10-22)
 
-Daniel, dictating into a terminal on KDE Plasma 6.6.6 Wayland (Ubuntu 26.04.1): "a little but very
-noticeable flicker" at the top of the window on every paste.
-
-- **Cause (V):** `wl-copy`. KWin 6.6 advertises only `ext_data_control_manager_v1` (no
-  `zwlr_data_control_manager_v1`; `wayland-info`, 65 globals). Ubuntu's wl-clipboard 2.2.1-2build1
-  binds only the wlr protocol, so it took its fallback: `WAYLAND_DEBUG=1 wl-copy` shows it never
-  binds the ext global and instead creates an `xdg_toplevel` titled `wl-clipboard` and gets a
-  `wl_keyboard`, i.e. it takes focus to set the selection. The focused window goes inactive and
-  back on each paste: the title-bar flicker. The 0.3.0 table had KWin down as "has
-  data-control" for wl-copy; that was the wlr protocol, which this KWin no longer offers.
-- **Fix:** `clipboard_command()` uses wl-copy only when the compositor offers the wlr protocol and
-  otherwise xclip, which owns the X11 CLIPBOARD from an unmapped window. `wayland_globals()` reads
-  the registry straight off the Wayland socket (get_registry + sync, about 40 lines, no
-  dependency), once per process. The old GNOME check (`XDG_CURRENT_DESKTOP`) is gone: Mutter has
-  neither protocol, so it takes the xclip route through the same test.
-- **Checked (V, KDE):** with a Wayland-native window focused, `xclip -selection clipboard` then
-  `wl-paste` returns the text, so KWin's XWayland bridge accepts the selection from an unfocused X
-  client. The probe returns the same 65 globals as `wayland-info`. Tests:
-  `tests/test_inserter_linux.py` (registry parsing against a fake socket, tool choice).
-- **Not checked:** the flicker gone by eye (Daniel to confirm on 0.7.4); GNOME unchanged in
-  behaviour (it already used xclip). If a later wl-clipboard learns ext data-control, wl-copy could
-  be used on KWin again; xclip works, so there is no need to.
-- Parlance (`../../Parlance-Dictation`) has the same `clipboard_command()` and the same bug.
+On KDE Plasma 6.6 Wayland the focused window's title bar flickered on every paste: Ubuntu's
+wl-copy 2.2.1 can't use KWin 6.6's `ext_data_control_manager_v1` and fell back to mapping a
+toplevel to take focus (V). Since 0.7.4 `clipboard_command()` uses wl-copy only where the
+compositor advertises `zwlr_data_control_manager_v1` (checked by `wayland_globals()`, which reads
+the registry off the Wayland socket) and xclip everywhere else. Don't go back to choosing the tool
+by `XDG_CURRENT_DESKTOP`: what matters is the protocol the compositor offers, and it changes with
+compositor versions. Investigation, protocol trace and what is unverified:
+[`docs/debug-log/2026-10-22-paste-flicker-kde.md`](../../docs/debug-log/2026-10-22-paste-flicker-kde.md).
 
 ### Insert-as-you-go pacing (0.7.1, 2026-10-22)
 
