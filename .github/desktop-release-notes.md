@@ -1,10 +1,8 @@
-**0.7.0: streaming dictation with Shakshuka, and a history of everything you dictate.**
+**0.7.1: dictation text arrives at a better rhythm, and Sabich is the default again.**
 
-- **Shakshuka is now the default for dictation.** It streams: words are typed while you are still talking, about a second behind. If you already use another model, Hebrish downloads Shakshuka in the background (about 660 MB) and switches once it is ready, with a notification. Switch back any time in Models; Sabich is still the pick for transcribing recordings.
-- **History.** Every transcript is kept on your computer and searchable in the new History tab, with word counts for today, the last 7 days and all time, Correct, Delete and Export. Settings shows where it is stored.
-- **Insert as you go** has presets: Fast (~5 s), Normal (~7 s, the new default), Relaxed (~10 s), Off, or a custom interval.
-- **Stop and send**: an optional key that stops, waits for the last words to be pasted, then presses Enter (or another send key).
-- **Character voices**: spoken prompts in Herman's, Corn's or Hilbert's voice (Settings → Sounds → Voice). Beeps and prompts no longer end up in the transcript.
-- The Dictate tab's text box starts empty for each take; earlier takes are in History.
-- Model versions are shown simply, for example *Sabich v2.0*, without the commit number.
+- **Sabich is the default for dictation again.** It did better than Shakshuka for everyday dictation. If 0.7.0 moved you to Shakshuka, you are moved back once, with a notification; Shakshuka stays downloaded and in Models.
+- **Insert as you go follows your pauses.** Stop to think for a second and what you said so far goes in straight away. Normal is now every ~5 seconds (Fast ~3, Relaxed ~8); your preset moves with it.
+- **No more stray full stops mid-sentence.** When a sentence is split at a short pause, it carries on ("…after the kids are asleep so nothing else is running…") instead of "asleep. So nothing…".
+- **Shakshuka pastes a phrase at a time:** a few words every 2-3 seconds and each sentence end at once, instead of a word or two at a time, and nothing is left waiting when you pause. Settings → Speed → *Shakshuka pastes* also offers a sentence or every word at a time.
+- Settings no longer scrolls sideways.
 - Ubuntu 26.04 .deb and a portable Windows zip. Not yet tested on Windows hardware. Downloads: [hebrish.app/download](https://hebrish.app/download).
