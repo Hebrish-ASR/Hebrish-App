@@ -32,7 +32,7 @@ AUTHOR_SITE = "https://danielrosehill.com"
 HEBRISH = "https://hebrish.app"
 FEEDBACK = "feedback@hebrish.app"
 TERMS = f"{HEBRISH}/terms"
-ACCESS = "access-requests@hebrish.app"
+ACCESS = "access@hebrish.app"
 
 
 def _mail(subject: str) -> str:

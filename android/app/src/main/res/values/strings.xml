@@ -8,7 +8,7 @@
     <string name="url_terms">https://hebrish.app/terms</string>
     <string name="download_terms">By downloading the code-switching model you agree to the Hebrish terms of use: free for personal and non-commercial use; commercial use, including telephony, needs a licence.</string>
     <string name="terms_title">Terms of use</string>
-    <string name="terms_body">The Hebrish models are free for personal, research, education and non-profit use. Commercial use, including telephony and call centres, needs a commercial licence: access-requests@hebrish.app. Hebrish is experimental and trained on one speaker\'s voice; transcripts can be wrong, so check them before relying on them. It is provided as is, without warranty. Your audio stays on this phone.</string>
+    <string name="terms_body">The Hebrish models are free for personal, research, education and non-profit use. Commercial use, including telephony and call centres, needs a commercial licence: access@hebrish.app. Hebrish is experimental and trained on one speaker\'s voice; transcripts can be wrong, so check them before relying on them. It is provided as is, without warranty. Your audio stays on this phone.</string>
     <string name="open_terms">Read the terms of use</string>
 
     <string name="intro">Voice typing in English that gets the Hebrew words right. It all runs on your phone; your voice never leaves it.</string>
