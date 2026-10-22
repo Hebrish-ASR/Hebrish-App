@@ -9,6 +9,20 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-22-12: Shakshuka is the desktop default; Sabich for phones and recordings
+
+- **Decision:** On Linux and Windows the recommended (default) model is Shakshuka, the
+  streaming line, with words inserted as you speak. Sabich stays the default on Android and is
+  the pick for transcribing recordings on a computer. Shakshuka is first in line for retraining.
+  Later, the catalogue should be narrowed to a few models the project can stand behind (for
+  example, not both a Parakeet and a Qwen Sabich); not decided which.
+- **Why:** Streaming text is what dictating into a terminal or chat box needs. Parakeet in
+  5–10 s pieces is the workaround, and chunked Parakeet is unusable below about 2 s
+  (`research/streaming-revision/`). Shakshuka runs on the same runtime at RTF ~0.2 on a CPU.
+- **Alternatives:** Keep Sabich as the desktop default and offer Shakshuka as an option. Build
+  live corrections (two-pass) now: deferred to idea I-4, to keep the first version simple.
+- **By:** Daniel. Request R-2026-10-22-12; backlog B-12, B-13, I-5, I-6.
+
 ### D-2026-10-22-11: Outreach skills are for the maintainer and authorised representatives only
 
 - **Decision:** `outreach-email`, `community-fyi` and `newsletter` ask first whether the user is

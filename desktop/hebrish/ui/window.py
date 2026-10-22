@@ -897,7 +897,9 @@ class MainWindow(QMainWindow):
                           "while you are still talking, at a pause, so text appears as you speak "
                           "and only the last few seconds are left when you stop. Text already "
                           "inserted stays if you then Discard or Retake. Off: everything is "
-                          "inserted at once when you stop."))
+                          "inserted at once when you stop.<br><br>With <b>Shakshuka</b>, the "
+                          "streaming model, any setting other than Off inserts each word about "
+                          "half a second after you say it, and the interval doesn't apply."))
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignRight)
         form.addRow("Insert as you go", self._live_row())

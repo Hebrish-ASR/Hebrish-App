@@ -1,6 +1,6 @@
 # Streaming dictation that revises earlier words
 
-**Status:** answered, recommendation below. Nothing is built yet (2026-10-22).
+**Status:** answered (2026-10-22). Append-only streaming is built (B-12); corrections are idea I-4.
 **Request:** R-2026-10-22-11 (`planning/requests.md`). Backlog: I-4.
 
 ## Question
@@ -17,6 +17,53 @@ base than Parakeet. That guess holds, with one correction: Nemotron streams, but
 revises what it has emitted. The revisions need a second pass.
 
 Confidence marks: **[C]** confirmed from the source on 2026-10-22; **[I]** inferred.
+
+**Decided since (D-2026-10-22-12):** the first version is append-only Shakshuka on the desktop,
+with no corrections (backlog B-12, done; record in `desktop/docs/maintaining.md`, "Shakshuka:
+streaming dictation"). Corrections stay idea I-4, and this page is the brief for building them.
+
+## What it's called
+
+Use these names in issues, code and docs:
+
+- **The field:** incremental (streaming) speech recognition.
+- **What the recognizer emits:** *partial results* (partial hypotheses) and *final results*.
+- **The feature:** *live partial results with revision*.
+- **How often partials change:** *stability* of the partial results.
+- **What the user sees when they change:** *flicker*.
+- **Fixing it on screen:** *display stabilization*.
+- **Fixing it in the model:** *two-pass rescoring* (or *deliberation*).
+
+"Retroactive correction" is not an established term; don't use it.
+
+| Term | Meaning | Who uses it |
+| --- | --- | --- |
+| Partial / interim results | Words output while the user is still talking. They "can be revised before the ASR finalizes its hypothesis" | Google, Shangguan et al. 2020 ([arXiv:2006.01416](https://arxiv.org/abs/2006.01416)); Baumann et al. 2009 ([N09-1043](https://aclanthology.org/N09-1043/)); Deepgram (`interim_results`) [C] |
+| Stability / word-stability estimation | How likely a partial is to stay as it is. Showing a word only once its estimated stability passes a threshold trades stability against lag; the newest words are the least stable | McGraw & Gruenstein 2012 ([Interspeech](https://www.isca-archive.org/interspeech_2012/mcgraw12_interspeech.html)); Google STT's `stability` field [C] |
+| Flicker | The visible effect of revisions. It adds cognitive load | Google ASR, Translate and live captions ([blog 2021](https://research.google/blog/stabilizing-live-speech-translation-in-google-translate/), [blog 2023](https://research.google/blog/modeling-and-improving-text-stability-in-live-captions)) [C] |
+| Display stabilization | Fixes applied on screen. *Masking*: hide the last few words until the sentence ends. *Biasing*: steer the new hypothesis towards what is already shown. *Alignment and merging*: apply only the changes that matter. With masking and biasing, erasure fell from 2.1 to 0.1 for 0.2 BLEU | Google Translate "Transcribe" (2021); Google AR captions, CHI EA 2023 [C] |
+| Re-translation vs. streaming (prefix-to-prefix) | Re-translation re-decodes from scratch, so earlier output can change. Streaming only appends. Shakshuka today is the streaming kind | Arivazhagan et al. 2020 ([arXiv:2004.03643](https://arxiv.org/abs/2004.03643)) [C] |
+| Two-pass rescoring / deliberation | A streaming first pass, then a second pass that rescores it. Deliberation also attends to the first-pass text | Google ([arXiv:1908.10992](https://arxiv.org/abs/1908.10992), [arXiv:2003.07962](https://arxiv.org/abs/2003.07962)) [C] |
+
+**Metrics to report** when I-4 is built, next to final WER and latency:
+- **Normalized Erasure:** erased words per final word; under 0.2 counts as acceptable (Arivazhagan 2020).
+- **UPWR:** Unstable Partial Word Ratio, unstable words ÷ words in the final hypotheses (Shangguan 2020).
+- **UPSR:** Unstable Partial Segment Ratio, revised segments ÷ utterances (Shangguan 2020).
+
+Shangguan et al. also found that emitting partials every 200 ms instead of every 50 ms improves
+stability a lot, for about 75 ms of extra mean delay [C].
+
+### Apps that do it
+
+| App | Rewrites words already shown? | Source |
+| --- | --- | --- |
+| Apple dictation (iOS, macOS) | Yes: it is seen "changing a word back-and-forth between two possibilities as you continue to speak" | [TidBits, 2020](https://tidbits.com/2020/08/31/how-ios-and-macos-dictation-can-learn-from-voice-controls-dictation/) (a user's account, not Apple docs) [C] |
+| Google Translate, Transcribe | Yes, with masking and biasing | [Google blog 2021](https://research.google/blog/stabilizing-live-speech-translation-in-google-translate/) [C] |
+| Aqua Voice | Yes: "refines as you speak" (Realtime Mode) | [aquavoice.com/mac](https://aquavoice.com/mac) (vendor) [C] |
+| SuperWhisper | Shows a live preview, then replaces it with a full re-decode at the end | [staff reply](https://superwhisper.userjot.com/board/p/live-text-functionality) [C] |
+| Deepgram, AssemblyAI, Google STT, Azure (APIs) | Yes: interim results replaced by finals | the vendor table above [C] |
+| Gboard voice typing | Streams on device (RNN-T). No source found on whether it rewrites | [Google blog 2019](https://research.google/blog/an-all-neural-on-device-speech-recognizer/) [I] |
+| Wispr Flow, Dragon, Windows Win+H, Otter, Teams/Zoom/Meet captions | Not documented. Settling it needs a screen recording of each | [I] |
 
 ## How the vendors expose it
 

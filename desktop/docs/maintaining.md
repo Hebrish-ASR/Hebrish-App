@@ -9,7 +9,7 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | --- | --- |
 | `model_store.py` | HF check, download/verify, installed versions. No Qt import, so it is testable and also a CLI |
 | `app_update.py` | newer-app check against `latest.json`, how this copy updates (apt / deb-manual / windows / source), the pkexec apt upgrade, relaunch (0.6.2; "App updates in the app") |
-| `engine.py` | sherpa-onnx `OfflineRecognizer` (nemo_transducer): normalise, cut at pauses (`live_cut`, `split_points`), pad, `transcribe_chunks` generator |
+| `engine.py` | sherpa-onnx `OfflineRecognizer` (nemo_transducer) or, for Shakshuka, `OnlineRecognizer` (0.7.0): normalise, cut at pauses (`live_cut`, `split_points`), pad, `transcribe_chunks` generator; `LiveStream` for streaming takes |
 | `audio.py` | sounddevice capture (pause/resume, level meter, `peek`/`consume` for live insertion), file decoding (ffmpeg, else soundfile), WAV save, beeps |
 | `hotkey.py` | the shared state machine for the two keys (toggle, push-to-talk) and the action keys, on evdev-style key names |
 | `hotkey_evdev.py` / `hotkey_win.py` | per-OS key sources: `/dev/input` on Linux, a pynput low-level hook on Windows |
@@ -390,6 +390,50 @@ ended up in the transcript.
   for output latency. The level meter still moves while muted. Not measured: the real output
   latency on Bluetooth headsets (can be 200 ms+); raise the margin if a prompt's tail still
   shows up. Test: `tests/test_live.py::test_recorder_drops_input_while_a_cue_plays`.
+
+## Shakshuka: streaming dictation (0.7.0, 2026-10-22)
+
+Daniel (2026-10-22): Shakshuka, the Nemotron streaming line, is the default for dictation on the
+desktop; Sabich stays the default on Android and the pick for transcribing recordings
+(`planning/decisions.md` D-2026-10-22-12). Background and the later "corrections" design:
+`research/streaming-revision/`.
+
+- **Engine:** catalogue engine `sherpa_online_transducer` is in `model_store.SUPPORTED_ENGINES`.
+  Same four files as the offline engine; `Engine.load(..., streaming=True)` builds an
+  `OnlineRecognizer.from_transducer` (no `model_type`; the 560 ms chunk size is in the encoder's
+  ONNX metadata, from the export). Weights: CDN manifest `parakeet-shakshuka/latest.json`
+  (Shakshuka v1.0, run `r8-nemotron-all`, HF `Hebrish/Shakshuka-sherpa-onnx-int8` @ `2cb192de`).
+- **Live path:** with *Insert as you go* on (any preset; the interval is ignored), `_live_tick`
+  hands everything recorded since the last tick (500 ms) to the worker, which feeds one
+  `LiveStream` per take. `LiveStream.feed` returns only text up to the last space, because the
+  result grows in BPE pieces ("ask Av" → "Avi for"); `finish` adds 1 s of silence
+  (`TAIL_PAD_S`), calls `input_finished` and returns the rest. Pieces carry their own spaces, so
+  the worker pastes them as they are, adding the trailing space only after the last one.
+  Off: the whole take is decoded at Stop, as for Parakeet.
+- **Append-only, verified (V, 2026-10-22, sherpa-onnx 1.13.8, CPU, 4 threads):** six
+  code-switched clips from the demo Space's examples, fed in 100 ms and 500 ms steps: no update
+  ever changed text already returned (greedy RNNT only appends). The worker still checks:
+  if a result stops starting with what was pasted, it logs a warning and pastes nothing more for
+  that text, rather than pasting a contradiction.
+- **Speed (V, same machine):** decode RTF 0.19–0.22; a 500 ms feed took at most 245 ms. Driving
+  the real `Controller._worker` in real time on a 9 s clip: first paste at 3.1 s ("Reminder,
+  ask "), then a paste every ~0.5–1 s, each word about a second after it is spoken (a word goes
+  out once the next one starts); the last word 0.6 s after Stop. Load: 3.5 s.
+- **No `stretch_pauses` for Shakshuka (V):** padding short pauses (the Parakeet fix in
+  *Findings*) changed 3 of 6 clips for the worse on Shakshuka: "Hi, I'm confirming" → "Hi Ann,
+  confirming … tomorrow tomorrow", "Reminder, ask Avi for" → "Reminder for", and a lost final
+  full stop. Raw and gain-normalised audio decoded identically. So `transcribe_chunks` skips it
+  when `engine.streaming`; whole-take text then equals the live text on all six clips.
+- **Silence:** 5 s of low noise produced no text, so streaming takes skip the VAD check.
+- **Recommendation:** catalogue `recommended_by_platform` (`linux`, `windows`: `shakshuka`) is
+  read by `model_store.recommended_id()` before `recommended` (still `sabich`, which Android and
+  0.6.x read). A new desktop install defaults to Shakshuka; an install with a pick, or with a
+  model already downloaded, keeps it (`current_id`).
+- **Not done yet:** the website chooser note still says Shakshuka is not in the apps (the rules
+  must match `Hebrish-App/data/variants.json`, `tests/test_shared.py`); change both at release.
+  Android has no streaming engine (backlog B-13); `test_shared` allows that one difference.
+  Not measured: Shakshuka's streaming WER on the full test set (ASR-Training `evaluate --stream
+  70,6`), and pasting ~2 times a second into every kind of target app.
 
 ## Insert-as-you-go presets, Stop and send (0.7.0, 2026-10-22)
 

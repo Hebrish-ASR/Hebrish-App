@@ -39,7 +39,9 @@ def test_android_bundles_the_shared_catalogue():
     schema = re.search(r"const val SCHEMA = (\d+)", src)
     assert schema and int(schema.group(1)) == v2()["schema"] == 2
     engines = set(re.findall(r'"(\w+)"', re.search(r"SUPPORTED_ENGINES = setOf\(([^)]*)\)", src).group(1)))
-    assert engines == model_store.SUPPORTED_ENGINES          # same engines on both apps
+    # Same engines on both apps, except streaming: desktop first (Daniel, 2026-10-22), Android
+    # follows (planning/backlog.md B-13). Remove the exception when Android adds it.
+    assert engines | {"sherpa_online_transducer"} == model_store.SUPPORTED_ENGINES
 
 
 def test_catalogue_v2_url_points_at_this_file():

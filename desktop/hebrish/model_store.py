@@ -40,8 +40,9 @@ SCHEMA = 2
 HF = "https://huggingface.co"
 USER_AGENT = "hebrish (+https://github.com/Hebrish-ASR/Hebrish-App)"
 # Engines this build can run. A variant with any other engine is listed (greyed, with where it
-# runs and its card) but can't be selected or downloaded. Phase 2 adds sherpa_online_transducer.
-SUPPORTED_ENGINES = {"sherpa_offline_transducer"}
+# runs and its card) but can't be selected or downloaded. sherpa_online_transducer (Shakshuka) since
+# 0.7.0; its files have the same names as the offline engine's.
+SUPPORTED_ENGINES = {"sherpa_offline_transducer", "sherpa_online_transducer"}
 PLATFORM = "windows" if sys.platform == "win32" else "linux"
 
 
@@ -159,7 +160,10 @@ def get_variant(mid: str) -> Model | None:
 
 
 def recommended_id() -> str:
-    return catalogue().get("recommended", "")
+    """`recommended_by_platform` (0.7.0: Shakshuka on Linux and Windows, Daniel 2026-10-22), else
+    `recommended` (Sabich; what Android and older desktop builds read)."""
+    cat = catalogue()
+    return cat.get("recommended_by_platform", {}).get(PLATFORM) or cat.get("recommended", "")
 
 
 def refresh_catalogue():

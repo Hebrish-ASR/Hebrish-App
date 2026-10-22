@@ -78,3 +78,51 @@ def test_recorder_drops_input_while_a_cue_plays():
     r._mute_until = 0.0
     r._cb(block, 160, None, None)
     assert r.peek().size == 160
+
+
+class _FakeRec:
+    """Stands in for sherpa-onnx's OnlineRecognizer: each decode reveals the next result."""
+
+    def __init__(self, results):
+        self.results, self.i = results, -1
+
+    def create_stream(self):
+        return type("S", (), {"accept_waveform": lambda *a: None, "input_finished": lambda *a: None})()
+
+    def is_ready(self, s):
+        return False
+
+    def decode_stream(self, s):
+        pass
+
+    def get_result(self, s):
+        self.i = min(self.i + 1, len(self.results) - 1)
+        return self.results[self.i]
+
+    def get_result_all(self, s):
+        return type("R", (), {"tokens": self.results[self.i].split()})()
+
+
+def test_streaming_releases_whole_words_only():
+    """Shakshuka's result grows in BPE pieces ("ask Av", "i for"); only text up to the last
+    space goes out while recording, and the pieces join back into the exact result."""
+    from hebrish.engine import Engine
+    e = Engine()
+    e._rec, e.streaming = _FakeRec(["Reminder", "Reminder, ask Av", "Reminder, ask Avi for",
+                                    "Reminder, ask Avi for a dgima."]), True
+    ls, chunk = e.live(), np.zeros(SR // 2, np.float32)
+    out = [ls.feed(chunk), ls.feed(chunk), ls.feed(chunk)]
+    assert out == ["", "Reminder, ask ", "Avi "]
+    out.append(ls.finish(chunk))
+    assert out[-1] == "for a dgima."
+    assert "".join(out) == "Reminder, ask Avi for a dgima."
+
+
+def test_streaming_never_rewrites_inserted_text():
+    """If a result ever contradicted text already pasted, nothing more is pasted for it."""
+    from hebrish.engine import Engine
+    e = Engine()
+    e._rec, e.streaming = _FakeRec(["Hi Ann ", "Hi, I'm confirming "]), True
+    ls, chunk = e.live(), np.zeros(SR // 2, np.float32)
+    assert ls.feed(chunk) == "Hi Ann "
+    assert ls.feed(chunk) == ""

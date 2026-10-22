@@ -31,6 +31,28 @@
    "notes": "Default differs: desktop ON since 0.5.0 (~10 s), presets Fast 5 / Normal 7 (default) / Relaxed 10 / Custom since 0.7.0 (Daniel, 2026-10-22, unreleased); Android OFF, on/off only with a fixed interval (presets: planning/backlog.md)."
   },
   {
+   "id": "streaming-shakshuka",
+   "group": "insertion",
+   "name": "Streaming dictation with Shakshuka (words inserted as you speak)",
+   "android": {
+    "status": "missing",
+    "evidence": "android/core/src/main/java/app/hebrish/core/Catalogue.kt SUPPORTED_ENGINES",
+    "notes": "planning/backlog.md B-13"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.7.0 (unreleased)",
+    "evidence": "desktop/hebrish/engine.py LiveStream; ui/app.py _worker"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.7.0 (unreleased)",
+    "evidence": "desktop/hebrish/engine.py LiveStream; ui/app.py _worker",
+    "verified": false
+   },
+   "notes": "Shakshuka is the recommended desktop model (catalogue recommended_by_platform, D-2026-10-22-12)."
+  },
+  {
    "id": "start-stop-beeps",
    "group": "feedback",
    "name": "Start/stop beeps",

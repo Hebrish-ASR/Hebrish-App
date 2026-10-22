@@ -288,18 +288,42 @@ class Controller(QObject):
         interval = self.cfg["live_insert_s"]
         if not interval or self.state != "recording" or self.recorder.paused:
             return
+        if self.engine.streaming:
+            # Shakshuka: everything recorded so far goes to the stream; whole words come back.
+            new = self.recorder.peek()
+            if len(new):
+                self._jobs.put((self._take, self.recorder.consume(len(new)), False))
+            return
         cut = live_cut(self.recorder.peek(), interval)
         if cut:
             self._jobs.put((self._take, self.recorder.consume(cut), False))
 
     def _worker(self):
-        take, parts = None, []
+        take, parts, stream = None, [], None
         while True:
             job, samples, final = self._jobs.get()
             if job != take:
-                take, parts = job, []
+                take, parts, stream = job, [], None
             try:
                 live = job == self._take
+                if live and self.engine.streaming and (stream or not final):
+                    # Shakshuka with live insertion: pieces are whole words that continue the
+                    # text exactly (they carry their own spaces), so nothing is added between them.
+                    stream = stream or self.engine.live()
+                    text = stream.finish(samples) if final else stream.feed(samples)
+                    if text:
+                        parts.append(text)
+                        self.sig.piece.emit(text)
+                        space = " " if final and self.cfg["trailing_space"] else ""
+                        if self.cfg["insert"] != "app":
+                            self.inserter.insert(text + space, self.cfg["insert"], self.cfg["paste_chord"])
+                    if final and live and parts and job == self._send_take and self.cfg["insert"] == "paste":
+                        self._send()
+                    if final:
+                        whole = "".join(parts).strip()
+                        heard = whole or len(samples) < audio.SAMPLE_RATE // 2
+                        self.sig.transcribed.emit(whole, None if heard else NO_SPEECH)
+                    continue
                 text = self.engine.transcribe(samples, vad=self.cfg["vad"]) if live else ""
                 if text:
                     parts.append(text)
@@ -314,7 +338,7 @@ class Controller(QObject):
                     self.sig.transcribed.emit(" ".join(parts), None if heard else NO_SPEECH)
             except Exception as e:
                 if final:
-                    self.sig.transcribed.emit(" ".join(parts), e)
+                    self.sig.transcribed.emit("".join(parts).strip() if stream else " ".join(parts), e)
                 else:
                     log.exception("live piece failed")
 
@@ -391,7 +415,9 @@ class Controller(QObject):
 
         def work():
             try:
-                self.engine.load(cur[0], threads(self.cfg), model_store.current().feature_dim)
+                m = model_store.current()
+                self.engine.load(cur[0], threads(self.cfg), m.feature_dim,
+                                 streaming=m.engine == "sherpa_online_transducer")
                 self.sig.loaded.emit(None)
             except Exception as e:
                 self.sig.loaded.emit(e)

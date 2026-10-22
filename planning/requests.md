@@ -6,6 +6,7 @@ credited), or an issue link. Outcome links the backlog item, or says why not.
 
 | Id | Date | From | Platforms | Request | Outcome |
 | --- | --- | --- | --- | --- | --- |
+| R-2026-10-22-12 | 2026-10-22 | Daniel | Desktop, then all | Make Shakshuka (streaming) the default on desktop, with Sabich for long transcriptions; bake those recommendations into the UI; prioritise Shakshuka for retraining; later narrow the models to a few to stand behind | [B-12](backlog.md#sprint-desktop-ubuntu--windows-toward-070), Android [B-13](backlog.md#sprint-android), [I-5](backlog.md#ideas-for-future-versions), [I-6](backlog.md#ideas-for-future-versions); D-2026-10-22-12 |
 | R-2026-10-22-11 | 2026-10-22 | Daniel | All | Streaming dictation that shows words as you speak and corrects earlier words when later speech makes them clear (as Deepgram does); look at Nemotron streaming as the base | Research: [streaming-revision](../research/streaming-revision/README.md); [I-4](backlog.md#ideas-for-future-versions) |
 | R-2026-10-22-10 | 2026-10-22 | Daniel | — | Requests often arrive in batches mid-work: give agents a way to queue them into per-platform sprints | `queue-sprint` skill (`.claude/skills/`); sprint sections in [backlog.md](backlog.md) |
 | R-2026-10-22-9 | 2026-10-22 | Daniel | Android | Floating mic: add a horizontal offset. Default a little in from the screen edge; negative = flush with the edge, positive = further in | [B-9](backlog.md#sprint-android) |

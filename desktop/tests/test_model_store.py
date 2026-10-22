@@ -170,11 +170,11 @@ def test_bad_cached_catalogue_falls_back_to_bundled():
 
 def test_unsupported_engines_are_listed_but_not_models():
     """Qwen3-ASR and asr4all are in lines() (shown greyed) but never in models(), so nothing can
-    select or download them; Shakshuka waits for sherpa_online_transducer (phase 2)."""
+    select or download them. Shakshuka (sherpa_online_transducer) is usable since 0.7.0."""
     listed = {v.id for v in ms.variants()}
     usable = {m.id for m in ms.models()}
-    assert {"sabich-qwen3-asr-1.7b", "sabich-canary-qwen-2.5b", "sabich-asr4all-s", "shakshuka"} <= listed - usable
-    assert {"sabich", "codeswitch", "stock", "sabich-parakeet-110m"} <= usable
+    assert {"sabich-qwen3-asr-1.7b", "sabich-canary-qwen-2.5b", "sabich-asr4all-s"} <= listed - usable
+    assert {"sabich", "codeswitch", "stock", "sabich-parakeet-110m", "shakshuka"} <= usable
     assert ms.get_model("sabich-qwen3-asr-1.7b") is None
     with pytest.raises(ValueError):
         ms.select("sabich-qwen3-asr-1.7b")
@@ -184,7 +184,8 @@ def test_no_pick_prefers_a_downloaded_model_then_recommended():
     state = ms.load_json(ms.STATE_PATH)
     state.pop("model", None)
     ms.save_json(ms.STATE_PATH, state)
-    assert ms.current_id() == "sabich"                    # nothing on disk: the recommended model
+    assert ms.recommended_id() == "shakshuka"             # the desktop pick; Android's stays Sabich
+    assert ms.current_id() == "shakshuka"                 # nothing on disk: the recommended model
     install(ms.manifest_from_tree(ms.get_model("stock"), "s" * 40, STOCK_TREE, None))
     assert ms.current_id() == "stock"                     # a 0.5.x user on schema 1's default keeps it
 
@@ -198,7 +199,7 @@ def test_no_pick_prefers_a_downloaded_model_then_recommended():
     (("phone", "none", 0, "speed"), "sabich-parakeet-110m", "sabich-parakeet-110m"),
     (("wearable", "none", 0, "accuracy"), "sabich-parakeet-110m", "sabich-parakeet-110m"),
     (("wearable", "none", 0, "speed"), "sabich-asr4all-s", "sabich-parakeet-110m"),
-    (("computer", "none", 0, "balanced", True), "shakshuka", "sabich"),          # no streaming engine yet
+    (("computer", "none", 0, "balanced", True), "shakshuka", "shakshuka"),       # streaming engine since 0.7.0
 ])
 def test_recommend_follows_the_shared_rules(args, first, here):
     r = ms.recommend(*args)

@@ -1,5 +1,7 @@
-"""sherpa-onnx offline recognizer for the installed fine-tune."""
+"""sherpa-onnx recognizer for the installed fine-tune: offline (Parakeet: Sabich, Jachnun, stock)
+or streaming (Nemotron: Shakshuka, 0.7.0)."""
 
+import logging
 import threading
 import time
 from collections import deque
@@ -8,6 +10,8 @@ from pathlib import Path
 import numpy as np
 
 from .audio import SAMPLE_RATE
+
+log = logging.getLogger(__name__)
 
 PIECE_S = 10          # long takes are decoded in pieces of ~10 s or more, cut at a pause (live_cut)
 MIN_TAKE_S = 0.3
@@ -166,9 +170,70 @@ def live_cut(x: np.ndarray, interval_s: float) -> int | None:
     return None
 
 
+class LiveStream:
+    """One streaming take (Shakshuka): feed audio as it is recorded, get back the new text.
+
+    Cache-aware streaming with greedy decoding only ever appends to its result, so text is
+    inserted once and never revised (measured 2026-10-22 on two code-switched clips: no
+    update rewrote earlier text; research/streaming-revision). The result arrives in BPE
+    pieces ("ask Av", "i for"), so only text up to the last space is released while the take
+    runs; finish() releases the rest. Punctuation stays with its word ("Reminder," goes out
+    with the next word)."""
+
+    def __init__(self, engine: "Engine"):
+        self._engine = engine
+        with engine._lock:
+            self._s = engine._rec.create_stream()
+        self.sent = ""
+        self.audio_s = 0.0
+        self.decode_s = 0.0
+
+    def _decode(self, samples: np.ndarray, last: bool) -> str:
+        eng = self._engine
+        with eng._lock:
+            if eng._rec is None:
+                raise RuntimeError("Model not loaded")
+            t0 = time.monotonic()
+            if len(samples):
+                self._s.accept_waveform(SAMPLE_RATE, samples)
+            if last:
+                self._s.accept_waveform(SAMPLE_RATE, np.zeros(int(TAIL_PAD_S * SAMPLE_RATE), np.float32))
+                self._s.input_finished()
+            while eng._rec.is_ready(self._s):
+                eng._rec.decode_stream(self._s)
+            text = eng._rec.get_result(self._s).lstrip()
+            self.decode_s += time.monotonic() - t0
+        self.audio_s += len(samples) / SAMPLE_RATE
+        return text
+
+    def _release(self, text: str, last: bool) -> str:
+        ready = text if last else text[: text.rfind(" ") + 1]
+        if not ready.startswith(self.sent):
+            # Not seen with greedy decoding; if a runtime ever revises, keep what is on screen
+            # and append nothing that would contradict it.
+            log.warning("streaming result changed earlier text: %r -> %r", self.sent[-40:], ready[-40:])
+            return ""
+        new, self.sent = ready[len(self.sent):], max(ready, self.sent, key=len)
+        return new
+
+    def feed(self, samples: np.ndarray) -> str:
+        """Text completed since the last call (whole words, ending in a space), or ""."""
+        return self._release(self._decode(samples, last=False), last=False)
+
+    def finish(self, samples: np.ndarray) -> str:
+        """The last of the audio, then the rest of the text (no trailing space)."""
+        out = self._release(self._decode(samples, last=True), last=True)
+        eng = self._engine
+        eng.stats.append({"at": time.time(), "audio_s": self.audio_s, "decode_s": self.decode_s,
+                          "tokens": len(eng._rec.get_result_all(self._s).tokens) if eng._rec else 0,
+                          "words": len(self.sent.split()), "threads": eng.threads})
+        return out
+
+
 class Engine:
     def __init__(self):
         self._rec = None
+        self.streaming = False            # an OnlineRecognizer (Shakshuka) is loaded
         self._dir: Path | None = None
         self._lock = threading.Lock()
         self.last_progress = (0, 1)       # (samples done, total) of the current transcribe_chunks
@@ -182,30 +247,51 @@ class Engine:
     def loaded_dir(self) -> Path | None:
         return self._dir
 
-    def load(self, model_dir: Path, num_threads: int = 4, feature_dim: int = 128):
+    def load(self, model_dir: Path, num_threads: int = 4, feature_dim: int = 128, streaming: bool = False):
         """feature_dim comes from the catalogue variant (128 for the 0.6B models, 80 for
         Sabich-Parakeet-110M). sherpa-onnx also reads it from the encoder metadata, which wins:
-        the 110M decoded the same clip identically with 80 and 128 (2026-10-21, sherpa-onnx 1.13.8)."""
+        the 110M decoded the same clip identically with 80 and 128 (2026-10-21, sherpa-onnx 1.13.8).
+        streaming: the variant's engine is sherpa_online_transducer (Shakshuka, exported at
+        560 ms chunks; the chunk size is in the encoder metadata, not passed here)."""
         import sherpa_onnx
         t0 = time.monotonic()
-        rec = sherpa_onnx.OfflineRecognizer.from_transducer(
-            encoder=str(model_dir / "encoder.int8.onnx"),
-            decoder=str(model_dir / "decoder.int8.onnx"),
-            joiner=str(model_dir / "joiner.int8.onnx"),
-            tokens=str(model_dir / "tokens.txt"),
-            model_type="nemo_transducer", decoding_method="greedy_search",
-            num_threads=num_threads, sample_rate=SAMPLE_RATE, feature_dim=feature_dim,
-            provider="cpu",
-        )
+        files = dict(encoder=str(model_dir / "encoder.int8.onnx"),
+                     decoder=str(model_dir / "decoder.int8.onnx"),
+                     joiner=str(model_dir / "joiner.int8.onnx"),
+                     tokens=str(model_dir / "tokens.txt"),
+                     decoding_method="greedy_search", num_threads=num_threads,
+                     sample_rate=SAMPLE_RATE, feature_dim=feature_dim, provider="cpu")
+        if streaming:
+            rec = sherpa_onnx.OnlineRecognizer.from_transducer(**files)
+        else:
+            rec = sherpa_onnx.OfflineRecognizer.from_transducer(model_type="nemo_transducer", **files)
         with self._lock:
-            self._rec, self._dir = rec, model_dir
+            self._rec, self._dir, self.streaming = rec, model_dir, streaming
         self.threads = num_threads
         self.transcribe(np.zeros(SAMPLE_RATE, np.float32), record=False)      # warm-up
         self.load_s = time.monotonic() - t0
 
     def unload(self):
         with self._lock:
-            self._rec, self._dir = None, None
+            self._rec, self._dir, self.streaming = None, None, False
+
+    def live(self) -> LiveStream:
+        """A streaming take (only when self.streaming)."""
+        if self._rec is None:
+            raise RuntimeError("Model not loaded")
+        return LiveStream(self)
+
+    def _decode_piece(self, x: np.ndarray):
+        """One piece, already padded: (text, tokens). Caller holds the lock."""
+        s = self._rec.create_stream()
+        s.accept_waveform(SAMPLE_RATE, x)
+        if self.streaming:
+            s.input_finished()
+            while self._rec.is_ready(s):
+                self._rec.decode_stream(s)
+            return self._rec.get_result(s).strip(), len(self._rec.get_result_all(s).tokens)
+        self._rec.decode_stream(s)
+        return s.result.text.strip(), len(s.result.tokens)
 
     def transcribe(self, samples: np.ndarray, vad: bool = False, record: bool = True) -> str:
         return " ".join(self.transcribe_chunks(samples, vad=vad, record=record))
@@ -221,7 +307,12 @@ class Engine:
                 self.last_progress = (1, 1)
                 return
             samples = shorten_silences(samples)
-        samples = stretch_pauses(normalize(samples))
+        samples = normalize(samples)
+        if not self.streaming:
+            # Parakeet only. On Shakshuka it hurt 3 of 6 code-switched clips (a doubled
+            # "tomorrow", a lost "ask Avi", a dropped full stop) and fixed none; without it the
+            # whole-take text equals the live text (2026-10-22, desktop/docs/maintaining.md).
+            samples = stretch_pauses(samples)
         pad = np.zeros(int(TAIL_PAD_S * SAMPLE_RATE), np.float32)
         for a, b in split_points(samples):
             if cancel is not None and cancel.is_set():
@@ -230,14 +321,11 @@ class Engine:
                 if self._rec is None:
                     raise RuntimeError("Model not loaded")
                 t0 = time.monotonic()
-                s = self._rec.create_stream()
-                s.accept_waveform(SAMPLE_RATE, np.concatenate([samples[a:b], pad]))
-                self._rec.decode_stream(s)
-                text = s.result.text.strip()
+                text, tokens = self._decode_piece(np.concatenate([samples[a:b], pad]))
                 took = time.monotonic() - t0
             if record:
                 self.stats.append({"at": time.time(), "audio_s": (b - a) / SAMPLE_RATE,
-                                   "decode_s": took, "tokens": len(s.result.tokens),
+                                   "decode_s": took, "tokens": tokens,
                                    "words": len(text.split()), "threads": self.threads})
             self.last_progress = (b, len(samples))
             if text:
