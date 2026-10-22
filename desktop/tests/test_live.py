@@ -9,7 +9,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from hebrish.config import DEFAULTS, in_quiet_hours, threads, upgrade  # noqa: E402
-from hebrish.engine import LIVE_FORCE_S, live_cut  # noqa: E402
+from hebrish.engine import LIVE_BREAK_S, LIVE_FORCE_S, live_cut, live_split  # noqa: E402
 
 SR = 16000
 rng = np.random.default_rng(0)
@@ -24,7 +24,16 @@ def silence(s):
 
 
 def test_no_cut_before_interval():
-    assert live_cut(np.concatenate([speech(5), silence(1), speech(3)]), 15) is None
+    assert live_cut(np.concatenate([speech(5), silence(0.8), speech(3)]), 15) is None
+
+
+def test_a_long_pause_cuts_before_the_interval():
+    # 0.7.1: stopping to think (>= LIVE_BREAK_S) inserts what was said, whatever the interval
+    x = np.concatenate([speech(3), silence(1.3), speech(0.5)])
+    r = live_split(x, 15)
+    assert r is not None and 3 * SR < r[0] < 4.3 * SR and r[1] >= LIVE_BREAK_S
+    assert live_cut(silence(4), 15) is None                     # no speech yet: nothing to cut
+    assert live_cut(np.concatenate([speech(0.5), silence(1.2)]), 15) is None   # under LIVE_MIN_S
 
 
 def test_cuts_inside_the_pause():
@@ -56,10 +65,18 @@ def test_old_default_threads_become_auto():
 
 def test_old_default_interval_becomes_normal():
     # 0.7.0: ~10 s was the default before send_chord existed; a chosen value stays
-    assert upgrade({"feedback": "beeps", "live_insert_s": 10})["live_insert_s"] == 7
+    # (0.7.1 then moves each preset down: 7 -> 5, 10 -> 8)
+    assert upgrade({"feedback": "beeps", "live_insert_s": 10})["live_insert_s"] == 5
     assert upgrade({"feedback": "beeps", "live_insert_s": 15})["live_insert_s"] == 15
-    assert upgrade({"send_chord": "enter", "live_insert_s": 10})["live_insert_s"] == 10
-    assert DEFAULTS["live_insert_s"] == 7 and DEFAULTS["send_chord"] == "enter"
+    assert upgrade({"send_chord": "enter", "live_insert_s": 10})["live_insert_s"] == 8
+    assert DEFAULTS["live_insert_s"] == 5 and DEFAULTS["send_chord"] == "enter"
+
+
+def test_presets_move_down_once():
+    # 0.7.1: Fast 5 -> 3, Normal 7 -> 5, Relaxed 10 -> 8; a config with stream_release has moved
+    for old, new in ((5, 3), (7, 5), (10, 8), (12, 12), (0, 0)):
+        assert upgrade({"feedback": "beeps", "send_chord": "enter", "live_insert_s": old})["live_insert_s"] == new
+    assert upgrade({"send_chord": "enter", "stream_release": "phrase", "live_insert_s": 7})["live_insert_s"] == 7
 
 
 def test_cuts_at_fast_interval():
@@ -149,8 +166,13 @@ def test_word_release_holds_the_last_word():
 
 def test_phrase_release_waits_for_punctuation():
     s = _stream("phrase")
-    assert s._release("Reminder, ask", False, now=0) == "Reminder, "
-    assert s._release("Reminder, ask Avi", False, now=0.5) == ""
+    assert s._release("Reminder, ask", False, now=0) == ""                  # one word: too short
+    assert s._release("Reminder, ask Avi for a dgima, of", False, now=0.5) == "Reminder, ask Avi for a dgima,"
+    assert s._release("Reminder, ask Avi for a dgima, of the", False, now=1) == ""
+    assert s._release("Reminder, ask Avi for a dgima, of the marinade.", False, now=1.5) == " of the marinade."
+    # a full stop goes out at once, whatever the length; the space after it is never sent alone
+    assert s._release("Reminder, ask Avi for a dgima, of the marinade. ", False, now=2) == ""
+    assert s._release("Reminder, ask Avi for a dgima, of the marinade. OK.", False, now=2.5) == " OK."
 
 
 def test_phrase_release_flushes_at_a_pause():
@@ -170,10 +192,62 @@ def test_phrase_release_caps_the_hold():
     for i in range(10):          # a new word every 0.5 s, no punctuation, no pause
         words += f"w{i} "
         out.append(s._release(words.strip(), False, now=i * 0.5))
-    assert "".join(out) and "".join(out) == words.strip()[: len("".join(out))]
+    sent = "".join(out)
+    assert sent and sent == words.strip()[: len(sent)]
+    assert all(len(o.split()) >= 3 for o in out if o)      # whole words, never one at a time
+    assert 1 <= sum(1 for o in out if o) <= 2              # every ~2.5 s
+
+
+def test_seams_hold_the_full_stop_of_a_piece_cut_mid_sentence():
+    # 0.7.1: Parakeet ends every piece with a full stop and starts the next with a capital
+    from hebrish.engine import after_held_stop, hold_stop
+    assert hold_stop("after the kids are asleep.", 0.7)
+    assert not hold_stop("after the kids are asleep.", LIVE_BREAK_S)    # a real break
+    assert not hold_stop("after the kids are asleep.", None)            # the last piece
+    assert not hold_stop("are you there?", 0.7) and not hold_stop("and so on...", 0.7)
+    assert after_held_stop("So nothing else is running.") == " so nothing else is running."
+    assert after_held_stop("since my son started.") == " since my son started."
+    assert after_held_stop("Esti said she'll book it.") == ". Esti said she'll book it."
+    assert after_held_stop("I think so.") == ". I think so."
 
 
 def test_finish_releases_the_rest():
     s = _stream("sentence")
     assert s._release("Hello there", False, now=0) == ""
     assert s._release("Hello there friend.", True, now=0.2) == "Hello there friend."
+
+
+def _run_worker(texts, jobs, cfg=None):
+    """Drive Controller._worker with a scripted Parakeet engine; return (pastes, transcript)."""
+    import queue
+    import threading
+    from types import SimpleNamespace
+    from hebrish.ui.app import Controller
+    pastes, done = [], threading.Event()
+    sig = SimpleNamespace(piece=SimpleNamespace(emit=lambda t: None),
+                          transcribed=SimpleNamespace(emit=lambda t, e, a: (pastes.append(("DONE", t)), done.set())))
+    it = iter(texts)
+    ctl = SimpleNamespace(
+        engine=SimpleNamespace(streaming=False, transcribe=lambda s, vad=False: next(it)),
+        cfg={"vad": False, "trailing_space": True, "insert": "paste", "paste_chord": "ctrl+v", **(cfg or {})},
+        sig=sig, inserter=SimpleNamespace(insert=lambda t, how, chord: pastes.append(t)),
+        _take=1, _send_take=0, _jobs=queue.Queue())
+    for pause, final in jobs:
+        ctl._jobs.put((1, np.zeros(SR, np.float32), final, pause))
+    threading.Thread(target=Controller._worker, args=(ctl,), daemon=True).start()
+    assert done.wait(5)
+    return pastes[:-1], pastes[-1][1]
+
+
+def test_worker_joins_a_sentence_cut_at_a_short_pause():
+    pastes, text = _run_worker(
+        ["Do it after the kids are asleep.", "So nothing else is running.", "Esti said yes.", "Thanks."],
+        [(0.7, False), (0.7, False), (1.4, False), (None, True)])
+    assert pastes == ["Do it after the kids are asleep", " so nothing else is running",
+                      ". Esti said yes. ", "Thanks. "]
+    assert text == "Do it after the kids are asleep so nothing else is running. Esti said yes. Thanks."
+
+
+def test_worker_pastes_a_held_full_stop_at_stop():
+    pastes, text = _run_worker(["We are done.", ""], [(0.7, False), (None, True)])
+    assert pastes == ["We are done", ". "] and text == "We are done."

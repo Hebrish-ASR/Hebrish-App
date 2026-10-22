@@ -50,7 +50,7 @@ def test_parlance_is_copied_and_left_intact(dirs):
     assert (old_data / ENCODER).read_bytes() == b"x" * 10
     assert (old_data / "state.json").is_file() and (old_data / "history.json").is_file()
     # Hebrish got settings minus the hotkey (and minus unknown keys), state, history, models
-    assert json.loads(config.CONFIG_PATH.read_text()) == {"hold_to_talk": False, **{"feedback": "beeps", "keep_history": True, "live_insert_s": 7}}   # mode upgraded, 0.5.0 defaults, 0.7.0 Normal and history
+    assert json.loads(config.CONFIG_PATH.read_text()) == {"hold_to_talk": False, **{"feedback": "beeps", "keep_history": True, "live_insert_s": 5}}   # mode upgraded, 0.5.0 defaults, 0.7.1 Normal and 0.7.0 history
     assert config.DEFAULTS["hotkey"] == "KEY_F14"
     assert json.loads(config.STATE_PATH.read_text()) == {"model": "codeswitch"}
     assert (config.DATA_DIR / "history.json").read_text() == '[{"text": "boker tov"}]'

@@ -38,7 +38,7 @@ be), and whether speed or accuracy matters more, and answers with the same rules
 | | Sabich-Parakeet-110M | Parakeet TDT-CTC 110M | available | Older phones, wearables: a fifth of the size (137 MB), faster, more mistakes |
 | | Sabich-asr4all-M / -S | FUTO asr4all 56M / 28M | listed; not runnable in the apps yet | Tiny, for wearables; writes numbers as words |
 | **Jachnun** (code-switching only) | **Jachnun** | Parakeet TDT 0.6B v2 | available | English + Hebrew vocabulary (*teudat zehut*, *arnona*, *bituach leumi*), in Latin letters. Recommended until 2026-10-21. [Models](https://hebrish.app/models#parakeet) |
-| **Shakshuka** (streaming) | **Shakshuka** | Nemotron speech streaming 0.6B | listed; needs the streaming engine (next release) | Live text while you talk |
+| **Shakshuka** (streaming) | **Shakshuka** | Nemotron speech streaming 0.6B | desktop 0.7.0+ (streams while you talk); not on Android yet | Live text while you talk |
 | **Parakeet (stock)** | | Parakeet TDT 0.6B v2 | available | Standard English, without the Hebrew words. NVIDIA's release, unchanged |
 
 Everything the apps can run today is a sherpa-onnx int8 offline transducer. A version on an
@@ -81,7 +81,7 @@ build and the Android app have not yet been tried on real hardware.
 ## Desktop app (Linux and Windows)
 
 - **Dictate**: press a hotkey anywhere (or Talk in the window), talk, and the text is pasted
-  where your cursor is, inserted as you go every ~7 s (Fast, Normal, Relaxed or a custom interval). An optional Stop and send key submits only once the last words are in. Output can also be the clipboard or the
+  where your cursor is, inserted as you go every ~5 s and whenever you pause (Fast, Normal, Relaxed or a custom interval). An optional Stop and send key submits only once the last words are in. Output can also be the clipboard or the
   window's text box. The Dictate tab shows the microphone in use, a switcher, a level meter with
   a clip lamp, and a voice-detection toggle. Feedback is beeps, short spoken prompts, or off.
   Two hotkeys, any key or a foot pedal: a toggle key (tap to start, tap to stop; holding it

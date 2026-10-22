@@ -452,7 +452,7 @@ model is already active) runs once per install, guarded by the state flag
 Never repeated after it succeeds: picking another model afterwards sticks. The File tab uses the
 same model; a separate model per mode is I-5. Tests pass; not run interactively (I).
 
-### Back to Parakeet; Shakshuka pastes by phrase (0.7.1, unreleased, 2026-10-22)
+### Back to Parakeet; Shakshuka pastes by phrase (0.7.1, 2026-10-22)
 
 Daniel, the same day, after dictating with 0.7.0 (D-2026-10-22-18, R-2026-10-22-37): Shakshuka was
 "very jarring": text came two or three words at a time, the screen flickered on every paste, and
@@ -470,15 +470,76 @@ when he paused for thought the last words didn't come out. Parakeet did better f
   notification says it stays downloaded. Installs that never ran 0.7.0 are left alone.
 - **Release rule (`engine.STREAM_RELEASE`, config `stream_release`, default `phrase`):** because the
   result only appends, any prefix can be released and the next release continues it exactly, even
-  mid-word. `phrase` releases up to the last `, ; : . ? !` followed by a space; or everything once
-  the result hasn't grown for 1.0 s (a pause) or the oldest held text is 4 s old. `sentence`: `. ? !`,
-  1.5 s, 10 s. `word` is 0.7.0's behaviour. At Stop, if the last release was at a pause (no
-  trailing space), the worker pastes the trailing space on its own. Unit tests in
-  `tests/test_live.py` (with an explicit `now`); **not yet tried in real dictation (I)**, and the
-  setting has no UI (config key only).
+  mid-word. The first version of the rule (`, ; : . ? !`, 1.0 s pause, 4 s cap) was retuned before
+  release: see "Insert-as-you-go pacing (0.7.1)" below.
 - **Flicker:** fewer pastes should mean less of it, but the cause of the flicker itself isn't
   established (the clipboard tool, the compositor or the target app repainting). Not measured.
 - **Parked:** a model per mode (I-5, R-2026-10-22-38).
+
+### Insert-as-you-go pacing (0.7.1, 2026-10-22)
+
+Daniel, the same evening (R-2026-10-22-39): with both models, insert as you go dumped text at the
+wrong rhythm. Sabich's pieces took "a bit too long" and "the insertion breaks don't really make a
+lot of sense"; word-by-word "is very jarring", and too long a wait leaves you "wondering if it's
+actually working". Shakshuka needed the same tuning. Both are front-end only (no model change).
+
+**Method (V).** `scripts/pace_sim.py` joins the six demo clips (131 reference words) with gaps of
+quiet noise, "thinking" (0.5, 1.4, 0.4, 2.5, 0.7 s) and "flowing" (0.4-0.5 s), and plays them in
+0.5 s ticks through the real cut and release code, Sabich v2.0 and Shakshuka v2.0 int8, 6
+threads, on the laptop used for the other measurements here. Each clip also has ~0.5-1 s of
+silence at its ends, so the real gaps are longer than the nominal ones.
+
+**What was wrong, Sabich (V).** (1) A piece always ended with a full stop and the next started
+with a capital, because each piece is decoded alone: a cut at the comma pause of "after the kids
+are asleep, so nothing else is running" pasted "…asleep. So nothing else…", and "…all morning.
+since my son…". These are the breaks that "don't make sense". (2) No cut before `interval` s of
+audio (7 s at Normal), however long you paused, so a short sentence followed by a pause to think
+stayed unpasted until you had said several more seconds.
+
+**What was wrong, Shakshuka 0.7.1 draft (V).** Pastes swung from 1 word ("Reminder, ", "Hi, ") to
+19, the 4 s cap released mid-word ("the pargit" / " for the…"), and every sentence end was
+followed by a paste of a lone space.
+
+**Changes.**
+- `engine.live_split` (replaces the body of `live_cut`, which now wraps it) also returns the length
+  of the pause it cut at. A pause of `LIVE_BREAK_S` = 1.0 s or more cuts at once, whatever the
+  interval, once the take holds `LIVE_MIN_S` = 2 s and some speech (`has_speech` before the cut,
+  and the quiet run must not start the buffer). Pauses of 0.6-1.0 s still wait for the interval.
+  `split_points` (whole takes, File tab) is unchanged: it never calls with less than the interval.
+- **Held full stop:** `engine.hold_stop` holds back the final `.` (and the space after it) of a
+  live piece cut at a pause under 1.0 s. When the next piece arrives, `after_held_stop` joins it:
+  if it starts lowercase (the model already heard a continuation) or with a word in `CONTINUES`
+  (and, so, because, which, to, of, …; not "the", "it", "I", which often start sentences), the
+  sentence goes on, lowercased: "asleep so nothing else". Otherwise ". " goes in front, exactly as
+  before. At Stop with nothing more, the held "." is pasted. History gets the same joined text
+  (`parts`). Worker tests: `tests/test_live.py::test_worker_*`.
+- **Presets** shorter: Fast 3, Normal 5 (default), Relaxed 8 s (were 5, 7, 10). `config.upgrade`
+  moves a stored 5, 7 or 10 to the new value of the same preset once (configs without
+  `stream_release`, the 0.7.1 key); custom values stay.
+- **Shakshuka `phrase`** is now (sentence marks `.?!`, clause marks `,;:`, at least 4 words before a
+  clause mark, 0.8 s pause, 2.5 s cap). A sentence end goes out at once; a clause mark only once
+  it makes 4 words; at a pause everything; at the cap whole words, keeping the last two back so a
+  sentence's last word doesn't follow on its own. Releases end on a word or mark, never on a
+  space, so each later one starts with its space and no lone space is pasted. `sentence`: `.?!`
+  only, 1.2 s, 6 s. `word`: unchanged. Settings has a "Shakshuka pastes" choice now.
+- The Dictate tab's text box no longer adds a space before a piece that starts with a space or a
+  mark (`_append_piece`), so streaming pieces and held full stops read right there too.
+
+**Results (V, the harness; "thinking" gaps).**
+
+| | Before | After |
+| --- | --- | --- |
+| Sabich, Normal | 7 s preset; 9 non-empty pieces, 1 error / 131; 3 seams pasted as ". Capital" mid-sentence | 5 s preset; 9 pieces, 1 / 131; mid-sentence seams joined ("asleep so nothing", "Yehuda and it", "morning since my son"); real sentence ends kept |
+| Shakshuka `phrase` | 21 pastes of 0-19 words (3 lone spaces), first at 3.0 s | 19 pastes of 2-11 words, every ~2-2.5 s while speaking, sentence ends at once; first at 4.5 s |
+| Shakshuka `word` (0.7.0) | 62 pastes of 1-4 words | unchanged |
+
+Sabich errors were the same at intervals 3, 4, 5 and 7 (1-2 / 131, the extra one a different
+word each time), so the shorter presets cost nothing measurable here. These clips have no pauses
+inside sentences longer than ~0.5 s, so the interval rarely decides a cut in them; real dictation
+has more, which is where the held full stop matters most. **Not yet tried in real dictation (I).**
+Known limits: a sentence that really ends at a short pause and whose next sentence starts with a
+`CONTINUES` word ("So…", "And…") is joined into one sentence; a mid-sentence pause of 1 s or more
+still gives ". Capital" unless the next word is in `CONTINUES`.
 
 ## Dictation history: SQLite, search, word counts (0.7.0, 2026-10-22)
 

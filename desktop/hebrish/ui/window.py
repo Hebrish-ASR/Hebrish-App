@@ -26,8 +26,10 @@ from .style import BLUE, BRAND_GREEN
 OVERLAY = [("off", "Off"), ("active", "While dictating"), ("always", "Always (a mic button)")]
 # Insert-as-you-go presets (0.7.0, Daniel 2026-10-22: Normal is the old ~10 s cut by a third).
 # Any other value is Custom; -1 is the Custom entry's own data.
-LIVE = [(0, "Off: everything when you stop"), (5, "Fast: every ~5 seconds"),
-        (7, "Normal: every ~7 seconds"), (10, "Relaxed: every ~10 seconds"), (-1, "Custom…")]
+LIVE = [(0, "Off: everything when you stop"), (3, "Fast: every ~3 seconds"),
+        (5, "Normal: every ~5 seconds"), (8, "Relaxed: every ~8 seconds"), (-1, "Custom…")]
+STREAM = [("phrase", "A phrase at a time"),
+          ("sentence", "A sentence at a time"), ("word", "Every word")]
 OUTPUT = [("paste", "Paste at the cursor"), ("clipboard", "Clipboard only"),
           ("app", "This window's text box only")]
 FEEDBACK = [("beeps", "Beeps (start and stop)"), ("voice", "Voice (“Recording”, “Paused”, “Transcribing”…)"),
@@ -416,7 +418,8 @@ class MainWindow(QMainWindow):
 
     def _append_piece(self, text):
         cur = self.text.toPlainText()
-        sep = "" if not cur or cur.endswith((" ", "\n")) else " "
+        # streaming pieces and held full stops (0.7.1) carry their own leading space or mark
+        sep = "" if not cur or cur.endswith((" ", "\n")) or text.startswith((" ", ".", ",", ";", ":", "?", "!")) else " "
         self.text.moveCursor(self.text.textCursor().MoveOperation.End)
         self.text.insertPlainText(sep + text)
         self.text.ensureCursorVisible()
@@ -1008,9 +1011,9 @@ class MainWindow(QMainWindow):
                                                    "take (earlier takes are in History)"))
         b.addWidget(self._check("keep_history", "Keep a history of every transcript (the History tab: "
                                                 "searchable, saved on this computer)", self._on_history_setting))
-        b.addWidget(self._check("keep_audio", "Keep the audio of each take too (about 2 MB a minute), "
-                                              "so corrected transcripts can become training data",
+        b.addWidget(self._check("keep_audio", "Keep the audio of each take too (about 2 MB a minute)",
                                 self.show_history))
+        b.addWidget(muted("With the audio kept, corrected transcripts can become training data."))
         lay.addWidget(box)
 
         box, b = card("Action keys")
@@ -1033,17 +1036,19 @@ class MainWindow(QMainWindow):
         lay.addWidget(box)
 
         box, b = card("Speed")
-        b.addWidget(muted("Inserting as you go (on by default, Normal: every ~7 seconds) decodes the take "
+        b.addWidget(muted("Inserting as you go (on by default, Normal: every ~5 seconds) decodes the take "
                           "while you are still talking, at a pause, so text appears as you speak "
-                          "and only the last few seconds are left when you stop. Text already "
-                          "inserted stays if you then Discard or Retake. Off: everything is "
-                          "inserted at once when you stop.<br><br>With <b>Shakshuka</b>, the "
-                          "streaming model, any setting other than Off inserts text a phrase at a "
-                          "time while you speak (at a comma or full stop, or when you pause), and "
-                          "the interval doesn't apply."))
+                          "and only the last few seconds are left when you stop. When you stop "
+                          "to think for a second, what you said so far goes in straight away. "
+                          "Text already inserted stays if you then Discard or Retake. Off: "
+                          "everything is inserted at once when you stop.<br><br>With "
+                          "<b>Shakshuka</b>, the streaming model, any setting other than Off "
+                          "inserts text while you speak, in the pieces chosen below, and the "
+                          "interval doesn't apply."))
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignRight)
         form.addRow("Insert as you go", self._live_row())
+        form.addRow("Shakshuka pastes", self._combo("stream_release", STREAM))
         th = QSpinBox(minimum=0, maximum=os.cpu_count() or 16, value=self.cfg["num_threads"])
         th.setSpecialValueText(f"Auto ({threads({'num_threads': 0})})")
         reload = QTimer(self, singleShot=True, interval=900, timeout=self.ctl.load_model)   # once, after the last click
@@ -1187,7 +1192,7 @@ class MainWindow(QMainWindow):
             c.addItem(label, val)
         presets = [v for v, _ in LIVE if v >= 0]
         cur = self.cfg["live_insert_s"]
-        spin = QSpinBox(minimum=3, maximum=60, suffix=" s", value=cur if cur not in presets else 7)
+        spin = QSpinBox(minimum=3, maximum=60, suffix=" s", value=cur if cur not in presets else 5)
         c.setCurrentIndex(c.findData(cur if cur in presets else -1))
         spin.setVisible(cur not in presets)
 

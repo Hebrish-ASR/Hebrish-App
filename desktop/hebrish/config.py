@@ -48,9 +48,9 @@ DEFAULTS = {
     "double_tap_retake": True,    # double tap of the toggle key while recording = Retake
     "double_tap_ms": 300,         # how long a stopping tap waits for the second tap
     "escape_discards": True,      # Esc while recording discards the take
-    "live_insert_s": 7,           # decode while recording and insert every ~N s, at a pause; 0 = off
+    "live_insert_s": 5,           # decode while recording and insert every ~N s, at a pause; 0 = off
     "stream_release": "phrase",   # streaming models: paste every word | phrase | sentence (engine.STREAM_RELEASE; 0.7.1)
-                                  # presets Fast 5, Normal 7, Relaxed 10 (0.7.0; was 10), else Custom
+                                  # presets Fast 3, Normal 5, Relaxed 8 (0.7.1; 0.7.0: 5/7/10), else Custom
     "overlay": "off",             # off | active (while dictating) | always
     "overlay_pos": None,          # [x, y] of the overlay's top-left; None = bottom centre
     "overlay_opacity": 85,        # idle opacity %, "always" mode
@@ -188,6 +188,11 @@ def upgrade(stored: dict) -> dict:
     # keep_history False was almost always the forced default: switch it on once.
     if stored and "clear_each_take" not in stored:
         stored["keep_history"] = True
+    # 0.7.1 (Daniel, 2026-10-22: text "a bit too long" in coming): each preset is shorter, Fast
+    # 5 -> 3, Normal 7 -> 5, Relaxed 10 -> 8. A config without `stream_release` predates that:
+    # keep the preset it was on, once. Custom values stay.
+    if stored.get("live_insert_s") in (5, 7, 10) and "stream_release" not in stored:
+        stored["live_insert_s"] = {5: 3, 7: 5, 10: 8}[stored["live_insert_s"]]
     return stored
 
 

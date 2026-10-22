@@ -9,6 +9,20 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-22-19: Insert as you go follows pauses, and is quicker by default
+
+- **Decision:** On desktop, a pause of 1 s or more inserts what was said at once, whatever the
+  interval; the presets become Fast 3, Normal 5 (default), Relaxed 8 s, and existing installs
+  move to the new value of their preset once. A Sabich piece cut at a short pause keeps its
+  sentence open (the held full stop). Shakshuka pastes a phrase at a time by default: a few
+  words every 2-3 s, a sentence end at once.
+- **Why:** Daniel, 2026-10-22: text came too late and the breaks were jagged; word by word is
+  jarring and long waits make you wonder whether it's working. Measured with
+  `desktop/scripts/pace_sim.py`: same accuracy at 3-7 s on the test clips.
+- **Alternatives:** keep the 7 s Normal and only fix the seams; re-decode across the seam with
+  token timestamps (more accurate joins, but a second decode per piece; not needed yet).
+- **By:** Daniel (request), 2026-10-22. Request R-2026-10-22-39; backlog B-33.
+
 ### D-2026-10-22-18: Parakeet (Sabich) is the desktop dictation default again
 
 - **Decision:** Supersedes the default in D-2026-10-22-12. On Linux and Windows the default model

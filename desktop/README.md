@@ -24,10 +24,13 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
   then presses the **Send key** (`enter` by default; `ctrl+enter` or `shift+enter` where Enter
   makes a new line). For chat boxes and Claude Code, where an Enter pressed while the last piece
   is still being transcribed would submit without it. Paste output only.
-- **Insert as you go** (Settings → Speed, on by default since 0.5.0): presets *Fast* (~5 s),
-  *Normal* (~7 s, the default since 0.7.0; was ~10 s), *Relaxed* (~10 s), *Off*, or *Custom*
+- **Insert as you go** (Settings → Speed, on by default since 0.5.0): presets *Fast* (~3 s),
+  *Normal* (~5 s, the default since 0.7.1; was ~7 s), *Relaxed* (~8 s), *Off*, or *Custom*
   (3–60 s). The take is decoded while you are still talking and the text is inserted at a pause, so a
-  long take on a CPU-only computer shows up as you go and only the last few seconds are left when you stop. Text
+  long take on a CPU-only computer shows up as you go and only the last few seconds are left when you stop.
+  A pause of a second or more inserts what you said straight away, and a sentence cut at a short
+  pause carries on without a stray full stop. With Shakshuka (streaming), *Shakshuka pastes*
+  chooses a phrase (default), a sentence or every word at a time. Text
   already inserted stays if you then Discard or Retake. *CPU threads* defaults to Auto
   (physical cores, at most 8).
 - **Sounds** (Settings → Sounds): *Beeps* (start and stop), *Voice* (short spoken prompts:

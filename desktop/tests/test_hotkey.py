@@ -93,7 +93,7 @@ def test_unset_keys_do_nothing():
     assert r.events == []
 
 
-V05 = {"feedback": "beeps", "keep_history": True, "live_insert_s": 7}    # what upgrade() gives a pre-0.5.0 config (0.7.0: 10 -> 7, history on)
+V05 = {"feedback": "beeps", "keep_history": True, "live_insert_s": 5}    # what upgrade() gives a pre-0.5.0 config (0.7.0: 10 -> 7, history on; 0.7.1: 7 -> 5)
 
 
 def test_upgrade_old_modes():
@@ -108,7 +108,7 @@ def test_upgrade_to_0_5_0_defaults():
     installs too; `beeps` became `feedback`. A config that already has `feedback` is left alone."""
     from hebrish.config import upgrade
     assert upgrade({"beeps": False, "live_insert_s": 0, "keep_history": True}) == \
-        {"feedback": "off", "live_insert_s": 7, "keep_history": True}    # 0.5.0 off, 0.7.0 on again; 10 then 7
+        {"feedback": "off", "live_insert_s": 5, "keep_history": True}    # 0.5.0 off, 0.7.0 on again; 10, 7, then 5
     assert upgrade({"beeps": True, "live_insert_s": 20})["live_insert_s"] == 20
     kept = {"feedback": "voice", "live_insert_s": 0, "keep_history": True}
     assert upgrade(dict(kept)) == kept

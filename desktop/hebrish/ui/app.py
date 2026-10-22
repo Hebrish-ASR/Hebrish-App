@@ -25,7 +25,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 from .. import __version__, app_update, audio, autostart, model_store
 from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
-from ..engine import Engine, live_cut
+from ..engine import Engine, after_held_stop, hold_stop, live_split
 from ..history import History
 from ..hotkey import make_listener
 from ..inserter import make_inserter
@@ -290,7 +290,7 @@ class Controller(QObject):
         self._stopped_at = time.monotonic()
         self.cue("transcribing")
         self.set_state("busy")
-        self._jobs.put((self._take, samples, True))
+        self._jobs.put((self._take, samples, True, None))
 
     def _live_tick(self):
         """Live insertion: hand the take to the decoder in pieces, cut at a pause."""
@@ -305,18 +305,18 @@ class Controller(QObject):
             # Shakshuka: everything recorded so far goes to the stream; whole words come back.
             new = self.recorder.peek()
             if len(new):
-                self._jobs.put((self._take, self.recorder.consume(len(new)), False))
+                self._jobs.put((self._take, self.recorder.consume(len(new)), False, None))
             return
-        cut = live_cut(self.recorder.peek(), interval)
+        cut = live_split(self.recorder.peek(), interval)
         if cut:
-            self._jobs.put((self._take, self.recorder.consume(cut), False))
+            self._jobs.put((self._take, self.recorder.consume(cut[0]), False, cut[1]))
 
     def _worker(self):
-        take, parts, stream, heard_audio = None, [], None, []
+        take, parts, stream, heard_audio, held = None, [], None, [], False
         while True:
-            job, samples, final = self._jobs.get()
+            job, samples, final, pause = self._jobs.get()
             if job != take:
-                take, parts, stream, heard_audio = job, [], None, []
+                take, parts, stream, heard_audio, held = job, [], None, [], False
             heard_audio.append(samples)
             whole_take = (lambda: np.concatenate(heard_audio)) if final else None
             try:
@@ -343,12 +343,28 @@ class Controller(QObject):
                         self.sig.transcribed.emit(whole, None if heard else NO_SPEECH, whole_take())
                     continue
                 text = self.engine.transcribe(samples, vad=self.cfg["vad"]) if live else ""
-                if text:
-                    parts.append(text)
-                    self.sig.piece.emit(text)
-                    space = " " if not final or self.cfg["trailing_space"] else ""
+                end = " " if self.cfg["trailing_space"] else ""
+                lead = ""
+                if text and held:
+                    # the previous piece's full stop and space were held back (engine.hold_stop)
+                    seam = after_held_stop(text)
+                    text = seam.lstrip(". ")
+                    lead = seam[: len(seam) - len(text)]
+                    if lead.startswith("."):
+                        parts[-1] += "."
+                elif held and final:
+                    lead, parts[-1] = "." + end, parts[-1] + "."
+                    self.sig.piece.emit(lead)
                     if self.cfg["insert"] != "app":
-                        self.inserter.insert(text + space, self.cfg["insert"], self.cfg["paste_chord"])
+                        self.inserter.insert(lead, self.cfg["insert"], self.cfg["paste_chord"])
+                if text:
+                    held = not final and hold_stop(text, pause)
+                    text = text[:-1] if held else text
+                    parts.append(text)
+                    self.sig.piece.emit(lead + text)
+                    space = "" if held else " " if not final else end
+                    if self.cfg["insert"] != "app":
+                        self.inserter.insert(lead + text + space, self.cfg["insert"], self.cfg["paste_chord"])
                 if final and live and parts and job == self._send_take and self.cfg["insert"] == "paste":
                     self._send()
                 if final:

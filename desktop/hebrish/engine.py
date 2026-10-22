@@ -2,6 +2,7 @@
 or streaming (Nemotron: Shakshuka, 0.7.0)."""
 
 import logging
+import re
 import threading
 import time
 from collections import deque
@@ -131,19 +132,24 @@ def split_points(x: np.ndarray) -> list[tuple[int, int]]:
 
 # Live insertion: cut the take while it is still being recorded, at a pause of at least
 # LIVE_PAUSE_S found in the last LIVE_SEARCH_S seconds (but not the newest LIVE_GUARD_S, which may
-# hold the start of a word). With no pause by interval + LIVE_FORCE_S, cut at the quietest 100 ms.
+# hold the start of a word), once the take holds `interval` seconds. A pause of LIVE_BREAK_S or more
+# (a sentence end, or stopping to think) cuts as soon as the take holds LIVE_MIN_S and some speech
+# (0.7.1: Daniel, 2026-10-22, text came too late and "the insertion breaks don't make sense").
+# With no pause by interval + LIVE_FORCE_S, cut at the quietest 100 ms.
 LIVE_SEARCH_S = 6
 LIVE_GUARD_S = 0.3
 LIVE_PAUSE_S = 0.6      # 0.3 cut inside sentences: 24 vs 10 errors per 786 words at 15 s
+LIVE_BREAK_S = 1.0
+LIVE_MIN_S = 2.0
 LIVE_FORCE_S = 15
 
 
-def live_cut(x: np.ndarray, interval_s: float) -> int | None:
-    """Sample index to cut a live take at, or None to keep listening. Quiet frames as in
-    stretch_pauses; the cut is the middle of the longest quiet run, so both halves keep some
-    silence."""
+def live_split(x: np.ndarray, interval_s: float) -> tuple[int, float] | None:
+    """(sample index to cut a live take at, length of the pause cut in s; 0 for a forced cut),
+    or None to keep listening. Quiet frames as in stretch_pauses; the cut is the middle of the
+    longest quiet run, so both halves keep some silence."""
     sr, n = SAMPLE_RATE, len(x)
-    if n < interval_s * sr:
+    if n < min(interval_s, LIVE_MIN_S) * sr:
         return None
     lo, hi = max(0, n - LIVE_SEARCH_S * sr), n - int(LIVE_GUARD_S * sr)
     m = n // FRAME
@@ -161,25 +167,65 @@ def live_cut(x: np.ndarray, interval_s: float) -> int | None:
             i = j
         else:
             i += 1
-    if best * FRAME >= LIVE_PAUSE_S * sr:
-        return (a + b) // 2 * FRAME
+    pause, cut = best * FRAME / sr, (a + b) // 2 * FRAME
+    if n >= interval_s * sr and pause >= LIVE_PAUSE_S:
+        return cut, pause
+    if pause >= LIVE_BREAK_S and a > 0 and has_speech(x[:cut]):
+        return cut, pause
     if n >= (interval_s + LIVE_FORCE_S) * sr:
         win = sr // 10
         frames = x[lo:hi][: (hi - lo) // win * win].reshape(-1, win)
-        return lo + int(np.argmin((frames ** 2).mean(axis=1))) * win + win // 2
+        return lo + int(np.argmin((frames ** 2).mean(axis=1))) * win + win // 2, 0.0
     return None
 
 
+def live_cut(x: np.ndarray, interval_s: float) -> int | None:
+    """live_split's cut alone."""
+    r = live_split(x, interval_s)
+    return r[0] if r else None
+
+
+# Seams between live pieces (0.7.1). Parakeet decodes each piece on its own, so a piece cut at a
+# pause inside a sentence comes back as a sentence: "...after the kids are asleep." then "So
+# nothing else is running..." (2026-10-22 pacing run, docs/maintaining.md). The full stop of a
+# piece cut at a pause shorter than LIVE_BREAK_S is therefore held back with the space after it;
+# if the next piece starts with one of these words, the sentence goes on ("asleep so nothing"),
+# otherwise the full stop is pasted in front of it, as before.
+CONTINUES = frozenset("""and or but so because since which who whom whose that than then to of for
+    with without in on at by from as if when while where whether after before until till unless
+    about into onto like plus nor yet although though""".split())
+
+
+def hold_stop(text: str, pause_s: float | None) -> bool:
+    """Hold back the full stop at the end of a live piece cut at pause_s (None: the last piece)."""
+    return pause_s is not None and pause_s < LIVE_BREAK_S and text.endswith(".") and not text.endswith("..")
+
+
+def after_held_stop(text: str) -> str:
+    """What to paste for text when the previous piece's full stop (and space) was held back."""
+    first = text.split(" ", 1)[0]
+    if first[:1].islower():                 # the model already heard it as a continuation
+        return " " + text
+    if first.lower().strip(",;:") in CONTINUES and not first[1:2].isupper():
+        return " " + text[:1].lower() + text[1:]
+    return ". " + text
+
+
 # How much text one paste of a streaming take holds (config `stream_release`, 0.7.1). Daniel,
-# 2026-10-22: a paste every word or two "is very jarring", and each paste flickers the screen.
-# (boundary punctuation, pause s, longest hold s): release up to the last boundary mark; else
-# everything once the text has stopped growing for `pause` s (the speaker paused) or the oldest
-# held word is `hold` s old. "word" releases every whole word, as 0.7.0 did.
+# 2026-10-22: a paste every word or two "is very jarring", and each paste flickers the screen; too
+# long a wait and "you're there wondering if it's actually working". Rule: (sentence marks, clause
+# marks, fewest words before a clause mark, pause s, longest hold s). Release up to the last
+# sentence mark at once, and up to a clause mark once that makes at least that many words;
+# everything once the text has stopped growing for `pause` s (the speaker paused); whole words
+# once the oldest held word is `hold` s old. "word" releases every whole word, as 0.7.0 did.
+# Measured on six clips read back to back (2026-10-22, docs/maintaining.md): "phrase" pastes
+# 3-12 words about every 2-3 s while you speak, and a sentence's end as soon as it is heard.
 STREAM_RELEASE = {
     "word": None,
-    "phrase": (",;:.?!", 1.0, 4.0),
-    "sentence": (".?!", 1.5, 10.0),
+    "phrase": (".?!", ",;:", 4, 0.8, 2.5),
+    "sentence": (".?!", "", 0, 1.2, 6.0),
 }
+_MARK_END = r"(?=\s|$)"     # a mark counts when a space (or nothing yet) follows it
 
 
 class LiveStream:
@@ -224,20 +270,35 @@ class LiveStream:
         return text
 
     def _ready(self, text: str, last: bool, now: float) -> str:
-        """The prefix of text to have released by now."""
+        """The prefix of text to have released by now. Releases end on a word or mark, never on
+        a space, so each later one starts with its space and none is a lone space."""
         if text != self._text:
             self._text, self._grew_at = text, now
         if last:
             return text
-        if self._held_at is None and text.strip() != self.sent.strip():
+        pending = text[len(self.sent):]
+        if not pending.strip():
+            return self.sent
+        if self._held_at is None:
             self._held_at = now
         if self._rule is None:
             return text[: text.rfind(" ") + 1]
-        marks, pause, hold = self._rule
-        if self._held_at is not None and (now - self._grew_at >= pause or now - self._held_at >= hold):
-            return text
-        cut = max(text.rfind(m + " ") for m in marks)
-        return text[: cut + 2] if cut >= 0 else ""
+        stops, clauses, min_words, pause, hold = self._rule
+        if now - self._grew_at >= pause:
+            return text.rstrip()
+        cut = 0
+        for m in re.finditer(f"[{re.escape(stops)}]{_MARK_END}", pending):
+            cut = m.end()
+        if clauses:
+            for m in re.finditer(f"[{re.escape(clauses)}]{_MARK_END}", pending):
+                if m.end() > cut and len(pending[: m.end()].split()) >= min_words:
+                    cut = m.end()
+        if now - self._held_at >= hold:
+            # whole words, but keep the last two back so a sentence's last word doesn't follow
+            # on its own half a second later (" table.")
+            spaces = [m.start() for m in re.finditer(" ", pending.rstrip())]
+            cut = max(cut, spaces[-2] if len(spaces) >= 3 else 0)
+        return self.sent + pending[:cut] if cut > 0 else self.sent
 
     def _release(self, text: str, last: bool, now: float | None = None) -> str:
         now = time.monotonic() if now is None else now
@@ -251,7 +312,7 @@ class LiveStream:
             return ""
         new, self.sent = ready[len(self.sent):], ready
         # What is still held started arriving about now.
-        self._held_at = None if text.strip() == self.sent.strip() else now
+        self._held_at = None if not text[len(ready):].strip() else now
         return new
 
     def feed(self, samples: np.ndarray) -> str:
