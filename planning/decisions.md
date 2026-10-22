@@ -9,6 +9,33 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-22-14: Accounts are invite-only, starting with the maintainer; cross-device sync waits
+
+- **Decision:** Hebrish gets accounts as a construct now (B-18), optional and invite-only: an
+  allow-list of addresses, which at first holds only Daniel, so account features can be tested
+  on real installs without affecting anyone else. Nothing in the app requires an account.
+  Syncing history across devices (I-7) is deferred until accounts exist.
+- **Why:** Cross-device sync needs accounts and server storage. Building the account layer first,
+  closed, makes the later features testable without a public sign-up.
+- **Alternatives:** Open sign-up (rejected for now: nothing to offer yet, and more to run).
+  Sync without accounts, through each user's own Drive (that is the backup, B-17, not sync).
+- **By:** Daniel. Requests R-2026-10-22-19, -20; backlog B-18, I-7.
+
+### D-2026-10-22-13: History is on by default, kept in full and searchable; the text box clears per take
+
+- **Decision:** Every transcript is kept on the device by default (`keep_history` on, no limit),
+  in SQLite with a full-text index (`desktop/hebrish/history.py`), with search and word counts in
+  the History tab. The Dictate tab's text box clears when a take starts (`clear_each_take`, on).
+  Installs from before 0.7.0 get history switched on once (their `false` was the 0.5.0 forced
+  default). Keeping audio is opt-in (`keep_audio`, off): about 2 MB a minute.
+- **Why:** The text box became one huge blob after many takes. Daniel: err on the side of
+  keeping things; with everything kept, it has to be searchable to be useful. Reverses the 0.5.0
+  default (history off, last 50), which predates this log.
+- **Alternatives:** Keep the 50-item JSON list (doesn't scale, no search). Audio on by default
+  (rejected: disk use, and most people won't correct transcripts).
+- **By:** Daniel (defaults, keeping everything); agent, implementing (SQLite/FTS5, the one-time
+  switch, audio opt-in). Requests R-2026-10-22-13, -14; backlog B-14, B-15; commit 8ab496a.
+
 ### D-2026-10-22-12: Shakshuka is the desktop default; Sabich for phones and recordings
 
 - **Decision:** On Linux and Windows the recommended (default) model is Shakshuka, the

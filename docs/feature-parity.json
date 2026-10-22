@@ -392,15 +392,104 @@
    "ubuntu": {
     "status": "present",
     "since": "0.1.0",
-    "evidence": "desktop/hebrish/ui/window.py _history_page"
+    "evidence": "desktop/hebrish/history.py; ui/window.py _history_page"
    },
    "windows": {
     "status": "present",
     "since": "0.1.0",
-    "evidence": "desktop/hebrish/ui/window.py _history_page",
+    "evidence": "desktop/hebrish/history.py; ui/window.py _history_page",
     "verified": false
    },
-   "notes": "Desktop: optional and off by default since 0.5.0. Android keeps only the last transcript."
+   "notes": "Desktop: on by default and unlimited since 0.7.0 (unreleased; SQLite history.db, was the last 50 and off since 0.5.0). Android keeps only the last transcript: planning/backlog.md B-19."
+  },
+  {
+   "id": "history-search",
+   "group": "history-and-files",
+   "name": "Search the transcript history",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "planning/backlog.md B-19"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.7.0 (unreleased)",
+    "evidence": "desktop/hebrish/history.py; ui/window.py _history_page"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.7.0 (unreleased)",
+    "evidence": "desktop/hebrish/history.py; ui/window.py _history_page",
+    "verified": false
+   },
+   "notes": "Keyword search (FTS5). Semantic search: B-16."
+  },
+  {
+   "id": "history-stats",
+   "group": "history-and-files",
+   "name": "Word counts: today, last 7 days, all time",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "planning/backlog.md B-19"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.7.0 (unreleased)",
+    "evidence": "desktop/hebrish/history.py; ui/window.py _history_page"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.7.0 (unreleased)",
+    "evidence": "desktop/hebrish/history.py; ui/window.py _history_page",
+    "verified": false
+   },
+   "notes": ""
+  },
+  {
+   "id": "history-corrections",
+   "group": "history-and-files",
+   "name": "Correct a transcript, keeping the model's original (training data)",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "planning/backlog.md B-19"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.7.0 (unreleased)",
+    "evidence": "desktop/hebrish/history.py; ui/window.py _history_page"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.7.0 (unreleased)",
+    "evidence": "desktop/hebrish/history.py; ui/window.py _history_page",
+    "verified": false
+   },
+   "notes": "Optional audio per take (keep_audio)."
+  },
+  {
+   "id": "text-box-clears-per-take",
+   "group": "insertion",
+   "name": "In-app text box starts empty for each take",
+   "android": {
+    "status": "missing",
+    "since": "",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/TryActivity.kt (inserts at the cursor; Clear button)",
+    "notes": "planning/backlog.md B-19"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.7.0 (unreleased)",
+    "evidence": "desktop/hebrish/ui/window.py new_take"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.7.0 (unreleased)",
+    "evidence": "desktop/hebrish/ui/window.py new_take",
+    "verified": false
+   },
+   "notes": "Setting clear_each_take, on by default."
   },
   {
    "id": "file-transcription",
