@@ -1,7 +1,5 @@
-**0.7.2: a tidier floating mic bar.**
+**0.7.3: the floating mic stays where you can reach it.**
 
-- The bar now has the buttons on the left (Pause, Retake, Discard) and the timer on the right, on either side of the screen.
-- Retake and Discard have their own coloured backgrounds, so they are easy to see and tap.
-- The microphone in use is a short chip: "BT" and the headset's name (shortened), or "Internal" for the phone's mic. A long headset name no longer stretches the bar.
-- Tap the chip to switch between Bluetooth and the phone's mic, also in the middle of a take. The choice is kept for the next takes (Controls shows it too).
+- With "Show only while a text field is focused" on, the floating mic used to vanish as soon as the field lost focus, for example when you closed the keyboard to read, or while dragging it. Now it stays up once it has appeared, so you can drag it off what you are reading and then tap it.
+- A small × next to the idle mic closes it. It comes back the next time you tap into a text field (or start a take from a remote or bound key).
 - Not yet tested on a device. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).
