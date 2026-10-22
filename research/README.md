@@ -22,4 +22,4 @@ links back here.
 
 | Topic | Question | Status |
 | --- | --- | --- |
-| [streaming-revision](streaming-revision/README.md) | Live word-by-word dictation that corrects earlier words when later speech changes their meaning (Deepgram-style). How is it built, and which base model fits it? | open (2026-10-22) |
+| [streaming-revision](streaming-revision/README.md) | Live word-by-word dictation that corrects earlier words when later speech changes their meaning (Deepgram-style). How is it built, and which base model fits it? | answered (2026-10-22) |
