@@ -14,7 +14,7 @@ tables below hold the detail and status.
 
 | Sprint | Desktop (Ubuntu + Windows) | Android | Release |
 | --- | --- | --- | --- |
-| 1 (now; desktop 0.7.0 released 2026-10-22) | B-8 tray icons, B-23 output mode from tray/shortcut, B-26 retention, I-1 pending indicator, I-3 mid-sentence lowercase, I-8 clipboard guard, B-31 short version labels; plus the unreleased B-1, B-2, B-6, B-7, B-12, B-14, B-15 | B-9 horizontal offset, B-3 interval presets, B-4 stop and send, B-11 voices and cue muting | desktop 0.7.0 (B-5), Android 0.8.0 |
+| 1 (now; desktop 0.7.0 released 2026-10-22) | B-8 tray icons, B-23 output mode from tray/shortcut, B-26 retention, I-1 pending indicator, I-3 mid-sentence lowercase, I-8 clipboard guard, B-31 short version labels; plus the unreleased B-1, B-2, B-6, B-7, B-12, B-14, B-15 | B-9 horizontal offset, B-3 interval presets, B-4 stop and send, B-11 voices and cue muting | desktop 0.7.0 released 2026-10-22 with Shakshuka as the dictation default and the done items; the six new desktop items above ship in desktop 0.7.1; Android 0.8.0 |
 | 2 | B-22 shortcut presets and rebinding, B-24 "Download models" setup, I-11 VAD toggle decision | B-13 Shakshuka streaming, B-19 history, B-28 retention, B-27 headset button (Yealink), B-10 design pass | desktop 0.8.0, Android 0.9.0 |
 | 3 | B-25 long-form mode, B-16 semantic search, B-17 Drive backup, I-9 long form to Google Docs, B-30 Meorav TTS pane | I-10 long form, B-20 Drive backup, B-30 Meorav TTS pane | desktop 0.9.0, Android 0.10.0 |
 | 4 | B-18 accounts, I-7 sync, I-12 report a word, I-13 personal dictionary | B-21 accounts, the same three | needs a server side on hebrish.app |
