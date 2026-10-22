@@ -251,6 +251,16 @@ everything below that describes runtime behaviour).
   `R.color.accent`, green `#0F6B5C`, purple, orange, slate, black; no red, which means
   recording). Compiled with `assembleDebug` (V, 2026-10-20, JDK 21: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64`,
   the shell's default `JAVA_HOME` points at a missing JDK 17 path); not run on a device (I).
+- **Stays up, closes with × (0.7.3, Daniel, 2026-10-22: "if I exit out a bit, I lose the
+  overlay … I can't reposition it", R-2026-10-22-36):** with *only while typing* on, visibility
+  used to follow `editableFocused` both ways, so the bubble vanished as soon as the field lost
+  focus (keyboard dismissed to read what it covered, or focus lost during a drag) and could not be
+  moved out of the way before tapping. Now only the rising edge counts: a field getting focus sets
+  `stuck` and clears `closed`; losing focus changes nothing. A × (`closeBtn`, `R.color.ime_key`
+  circle, 3/5 of the mic, at least 32 dp, next to the mic on the bar side) shows while idle with
+  nothing pending; it sets `closed`, which hides the idle bubble in either mode until a field next
+  gets focus. A take started from a remote also clears `closed`. Compiled with `assembleDebug`
+  (V, 2026-10-22); not run on a device (I).
 - **Missed field (0.4.0):** when `deliver` finds no editable focused node, or the node refuses
   both SET_TEXT and PASTE, the text goes into `pending` (appended if something is already
   waiting) and onto the clipboard, and the bar shows **Insert** + ×. Insert runs the same

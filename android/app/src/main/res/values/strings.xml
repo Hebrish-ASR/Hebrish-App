@@ -121,6 +121,7 @@
     <string name="bubble_insert">Insert</string>
     <string name="bubble_insert_cd">Insert the transcript into the focused text field</string>
     <string name="bubble_dismiss">Dismiss the transcript</string>
+    <string name="bubble_close">Close the floating mic until you next tap a text field</string>
     <string name="bubble_held">No text field to type into. Tap one, then tap Insert on the mic. The text is on the clipboard too.</string>
     <string name="bubble_tap_field">Tap a text field first, then Insert.</string>
     <string name="bubble_guide">How to turn it on</string>

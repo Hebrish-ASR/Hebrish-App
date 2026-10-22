@@ -59,6 +59,11 @@ import android.widget.Toast
  * horizontal place, edge gap, size, idle opacity, bar opacity and mic colour (Prefs.bubble*).
  * The bar always opens towards the middle of the screen, so the mic stays where it was parked.
  *
+ * Staying up (0.7.3): with "only while typing" on, the bubble appears when a field gets focus and
+ * then stays, even when the field loses focus or the bubble is dragged, so it can be moved off
+ * what you are reading before you tap it. The × beside the idle mic closes it until a text field
+ * next gets focus (or a take starts from a remote).
+ *
  * Same engine and process as the voice keyboard, so both share one loaded model. Recording needs
  * no foreground service: see docs/maintaining.md, "Floating mic".
  *
@@ -85,6 +90,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private lateinit var takeControls: List<View>
     /** Shown while a transcript is waiting for a field ([pending]). */
     private lateinit var pendingControls: List<View>
+    /** Beside the idle mic: hides the bubble until a field next gets focus ([closed]). */
+    private lateinit var closeBtn: ImageButton
     private val micBg = GradientDrawable().apply { shape = GradientDrawable.OVAL }
     private val barBg = GradientDrawable()
     private var state = State.IDLE
@@ -97,6 +104,10 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     /** Transcript that found no field to go into; Insert puts it in once one has focus. */
     private var pending: String? = null
     private var editableFocused = false
+    /** A field got focus since the last close: with "only while typing", the bubble stays up until ×. */
+    private var stuck = false
+    /** × was tapped: hidden while idle until a field next gets focus or a take starts. */
+    private var closed = false
     /** The last editable node an event came from: the fallback when findFocus can't see the field. */
     private var lastEditable: AccessibilityNodeInfo? = null
     private var shownSeconds = -1
@@ -194,8 +205,14 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             if (source?.isEditable == true && !source.isPassword) lastEditable = source
             editableFocused = source?.isEditable == true && event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
                 keyboardShowing() || focusedField() != null
-            if (editableFocused && !was) Transcriber.preload(this)
-            if (Prefs.bubbleOnlyTyping(this) && was != editableFocused) render()
+            // Only the rising edge changes what is shown: losing focus leaves the bubble up
+            // (stuck), so it can still be moved and tapped (Daniel, 2026-10-22).
+            if (editableFocused && !was) {
+                Transcriber.preload(this)
+                stuck = true
+                closed = false
+                render()
+            }
         }
     }
 
@@ -312,6 +329,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             setOnTouchListener(Drag({ performClick() }))
         }
         pendingControls = listOf(insert, button(R.drawable.ic_close, R.string.bubble_dismiss) { dismissPending() })
+        closeBtn = button(R.drawable.ic_close, R.string.bubble_close, R.color.ime_key) { close() }
         barBg.setColor(getColor(R.color.ime_bg))
         root = LinearLayout(themed).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -359,12 +377,19 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         mic.addView(icon, FrameLayout.LayoutParams(inner, inner, Gravity.CENTER))
         mic.addView(spinner, FrameLayout.LayoutParams(inner, inner, Gravity.CENTER))
         r.removeAllViews()
-        // The mic is the child nearest its edge; the bar keeps its own left-to-right order.
+        // The mic is the child nearest its edge, then × (idle only); the bar keeps its own
+        // left-to-right order.
         val bar = takeControls + pendingControls
-        for (c in if (left) listOf<View>(mic) + bar else bar + mic) {
-            r.addView(c, if (c === mic) LinearLayout.LayoutParams(size, size) else LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                setMargins(dp(2), 0, dp(2), 0)
+        val closeSize = (size * 3 / 5).coerceAtLeast(dp(CLOSE_MIN_DP))
+        closeBtn.setPadding(closeSize / 5, closeSize / 5, closeSize / 5, closeSize / 5)
+        for (c in if (left) listOf(mic, closeBtn) + bar else bar + listOf(closeBtn, mic)) {
+            r.addView(c, when {
+                c === mic -> LinearLayout.LayoutParams(size, size)
+                c === closeBtn -> LinearLayout.LayoutParams(closeSize, closeSize).apply { setMargins(dp(4), 0, dp(4), 0) }
+                else -> LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    setMargins(dp(2), 0, dp(2), 0)
+                }
             })
         }
         params.gravity = Gravity.TOP or if (left) Gravity.LEFT else Gravity.RIGHT
@@ -481,6 +506,9 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     private fun startRecording(cue: Feedback.Cue = Feedback.Cue.START) {
         Transcriber.preload(this)
+        // A take started from a remote brings a closed bubble back, and keeps it up afterwards.
+        closed = false
+        stuck = true
         target = focusedField()?.takeIf { !it.isPassword }
         takeText.setLength(0)
         // Type as you go: each segment goes in when decoded. Otherwise it is all held for Stop.
@@ -718,14 +746,24 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         render()
     }
 
+    /** ×: hide the idle bubble until a text field next gets focus. */
+    private fun close() {
+        if (state != State.IDLE) return
+        closed = true
+        stuck = false
+        render()
+    }
+
     private fun copy(text: String) =
         getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), text))
 
     private fun render() {
         val r = root ?: return
         val waiting = pending != null && state == State.IDLE
-        val show = !Prefs.bubbleOnlyTyping(this) || editableFocused || state != State.IDLE || waiting
+        val wanted = !closed && (!Prefs.bubbleOnlyTyping(this) || editableFocused || stuck)
+        val show = wanted || state != State.IDLE || waiting
         r.visibility = if (show) View.VISIBLE else View.GONE
+        closeBtn.visibility = if (state == State.IDLE && !waiting) View.VISIBLE else View.GONE
         r.background = if (open || waiting) barBg.apply { cornerRadius = dp(Prefs.bubbleSize(this@FloatingMicService)).toFloat() } else null
         for (c in takeControls) c.visibility = if (open) View.VISIBLE else View.GONE
         for (c in pendingControls) c.visibility = if (waiting) View.VISIBLE else View.GONE
@@ -797,6 +835,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         const val FLASH_MS = 1000L
         /** Widest the mic source chip gets; [Mic.shortLabel] already cuts long names. */
         const val SOURCE_MAX_DP = 110
+        /** Smallest the idle × gets, so it stays a hittable target beside a small mic. */
+        const val CLOSE_MIN_DP = 32
         /** Most nodes [findFocusedEditable] visits per search. */
         const val MAX_NODES = 1500
     }
