@@ -124,7 +124,7 @@ release. Then overwrite the one stable file per platform on the Hebrish CDN
 (`https://cdn.hebrish.app/apps/{android,ubuntu,windows}/`: `Hebrish-latest.apk`,
 `hebrish-latest-amd64.deb`, `Hebrish-latest-windows-x64.zip`; since 2026-10-21, old versions
 stay only on the GitHub releases) and rewrite `downloads/latest.json` (the `r2-upload` skill in
-`parakeet-finetune-ops`). hebrish.app needs no edit: its buttons link
+`voice-ops`). hebrish.app needs no edit: its buttons link
 `hebrish.app/get/<platform>`, which redirects to the file `latest.json` names. The F-Droid
 repository (Hebrish-ASR/Hebrish-FDroid) builds from the GitHub releases, not the CDN; it checks
 hourly, and every Android release also runs its `publish.yml` and checks the index lists the new version. Adding a model needs no release:
