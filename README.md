@@ -116,7 +116,7 @@ you talk, and you're returned to HeliBoard with the text inserted. Details:
 | `shared/models.json` | The schema-1 catalogue, kept for older builds; a test fails if it disagrees with `catalogue.json` |
 | `shared/update-protocol.md` | How models are listed, downloaded and updated, and the quirks both apps work around |
 | `planning/` | Public project tracking: feature requests, backlog (with ideas for future versions), decision log |
-| `CLAUDE.md`, `.claude/skills/` | The agent workspace, public on purpose: repo instructions and skills contributors can use (`log-decision`, `queue-sprint`, `android-release`) |
+| `CLAUDE.md` | Agent instructions, public on purpose. The project's skills are in the public [`hebrish` marketplace](https://github.com/Hebrish-ASR/Hebrish-Claude-Plugins), plugin `hebrish-maintainers` |
 
 Releases: tag `android-vX.Y.Z` builds the signed APK in CI. Tag `desktop-vX.Y.Z` builds the
 Windows zip in CI; the Ubuntu .deb is built with `desktop/build-deb.sh` and added to the same

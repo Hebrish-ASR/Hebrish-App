@@ -7,14 +7,19 @@ Hebrish apps: Android voice keyboard (`android/`) and the Ubuntu + Windows deskt
 ## This repository is public, including this workspace
 
 Hebrish-ASR/Hebrish-App is public. The agent workspace is exposed **deliberately**: this file,
-`.claude/skills/` and `planning/` are meant to be read and used by contributors and their
+`planning/` and the project's skills are meant to be read and used by contributors and their
 agents. So:
 
 - Write everything as if a stranger reads it: no personal details beyond Daniel's public role,
   no machine/host names, account ids, internal URLs, private repo contents, or credentials
   (reference a secret by its name, never its value).
-- Skills that need private accounts or personal machines (the CDN upload, Daniel's installs)
-  stay in Daniel's private plugin. Skills a contributor could run go here, in `.claude/skills/`.
+- The project's skills are in the public `hebrish` Claude Code marketplace,
+  [Hebrish-ASR/Hebrish-Claude-Plugins](https://github.com/Hebrish-ASR/Hebrish-Claude-Plugins),
+  plugin `hebrish-maintainers` (`/plugin marketplace add Hebrish-ASR/Hebrish-Claude-Plugins`,
+  then `/plugin install hebrish-maintainers@hebrish`). Change skills there, not here. Skills
+  tied to Daniel's own machines and accounts stay in his private plugins.
+  `.claude/skills/android-release` is the last repo-local copy, kept until it is reconciled with
+  the plugin's version (2026-10-22).
 
 ## Where the shared work lives
 
@@ -28,7 +33,7 @@ something it would answer, and write to the one that fits.
 | `desktop/docs/maintaining.md`, `android/docs/maintaining.md` | The engineering record: how each app works, what was tried, what was measured |
 | `docs/` | Shared reference: `feature-parity.json`, screenshots |
 | `shared/` | Data and protocols both apps read (`catalogue.json`, `update-protocol.md`) |
-| `.claude/skills/` | Skills a contributor's agent can run here |
+| `hebrish-maintainers` plugin | The project's skills (reviews, parity, planning, data, website, outreach, Hugging Face): see above |
 
 A research answer becomes a decision (`planning/decisions.md`) and a backlog item, both linking
 back to the research folder. Shipped behaviour is described in `maintaining.md`, not in

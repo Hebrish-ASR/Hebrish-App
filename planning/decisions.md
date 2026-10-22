@@ -2,7 +2,7 @@
 
 Newest first. Append-only: a decision that is later reversed stays here, and the new one says
 which decision it supersedes. Ids are `D-<date>-<nn>`. Agents add entries with the
-`log-decision` skill (`.claude/skills/log-decision/`).
+`log-decision` skill (plugin `hebrish-maintainers`, marketplace Hebrish-ASR/Hebrish-Claude-Plugins).
 
 Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not chosen),
 **By** (who decided), and links to the request, backlog item or commit where they exist.

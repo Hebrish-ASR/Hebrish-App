@@ -20,7 +20,7 @@ what is being worked on next, and why things were decided the way they were.
   scheduled go under *Ideas for future versions*. Not everything can be built at once; that
   section is the honest answer to "will you add X?".
 - **A decision is made** (a default, a trade-off, a scope call, "not this way") → append it to
-  `decisions.md`. Agents: use the `log-decision` skill in `.claude/skills/`.
+  `decisions.md`. Agents: use the `log-decision` skill (plugin `hebrish-maintainers` in the [hebrish marketplace](https://github.com/Hebrish-ASR/Hebrish-Claude-Plugins)).
 - **Something ships** → mark the backlog item done with the commit or tag. The engineering
   record (how it works, what was tried) stays in `desktop/docs/maintaining.md` and
   `android/docs/maintaining.md`, not here.
