@@ -22,7 +22,7 @@ from PySide6.QtGui import QActionGroup, QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from .. import __version__, app_update, audio, autostart, model_store
+from .. import __version__, app_update, audio, autostart, dictionary, model_store
 from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
 from ..engine import Engine, after_held_stop, hold_stop, live_split
@@ -314,6 +314,7 @@ class Controller(QObject):
     def _worker(self):
         take, parts, stream, heard_audio, held, ctx = None, [], None, [], False, None
         out = str             # how text leaves the app: as is, or ALL CAPS (read once per take)
+        fix = str             # the personal dictionary (read once per take)
         while True:
             job, samples, final, pause = self._jobs.get()
             if job != take:
@@ -322,6 +323,14 @@ class Controller(QObject):
                 # and shown in the text box, so the seam and release rules still see case, and
                 # History (which can become training data) keeps the normal case.
                 out = str.upper if self.cfg["all_caps"] else str
+                # Personal dictionary (0.8.0; ../shared/personal-dictionary.md): applied to each piece
+                # after the seam rules, before ALL CAPS. Unlike ALL CAPS it reaches History, which
+                # holds what was meant.
+                try:
+                    fix = dictionary.compile(dictionary.load())
+                except Exception:
+                    log.exception("couldn't read the personal dictionary")
+                    fix = str
             heard_audio.append(samples)
             whole_take = (lambda: np.concatenate(heard_audio)) if final else None
             try:
@@ -333,6 +342,7 @@ class Controller(QObject):
                     text = stream.finish(samples) if final else stream.feed(samples)
                     space = " " if final and self.cfg["trailing_space"] else ""
                     if text:
+                        text = fix(text)      # whole words with their own spaces; stream.sent keeps the raw text
                         parts.append(text)
                         self.sig.piece.emit(out(text))
                         if self.cfg["insert"] != "app":
@@ -367,7 +377,7 @@ class Controller(QObject):
                         self.inserter.insert(out(lead), self.cfg["insert"], self.cfg["paste_chord"])
                 if text:
                     held = not final and hold_stop(text, pause)
-                    text = text[:-1] if held else text
+                    text = fix(text[:-1] if held else text)
                     parts.append(text)
                     self.sig.piece.emit(out(lead + text))
                     space = "" if held else " " if not final else end

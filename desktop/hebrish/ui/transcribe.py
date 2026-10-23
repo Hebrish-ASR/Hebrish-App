@@ -10,7 +10,7 @@ from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtWidgets import (QFileDialog, QHBoxLayout, QMessageBox, QPlainTextEdit,
                                QProgressBar, QPushButton, QSizePolicy, QVBoxLayout, QWidget)
 
-from .. import audio
+from .. import audio, dictionary
 from ..inserter import copy_to_clipboard
 
 PARAGRAPH_S = 30
@@ -139,12 +139,13 @@ class TranscribePage(QWidget):
 
         def work():
             try:
+                fix = dictionary.compile(dictionary.load())     # personal dictionary, as in dictation
                 para_at = None     # pieces are ~10-25 s; start a paragraph every ~30 s of audio
                 for text in self.ctl.engine.transcribe_chunks(samples, cancel, vad=self.cfg["vad"]):
                     done, total = self.ctl.engine.last_progress
                     new = para_at is None or done - para_at >= PARAGRAPH_S * audio.SAMPLE_RATE
                     para_at = done if new else para_at
-                    self.sig.chunk.emit(("\n\n" if new else " ") + text)
+                    self.sig.chunk.emit(("\n\n" if new else " ") + fix(text))
                     self.sig.progress.emit(done / total)
                 self.sig.done.emit((len(samples) / audio.SAMPLE_RATE, time.monotonic() - started,
                                     cancel.is_set()))

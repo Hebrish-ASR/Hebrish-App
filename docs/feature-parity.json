@@ -1012,6 +1012,28 @@
     "verified": false
    },
    "notes": "R-2026-10-22-40, B-34. Applied where text leaves the app; read once per take."
+  },
+  {
+   "id": "personal-dictionary",
+   "group": "insertion",
+   "name": "Personal dictionary: words written your way, with optional heard-as phrases",
+   "android": {
+    "status": "present",
+    "since": "0.9.0",
+    "evidence": "android/core/src/main/java/app/hebrish/core/PersonalDictionary.kt; TakeDecoder applies it; reads the system personal dictionary (UserDictionary)"
+   },
+   "ubuntu": {
+    "status": "present",
+    "since": "0.8.0",
+    "evidence": "desktop/hebrish/dictionary.py; applied in desktop/hebrish/ui/app.py Controller._worker (fix) and ui/transcribe.py; Dictionary tab in ui/window.py"
+   },
+   "windows": {
+    "status": "present",
+    "since": "0.8.0",
+    "evidence": "desktop/hebrish/dictionary.py; applied in desktop/hebrish/ui/app.py Controller._worker (fix) and ui/transcribe.py; Dictionary tab in ui/window.py",
+    "verified": false
+   },
+   "notes": "R-2026-10-22-32, I-13. Rules and test set shared: shared/personal-dictionary.md, shared/dictionary-cases.json. Applied after decoding, before ALL CAPS. Desktop keeps its own list (no system dictionary); no sync yet (I-7)."
   }
  ],
  "engine_rules": [

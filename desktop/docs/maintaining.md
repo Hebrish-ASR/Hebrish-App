@@ -609,6 +609,37 @@ History count above is the number to recheck after a day of use.
 Android had no seam handling (segments joined with a space): the same design went to Android
 0.8.2 (`android/docs/maintaining.md`).
 
+## Personal dictionary (0.8.0, 2026-10-23)
+
+Words the user wants written their way (names, brands, Hebrew terms in their romanization), each
+with optional "heard as" phrases (what the model writes instead). Request R-2026-10-22-32, backlog
+I-13. The rules, and why it corrects the model's text after decoding instead of biasing the decoder
+(sherpa-onnx `hotwords` would need `modified_beam_search`, unverified for NeMo transducers), are
+shared with Android: [`../../shared/personal-dictionary.md`](../../shared/personal-dictionary.md).
+
+- **Code:** `hebrish/dictionary.py`: `load`/`save` of `<config>/dictionary.json`
+  (`{"schema": 1, "words": [{"word", "heard": [...]}]}`, written with `config.save_json`, so
+  atomic and UTF-8), and `compile(entries)`, which builds one regex (alternatives longest source
+  first, `(?<!\w)…(?!\w)` boundaries, IGNORECASE) and returns `text -> text`, or `str` when the
+  dictionary is empty.
+- **Where it applies:** `Controller._worker` compiles it once per take into `fix`, next to ALL
+  CAPS' `out`. Parakeet: each piece after the seam rules and the held full stop
+  (`fix(text[:-1] if held else text)`), so `hold_stop`/`after_held_stop` still see the model's
+  text. Shakshuka: each released piece of whole words; `stream.sent` (the release bookkeeping)
+  keeps the raw text, and a replacement never touches the spaces around a match, so the
+  trailing-space check still holds. The File tab (`ui/transcribe.py`) applies it to each chunk.
+  A heard-as phrase split across two pieces (insert as you go) is not replaced.
+- **History gets the corrected text** in normal case (unlike ALL CAPS): History is the fallback
+  for lost text, so it holds what was meant. The cost: History's "original" next to a Correct is
+  no longer pure model output for dictionary words; the dictionary file itself is the better list
+  of words the model gets wrong (T4 in the website repo's `project-context/tasks.md`).
+- **UI:** a Dictionary tab after History: add (word + comma-separated heard as; adding a word again
+  replaces its entry), a table, Remove. Saved at once, used from the next take.
+- **Verified (V):** `tests/test_dictionary.py` runs every case in `shared/dictionary-cases.json`,
+  the file round trip, the worker (dictionary before ALL CAPS, History in normal case) and the tab
+  off-screen; the tab was also rendered off-screen and looked at. **Not verified (I):** a real take
+  on Ubuntu or Windows.
+
 ## ALL CAPS, and the 0.7.2 polish pass (2026-10-22)
 
 **ALL CAPS** (Daniel, 2026-10-22, R-2026-10-22-40, B-34: "just for fun"): config `all_caps`,

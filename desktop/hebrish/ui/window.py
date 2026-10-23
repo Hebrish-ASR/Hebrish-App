@@ -1,4 +1,4 @@
-"""Main window: header, then Dictate / File / [History] / Models / Settings / About tabs.
+"""Main window: header, then Dictate / File / [History] / Dictionary / Models / Settings / About tabs.
 History is there only while "Keep a history" is on (on by default again since 0.7.0, now
 every transcript in a searchable SQLite file: hebrish.history)."""
 
@@ -11,10 +11,11 @@ from PySide6.QtCore import QSize, Qt, QTime, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout,
                                QInputDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit,
-                               QProgressBar, QPushButton, QScrollArea, QSlider, QSpinBox,
-                               QTabWidget, QTimeEdit, QToolButton, QVBoxLayout, QWidget)
+                               QAbstractItemView, QHeaderView, QProgressBar, QPushButton, QScrollArea,
+                               QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QTimeEdit,
+                               QToolButton, QVBoxLayout, QWidget)
 
-from .. import __version__, audio, autostart, model_store
+from .. import __version__, audio, autostart, dictionary, model_store
 from ..config import APP_NAME, CONFIG_PATH, MODELS_DIR, STATE_PATH, TAGLINE, load_json, threads
 from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
@@ -120,6 +121,7 @@ class MainWindow(QMainWindow):
         from .transcribe import TranscribePage
         self.transcribe = self.pages["file"] = TranscribePage(ctl, card, muted)
         self.pages["history"] = self._history_page()
+        self.pages["dictionary"] = self._dictionary_page()
         self.pages["model"] = self._scroll(self._model_page())
         self.pages["settings"] = self._scroll(self._settings_page())
         self.pages["settings"].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)   # labels wrap, never scroll sideways
@@ -127,7 +129,7 @@ class MainWindow(QMainWindow):
         self.pages["diagnostics"] = DiagnosticsPage(ctl, card, muted)
         self.pages["about"] = self._about_page()
         for key, label in (("dictate", "Dictate"), ("file", "File"), ("history", "History"),
-                           ("model", "Models"), ("settings", "Settings"),
+                           ("dictionary", "Dictionary"), ("model", "Models"), ("settings", "Settings"),
                            ("diagnostics", "Diagnostics"), ("about", "About")):
             self.tabs.addTab(self.pages[key], label)
         self.tabs.setTabVisible(self.tabs.indexOf(self.pages["history"]), self.cfg["keep_history"])
@@ -501,6 +503,85 @@ class MainWindow(QMainWindow):
         lay.addWidget(box)
         self._hist_limit = HISTORY_PAGE
         return page
+
+    # -- personal dictionary (0.8.0) ---------------------------------------------------------
+    def _dictionary_page(self):
+        """The personal dictionary (hebrish.dictionary; rules in ../shared/personal-dictionary.md):
+        a table of entries, a row to add one, Remove. Every change is saved at once."""
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(16, 14, 16, 8)
+        lay.setSpacing(10)
+
+        box, b = card("Add a word")
+        b.addWidget(muted("Words you want written your way: names, brands, Hebrew terms. Hebrish corrects "
+                          "the model's text after it is written, from the next take; it can't teach the "
+                          "model new sounds. “Heard as” is what the model writes instead (optional; "
+                          "separate several with commas)."))
+        row = QHBoxLayout()
+        self.dict_word = QLineEdit()
+        self.dict_word.setPlaceholderText("Word, e.g. Hebrish")
+        self.dict_heard = QLineEdit()
+        self.dict_heard.setPlaceholderText("Heard as, e.g. hebrew ish")
+        add = QPushButton(QIcon.fromTheme("list-add"), "Add")
+        add.clicked.connect(self._dict_add)
+        for e in (self.dict_word, self.dict_heard):
+            e.returnPressed.connect(self._dict_add)
+        row.addWidget(self.dict_word, 1)
+        row.addWidget(self.dict_heard, 1)
+        row.addWidget(add)
+        b.addLayout(row)
+        lay.addWidget(box)
+
+        box, b = card("Your words")
+        self.dict_table = t = QTableWidget(0, 2)
+        t.setHorizontalHeaderLabels(["Word", "Heard as"])
+        t.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        t.verticalHeader().hide()
+        t.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        t.setSelectionBehavior(QAbstractItemView.SelectRows)
+        b.addWidget(t, 1)
+        row = QHBoxLayout()
+        self.dict_count = muted()
+        row.addWidget(self.dict_count, 1)
+        rm = QPushButton(QIcon.fromTheme("list-remove"), "Remove")
+        rm.clicked.connect(self._dict_remove)
+        row.addWidget(rm)
+        b.addLayout(row)
+        lay.addWidget(box, 1)
+        self._dict_show()
+        return page
+
+    def _dict_show(self):
+        self.dict_entries = dictionary.load()
+        t = self.dict_table
+        t.setRowCount(len(self.dict_entries))
+        for i, e in enumerate(self.dict_entries):
+            t.setItem(i, 0, QTableWidgetItem(e["word"]))
+            t.setItem(i, 1, QTableWidgetItem(", ".join(e["heard"])))
+        n = len(self.dict_entries)
+        self.dict_count.setText(f"{n} word{'s' if n != 1 else ''} · {dictionary.PATH}" if n
+                                else "No words yet.")
+
+    def _dict_add(self):
+        word = self.dict_word.text().strip()
+        if not word:
+            return
+        heard = [h.strip() for h in self.dict_heard.text().split(",") if h.strip()]
+        entries = [e for e in self.dict_entries if e["word"] != word]   # adding a word again replaces it
+        entries.append({"word": word, "heard": heard})
+        dictionary.save(entries)
+        self.dict_word.clear()
+        self.dict_heard.clear()
+        self._dict_show()
+        self.toast("Dictionary saved")
+
+    def _dict_remove(self):
+        rows = {i.row() for i in self.dict_table.selectedIndexes()}
+        if rows:
+            dictionary.save([e for i, e in enumerate(self.dict_entries) if i not in rows])
+            self._dict_show()
+            self.toast("Dictionary saved")
 
     def _on_history_setting(self):
         on = self.cfg["keep_history"]
