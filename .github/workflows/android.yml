@@ -70,6 +70,11 @@ jobs:
           subject-path: |
             Hebrish-${{ env.VER }}.apk
             Hebrish-${{ env.VER }}-play.aab
+      # The APK too, so a branch build (workflow_dispatch) can be installed for testing.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: Hebrish-${{ env.VER }}.apk
       - uses: actions/upload-artifact@v4
         with:
           name: play-aab

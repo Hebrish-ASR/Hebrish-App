@@ -153,7 +153,7 @@ side.
 | Code-switching | [`Hebrish/Jachnun-sherpa-onnx-int8`](https://huggingface.co/Hebrish/Jachnun-sherpa-onnx-int8), files at the root (since 2026-10-19; the main repo is gated). The app downloads whatever version is on HF `main` |
 | Format | sherpa-onnx int8 (encoder, decoder, joiner, tokens), about 660 MB per model |
 | Offline fallback (`ModelStore.BUNDLED`) | stock v2 at rev `1ab9323565dd`; code-switching v1.0 at rev `bb137e504b97` of the mirror (since 0.2.1). Used only when HF can't be reached on a first download |
-| Runtime | [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8 Android AAR, CPU, greedy search |
+| Runtime | [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) 1.13.8, built from source (`app/src/main/cpp`), ONNX Runtime 1.28.0 from Maven Central, CPU, greedy search |
 
 The code-switching model is trained on a single speaker's voice, so expect it to work best for that
 voice. Output is punctuated and cased, numbers come out as digits, and Hebrew words are
@@ -174,8 +174,9 @@ written in Latin script (the v2 tokenizer has no Hebrew characters).
 ## Build
 
 ```bash
+git submodule update --init                           # sherpa-onnx and its dependencies (third_party/)
 echo "sdk.dir=$HOME/Android/Sdk" > local.properties
-JAVA_HOME=/path/to/jdk-21 ./gradlew assembleRelease   # downloads the sherpa-onnx AAR on first build
+JAVA_HOME=/path/to/jdk-21 ./gradlew assembleFdroidRelease   # compiles sherpa-onnx (NDK r26d, CMake 3.22.1)
 ```
 
 Without the `RELEASE_*` env vars the release APK is signed with the debug key. Releases come
