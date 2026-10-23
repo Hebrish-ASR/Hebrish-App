@@ -1,0 +1,26 @@
+<resources>
+    <!-- Night version of values/styles.xml (same items, dark parents, light bar icons). -->
+    <style name="AppTheme" parent="@android:style/Theme.Material">
+        <item name="android:colorPrimary">@color/brand_bg</item>
+        <item name="android:colorPrimaryDark">@color/brand_bg</item>
+        <item name="android:colorAccent">@color/brand_accent</item>
+        <item name="android:colorControlNormal">@color/brand_muted</item>
+        <item name="android:colorBackground">@color/brand_bg</item>
+        <item name="android:windowBackground">@color/brand_bg</item>
+        <item name="android:textColorPrimary">@color/brand_ink</item>
+        <item name="android:textColorSecondary">@color/brand_muted</item>
+        <item name="android:textColorLink">@color/brand_accent</item>
+        <item name="android:statusBarColor">@color/brand_bg</item>
+        <item name="android:navigationBarColor">@color/brand_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:actionBarStyle">@style/AppBar</item>
+        <item name="android:buttonStyle">@style/AppButton</item>
+    </style>
+
+    <style name="AppBar" parent="@android:style/Widget.Material.ActionBar.Solid">
+        <item name="android:background">@color/brand_bg</item>
+        <item name="android:elevation">0dp</item>
+        <item name="android:titleTextStyle">@style/AppBarTitle</item>
+    </style>
+</resources>

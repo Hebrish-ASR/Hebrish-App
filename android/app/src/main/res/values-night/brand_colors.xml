@@ -1,0 +1,13 @@
+<!-- Hebrish-Mgmt/brand/tokens.json "dark"; see values/brand_colors.xml. -->
+<resources>
+    <color name="brand_bg">#111615</color>
+    <color name="brand_surface">#18201E</color>
+    <color name="brand_band">#151C1A</color>
+    <color name="brand_ink">#E8ECE9</color>
+    <color name="brand_muted">#9AA7A2</color>
+    <color name="brand_line">#2A3532</color>
+    <color name="brand_accent">#3FBF9F</color>
+    <color name="brand_accent_ink">#0C1412</color>
+    <color name="brand_accent_soft">#163A31</color>
+    <color name="brand_gold">#E0B14A</color>
+</resources>

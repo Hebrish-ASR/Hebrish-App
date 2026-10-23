@@ -114,7 +114,7 @@ class SetupActivity : Page() {
             val optional = s.id in Checklist.OPTIONAL
             s.mark.text = (if (done) "✓  " else "${i + 1}.  ") + s.mark.tag +
                 (if (optional) getString(R.string.setup_optional) else "")
-            if (done) s.mark.setTextColor(getColor(R.color.hebrish_green)) else s.mark.setTextColor(s.normal)
+            if (done) s.mark.setTextColor(getColor(R.color.brand_accent)) else s.mark.setTextColor(s.normal)
             s.actions.visibility = if (done) View.GONE else View.VISIBLE
         }
         val (n, of) = Checklist.progress(this)

@@ -1,6 +1,5 @@
 package app.hebrish.dictation
 
-import android.widget.ImageView
 import android.widget.LinearLayout
 
 /**
@@ -9,10 +8,9 @@ import android.widget.LinearLayout
  */
 class AboutActivity : Page() {
     override fun build() {
-        column.addView(ImageView(this).apply { setImageResource(R.drawable.ic_hebrish) },
-            LinearLayout.LayoutParams(dp(64), dp(64)).apply { topMargin = dp(12) })
-        heading(R.string.app_name)
-        text(R.string.about_body)
+        column.addView(brandHeader(markSize = 56, nameSize = 28f),
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+        text(R.string.about_body, top = 16)
 
         heading(R.string.about_lexicon_title)
         text(R.string.about_lexicon)
@@ -34,7 +32,7 @@ class AboutActivity : Page() {
         button(R.string.about_privacy, r2) { open(Hebrish.PRIVACY) }
         button(R.string.about_verify, r2) { open(Hebrish.VERIFY) }
 
-        text(versionSummary(), top = 28).apply { gravity = android.view.Gravity.CENTER; alpha = 0.8f }
+        text(versionSummary(), top = 32).apply { gravity = android.view.Gravity.CENTER; textSize = 13f; setTextColor(getColor(R.color.brand_muted)) }
         small(R.string.about_private).gravity = android.view.Gravity.CENTER
     }
 }

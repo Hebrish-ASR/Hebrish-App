@@ -30,43 +30,45 @@ class MainActivity : Page() {
     private lateinit var versionShort: TextView
 
     override fun build() {
-        text(R.string.intro)
-        setupSummary = nav(R.string.title_setup, {}, SetupActivity::class.java)
-        (setupSummary.parent as View).apply {
-            setBackgroundResource(R.drawable.card_bg)
-            setPadding(dp(16), dp(12), dp(16), dp(12))
-        }
-        tryBtn = Button(this).apply {
-            backgroundTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.accent))
-            setTextColor(0xFFFFFFFF.toInt())
-            textSize = 17f
+        // Home (0.10.0): the brand header replaces the bar's title; the rows sit in cards.
+        title = ""
+        column.addView(brandHeader(markSize = 52, nameSize = 30f), android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) })
+        text(R.string.intro_home, top = 16)
+        tryBtn = primary(Button(this)).apply {
             setOnClickListener {
                 if (ModelStore.isReady(this@MainActivity)) startActivity(Intent(this@MainActivity, TryActivity::class.java))
                 else startActivity(Intent(this@MainActivity, ModelsActivity::class.java))
             }
         }
         column.addView(tryBtn, android.widget.LinearLayout.LayoutParams(
-            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, dp(64)).apply { topMargin = dp(16) })
-        text(R.string.try_open_hint).gravity = android.view.Gravity.CENTER
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, dp(60)).apply { topMargin = dp(20) })
+        small(R.string.try_open_hint).gravity = android.view.Gravity.CENTER
 
         micLine = text(R.string.mic_missing, top = 16)
         micBtn = button(R.string.grant) { requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC) }
 
+        setupSummary = nav(R.string.title_setup, {}, SetupActivity::class.java, group().also {
+            (it.layoutParams as android.view.ViewGroup.MarginLayoutParams).topMargin = dp(20)
+        })
+
         heading(R.string.home_setup)
-        modelsSummary = nav(R.string.nav_models, {}, ModelsActivity::class.java)
-        keyboardSummary = nav(R.string.nav_keyboard, {}, KeyboardActivity::class.java)
-        bubbleSummary = nav(R.string.nav_bubble, {}, FloatingMicActivity::class.java)
-        nav(R.string.nav_dictation, { setText(R.string.nav_dictation_summary) }, DictationActivity::class.java)
-        nav(R.string.nav_dictionary, { setText(R.string.nav_dictionary_summary) }, DictionaryActivity::class.java)
-        nav(R.string.nav_controls, { setText(R.string.nav_controls_summary) }, ControlsActivity::class.java)
+        val setup = group()
+        modelsSummary = nav(R.string.nav_models, {}, ModelsActivity::class.java, setup)
+        keyboardSummary = nav(R.string.nav_keyboard, {}, KeyboardActivity::class.java, setup)
+        bubbleSummary = nav(R.string.nav_bubble, {}, FloatingMicActivity::class.java, setup)
+        nav(R.string.nav_dictation, { setText(R.string.nav_dictation_summary) }, DictationActivity::class.java, setup)
+        nav(R.string.nav_dictionary, { setText(R.string.nav_dictionary_summary) }, DictionaryActivity::class.java, setup)
+        nav(R.string.nav_controls, { setText(R.string.nav_controls_summary) }, ControlsActivity::class.java, setup)
         heading(R.string.home_more)
-        if (Channel.installScreen) nav(R.string.nav_install, { setText(R.string.nav_install_summary) }, InstallActivity::class.java)
-        nav(R.string.nav_contact, { setText(R.string.nav_contact_summary) }, ContactActivity::class.java)
-        nav(R.string.title_about, { setText(R.string.nav_about_summary) }, AboutActivity::class.java)
+        val more = group()
+        if (Channel.installScreen) nav(R.string.nav_install, { setText(R.string.nav_install_summary) }, InstallActivity::class.java, more)
+        nav(R.string.nav_contact, { setText(R.string.nav_contact_summary) }, ContactActivity::class.java, more)
+        nav(R.string.title_about, { setText(R.string.nav_about_summary) }, AboutActivity::class.java, more)
 
         // The version, at the bottom (Daniel, 2026-10-20); the detailed line is for bug reports.
-        versionShort = text(top = 28).apply { gravity = android.view.Gravity.CENTER; alpha = 0.8f }
-        version = text().apply { gravity = android.view.Gravity.CENTER; textSize = 11f; alpha = 0.6f }
+        versionShort = text(top = 32).apply { gravity = android.view.Gravity.CENTER; textSize = 13f; setTextColor(getColor(R.color.brand_muted)) }
+        version = text().apply { gravity = android.view.Gravity.CENTER; textSize = 11f; setTextColor(getColor(R.color.brand_muted)); alpha = 0.8f }
     }
 
     override fun onResume() {

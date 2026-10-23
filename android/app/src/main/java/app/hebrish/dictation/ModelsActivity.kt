@@ -121,7 +121,7 @@ class ModelsActivity : Page() {
         text = android.text.SpannableString(label).apply {
             setSpan(android.text.style.UnderlineSpan(), 0, length, 0)
         }
-        setTextColor(getColor(R.color.hebrish_green))
+        setTextColor(getColor(R.color.brand_accent))
         setPadding(0, dp(4), 0, dp(4))
         setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }
     }
@@ -164,7 +164,7 @@ class ModelsActivity : Page() {
         if (badge != null) nameRow.addView(TextView(this).apply {
             text = badge
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            setTextColor(0xFFFFFFFF.toInt())
+            setTextColor(getColor(R.color.brand_accent_ink))
             setBackgroundResource(R.drawable.badge_bg)
             setPadding(dp(8), dp(2), dp(8), dp(2))
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(10) })

@@ -644,6 +644,37 @@ missing characters restored as line breaks. Not covered: an app that trims the t
 no cursor (-1); that still appends at the end with a space. Investigation:
 `docs/debug-log/2026-10-23-overlay-eats-line-break.md`.
 
+## Screens in the Hebrish brand (0.10.0, 2026-10-23)
+
+Daniel, 2026-10-23: "a lot of UI polish ... not for the recording itself, but for the menu ...
+make it look a little bit more professional and slick, and the Hebrish logo from the website also
+doesn't come through". What changed, all in the app's own screens (the keyboard and the floating
+mic keep their colours):
+
+- **Logo (V, emulator):** `res/drawable/ic_hebrish.xml` had `pathData=` without the `android:`
+  prefix on the H, so the mark drew as a plain green square in the side menu, About and the
+  keyboard header since 0.6.0. The launcher icon (`ic_launcher_fg`) was always right.
+- **Theme:** `AppTheme` is `Theme.Material.Light` / `Theme.Material` (values-night) with the brand
+  tokens in `values/brand_colors.xml` and `values-night/brand_colors.xml`, copied from
+  `Hebrish-Mgmt/brand/tokens.json` (change the standard there first). Paper background, flat bar
+  in the page colour, green accent. Up to 0.9.x it was `Theme.DeviceDefault.DayNight` with the
+  blue `@color/accent`; that colour stays because it is the floating mic's first colour choice
+  (`Prefs.BUBBLE_COLORS`).
+- **Buttons:** the theme's `AppButton` (soft green pill, no capitals) for every `Button` in the
+  screens; `Page.primary()` makes the filled one (Try it on home).
+- **Type:** headings and the name in Fraunces (`Page.display()`, `assets/fonts/Fraunces.ttf`:
+  the brand's variable font subset to Latin with fonttools `pyftsubset`, 182 KB, OFL). Body text
+  stays the system sans.
+- **Home:** `Page.brandHeader()` (mark, name, the brand tagline) instead of a bar title; the rows
+  are grouped in cards (`Page.group()`, `nav(..., parent)`) with a chevron. The side menu has the
+  same header on the brand band. About uses the header too.
+- Wording: About no longer says "not-for-profit" (brand rule, 2026-10-22); the Setup
+  "(optional)" label kept its space (`\u0020`: aapt trims leading spaces).
+
+Checked on an API 34 emulator in light and dark (screenshots of home, menu, Setup, Models,
+Dictation, About; no crash) (V). Not on a phone (I). How to run the emulator: the
+`review-android-app` skill, section "Emulator".
+
 ## Floating mic pastes instead of rewriting (0.9.1, 2026-10-23)
 
 Daniel, 2026-10-23, on 0.9.0: the field "jumps around" when the text goes in, and the line break

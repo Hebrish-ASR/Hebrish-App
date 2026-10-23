@@ -1,6 +1,6 @@
-<!-- Models screen cards and the setup checklist (0.6.0): a faint tint of the text colour, so it works in light and dark. -->
+<!-- Cards (models, setup checklist, home's grouped rows): the brand surface on the paper background, with its hairline (0.10.0; up to 0.9.x a grey tint). -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#14808080" />
-    <stroke android:width="1dp" android:color="#33808080" />
-    <corners android:radius="14dp" />
+    <solid android:color="@color/brand_surface" />
+    <stroke android:width="1dp" android:color="@color/brand_line" />
+    <corners android:radius="16dp" />
 </shape>

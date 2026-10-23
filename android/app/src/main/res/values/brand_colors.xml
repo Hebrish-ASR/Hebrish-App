@@ -1,0 +1,15 @@
+<!-- Hebrish brand palette for the app's screens (0.10.0), copied from Hebrish-Mgmt/brand/tokens.json
+     "light"; values-night/brand_colors.xml holds "dark". Change the standard there first.
+     The recording UI (keyboard, floating mic) keeps its own colours in colors.xml. -->
+<resources>
+    <color name="brand_bg">#FBF8F2</color>
+    <color name="brand_surface">#FFFFFF</color>
+    <color name="brand_band">#F1ECE1</color>
+    <color name="brand_ink">#1D2422</color>
+    <color name="brand_muted">#5B6662</color>
+    <color name="brand_line">#E2DCCF</color>
+    <color name="brand_accent">#0F6B5C</color>
+    <color name="brand_accent_ink">#FFFFFF</color>
+    <color name="brand_accent_soft">#D8EFE7</color>
+    <color name="brand_gold">#C8901C</color>
+</resources>

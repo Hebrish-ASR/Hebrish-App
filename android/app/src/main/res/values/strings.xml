@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">Hebrish</string>
+    <!-- Brand short form (Hebrish-Mgmt/brand/BRAND.md, "Mission line"): under the name on home and in the side menu. -->
+    <string name="tagline">Dictation that gets the Hebrew words right.</string>
     <string name="ime_name">Hebrish</string>
     <string name="subtype_label">English (voice)</string>
 
@@ -11,6 +13,8 @@
     <string name="terms_body">The Hebrish models are free for personal, research, education and non-profit use. Commercial use, including telephony and call centres, needs a commercial licence: access@hebrish.app. Hebrish is experimental and trained on one speaker\'s voice; transcripts can be wrong, so check them before relying on them. It is provided as is, without warranty. Your audio stays on this phone.</string>
     <string name="open_terms">Read the terms of use</string>
 
+    <!-- Home (0.10.0): the tagline above already says what it does, so this says where it runs. -->
+    <string name="intro_home">It all runs on your phone; your voice never leaves it.</string>
     <string name="intro">Voice typing in English that gets the Hebrew words right. It all runs on your phone; your voice never leaves it.</string>
     <string name="version_line">App %1$s · %2$s %3$s</string>
     <string name="version_line_none">App %1$s · %2$s</string>
@@ -349,7 +353,7 @@
     <string name="version_summary">Hebrish %1$s · %2$s %3$s</string>
     <string name="version_summary_none">Hebrish %1$s · no model yet</string>
 
-    <string name="about_body">Hebrish is voice typing for people who speak English with Hebrew words in it: teudat zehut, arnona, be\'ezrat Hashem. The models are fine-tuned versions of NVIDIA Parakeet, and they run entirely on your phone. Hebrish is free and not-for-profit.</string>
+    <string name="about_body">Hebrish is voice typing for people who speak English with Hebrew words in it: teudat zehut, arnona, be\'ezrat Hashem. The models are fine-tuned versions of NVIDIA Parakeet, and they run entirely on your phone. Hebrish is free to use.</string>
     <string name="about_lexicon_title">The lexicon</string>
     <string name="about_lexicon">Every Hebrew word the models were taught, with what it means and how it is spelled. Browse it on hebrish.app.</string>
     <string name="about_contribute_title">Contribute</string>
@@ -366,7 +370,7 @@
     <string name="setup_progress">%1$d of %2$d required steps done</string>
     <string name="setup_progress_home">%1$d of %2$d steps done. Tap to continue.</string>
     <string name="setup_all_done">All set. Hebrish is ready.</string>
-    <string name="setup_optional">  (optional)</string>
+    <string name="setup_optional">\u0020(optional)</string>
     <string name="setup_more">More options</string>
     <string name="setup_mic_title">Allow the microphone</string>
     <string name="setup_mic">Hebrish needs it to hear you. Audio stays on the phone.</string>

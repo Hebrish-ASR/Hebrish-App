@@ -36,7 +36,7 @@ abstract class Page : Activity() {
         super.onCreate(savedInstanceState)
         column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(12), dp(20), dp(32))
+            setPadding(dp(20), dp(8), dp(20), dp(40))
         }
         val scroll = ScrollView(this).apply { fitsSystemWindows = true; addView(column) }
         if (this is MainActivity) {
@@ -103,32 +103,26 @@ abstract class Page : Activity() {
             isClickable = true
             fitsSystemWindows = true
         }
-        val items = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
-        val head = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(20), dp(20), dp(20), dp(12))
-            addView(ImageView(this@Page).apply { setImageResource(R.drawable.ic_hebrish) }, LinearLayout.LayoutParams(dp(36), dp(36)))
-            addView(TextView(this@Page).apply {
-                text = getString(R.string.app_name)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
-                setTypeface(typeface, android.graphics.Typeface.BOLD)
-                setPadding(dp(12), 0, 0, 0)
-            })
-        }
-        items.addView(head)
+        val items = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(8)) }
+        // Header (0.10.0): the mark and the name in the brand's display face on the brand band.
+        items.addView(brandHeader(markSize = 44, nameSize = 24f).apply {
+            setBackgroundColor(getColor(R.color.brand_band))
+            setPadding(dp(20), dp(28), dp(20), dp(20))
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) })
         fun entry(label: Int, go: () -> Unit) = items.addView(TextView(this).apply {
             setText(label)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-            setPadding(dp(20), dp(13), dp(20), dp(13))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setTextColor(getColor(R.color.brand_ink))
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+            setPadding(dp(24), dp(14), dp(20), dp(14))
             val out = TypedValue()
             theme.resolveAttribute(android.R.attr.selectableItemBackground, out, true)
             setBackgroundResource(out.resourceId)
             setOnClickListener { toggleDrawer(false); go() }
         })
         fun screen(label: Int, target: Class<out Activity>) = entry(label) { startActivity(Intent(this, target)) }
-        fun divider() = items.addView(View(this).apply { setBackgroundColor(0x33808080) },
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply { setMargins(dp(20), dp(8), dp(20), dp(8)) })
+        fun divider() = items.addView(View(this).apply { setBackgroundColor(getColor(R.color.brand_line)) },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply { setMargins(dp(24), dp(8), dp(24), dp(8)) })
         screen(R.string.title_setup, SetupActivity::class.java)
         screen(R.string.title_models, ModelsActivity::class.java)
         screen(R.string.title_keyboard, KeyboardActivity::class.java)
@@ -146,9 +140,10 @@ abstract class Page : Activity() {
         panel.addView(TextView(this).apply {
             text = versionSummary()
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            alpha = 0.7f
-            setPadding(dp(20), dp(12), dp(20), dp(20))
+            setTextColor(getColor(R.color.brand_muted))
+            setPadding(dp(24), dp(12), dp(20), dp(20))
         })
+        panel.setBackgroundColor(getColor(R.color.brand_bg))
         root.addView(panel, FrameLayout.LayoutParams(dp(290), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.START))
         drawer = panel
     }
@@ -188,40 +183,96 @@ abstract class Page : Activity() {
         return v
     }
 
+    /** Section heading, in the brand's display face (Fraunces, as on hebrish.app; 0.10.0). */
     protected fun heading(text: CharSequence, parent: LinearLayout = column) = add(TextView(this).apply {
         this.text = text
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-        setTypeface(typeface, android.graphics.Typeface.BOLD)
-    }, 22, parent)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 21f)
+        typeface = display(this@Page)
+        setTextColor(getColor(R.color.brand_ink))
+    }, 28, parent)
     protected fun heading(res: Int, parent: LinearLayout = column) = heading(getString(res), parent)
 
     protected fun subheading(res: Int, parent: LinearLayout = column) = add(TextView(this).apply {
         setText(res)
-        setTypeface(typeface, android.graphics.Typeface.BOLD)
-    }, 12, parent)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+        typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+        setTextColor(getColor(R.color.brand_ink))
+    }, 14, parent)
 
     protected fun text(text: CharSequence = "", parent: LinearLayout = column, top: Int = 4) =
-        add(TextView(this).apply { this.text = text; setTextIsSelectable(false) }, top, parent)
+        add(TextView(this).apply {
+            this.text = text
+            setTextIsSelectable(false)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setLineSpacing(dp(3).toFloat(), 1f)
+        }, top, parent)
     protected fun text(res: Int, parent: LinearLayout = column, top: Int = 4) = text(getString(res), parent, top)
 
     protected fun small(res: Int, parent: LinearLayout = column) = add(TextView(this).apply {
         setText(res)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-        alpha = 0.75f
-    }, 2, parent)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+        setTextColor(getColor(R.color.brand_muted))
+    }, 4, parent)
 
-    /** A wrap-content button on its own line, or in [parent] (e.g. a [row]). */
+    /**
+     * A wrap-content button on its own line, or in [parent] (e.g. a [row]). Styled by the theme
+     * (AppButton: a soft green pill); buttons in a row get a gap between them.
+     */
     protected fun button(res: Int, parent: LinearLayout = column, onClick: () -> Unit) = Button(this).apply {
         setText(res)
         setOnClickListener { onClick() }
-        parent.addView(this, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        parent.addView(this, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+            if (parent.orientation == LinearLayout.HORIZONTAL && parent.childCount > 0) marginStart = dp(8)
+            if (parent.orientation == LinearLayout.VERTICAL) topMargin = dp(6)
+        })
     }
+
+    /** Turns [b] into the filled green button (the screen's main action; 0.10.0). */
+    protected fun primary(b: Button) = b.apply {
+        setBackgroundResource(R.drawable.btn_primary)
+        setTextColor(getColor(R.color.brand_accent_ink))
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
+    }
+
+    /** The mark, "Hebrish" in the display face and the tagline: home's top and the side menu's header. */
+    protected fun brandHeader(markSize: Int, nameSize: Float): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        addView(ImageView(this@Page).apply { setImageResource(R.drawable.ic_hebrish) }, LinearLayout.LayoutParams(dp(markSize), dp(markSize)))
+        val words = LinearLayout(this@Page).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), 0, 0, 0) }
+        words.addView(TextView(this@Page).apply {
+            setText(R.string.app_name)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, nameSize)
+            typeface = display(this@Page, 700)
+            setTextColor(getColor(R.color.brand_ink))
+            includeFontPadding = false
+        })
+        words.addView(TextView(this@Page).apply {
+            setText(R.string.tagline)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setTextColor(getColor(R.color.brand_muted))
+            setPadding(0, dp(3), 0, 0)
+        })
+        addView(words)
+    }
+
+    /**
+     * A card that groups [nav] rows (home, 0.10.0): pass it as their parent; rows after the first
+     * get a hairline above them.
+     */
+    protected fun group(parent: LinearLayout = column) = add(LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setBackgroundResource(R.drawable.card_bg)
+        clipToOutline = true
+    }, 10, parent)
 
     /** A horizontal line of buttons. */
     protected fun row(parent: LinearLayout = column) = add(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }, 0, parent)
 
     protected fun switch(res: Int, get: () -> Boolean, set: (Boolean) -> Unit, parent: LinearLayout = column) = add(Switch(this).apply {
         setText(res)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+        setPadding(0, dp(6), 0, dp(6))
         isChecked = get()
         setOnCheckedChangeListener { _, v -> set(v) }
     }, 8, parent)
@@ -242,22 +293,41 @@ abstract class Page : Activity() {
             })
         })
 
-    /** A tappable two-line entry that opens another screen. */
-    protected fun nav(title: Int, summary: TextView.() -> Unit, target: Class<out Activity>): TextView {
-        val box = add(LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(12), 0, dp(12))
+    /**
+     * A tappable two-line entry with a chevron that opens another screen; returns the summary line.
+     * In a [group] card it is a padded row with a hairline above it (0.10.0).
+     */
+    protected fun nav(title: Int, summary: TextView.() -> Unit, target: Class<out Activity>, parent: LinearLayout = column): TextView {
+        val inCard = parent !== column
+        if (inCard && parent.childCount > 0) parent.addView(View(this).apply { setBackgroundColor(getColor(R.color.brand_line)) },
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply { marginStart = dp(16) })
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            val side = if (inCard) dp(16) else 0
+            setPadding(side, dp(14), if (inCard) dp(10) else 0, dp(14))
             val out = TypedValue()
             theme.resolveAttribute(android.R.attr.selectableItemBackground, out, true)
             setBackgroundResource(out.resourceId)
             setOnClickListener { startActivity(Intent(this@Page, target)) }
-        }, 2)
+        }
+        if (inCard) parent.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        else add(row, 2, parent)
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        row.addView(box, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(ImageView(this).apply { setImageResource(R.drawable.ic_chevron) }, LinearLayout.LayoutParams(dp(20), dp(20)))
         box.addView(TextView(this).apply {
             setText(title)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+            setTextColor(getColor(R.color.brand_ink))
         })
-        return TextView(this).apply { alpha = 0.8f; summary() }.also { box.addView(it) }
+        return TextView(this).apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setTextColor(getColor(R.color.brand_muted))
+            setPadding(0, dp(2), 0, 0)
+            summary()
+        }.also { box.addView(it) }
     }
 
     /** Opens a web page, or for a `mailto:` link an email with the app and device version appended. */
@@ -278,4 +348,20 @@ abstract class Page : Activity() {
     }
 
     protected fun versionName(): String = packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
+
+    companion object {
+        private val faces = HashMap<Int, android.graphics.Typeface>()
+
+        /**
+         * Fraunces, the brand's display face (Hebrish-Mgmt/brand/fonts, subset to Latin in
+         * assets/fonts; OFL), at [weight]. Headings and the name only; body text stays the system
+         * sans. Falls back to the system serif if the font can't be read.
+         */
+        fun display(ctx: android.content.Context, weight: Int = 600): android.graphics.Typeface = faces.getOrPut(weight) {
+            runCatching {
+                android.graphics.Typeface.Builder(ctx.assets, "fonts/Fraunces.ttf")
+                    .setFontVariationSettings("'wght' $weight, 'opsz' 48").build()
+            }.getOrNull() ?: android.graphics.Typeface.create(android.graphics.Typeface.SERIF, android.graphics.Typeface.BOLD)
+        }
+    }
 }
