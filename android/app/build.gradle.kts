@@ -1,27 +1,17 @@
-import java.net.URI
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
 
-// sherpa-onnx ships its Kotlin API and native libs as one AAR on GitHub releases (not Maven).
-// It is downloaded at build time rather than committed (50 MB).
+// sherpa-onnx is built from source (app/src/main/cpp/CMakeLists.txt, submodules in
+// ../third_party) since 0.11.0: F-Droid refuses the prebuilt GitHub release AAR used before
+// (docs/fdroid-main.md). Its Kotlin API is vendored in src/main/java/com/k2fsa/sherpa/onnx.
+// Bump all three together: the submodule, the vendored .kt files and this string.
 val sherpaVersion = "1.13.8"
-val sherpaAar = layout.projectDirectory.file("libs/sherpa-onnx-$sherpaVersion.aar")
-
-val fetchSherpaAar by tasks.registering {
-    outputs.file(sherpaAar)
-    doLast {
-        val f = sherpaAar.asFile
-        if (!f.exists()) {
-            f.parentFile.mkdirs()
-            val url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaVersion/sherpa-onnx-$sherpaVersion.aar"
-            logger.lifecycle("Downloading $url")
-            URI(url).toURL().openStream().use { input -> f.outputStream().use { input.copyTo(it) } }
-        }
-    }
-}
+// ONNX Runtime from Maven Central only. One version feeds both the runtime dependency (the
+// libonnxruntime.so in the APK) and the headers and .so the JNI library is linked against.
+// sherpa-onnx 1.13.8 is tested upstream with 1.28.x; Marmalade STT ships 1.28.0.
+val onnxRuntimeVersion = "1.28.0"
 
 // The model catalogue (shared/catalogue.json, schema 2 since 0.7.0) is shared with the desktop app. It is copied into the
 // APK's assets at build time, never edited or hand-copied here.
@@ -30,7 +20,7 @@ val copyCatalogue by tasks.registering(Copy::class) {
     from(rootProject.file("../shared/catalogue.json"))
     into(catalogueDir)
 }
-tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(fetchSherpaAar, copyCatalogue) }
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(copyCatalogue) }
 
 android {
     namespace = "app.hebrish.dictation"
@@ -45,6 +35,42 @@ android {
         versionName = "0.10.0"
         // Phones only: x86 libs would add ~25 MB for emulator use nobody needs here.
         ndk { abiFilters += "arm64-v8a" }
+
+        externalNativeBuild {
+            cmake {
+                // Reproducible builds (as Marmalade STT): -ffile-prefix-map keeps the checkout
+                // path out of __FILE__ strings, --build-id=none drops the path-sensitive note.
+                val prefixMapRoot = rootProject.layout.projectDirectory.asFile.absolutePath
+                cFlags += listOf("-ffile-prefix-map=$prefixMapRoot=.")
+                cppFlags += listOf("-ffile-prefix-map=$prefixMapRoot=.")
+                arguments += listOf(
+                    "-DTHIRD_PARTY_DIR=${rootProject.file("third_party").absolutePath}",
+                    "-DORT_DIR=${layout.buildDirectory.dir("onnxruntime").get().asFile.absolutePath}",
+                    // Same C++ runtime model as the ORT AAR (no libc++_shared.so).
+                    "-DANDROID_STL=c++_static",
+                    // Optimised native code in debug builds too, or dictation is too slow to judge.
+                    "-DCMAKE_BUILD_TYPE=Release",
+                    // 16 KB page alignment (Play requirement for targetSdk 35+).
+                    "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384 -Wl,--build-id=none",
+                )
+                targets += listOf("sherpa-onnx-jni")
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+    // Pinned for reproducible builds; F-Droid's metadata says `ndk: r26d` to match.
+    ndkVersion = "26.3.11579264"
+
+    // F-Droid's scanner rejects the Google-encrypted dependency blob in the APK signing block.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = true
     }
 
     // Two channels from one codebase (0.8.0, plan: Hebrish-App-Planning google-play.md). Same
@@ -76,6 +102,9 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Reproducible builds: META-INF/version-control-info differs between a clone and a
+            // worktree of the same commit.
+            vcsInfo { include = false }
             signingConfig = if (System.getenv("RELEASE_KEYSTORE") != null)
                 signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
@@ -91,9 +120,35 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    packaging { jniLibs { useLegacyPackaging = true } }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            // libonnxruntime.so arrives twice: from the ORT AAR (the copy that ships) and as an
+            // IMPORTED library of the sherpa-onnx CMake project. Same file, same Maven artifact.
+            pickFirsts += "lib/*/libonnxruntime.so"
+        }
+    }
 }
 
+// Reproducible builds: AGP's compiled ART baseline profile is not deterministic (it varies with
+// the build machine's core count), so the fdroid release APK leaves it out.
+tasks.matching { it.name.contains("FdroidRelease") && it.name.contains("ArtProfile") }
+    .configureEach { enabled = false }
+
 dependencies {
-    implementation(files(sherpaAar))
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:$onnxRuntimeVersion")
 }
+
+// The ORT AAR's headers/ and jni/<abi>/libonnxruntime.so, unpacked to build/onnxruntime (the
+// ORT_DIR CMake argument) before any CMake task, so the native build never downloads ORT.
+val onnxRuntimeAar = configurations.create("onnxRuntimeAar") {
+    isCanBeConsumed = false
+    isTransitive = false
+}
+dependencies.add(onnxRuntimeAar.name, "com.microsoft.onnxruntime:onnxruntime-android:$onnxRuntimeVersion@aar")
+val extractOnnxRuntime by tasks.registering(Sync::class) {
+    from({ zipTree(onnxRuntimeAar.singleFile) }) { include("headers/**", "jni/*/libonnxruntime.so") }
+    into(layout.buildDirectory.dir("onnxruntime"))
+}
+tasks.matching { it.name.startsWith("configureCMake") || it.name.startsWith("buildCMake") }
+    .configureEach { dependsOn(extractOnnxRuntime) }
