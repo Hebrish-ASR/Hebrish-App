@@ -191,18 +191,36 @@ def live_cut(x: np.ndarray, interval_s: float) -> int | None:
 # piece cut at a pause shorter than LIVE_BREAK_S is therefore held back with the space after it;
 # if the next piece starts with one of these words, the sentence goes on ("asleep so nothing"),
 # otherwise the full stop is pasted in front of it, as before.
+#
+# Context (0.7.6, Daniel 2026-10-23: sentences "reaching sentence boundaries a bit too prematurely",
+# "capitals in the middle of sentences"). In real dictation the pause rules above still gave about
+# 1.2 capitalised function words a minute mid-sentence ("kind of Dumping", "the hardest part is. Is
+# the room noise?"), most after a piece that ended with no mark at all, where nothing was held. So
+# each live piece cut at a pause is decoded after the last CONTEXT_S of the piece before it, and
+# only the words heard after that point are kept (token timestamps; the cut is the middle of a
+# pause, so no word straddles it). The model then sees the sentence go on: it writes the first word
+# in the case it has mid-sentence, and its punctuation at the seam replaces the guess the previous
+# piece made without hearing what followed. Measured: desktop/docs/maintaining.md, "Context at the seams".
+CONTEXT_S = 3.0
 CONTINUES = frozenset("""and or but so because since which who whom whose that than then to of for
     with without in on at by from as if when while where whether after before until till unless
     about into onto like plus nor yet although though""".split())
 
 
 def hold_stop(text: str, pause_s: float | None) -> bool:
-    """Hold back the full stop at the end of a live piece cut at pause_s (None: the last piece)."""
-    return pause_s is not None and pause_s < LIVE_BREAK_S and text.endswith(".") and not text.endswith("..")
+    """Hold back the full stop at the end of a live piece (pause_s None: the last piece). Since 0.7.6
+    every pause length holds it: the next piece is decoded after this one's audio
+    (Engine.transcribe_after), which decides. Up to 0.7.5 only pauses under LIVE_BREAK_S held."""
+    return pause_s is not None and text.endswith(".") and not text.endswith("..")
 
 
-def after_held_stop(text: str) -> str:
-    """What to paste for text when the previous piece's full stop (and space) was held back."""
+def after_held_stop(text: str, stop: bool | None = None) -> str:
+    """What to paste for text when the previous piece's full stop (and space) was held back.
+    stop: whether the model, decoding the end of the previous piece together with this one, ended
+    it with a sentence mark (Engine.transcribe_after); None when it had no context, and then the
+    CONTINUES rule decides, as in 0.7.1-0.7.5."""
+    if stop is not None:
+        return ". " + text[:1].upper() + text[1:] if stop else " " + text
     first = text.split(" ", 1)[0]
     if first[:1].islower():                 # the model already heard it as a continuation
         return " " + text
@@ -395,23 +413,62 @@ class Engine:
     def transcribe(self, samples: np.ndarray, vad: bool = False, record: bool = True) -> str:
         return " ".join(self.transcribe_chunks(samples, vad=vad, record=record))
 
+    def _prepare(self, x: np.ndarray, vad: bool) -> np.ndarray:
+        if vad:
+            x = shorten_silences(x)
+        x = normalize(x)
+        if not self.streaming:
+            # Parakeet only. On Shakshuka it hurt 3 of 6 code-switched clips (a doubled
+            # "tomorrow", a lost "ask Avi", a dropped full stop) and fixed none; without it the
+            # whole-take text equals the live text (2026-10-22, desktop/docs/maintaining.md).
+            x = stretch_pauses(x)
+        return x
+
+    def transcribe_after(self, samples: np.ndarray, context: np.ndarray | None, vad: bool = False,
+                         record: bool = True) -> tuple[str, bool | None]:
+        """A live piece decoded after the last CONTEXT_S of `context` (the audio just before it):
+        (text of the piece alone, whether the model ended the context with a sentence mark). Falls
+        back to transcribe (and None) without usable context: none, no speech in it, a streaming
+        model, or a piece long enough to be split."""
+        ctx = None if context is None else context[-int(CONTEXT_S * SAMPLE_RATE):]
+        if (ctx is None or self.streaming or len(samples) > (PIECE_S + LIVE_FORCE_S) * SAMPLE_RATE
+                or len(ctx) < MIN_TAKE_S * SAMPLE_RATE or not has_speech(ctx)):
+            return self.transcribe(samples, vad=vad, record=record), None
+        if len(samples) < MIN_TAKE_S * SAMPLE_RATE or (vad and not has_speech(samples)):
+            return "", None
+        ctx, x = self._prepare(ctx, vad), self._prepare(samples, vad)
+        at = len(ctx) / SAMPLE_RATE
+        pad = np.zeros(int(TAIL_PAD_S * SAMPLE_RATE), np.float32)
+        with self._lock:
+            if self._rec is None:
+                raise RuntimeError("Model not loaded")
+            t0 = time.monotonic()
+            s = self._rec.create_stream()
+            s.accept_waveform(SAMPLE_RATE, np.concatenate([ctx, x, pad]))
+            self._rec.decode_stream(s)
+            tokens, times = list(s.result.tokens), list(s.result.timestamps)
+            took = time.monotonic() - t0
+        k = next((i for i, t in enumerate(times) if t >= at), len(tokens))
+        before, text = "".join(tokens[:k]).strip(), "".join(tokens[k:]).strip()
+        if record:
+            self.stats.append({"at": time.time(), "audio_s": len(samples) / SAMPLE_RATE,
+                               "context_s": at, "decode_s": took, "tokens": len(tokens) - k,
+                               "words": len(text.split()), "threads": self.threads})
+        self.last_progress = (len(samples), len(samples))
+        if not before:
+            return text, None
+        return text, before[-1] in ".?!"
+
     def transcribe_chunks(self, samples: np.ndarray, cancel=None, vad: bool = False, record: bool = True):
         """Yield the text of each piece (split_points) as it is decoded. The lock is taken per
         piece, so a hotkey dictation can slip in between pieces of a long file. With vad, a
         take without speech yields nothing and long silences are shortened first."""
         if len(samples) < MIN_TAKE_S * SAMPLE_RATE:
             return
-        if vad:
-            if not has_speech(samples):
-                self.last_progress = (1, 1)
-                return
-            samples = shorten_silences(samples)
-        samples = normalize(samples)
-        if not self.streaming:
-            # Parakeet only. On Shakshuka it hurt 3 of 6 code-switched clips (a doubled
-            # "tomorrow", a lost "ask Avi", a dropped full stop) and fixed none; without it the
-            # whole-take text equals the live text (2026-10-22, desktop/docs/maintaining.md).
-            samples = stretch_pauses(samples)
+        if vad and not has_speech(samples):
+            self.last_progress = (1, 1)
+            return
+        samples = self._prepare(samples, vad)
         pad = np.zeros(int(TAIL_PAD_S * SAMPLE_RATE), np.float32)
         for a, b in split_points(samples):
             if cancel is not None and cancel.is_set():

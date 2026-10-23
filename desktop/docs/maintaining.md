@@ -560,6 +560,55 @@ Known limits: a sentence that really ends at a short pause and whose next senten
 `CONTINUES` word ("So…", "And…") is joined into one sentence; a mid-sentence pause of 1 s or more
 still gives ". Capital" unless the next word is in `CONTINUES`.
 
+## Context at the seams (0.7.6, 2026-10-23)
+
+**Report** (Daniel, 2026-10-23, Sabich, insert as you go at 5 s): text was "reaching sentence
+boundaries a bit too prematurely, unless I make a conscious effort to talk really quickly", with
+"capitals in the middle of sentences". His History confirmed it (V): in the 0.7.3-0.7.5 Sabich
+takes, about 1.2 function words a minute came out capitalised after a word with no mark ("kind of
+Dumping", "a This would be", "Some kind of"), plus false full stops ("the hardest part is. Is the
+room noise?", "a YouTube. Description"). Count: `the`/`it`/`we`/`so`/... capitalised after a word
+not ending in `.?!`: 134 in 110 min of 0.7.x Sabich audio.
+
+**Cause.** Every live piece is decoded on its own, and Parakeet writes any utterance as a whole
+sentence: capital first word, mark at the end. The 0.7.1 held full stop only fixed the piece *end*
+when the next piece began with a `CONTINUES` word and the pause was under 1.0 s. Most bad seams
+were neither: the previous piece ended with no mark at all (nothing held), and its successor began
+with a capitalised ordinary word; or the pause was a 1 s+ thinking pause mid-sentence.
+
+**Change.** `Engine.transcribe_after(samples, context)` decodes `[last CONTEXT_S = 3.0 s of the
+previous piece, this piece, tail pad]` in one pass (each part through `_prepare`: shorten_silences,
+normalize, stretch_pauses, as before) and keeps only tokens whose timestamp is at or after the
+context length. Live cuts are the middle of a pause of 0.6 s or more, so no word straddles the
+boundary. It also returns `stop`: whether the context part's text ends in `.?!`, which is the model's
+own mark at the seam, decided while hearing what followed. `hold_stop` now holds the full stop at
+every pause length; `after_held_stop(text, stop)` joins with `. ` + capital if `stop`, else ` ` +
+the model's case; with `stop` None (no context: the first piece, a forced cut with pause 0, a
+context with no speech, a piece over 25 s, Shakshuka) the 0.7.1 `CONTINUES` rule is used.
+`Controller._worker` passes the previous piece as context only when it was cut at a pause.
+
+**Measured (V)**: `desktop/scripts/seam_bench.py`, 108 clips from the benchmark test split
+(clean, desktop_mic, english_control, over 3.5 s), each with one pause **inside** a sentence (0.7,
+1.0, 1.4, 2.0 s in turn, before a lowercase word), four to a take with 0.8-2.0 s between
+sentences, 5 s interval, 19.3 min of audio, 447 pieces, 8 CPU threads.
+
+| | mid-sentence capitals | false stops | lost stops | WER | decode s |
+| --- | --- | --- | --- | --- | --- |
+| 0.7.5 rules | 73 | 27 | 12 | 6.38% | 119 |
+| 0.7.6, CONTEXT_S 2.0 | 28 | 11 | 22 | 6.65% | 141 |
+| **0.7.6, CONTEXT_S 3.0** | **30** | **10** | **19** | **6.07%** | **145** |
+| 0.7.6, CONTEXT_S 4.5 | 28 | 10 | 22 | 6.53% | 162 |
+| whole take at Stop (live off) | 45 | 17 | 8 | 11.63% | 87 |
+
+Counts are against the reference with case: many of the remaining "capitals" are names the
+reference writes in lowercase or vice versa (Erev Chag, FFmpeg), the same in every setup. The
+cost: about 21% more decode time, and more lost stops (12 to 19): with context the model sometimes
+runs two sentences together at a 1-2 s gap. Not yet tried in Daniel's own dictation (I); the
+History count above is the number to recheck after a day of use.
+
+Android had no seam handling (segments joined with a space): the same design went to Android
+0.8.2 (`android/docs/maintaining.md`).
+
 ## ALL CAPS, and the 0.7.2 polish pass (2026-10-22)
 
 **ALL CAPS** (Daniel, 2026-10-22, R-2026-10-22-40, B-34: "just for fun"): config `all_caps`,

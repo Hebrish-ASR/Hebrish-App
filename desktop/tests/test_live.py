@@ -202,7 +202,7 @@ def test_seams_hold_the_full_stop_of_a_piece_cut_mid_sentence():
     # 0.7.1: Parakeet ends every piece with a full stop and starts the next with a capital
     from hebrish.engine import after_held_stop, hold_stop
     assert hold_stop("after the kids are asleep.", 0.7)
-    assert not hold_stop("after the kids are asleep.", LIVE_BREAK_S)    # a real break
+    assert hold_stop("after the kids are asleep.", LIVE_BREAK_S)    # 0.7.6: the context decides
     assert not hold_stop("after the kids are asleep.", None)            # the last piece
     assert not hold_stop("are you there?", 0.7) and not hold_stop("and so on...", 0.7)
     assert after_held_stop("So nothing else is running.") == " so nothing else is running."
@@ -226,12 +226,14 @@ def _run_worker(texts, jobs, cfg=None):
     import threading
     from types import SimpleNamespace
     from hebrish.ui.app import Controller
+    # a text, or (text, stop) for a piece decoded with context (engine.transcribe_after)
+    _say = lambda t: t if isinstance(t, tuple) else (t, None)
     pastes, done = [], threading.Event()
     sig = SimpleNamespace(piece=SimpleNamespace(emit=lambda t: None),
                           transcribed=SimpleNamespace(emit=lambda t, e, a: (pastes.append(("DONE", t)), done.set())))
     it = iter(texts)
     ctl = SimpleNamespace(
-        engine=SimpleNamespace(streaming=False, transcribe=lambda s, vad=False: next(it)),
+        engine=SimpleNamespace(streaming=False, transcribe_after=lambda s, c, vad=False: _say(next(it))),
         cfg={"vad": False, "trailing_space": True, "all_caps": False, "insert": "paste", "paste_chord": "ctrl+v", **(cfg or {})},
         sig=sig, inserter=SimpleNamespace(insert=lambda t, how, chord: pastes.append(t)),
         _take=1, _send_take=0, _jobs=queue.Queue())
@@ -246,8 +248,9 @@ def test_worker_joins_a_sentence_cut_at_a_short_pause():
     pastes, text = _run_worker(
         ["Do it after the kids are asleep.", "So nothing else is running.", "Esti said yes.", "Thanks."],
         [(0.7, False), (0.7, False), (1.4, False), (None, True)])
+    # 0.7.6: the full stop is held at every pause length (the 1.4 s one too)
     assert pastes == ["Do it after the kids are asleep", " so nothing else is running",
-                      ". Esti said yes. ", "Thanks. "]
+                      ". Esti said yes", ". Thanks. "]
     assert text == "Do it after the kids are asleep so nothing else is running. Esti said yes. Thanks."
 
 
@@ -263,3 +266,22 @@ def test_worker_all_caps_keeps_the_seams():
                                [(0.7, False), (0.7, False), (None, True)], {"all_caps": True})
     assert pastes == ["DO IT AFTER THE KIDS ARE ASLEEP", " SO NOTHING RUNS", ". "]
     assert text == "Do it after the kids are asleep so nothing runs."
+
+
+def test_worker_context_decides_the_seam():
+    # 0.7.6: decoded after the previous piece, the model's own mark at the seam decides, whatever
+    # the next word is ("So" after a real sentence end; "I" carrying on a sentence)
+    pastes, text = _run_worker(
+        ["The hardest part is.", ("is the room noise?", False), "That is a sentence.",
+         ("So we stop here.", True), ("Then I.", True), ("I think it works.", False), ""],
+        [(1.4, False), (0.7, False), (1.2, False), (0.8, False), (2.0, False), (0.7, False), (None, True)])
+    assert pastes == ["The hardest part is", " is the room noise? ", "That is a sentence",
+                      ". So we stop here", ". Then I", " I think it works", ". "]
+    assert text == ("The hardest part is is the room noise? That is a sentence. So we stop here. "
+                    "Then I I think it works.")
+
+
+def test_context_capitalises_a_sentence_the_model_starts():
+    from hebrish.engine import after_held_stop
+    assert after_held_stop("we stop.", True) == ". We stop."
+    assert after_held_stop("Modal runs it.", False) == " Modal runs it."

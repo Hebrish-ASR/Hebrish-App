@@ -312,12 +312,12 @@ class Controller(QObject):
             self._jobs.put((self._take, self.recorder.consume(cut[0]), False, cut[1]))
 
     def _worker(self):
-        take, parts, stream, heard_audio, held = None, [], None, [], False
+        take, parts, stream, heard_audio, held, ctx = None, [], None, [], False, None
         out = str             # how text leaves the app: as is, or ALL CAPS (read once per take)
         while True:
             job, samples, final, pause = self._jobs.get()
             if job != take:
-                take, parts, stream, heard_audio, held = job, [], None, [], False
+                take, parts, stream, heard_audio, held, ctx = job, [], None, [], False, None
                 # ALL CAPS (0.7.2, Daniel 2026-10-22, "just for fun"): applied only to what is pasted
                 # and shown in the text box, so the seam and release rules still see case, and
                 # History (which can become training data) keeps the normal case.
@@ -347,12 +347,15 @@ class Controller(QObject):
                         heard = whole or len(samples) < audio.SAMPLE_RATE // 2
                         self.sig.transcribed.emit(whole, None if heard else NO_SPEECH, whole_take())
                     continue
-                text = self.engine.transcribe(samples, vad=self.cfg["vad"]) if live else ""
+                # 0.7.6: each piece is decoded after the end of the one before it (engine.CONTEXT_S),
+                # unless that one was cut without a pause (a forced cut may split a word)
+                text, stop = self.engine.transcribe_after(samples, ctx, vad=self.cfg["vad"]) if live else ("", None)
+                ctx = samples if pause else None
                 end = " " if self.cfg["trailing_space"] else ""
                 lead = ""
                 if text and held:
                     # the previous piece's full stop and space were held back (engine.hold_stop)
-                    seam = after_held_stop(text)
+                    seam = after_held_stop(text, stop)
                     text = seam.lstrip(". ")
                     lead = seam[: len(seam) - len(text)]
                     if lead.startswith("."):
