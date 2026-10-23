@@ -706,9 +706,10 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     /**
      * Puts [text] at the cursor of the field the take started in, or else the focused field.
-     * 1. ACTION_SET_TEXT replaces the whole field, so the new value is built from the field's
-     *    text and selection, then the cursor is moved to the end of the insert.
-     * 2. If the field refuses SET_TEXT (some WebViews and custom editors), clipboard + ACTION_PASTE.
+     * 1. Clipboard + ACTION_PASTE at the field's own cursor ([insertInto]; SET_TEXT first only
+     *    to replace a placeholder).
+     * 2. If the field refuses PASTE, ACTION_SET_TEXT: the whole field rewritten from its reported
+     *    text and selection, then the cursor moved to the end of the insert.
      * 3. Otherwise it is held as [pending] (Insert button) and left on the clipboard.
      */
     private fun deliver(text: String) {
@@ -741,11 +742,15 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     }
 
     /**
-     * True if [text] went into [node]; tries SET_TEXT, then clipboard + PASTE.
-     * A cursor past the end of the reported text means the app reports less than the field holds
-     * (trailing line breaks, seen 0.7.5: a blank line before the take was deleted and replaced by a
-     * space). SET_TEXT would rewrite the field without what it cannot see, so PASTE goes first there:
-     * it inserts at the field's own cursor and deletes nothing. See docs/debug-log/2026-10-23-*.
+     * True if [text] went into [node]. Clipboard + PASTE first, SET_TEXT as the fallback (0.9.1).
+     * SET_TEXT rewrites the whole field from the text the app *reports*: the field jumps on every
+     * piece (its scroll position is reset by the rewrite), and anything the app doesn't report is
+     * deleted. Seen: the line break before the take was removed (0.7.5, and again in 0.9.0, where
+     * the cursor did not give the hidden break away, so 0.7.6's cursor check missed it). PASTE
+     * inserts at the field's own cursor and deletes nothing. The placeholder case keeps SET_TEXT,
+     * because there the reported text has to be replaced. See docs/debug-log/2026-10-23-*.
+     * A background service can't read the clipboard (Android 10+), so the user's old clip can't be
+     * restored; the transcript is left there, which is also the useful fallback.
      */
     private fun insertInto(node: AccessibilityNodeInfo, text: String): Boolean {
         val reported = node.text?.toString() ?: ""
@@ -753,27 +758,29 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         val current = if (placeholder) "" else reported
         var start = node.textSelectionStart
         var end = node.textSelectionEnd
-        if (!placeholder && maxOf(start, end) > current.length) {
-            Log.i(TAG, "Cursor ${maxOf(start, end)} past reported text (${current.length} chars): pasting")
-            copy(text)
-            if (node.performAction(AccessibilityNodeInfo.ACTION_PASTE)) return true
-            // Paste refused: rewrite, restoring the unseen tail as line breaks (the case seen).
-            val missing = "\n".repeat(maxOf(start, end) - current.length)
-            val full = current + missing
-            return setText(node, full, full.length, full.length, text)
-        }
+        // A cursor past the reported text: the app hides the field's tail (trailing line breaks).
+        val hidden = maxOf(start, end) - current.length
         if (start !in 0..current.length || end !in 0..current.length) { start = current.length; end = current.length }
         if (start > end) start = end.also { end = start }
-        val before = current.substring(0, start)
-        val insert = TakeDecoder.join(before, text)
-        if (setText(node, current, start, end, text)) {
-            if (placeholder) Log.i(TAG, "Replaced placeholder text (${reported.length} chars)")
-            return true
+        if (placeholder) {
+            if (setText(node, current, start, end, text)) {
+                Log.i(TAG, "Replaced placeholder text (${reported.length} chars)")
+                return true
+            }
+            copy(text)
+            return node.performAction(AccessibilityNodeInfo.ACTION_PASTE)
         }
-        // A background service can't read the clipboard (Android 10+), so the user's old clip
-        // can't be restored; the transcript is left there, which is also the useful fallback.
+        // The separator is judged from what is before the cursor; a hidden tail ends in a break.
+        val insert = TakeDecoder.join(if (hidden > 0) "\n" else current.substring(0, start), text)
         copy(insert)
-        return node.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+        if (node.performAction(AccessibilityNodeInfo.ACTION_PASTE)) return true
+        Log.i(TAG, "Paste refused: rewriting the field")
+        // Restore a hidden tail as line breaks (the case seen) so the rewrite doesn't drop it.
+        if (hidden > 0) {
+            val full = current + "\n".repeat(hidden)
+            return setText(node, full, full.length, full.length, text)
+        }
+        return setText(node, current, start, end, text)
     }
 
     /**

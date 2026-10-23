@@ -296,12 +296,13 @@ everything below that describes runtime behaviour).
   accessibility service that is killed stays off until it is toggled again (I).
 - **Insertion** (`deliver`): target = the field `focusedField()` finds, captured when the take starts
   (re-checked with `refresh()`), else the field found at insert time. `ACTION_SET_TEXT` replaces the
-  whole field, so it builds `before + [space] + text + after` from `text` and
-  `textSelectionStart/End` (an empty field's hint is excluded via `isShowingHintText`), then
-  `ACTION_SET_SELECTION` to the end of the insert. When the cursor lies past the reported text
-  (0.7.6), PASTE goes first so nothing the app doesn't report is deleted. Fallback: clipboard + `ACTION_PASTE`; the
-  old clip is not restored because a background service can't read the clipboard on Android
-  10+. Password nodes are skipped.
+  Since 0.9.1, clipboard + `ACTION_PASTE` at the field's own cursor goes first for every piece
+  (separator from `TakeDecoder.join` on the reported text before the cursor). Fallback, and first
+  only to replace a placeholder: `ACTION_SET_TEXT`, which replaces the whole field, built as
+  `before + [space] + text + after` from `text` and `textSelectionStart/End`, then
+  `ACTION_SET_SELECTION` to the end of the insert. The old clip is not restored because a
+  background service can't read the clipboard on Android 10+. Password nodes are skipped. See
+  "Floating mic pastes instead of rewriting (0.9.1)".
 - **No foreground service for the mic.** The system binds every enabled accessibility service
   with `BIND_FOREGROUND_SERVICE_WHILE_AWAKE | BIND_INCLUDE_CAPABILITIES`
   (AOSP `AccessibilityServiceConnection.bindLocked()`), which gives the process foreground
@@ -642,6 +643,17 @@ overwritten, as in the existing paste fallback). If the paste is refused it rewr
 missing characters restored as line breaks. Not covered: an app that trims the text *and* reports
 no cursor (-1); that still appends at the end with a space. Investigation:
 `docs/debug-log/2026-10-23-overlay-eats-line-break.md`.
+
+## Floating mic pastes instead of rewriting (0.9.1, 2026-10-23)
+
+Daniel, 2026-10-23, on 0.9.0: the field "jumps around" when the text goes in, and the line break
+before it is still deleted. Both came from `ACTION_SET_TEXT` (I, from the code): a whole-field
+rewrite resets the editor's scroll, and it is built from the text the app reports, which can lack
+a trailing break even when the cursor doesn't show it (the 0.7.6 rule only caught a cursor past
+the text). **Rule now: the overlay inserts with clipboard + `ACTION_PASTE` at the field's own
+cursor; `ACTION_SET_TEXT` is the fallback when paste is refused, and goes first only to replace a
+placeholder.** Cost: the transcript is left on the clipboard after every take. Investigation:
+`docs/debug-log/2026-10-23-overlay-paste-jumps.md`.
 
 ## Floating mic: double-tap to minimise (0.8.0, 2026-10-23)
 
