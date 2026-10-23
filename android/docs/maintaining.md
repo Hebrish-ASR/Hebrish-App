@@ -93,11 +93,19 @@ installed for the selected model.
 Verified 2026-10-19: `assembleDebug` compiles with JDK 21 and the APK contains
 `assets/models.json`. Not run on a device (I).
 
-## sherpa-onnx API notes (1.13.8 AAR, read with javap 2026-10-18)
+## sherpa-onnx API notes (1.13.8, read with javap from the AAR 2026-10-18)
 
-- The AAR on GitHub releases (`sherpa-onnx-<ver>.aar`, 50 MB) contains the Kotlin API
-  (`com.k2fsa.sherpa.onnx.*`) and JNI libs for four ABIs. It is not on Maven, which is why
-  `app/build.gradle.kts` downloads it in a `fetchSherpaAar` task (gitignored).
+- Since 0.11.0 (2026-10-23) sherpa-onnx is built from source for F-Droid (`fdroid-main.md`):
+  submodules in `third_party/` (sherpa-onnx at tag v1.13.8 plus every FetchContent dependency,
+  pinned to the tags its `cmake/*.cmake` names), `app/src/main/cpp/CMakeLists.txt`, ONNX Runtime
+  from Maven Central. The Kotlin API is five unmodified files in
+  `app/src/main/java/com/k2fsa/sherpa/onnx/` (their README says how to bump). Up to 0.10.0 the
+  app downloaded the GitHub release AAR (`sherpa-onnx-<ver>.aar`, 50 MB, Kotlin API + JNI libs);
+  Hebrish Keyboard still does.
+- Bumping sherpa-onnx: move `third_party/sherpa-onnx` to the new tag, re-pin each dependency
+  submodule to the version in that tag's `cmake/<dep>.cmake` (kissfft and kaldifst are named by
+  kaldi-native-fbank's and kaldi-decoder's own cmake files), recopy the Kotlin files, change
+  `sherpaVersion`. A dependency left unpinned fails configure (`FETCHCONTENT_FULLY_DISCONNECTED`).
 - `OfflineRecognizer(assetManager = null, config)` loads from absolute file paths. Pass
   `assetManager` only when the model is bundled in `assets/`.
 - Parakeet uses `modelType = "nemo_transducer"`. `FeatureConfig.featureDim = 80` is the
@@ -444,7 +452,7 @@ one before it as context and a closing full stop is held back: see "Context at t
 (`Prefs.typeAsYouGo`) inserts each segment when decoded (keyboard: `commitText`; floating mic:
 `deliver` into the take's field), and Discard then drops only what isn't in yet.
 
-Considered and not done: NNAPI (`provider = "nnapi"`; the AAR's ONNX Runtime has the NNAPI EP)
+Considered and not done: NNAPI (`provider = "nnapi"`; ONNX Runtime's Android build has the NNAPI EP)
 is unlikely to help the dynamically quantised int8 graph (MatMulInteger / DynamicQuantizeLinear
 are poorly supported by NNAPI and would fall back to CPU with copy overhead); untested. More
 than 4 threads: the Nord 3's Dimensity 9000 has 4 big cores, and the little cores slow a

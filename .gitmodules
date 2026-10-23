@@ -1,0 +1,36 @@
+[submodule "android/third_party/sherpa-onnx"]
+	path = android/third_party/sherpa-onnx
+	url = https://github.com/k2-fsa/sherpa-onnx.git
+	shallow = true
+[submodule "android/third_party/kaldi-native-fbank"]
+	path = android/third_party/kaldi-native-fbank
+	url = https://github.com/csukuangfj/kaldi-native-fbank.git
+	shallow = true
+[submodule "android/third_party/kissfft"]
+	path = android/third_party/kissfft
+	url = https://github.com/mborgerding/kissfft.git
+	shallow = true
+[submodule "android/third_party/kaldi-decoder"]
+	path = android/third_party/kaldi-decoder
+	url = https://github.com/k2-fsa/kaldi-decoder.git
+	shallow = true
+[submodule "android/third_party/kaldifst"]
+	path = android/third_party/kaldifst
+	url = https://github.com/k2-fsa/kaldifst.git
+	shallow = true
+[submodule "android/third_party/openfst"]
+	path = android/third_party/openfst
+	url = https://github.com/csukuangfj/openfst.git
+	shallow = true
+[submodule "android/third_party/eigen"]
+	path = android/third_party/eigen
+	url = https://gitlab.com/libeigen/eigen.git
+	shallow = true
+[submodule "android/third_party/simple-sentencepiece"]
+	path = android/third_party/simple-sentencepiece
+	url = https://github.com/pkufool/simple-sentencepiece.git
+	shallow = true
+[submodule "android/third_party/json"]
+	path = android/third_party/json
+	url = https://github.com/nlohmann/json.git
+	shallow = true

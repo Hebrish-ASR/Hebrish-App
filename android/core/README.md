@@ -20,7 +20,7 @@ and the engine has no resources or manifest of its own, so plain sources are eno
 Rules for code here:
 
 - No `R`, no resources, no references to either app's classes. Anything an app must supply
-  (the sherpa-onnx AAR, `models.json` as an asset, `RECORD_AUDIO` and `INTERNET` permissions)
+  (sherpa-onnx: this app builds it from source with its Kotlin API vendored in `app/`, Hebrish Keyboard links the release AAR; `models.json` as an asset, `RECORD_AUDIO` and `INTERNET` permissions)
   each app's build declares itself.
 - Must compile on minSdk 21 (HeliBoard's) as well as 28 (this app's).
 - Changing a public signature here breaks Hebrish Keyboard's build at its next submodule bump;

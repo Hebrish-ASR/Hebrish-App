@@ -6,6 +6,14 @@ the F-Droid docs (raw markdown in `gitlab.com/fdroid/fdroid-website`) and a spar
 `gitlab.com/fdroid/fdroiddata`; merge-request dates from the GitLab API. **[C]** = confirmed in
 a source, **[I]** = inferred. Nothing here has been submitted yet.
 
+**Status 2026-10-23:** to-do step 1 is done for this app (branch `fdroid-from-source`, CI run
+39987070650 green): sherpa-onnx is built from source, and the AAB holds
+`libsherpa-onnx-jni.so` (3.7 MB, 1.13.8, no espeak/piper strings, 16 KB-aligned LOAD
+segments, no build-id note) next to Maven's `libonnxruntime.so`. Daniel dictated with the
+branch APK on his phone on 2026-10-23: works. Merged as PR #1.
+Hebrish Keyboard still downloads the AAR (it already uses `ndkBuild` for HeliBoard's own
+native code, and a module takes one `externalNativeBuild`, so it needs a separate approach).
+
 ## Verdict
 
 It can get in. There is **one hard blocker**: the prebuilt sherpa-onnx AAR. The downloaded
@@ -20,9 +28,10 @@ source, arm64, Parakeet models, reproducible. Copy its recipe.
   source, except binaries from "trusted Maven repositories" (Maven Central, Google Maven, OSS
   Sonatype, OSS JFrog, JitPack.io, Clojars), which must still be FLOSS. GitHub release downloads
   are not on that list.
-- Hebrish today **[C]**: `app/build.gradle.kts` task `fetchSherpaAar` downloads
+- Hebrish up to 0.10.0 **[C]**: `app/build.gradle.kts` task `fetchSherpaAar` downloaded
   `sherpa-onnx-1.13.8.aar` (Kotlin API + native `.so`, with onnxruntime) from GitHub releases
-  into `app/libs/`. That has to go.
+  into `app/libs/`. Replaced on 2026-10-23 by the Marmalade recipe below, without its patches
+  (those are Marmalade features: Whisper, cancellable decodes).
 - How Marmalade does it **[C]**
   ([metadata](https://gitlab.com/fdroid/fdroiddata/-/blob/master/metadata/app.marmalade.stt.yml),
   [CMakeLists](https://github.com/maxwhipw/marmalade-stt-android/blob/main/app/src/main/cpp/CMakeLists.txt),
@@ -97,10 +106,12 @@ Verify locally by building twice from clean checkouts in different paths and dif
 
 ## To do, in order
 
-1. Replace `fetchSherpaAar` with a from-source sherpa-onnx build (submodules + CMake) and
-   onnxruntime from Maven Central, following Marmalade. Same change in `android/core` consumers
-   (Hebrish Keyboard).
-2. Pin NDK and build-tools 34 in `android.yml`; get the release APK to reproduce.
+1. ~~Replace `fetchSherpaAar` with a from-source sherpa-onnx build~~ (done for this app
+   2026-10-23, see Status). Still to do in Hebrish Keyboard.
+2. NDK pinned (r26d, `ndkVersion = "26.3.11579264"`) and Marmalade's reproducibility settings
+   applied (`-ffile-prefix-map`, `--build-id=none`, no `dependenciesInfo` blob, no `vcsInfo`,
+   no ART profile in fdroid release). Left: build-tools 34 `apksigner`, a Gradle lockfile, and a
+   check that two clean builds from different paths are byte-identical.
 3. Make any automatic model-update check opt-in (or accept `Tracking`).
 4. Add fastlane metadata and a changelog per `versionCode`.
 5. Open the fdroiddata MR with `NonFreeNet`; add `NonFreeAssets` when a CC-BY-NC model ships.

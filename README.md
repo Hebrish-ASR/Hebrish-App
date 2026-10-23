@@ -111,7 +111,7 @@ you talk, and you're returned to HeliBoard with the text inserted. Details:
 | Path | What |
 | --- | --- |
 | `desktop/` | Linux + Windows app (Python, PySide6, sherpa-onnx). Only the hotkey and paste code differs per OS |
-| `android/` | Android voice keyboard (Kotlin, sherpa-onnx AAR) |
+| `android/` | Android voice keyboard (Kotlin, sherpa-onnx built from source) |
 | `shared/catalogue.json` | The model catalogue (schema 2: lines and variants) both apps bundle and re-fetch since Android 0.7.0 / desktop 0.6.0; a test fails if either app's copy drifts |
 | `shared/models.json` | The schema-1 catalogue, kept for older builds; a test fails if it disagrees with `catalogue.json` |
 | `shared/update-protocol.md` | How models are listed, downloaded and updated, and the quirks both apps work around |
