@@ -14,6 +14,38 @@ branch APK on his phone on 2026-10-23: works. Merged as PR #1.
 Hebrish Keyboard still downloads the AAR (it already uses `ndkBuild` for HeliBoard's own
 native code, and a module takes one `externalNativeBuild`, so it needs a separate approach).
 
+## Release flow (decided 2026-10-23)
+
+Daniel: future releases are planned "like this": one reproducible build serves both F-Droid
+repositories. Per Android release:
+
+1. `scripts/release-tag.sh android X.Y.Z --push` (also writes
+   `app/fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, ≤500 characters).
+2. `.github/workflows/android.yml` job `apk` builds and signs `Hebrish-X.Y.Z.apk` and makes the
+   GitHub release. Job `repro` rebuilds the same commit unsigned in another path with another
+   JDK 21 vendor and runs `apksigcopier compare` against it. **A red `repro` means f-droid.org
+   will not publish the version**: fix it before announcing (the job prints a diffoscope report).
+3. Our repository (`fdroid.hebrish.app`, Hebrish-ASR/Hebrish-FDroid) picks the GitHub release
+   APK up within an hour, as before.
+4. f-droid.org (once the MR is merged): its bot sees the `android-v*` tag, adds a Builds entry
+   (`AutoUpdateMode: Version`), builds from source, and publishes **our signed APK** if the bytes
+   match (`Binaries` + `AllowedAPKSigningKeys`). Same signature everywhere, so phones move freely
+   between GitHub, the CDN, our repo and f-droid.org. Listing about 1–2 days after the tag **[I]**.
+
+Never change the signing key, `applicationId`, the release APK name, the tag pattern or
+`subdir` without updating the fdroiddata metadata in the same breath. Draft of what will be
+submitted: [`fdroid/app.hebrish.dictation.yml`](fdroid/app.hebrish.dictation.yml).
+
+Verified 2026-10-23 on branch `fdroid-main`, CI run 39992061068: `repro` green (unsigned
+rebuild with Zulu 21 in a different checkout path; `apksigcopier compare` verified). fdroidserver's
+`scanner.scan_source` over a fresh recursive clone: 51 problems, all in
+`android/third_party/sherpa-onnx` (Flutter/Dart/Node examples without lock files, Wear OS
+examples using Play Services); 0 with `scandelete: android/third_party/sherpa-onnx`, which
+deletes only the flagged files (none is read by our CMake build). F-Droid's
+`remove_signing_keys` (fdroidserver `common.py`) drops `signingConfigs { }` and lines matching
+`^\s*signingConfig\s*[= ]\s*[^ ]*$`; our release `signingConfig` assignment is one `if` line so
+that, with the block gone and no `RELEASE_*` env, the build is unsigned instead of debug-signed.
+
 ## Verdict
 
 It can get in. There is **one hard blocker**: the prebuilt sherpa-onnx AAR. The downloaded
@@ -81,8 +113,9 @@ No country, sanctions or geography clause in either policy page **[C]** (only th
    Check with `fdroid lint`, `fdroid rewritemeta`, `fdroid build` (or the fdroiddata CI).
 3. Monorepo: `subdir` handles it; `scandelete` anything binary under `desktop/` if the scanner
    complains **[I]**.
-4. **Fastlane metadata in this repo** (strongly recommended **[C]**, none exists yet):
-   `android/fastlane/metadata/android/en-US/` with `short_description.txt` (<80 chars, no
+4. **Fastlane metadata in this repo** (strongly recommended **[C]**; added 2026-10-23 in
+   `android/app/fastlane/metadata/android/en-US/`, because fdroidserver looks in the repo root
+   and in `<subdir>/fastlane`, not in `android/fastlane`; no phone screenshots yet) with `short_description.txt` (<80 chars, no
    trailing dot), `full_description.txt`, `images/icon.png`, `images/phoneScreenshots/`,
    `changelogs/<versionCode>.txt` (≤500 chars; write one per release alongside
    `.github/android-release-notes.md`).
@@ -108,10 +141,10 @@ Verify locally by building twice from clean checkouts in different paths and dif
 
 1. ~~Replace `fetchSherpaAar` with a from-source sherpa-onnx build~~ (done for this app
    2026-10-23, see Status). Still to do in Hebrish Keyboard.
-2. NDK pinned (r26d, `ndkVersion = "26.3.11579264"`) and Marmalade's reproducibility settings
-   applied (`-ffile-prefix-map`, `--build-id=none`, no `dependenciesInfo` blob, no `vcsInfo`,
-   no ART profile in fdroid release). Left: build-tools 34 `apksigner`, a Gradle lockfile, and a
-   check that two clean builds from different paths are byte-identical.
+2. ~~Reproducible release APK~~ (done 2026-10-23): NDK r26d, Marmalade's settings, unsigned
+   without keystore, CI job `repro` verifies every build. A Gradle lockfile was not added: the
+   only dependency is ONNX Runtime at a fixed version.
 3. Make any automatic model-update check opt-in (or accept `Tracking`).
-4. Add fastlane metadata and a changelog per `versionCode`.
+4. ~~Add fastlane metadata and a changelog per `versionCode`~~ (done 2026-10-23; phone
+   screenshots still missing, optional).
 5. Open the fdroiddata MR with `NonFreeNet`; add `NonFreeAssets` when a CC-BY-NC model ships.

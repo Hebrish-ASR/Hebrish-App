@@ -1,0 +1,48 @@
+# Draft of metadata/app.hebrish.dictation.yml for the fdroiddata merge request (gitlab.com/fdroid/fdroiddata).
+# Fill in the first Builds entry from the first release made this way (0.11.0 or later): its tag
+# commit SHA, versionName and versionCode. After the MR is merged, the copy in fdroiddata is the
+# live one and F-Droid's bot appends new versions itself (AutoUpdateMode); this file stays as the
+# reference for what was submitted. See ../fdroid-main.md.
+AntiFeatures:
+  NonFreeAssets:
+    en-US: The recommended speech model, Sabich v2.0, is licensed CC-BY-NC-4.0 (free for
+      non-commercial use). It is downloaded on request.
+  NonFreeNet:
+    en-US: Speech models and the model catalogue are downloaded from cdn.hebrish.app, Hugging
+      Face and raw.githubusercontent.com. Recognition runs offline once a model is installed.
+Categories:
+  - Keyboard & IME
+  - Speech Recognizer
+License: MIT
+AuthorName: Daniel Rosehill
+AuthorEmail: info@hebrish.app
+WebSite: https://hebrish.app
+SourceCode: https://github.com/Hebrish-ASR/Hebrish-App
+IssueTracker: https://github.com/Hebrish-ASR/Hebrish-App/issues
+Changelog: https://hebrish.app/changelog
+
+AutoName: Hebrish
+
+RepoType: git
+Repo: https://github.com/Hebrish-ASR/Hebrish-App.git
+Binaries: https://github.com/Hebrish-ASR/Hebrish-App/releases/download/android-v%v/Hebrish-%v.apk
+
+Builds:
+  - versionName: 0.11.0
+    versionCode: 24
+    commit: TAG_COMMIT_SHA
+    subdir: android/app
+    submodules: true
+    gradle:
+      - fdroid
+    output: build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk
+    scandelete:
+      - android/third_party/sherpa-onnx
+    ndk: r26d
+
+AllowedAPKSigningKeys: 5cf6822350d0b2ff124021a0df10bec1c63a6e5e6159fa6029507134a1446994
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^android-v\d+\.\d+\.\d+$
+CurrentVersion: 0.11.0
+CurrentVersionCode: 24

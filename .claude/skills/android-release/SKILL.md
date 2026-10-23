@@ -37,6 +37,10 @@ commit and docs unless Daniel has tested it.
   Daniel's words, (V)/(I) markers), and extend "Not yet verified".
 - `android/README.md` and root `README.md` when user-visible behaviour or the model list changes.
 - `.github/android-release-notes.md`: the GitHub release body (CI reads it). Plain, user-facing.
+- F-Droid (2026-10-23, `android/docs/fdroid-main.md`, "Release flow"): `release-tag.sh` also writes
+  the f-droid.org changelog `android/app/fastlane/.../changelogs/<versionCode>.txt` (≤500 chars).
+  After the tag, the `android` workflow's `repro` job must be green as well as `apk`: red means
+  f-droid.org will not publish this version.
 
 ## 3. Version, tag, CI
 
