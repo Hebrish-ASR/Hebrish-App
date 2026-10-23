@@ -265,6 +265,7 @@ class VoiceImeService : InputMethodService() {
                         if (leave) switchBack()
                     } else {
                         Prefs.setLastTranscript(this, takeText.toString())
+                        History.record(this, d.text, d.stats(), History.KEYBOARD)
                         if (inserted) {
                             show(getString(R.string.ime_tap_to_speak), busy = false)
                             if (leave || Prefs.autoReturn(this)) switchBack()

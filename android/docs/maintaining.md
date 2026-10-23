@@ -670,7 +670,63 @@ bring it back.
   each edge and with "free", y drift between dot and full size (the saved height is a fraction of
   `screen − size`, so it shifts by up to ~two thirds of the size), dragging the dot.
 
+## Transcription history and CSV export (0.8.1, 2026-10-23)
+
+Daniel, 2026-10-23: "Can we also have the ability to export transcription history on Android so
+that I can Export a CSV to Google Drive, and we can then also see how the Android inference is
+doing as well."
+
+Up to 0.8.0 Android kept no history: only `Prefs.lastTranscript` (one string, for Insert last).
+0.8.1 adds the storage half of backlog B-19 plus the export; the History screen (list, search,
+word counts, correct, delete one) is still to do. **Rows start with 0.8.1**: earlier takes were
+never stored and cannot be exported.
+
+- **Store:** `History.kt`, framework SQLite (`SQLiteOpenHelper`, no androidx), app-private
+  `databases/history.db`, table `dictations` with the desktop's column names (`desktop/hebrish/history.py`,
+  schema 2): `uid`, `at` (unix s), `text`, `words`, `seconds`, `model` (`<catalogue id> <version label>`,
+  e.g. `sabich v2.0`), `source` (`keyboard` | `floating` | `try`), `original`, `model_rev`
+  (manifest revision of the installed weights), `decode` (JSON). `original` is always NULL:
+  Android types into other apps and never sees the user's edits. `allowBackup` is off, so the
+  database is not copied to a cloud backup. Unlimited, like desktop (D-2026-10-22-13); retention
+  is B-28.
+- **Recorded:** after a take with text, in `VoiceImeService.stopAndTranscribe`,
+  `FloatingMicService.stopAndTranscribe` and `TryActivity.stopAndTranscribe`, from
+  `TakeDecoder.text` (the whole take, including parts already typed with Type as you go) and
+  `TakeDecoder.stats()`. Insert on a background thread. A take that failed to decode, was
+  discarded or produced no text is not stored.
+- **Setting:** *Keep transcription history* on the Dictation screen (`Prefs.keepHistory`,
+  `keep_history`, default on, as on desktop). Off stops new rows; *Clear history* deletes all rows
+  (confirm dialog).
+- **Diagnostics (`TakeDecoder.Stats`, core):** `decode_s` = sum of wall-clock time in every
+  `Transcriber.transcribe` call of the take (trim + pad + sherpa-onnx decode), with the model load
+  timed apart as `load_s` (non-zero only when the take found the model unloaded); `wait_s` = Stop
+  to text, what the user waited; `segments` = pieces decoded (pause cuts + tail);
+  `seconds` = raw audio length (segments + tail, before trimming). The export adds
+  `rtf` = `decode_s / seconds`. Context in `decode`: `app`, `engine`
+  (`sherpa-onnx nemo_transducer int8 greedy_search, sherpa-onnx <BuildConfig.SHERPA_VERSION>`),
+  `threads` (`Transcriber.threads`, cores clamped to 2-4), `cores`, `device`
+  (manufacturer + model), `soc` (`Build.SOC_MODEL` on Android 12+, else `Build.HARDWARE`),
+  `android`, `type_as_you_go`, `all_caps`. **Not recorded:** CPU time vs wall time (decodes on
+  the single worker can wait behind each other, so with long takes `decode_s` is busy time, not
+  latency), RAM, thermal state, the microphone, the trimmed length, per-segment times, and
+  whether a part went into the field.
+- **Export:** Dictation screen → *Transcription history* → **Export CSV**. `ACTION_CREATE_DOCUMENT`
+  (`text/csv`, suggested `hebrish-history-YYYY-MM-DD.csv`), so the system picker offers Google
+  Drive; no permission is needed and none was added. Written on a background thread to the
+  picked URI (`"wt"`). RFC 4180 (`History.csv`: quote fields with `,` `"` CR LF, double quotes;
+  CRLF row ends), UTF-8 with a BOM, oldest first. Columns (`History.CSV_COLUMNS`):
+  `at, text, words, seconds, model, source, model_rev, decode_s, rtf, wait_s, load_s, segments,
+  type_as_you_go, all_caps, engine, threads, cores, device, soc, android, app, uid`. `at` is local
+  ISO 8601 with offset. The desktop export calls its time column `timestamp` (as of 0.7.5); the
+  Android name follows the table column. No share-sheet route: sharing a file needs a
+  `FileProvider` (androidx) or a hand-written provider, and the picker already reaches Drive.
+- Compiled, not run on a device (I).
+
 ## Not yet verified (as of 2026-10-20)
+
+- 0.8.1 on a device: a row per take from the keyboard, floating mic and Try it; the export to
+  Google Drive through the picker; the CSV opening in Sheets with commas, quotes and line breaks
+  intact; `load_s` on the first take after a restart.
 
 - Channels / targetSdk 36 on a device: the disclosure (decline leaves settings closed, accept
   opens them and isn't shown again), Back closing the side menu on Android 13+, the IME's Back

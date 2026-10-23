@@ -157,7 +157,7 @@
     <string name="nav_keyboard">Voice keyboard</string>
     <string name="nav_bubble">Floating mic</string>
     <string name="nav_dictation">Dictation</string>
-    <string name="nav_dictation_summary">Long takes, typing as you talk, ALL CAPS</string>
+    <string name="nav_dictation_summary">Long takes, typing as you talk, ALL CAPS, history export</string>
     <string name="nav_install">Install and updates</string>
     <string name="nav_install_summary">Get updates automatically with F-Droid</string>
     <string name="nav_contact">Help and contact</string>
@@ -220,6 +220,18 @@
     <string name="dictation_type_as_you_go_hint">Off: the whole take goes in when you tap stop, and Discard throws all of it away. On: each part goes in as soon as it is transcribed, so long dictations appear while you talk; Discard then only drops the part not yet typed.</string>
     <string name="dictation_all_caps">ALL CAPS</string>
     <string name="dictation_all_caps_hint">Everything you dictate is typed in capitals, in the keyboard, the floating mic and Try it. Just for fun. Applies from your next take.</string>
+    <string name="history_title">Transcription history</string>
+    <string name="history_body">Every take is kept on this phone with its text, length, model and how long it took to transcribe. Nothing is uploaded. Export it as a CSV file to save it to Google Drive, Downloads or anywhere the file picker offers.</string>
+    <string name="history_keep">Keep transcription history</string>
+    <string name="history_count">%1$d takes kept on this phone (since version 0.8.1).</string>
+    <string name="history_export">Export CSV</string>
+    <string name="history_clear">Clear history</string>
+    <string name="history_export_hint">The CSV has one row per take: time, text, words, audio seconds, model, where you dictated, and the transcription timings (decode time, real-time factor, wait after stop) with the device and app version. Same first columns as the desktop app\'s history export.</string>
+    <string name="history_empty">No takes in the history yet.</string>
+    <string name="history_no_picker">This phone has no file picker to save the CSV with.</string>
+    <string name="history_exported">Exported %1$d takes.</string>
+    <string name="history_export_failed">Export failed: %1$s</string>
+    <string name="history_clear_confirm">Delete every take in the history on this phone? This cannot be undone.</string>
     <string name="dictation_speed_title">Speed</string>
     <string name="dictation_speed">The model is loaded once and kept in memory. The floating mic loads it as soon as a text field gets focus, so it is ready by the time you tap. Silence at the start and end of a take is skipped. The very first take after the phone restarts still waits a few seconds for the model to load.</string>
     <string name="dictation_missed_title">If the text has nowhere to go</string>

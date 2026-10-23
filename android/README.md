@@ -97,6 +97,14 @@ and the key row previous keyboard · `,` · `.` · space · delete · enter.
 - **Insert last transcript:** if no text field had focus when the transcript came back, it
   is kept, and this button types it in once you tap a field.
 
+## Transcription history (since 0.8.1)
+
+Every take is kept on the phone (text, audio length, model, transcription timings). **Dictation**
+→ *Transcription history* → **Export CSV** saves it through the system file picker, so it can go
+straight to Google Drive; the first columns match the desktop history export. *Keep
+transcription history* turns it off and *Clear history* deletes it. Takes before 0.8.1 were not
+stored.
+
 ## Floating mic (optional, since 0.3.0)
 
 A mic button that floats over every app, so you can dictate without switching keyboards at

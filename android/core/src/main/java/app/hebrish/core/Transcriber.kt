@@ -33,6 +33,11 @@ object Transcriber {
     @Volatile private var loadedDir: String? = null
     private val lock = Any()
 
+    /** ONNX Runtime threads for the decode: the phone's cores, 2 to 4. Recorded per take in the history. */
+    val threads: Int get() = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
+    /** How the model is run, for the history export's `engine` column. */
+    const val ENGINE = "sherpa-onnx nemo_transducer int8 greedy_search"
+
     fun isLoaded(ctx: Context) = recognizer != null && loadedDir == ModelStore.dir(ctx)?.path
 
     /** Frees the loaded model, e.g. after it moved; the next transcription loads it again. */
@@ -70,7 +75,7 @@ object Transcriber {
                     ),
                     tokens = ModelStore.file(app, "tokens.txt").path,
                     modelType = "nemo_transducer",
-                    numThreads = Runtime.getRuntime().availableProcessors().coerceIn(2, 4),
+                    numThreads = threads,
                 ),
                 decodingMethod = "greedy_search",
             )

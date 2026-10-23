@@ -167,6 +167,7 @@ class TryActivity : Activity() {
             ui.post {
                 result.onSuccess { said ->
                     if (said.isNotBlank()) insert(said)
+                    History.record(this, d.text, d.stats(), History.TRY)
                     if (said.isBlank() && d.segmentsQueued == 0 && text.text.length == before) setState(State.IDLE, getString(R.string.try_nothing))
                     else setState(State.IDLE, getString(R.string.try_done, audio, took))
                 }.onFailure { setState(State.IDLE, getString(R.string.try_failed, it.message ?: "?")) }

@@ -385,9 +385,9 @@
    "group": "history-and-files",
    "name": "Transcript history",
    "android": {
-    "status": "missing",
-    "since": "",
-    "evidence": "android/app/src/main/java/app/hebrish/dictation/Prefs.kt:29"
+    "status": "partial",
+    "since": "0.8.1",
+    "evidence": "android/app/src/main/java/app/hebrish/dictation/History.kt; DictationActivity.kt"
    },
    "ubuntu": {
     "status": "present",
@@ -400,7 +400,7 @@
     "evidence": "desktop/hebrish/history.py; ui/window.py _history_page",
     "verified": false
    },
-   "notes": "Desktop: on by default and unlimited since 0.7.0 (unreleased; SQLite history.db, was the last 50 and off since 0.5.0). Android keeps only the last transcript: planning/backlog.md B-19."
+   "notes": "Desktop: on by default and unlimited since 0.7.0 (unreleased; SQLite history.db, was the last 50 and off since 0.5.0). Android since 0.8.1: every take in SQLite history.db (same columns, model_rev and decode included) and Export CSV through the system file picker; no History screen yet (B-19)."
   },
   {
    "id": "history-search",

@@ -686,7 +686,10 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
                 result.onSuccess { text ->
                     if (text.isNotEmpty()) deliverPart(text)
                     if (takeText.isEmpty()) toast(getString(R.string.ime_nothing_heard))
-                    else Prefs.setLastTranscript(this, takeText.toString())
+                    else {
+                        Prefs.setLastTranscript(this, takeText.toString())
+                        History.record(this, d.text, d.stats(), History.FLOATING)
+                    }
                     target = null
                 }.onFailure { toast(getString(R.string.ime_error, it.message ?: it.javaClass.simpleName)) }
             }

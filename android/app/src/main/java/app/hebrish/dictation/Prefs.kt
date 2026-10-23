@@ -41,6 +41,10 @@ object Prefs {
     fun typeAsYouGo(ctx: Context) = sp(ctx).getBoolean("type_as_you_go", false)
     fun setTypeAsYouGo(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("type_as_you_go", v).apply()
 
+    /** Keep every take in [History] (0.8.1). On by default, as on desktop (D-2026-10-22-13). */
+    fun keepHistory(ctx: Context) = sp(ctx).getBoolean("keep_history", true)
+    fun setKeepHistory(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("keep_history", v).apply()
+
     /** The microphone prompt has been shown once (SetupActivity: after a refusal, App info is the only way). */
     fun micAsked(ctx: Context) = sp(ctx).getBoolean("mic_asked", false)
     fun setMicAsked(ctx: Context) = sp(ctx).edit().putBoolean("mic_asked", true).apply()
