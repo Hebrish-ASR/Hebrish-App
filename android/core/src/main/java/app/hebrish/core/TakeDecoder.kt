@@ -12,8 +12,9 @@ import java.util.concurrent.Executors
  *
  * With [onText] set, each segment's text is handed over as soon as it is decoded ("type as you
  * go"), and [finish] returns only what has not been handed over yet. Without it, [finish] returns
- * the whole take. Callbacks run on the worker thread. Text goes through [OutputStyle], read once
- * per take, so a take never changes style halfway.
+ * the whole take. Callbacks run on the worker thread. Text goes through the personal dictionary
+ * ([PersonalDictionary]) and [OutputStyle], each read once per take, so a take never changes
+ * style halfway.
  *
  * Seams (0.8.2, the desktop 0.7.6 fix; docs/maintaining.md, "Context at the seams"): each segment
  * after the first is decoded after the last [CONTEXT_SECONDS] of the one before it
@@ -28,6 +29,11 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
     private val worker = Executors.newSingleThreadExecutor()
     private val held = StringBuilder()
     private val allCaps = OutputStyle.allCaps(app)
+    /**
+     * The personal dictionary (0.9.0, [PersonalDictionary]), read on the worker at the take's
+     * first piece and kept for the whole take. Applied before ALL CAPS, after the seam rules.
+     */
+    private val dictionary by lazy { runCatching { PersonalDictionary.compile(PersonalDictionary.entries(app)) }.getOrDefault { it } }
     @Volatile private var cancelled = false
     @Volatile private var failure: Throwable? = null
     @Volatile var segmentsDecoded = 0
@@ -117,7 +123,7 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
             text = text.dropLast(1)
             stopHeld = true
         }
-        return OutputStyle.apply(lead + text, allCaps)
+        return OutputStyle.apply(lead + dictionary(text), allCaps)
     }
 
     private fun keep(text: String) = synchronized(all) { all.append(join(all, text)) }

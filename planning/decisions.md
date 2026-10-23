@@ -9,6 +9,22 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-23-01: Personal dictionary corrects the text after decoding, shared with Android's
+
+- **Decision:** Both apps get a personal dictionary applied to the model's text after decoding
+  (before ALL CAPS), with one set of matching rules (`shared/personal-dictionary.md`, test set
+  `shared/dictionary-cases.json`). Android reads and writes the system personal dictionary
+  (`UserDictionary`), which works once the voice keyboard is enabled; desktop keeps its own
+  `dictionary.json`. Android 0.9.0, desktop 0.8.0.
+- **Why:** It cannot slow a take or make the model's own output worse, and works on every model.
+  Daniel, 2026-10-23: words entered in a keyboard write to the personal dictionary and Hebrish
+  reads from it; on desktop, Hebrish's own list.
+- **Alternatives:** sherpa-onnx decoder hotwords (needs beam search instead of greedy, slower;
+  unverified for NeMo transducers; over-boosting inserts words not said): left for a later
+  measured trial. Training data stays the fix for words many users need.
+- **By:** Daniel (scope and the Android integration), agent (the post-decoding approach and rules).
+- Links: R-2026-10-22-32, I-13.
+
 ### D-2026-10-22-20: The app keeps no audio; History is text only
 
 - **Decision:** The desktop setting `keep_audio` is removed, and audio that 0.7.0-0.7.2 kept in

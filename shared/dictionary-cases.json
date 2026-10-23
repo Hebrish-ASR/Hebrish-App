@@ -1,0 +1,39 @@
+{
+  "about": "Shared test set for the personal dictionary rules in personal-dictionary.md. Each case: the text a take hands over, and what the app must write. Both apps use the same entries.",
+  "entries": [
+    {"word": "Hebrish", "heard": ["hebrew ish", "hebrews"]},
+    {"word": "GitHub", "heard": []},
+    {"word": "WhatsApp", "heard": []},
+    {"word": "AWS", "heard": []},
+    {"word": "gonna", "heard": ["gona"]},
+    {"word": "teudat zehut", "heard": ["to dot zehoot"]},
+    {"word": "Sabich", "heard": ["sa beach"]},
+    {"word": "Sabich-Parakeet-110M", "heard": []},
+    {"word": "Git", "heard": []},
+    {"word": "  ", "heard": ["ignored"]},
+    {"word": "Claude", "heard": ["", "clod"]}
+  ],
+  "cases": [
+    {"in": "I use hebrish every day.", "out": "I use Hebrish every day."},
+    {"in": "Hebrew ish is a model.", "out": "Hebrish is a model."},
+    {"in": "the Hebrews model", "out": "the Hebrish model"},
+    {"in": "push it to git hub", "out": "push it to GitHub"},
+    {"in": "push it to Git-Hub now", "out": "push it to GitHub now"},
+    {"in": "send it on whats app", "out": "send it on WhatsApp"},
+    {"in": "a w s is not aws", "out": "a w s is not AWS"},
+    {"in": "Gonna be late.", "out": "Gonna be late."},
+    {"in": "I'm gona be late.", "out": "I'm gonna be late."},
+    {"in": "Gona go.", "out": "Gonna go."},
+    {"in": "Bring your to dot   zehoot please", "out": "Bring your teudat zehut please"},
+    {"in": "Teudat Zehut", "out": "Teudat Zehut"},
+    {"in": "I recommend sa beach for phones", "out": "I recommend Sabich for phones"},
+    {"in": "try sabich parakeet 110m", "out": "try Sabich parakeet 110m"},
+    {"in": "try sabich-parakeet-110m", "out": "try Sabich-Parakeet-110M"},
+    {"in": "git and github", "out": "Git and GitHub"},
+    {"in": "digit agitate", "out": "digit agitate"},
+    {"in": "ignored stays", "out": "ignored stays"},
+    {"in": "ask clod", "out": "ask Claude"},
+    {"in": "", "out": ""},
+    {"in": "hebrish_app hebrish2", "out": "hebrish_app hebrish2"}
+  ]
+}

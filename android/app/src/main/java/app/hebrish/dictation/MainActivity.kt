@@ -57,6 +57,7 @@ class MainActivity : Page() {
         keyboardSummary = nav(R.string.nav_keyboard, {}, KeyboardActivity::class.java)
         bubbleSummary = nav(R.string.nav_bubble, {}, FloatingMicActivity::class.java)
         nav(R.string.nav_dictation, { setText(R.string.nav_dictation_summary) }, DictationActivity::class.java)
+        nav(R.string.nav_dictionary, { setText(R.string.nav_dictionary_summary) }, DictionaryActivity::class.java)
         nav(R.string.nav_controls, { setText(R.string.nav_controls_summary) }, ControlsActivity::class.java)
         heading(R.string.home_more)
         if (Channel.installScreen) nav(R.string.nav_install, { setText(R.string.nav_install_summary) }, InstallActivity::class.java)

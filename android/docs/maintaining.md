@@ -787,7 +787,41 @@ time overhead tracks these ratios roughly (I). The history export records it: `c
 decoded again as context, before trimming) beside `decode_s`, `wait_s` and `rtf`, so
 Android's real overhead can be read from Daniel's takes.
 
+## Personal dictionary (0.9.0, 2026-10-23)
+
+Request R-2026-10-22-32 (I-13). Daniel, 2026-10-23: when you enter a custom word in a keyboard,
+"it basically writes to the personal dictionary and you read from it". Rules, the shared test set and
+the reasoning (why after decoding, not decoder hotwords) are in `../shared/personal-dictionary.md`;
+desktop 0.8.0 implements the same rules.
+
+- `core/PersonalDictionary.kt`: the entries (Hebrish's own list, pref `dict_own`, plus the system
+  list `UserDictionary.Words`, word + shortcut as a heard-as phrase, cached in `dict_system`) and
+  `compile()`, one combined regex. `TakeDecoder` compiles it lazily on the worker at a take's first
+  piece and applies it to each piece after the seam rules, before ALL CAPS. History therefore
+  holds the corrected text (same as desktop).
+- Access (V, AOSP source read 2026-10-23): `UserDictionaryProvider.canCallerAccessUserDictionary()`
+  allows the system, an **enabled** IME or an enabled spell checker (uid and package match);
+  anyone else gets an empty cursor, a null insert and 0 deletes, no exception. It is "enabled",
+  not "current", so once the voice keyboard is switched on in Settings the floating mic (same uid)
+  reads and writes the list too, whatever keyboard is in use. `systemAccess()` checks
+  `enabledInputMethodList` for our package, and only then is an empty read trusted.
+- Screen `DictionaryActivity` (home, side menu): add (word + optional heard-as, written to the
+  system list as `addWord(ctx, word, 250, shortcut, null)` and always to `dict_own`), list (own and
+  system merged by word), remove (from both; the confirm says the system removal reaches every
+  keyboard), and a button to Android's own screen (`ACTION_USER_DICTIONARY_SETTINGS`).
+- The core is compiled by Hebrish Keyboard too (`core/README.md`); there the package is the
+  keyboard itself, so it reads the list whenever it is enabled. Its submodule is not bumped in this
+  release. API levels used are all ≤ 16, so minSdk 21 holds.
+- Testing: no unit-test setup in the app, so `scripts/check_dictionary.sh` compiles
+  `PersonalDictionary.kt` with Gradle's cached Kotlin compiler and runs the shared cases on the
+  JVM: 21/21 (V, 2026-10-23). Android's regex is ICU, not the JVM's; the patterns use only
+  `\p{L}`, `\p{N}`, lookarounds and CASE_INSENSITIVE|UNICODE_CASE, which both support (I).
+
 ## Not yet verified (as of 2026-10-20)
+
+- 0.9.0 on a device: reading and adding to the system personal dictionary with the voice
+  keyboard enabled but another keyboard in use (floating mic); a word added in HeliBoard or Gboard
+  showing up in Hebrish; dictionary corrections in a take from the keyboard, floating mic and Try it.
 
 - 0.8.2 on a device: seams in a long take with mid-sentence pauses (keyboard, floating mic, Type
   as you go on and off), the held "." at Stop, no double or missing spaces around a held stop in

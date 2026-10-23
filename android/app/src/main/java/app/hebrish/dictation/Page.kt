@@ -134,6 +134,7 @@ abstract class Page : Activity() {
         screen(R.string.title_keyboard, KeyboardActivity::class.java)
         screen(R.string.title_bubble, FloatingMicActivity::class.java)
         screen(R.string.title_dictation, DictationActivity::class.java)
+        screen(R.string.title_dictionary, DictionaryActivity::class.java)
         screen(R.string.title_controls, ControlsActivity::class.java)
         if (Channel.installScreen) screen(R.string.title_install, InstallActivity::class.java)
         divider()

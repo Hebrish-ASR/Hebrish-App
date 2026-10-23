@@ -401,4 +401,32 @@
     <string name="consent_accept">Accept and open settings</string>
     <string name="consent_decline">No thanks</string>
     <string name="consent_privacy">Privacy policy</string>
+    <!-- Personal dictionary (0.9.0) -->
+    <string name="title_dictionary">Personal dictionary</string>
+    <string name="nav_dictionary">Personal dictionary</string>
+    <string name="nav_dictionary_summary">Names, brands and Hebrew words, written your way</string>
+    <string name="dict_body">Words you want written your way: names, brands, Hebrew words in the spelling you use. After each take, Hebrish replaces what the model wrote with your spelling. It corrects the text; it doesn\'t change what the model hears, so it fixes words the model gets wrong the same way each time. Applies from your next take.</string>
+    <string name="dict_shared">Shared with Android\'s personal dictionary: words you add here appear in your keyboards, and words you add in a keyboard (Add to dictionary) work here.</string>
+    <string name="dict_not_shared">Android only shares its personal dictionary with apps that are an enabled keyboard. Turn on the Hebrish voice keyboard (you don\'t have to use it) to share this list with your other keyboards. Until then, Hebrish uses the words you add here.</string>
+    <string name="dict_not_shared_copy">Android only shares its personal dictionary with apps that are an enabled keyboard, and the Hebrish voice keyboard is off. Hebrish is using the words you add here and its copy of Android\'s list from %1$s.</string>
+    <string name="dict_enable_keyboard">Voice keyboard settings</string>
+    <string name="dict_add">Add a word</string>
+    <string name="dict_word_hint">Word, as it should be written</string>
+    <string name="dict_heard_hint">Heard as (optional): what Hebrish writes instead</string>
+    <string name="dict_heard_explain">For example Hebrish, heard as \"hebrew ish\". Leave it empty to fix only the spelling and capitals of a word Hebrish already hears. Android keeps it as the word\'s shortcut.</string>
+    <string name="dict_add_button">Add</string>
+    <string name="dict_added_shared">Added %1$s, also to Android\'s personal dictionary</string>
+    <string name="dict_added_local">Added %1$s to Hebrish</string>
+    <string name="dict_words">Words (%1$d)</string>
+    <string name="dict_empty">No words yet.</string>
+    <string name="dict_row_heard">%1$s  ←  %2$s</string>
+    <string name="dict_from_android">Android\'s personal dictionary</string>
+    <string name="dict_from_hebrish">Hebrish</string>
+    <string name="dict_from_both">Hebrish and Android\'s personal dictionary</string>
+    <string name="dict_remove">Remove</string>
+    <string name="dict_remove_confirm">Remove %1$s from Hebrish?</string>
+    <string name="dict_remove_confirm_shared">Remove %1$s? It is also removed from Android\'s personal dictionary, so from your other keyboards.</string>
+    <string name="dict_open_system">Open Android\'s personal dictionary</string>
+    <string name="dict_no_system_screen">This phone has no personal dictionary screen in Settings.</string>
+    <string name="dict_limits">A word matches with any capitals, and a word of four or more letters also when the model splits it (git hub, Git-Hub → GitHub). A word you write all in lower case keeps a capital at the start of a sentence. Every match is replaced: adding IT turns every \"it\" into IT.</string>
 </resources>
