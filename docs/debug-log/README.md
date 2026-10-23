@@ -53,6 +53,7 @@ Newest first.
 
 | Date | Platform | Symptom | Status | Entry |
 | --- | --- | --- | --- | --- |
+| 2026-10-23 | android | Capitals and full stops in the middle of sentences after a pause | fixed in 0.8.2 | [2026-10-23-android-mid-sentence-capitals.md](2026-10-23-android-mid-sentence-capitals.md) |
 | 2026-10-23 | android | Floating mic deletes the line break before the dictated text | fixed in 0.7.6 | [2026-10-23-overlay-eats-line-break.md](2026-10-23-overlay-eats-line-break.md) |
 | 2026-10-22 | desktop-linux | Title bar still flickers on every paste after 0.7.4 (Claude Code's wl-paste) | not-a-bug | [2026-10-22-paste-flicker-claude-code.md](2026-10-22-paste-flicker-claude-code.md) |
 | 2026-10-22 | desktop-linux | Focused window's title bar flickers on every paste (KDE Wayland) | fixed in 0.7.4 | [2026-10-22-paste-flicker-kde.md](2026-10-22-paste-flicker-kde.md) |

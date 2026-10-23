@@ -436,9 +436,10 @@ measure with Try it, whose status line reports the seconds from Stop to text):
    process has foreground importance, so the model normally stays resident (~0.7 GB RAM) while
    the floating mic is on.
 
-Text joins: segment texts are joined with a space. A cut lands in a pause, which is usually a
-sentence or clause boundary, so the model's per-segment casing and full stop mostly fit; a
-mid-sentence pause can produce an extra full stop and capital. *Type as you go*
+Text joins: up to 0.8.1 segment texts were joined with a space, and a mid-sentence pause could
+produce an extra full stop and capital. Since 0.8.2 each segment is decoded with the end of the
+one before it as context and a closing full stop is held back: see "Context at the seams (0.8.2)".
+*Type as you go*
 (`Prefs.typeAsYouGo`) inserts each segment when decoded (keyboard: `commitText`; floating mic:
 `deliver` into the take's field), and Discard then drops only what isn't in yet.
 
@@ -716,13 +717,81 @@ never stored and cannot be exported.
   picked URI (`"wt"`). RFC 4180 (`History.csv`: quote fields with `,` `"` CR LF, double quotes;
   CRLF row ends), UTF-8 with a BOM, oldest first. Columns (`History.CSV_COLUMNS`):
   `at, text, words, seconds, model, source, model_rev, decode_s, rtf, wait_s, load_s, segments,
-  type_as_you_go, all_caps, engine, threads, cores, device, soc, android, app, uid`. `at` is local
+  context_s, type_as_you_go, all_caps, engine, threads, cores, device, soc, android, app, uid`
+  (`context_s` added in 0.8.2: audio decoded again as seam context; empty on 0.8.1 rows). `at` is local
   ISO 8601 with offset. The desktop export calls its time column `timestamp` (as of 0.7.5); the
   Android name follows the table column. No share-sheet route: sharing a file needs a
   `FileProvider` (androidx) or a hand-written provider, and the picker already reaches Drive.
 - Compiled, not run on a device (I).
 
+## Context at the seams (0.8.2, 2026-10-23)
+
+Daniel, 2026-10-23: "I'm also getting the mid-sentence capitals on Android. I don't know if
+there's anything that we can do on that platform to prevent it from happening." Port of the
+desktop 0.7.6 fix (`desktop/hebrish/engine.py`: `CONTEXT_S`, `Engine.transcribe_after`,
+`hold_stop`, `after_held_stop`; `desktop/docs/maintaining.md`, "Context at the seams"). Debug
+log: `docs/debug-log/2026-10-23-android-mid-sentence-capitals.md`.
+
+**Cause (I, same as desktop):** a take longer than 8 s is cut into segments at pauses
+(`Recorder.Segmenting`: the first pause of 0.6 s or more after at least 8 s, or a hard cut at
+28 s), and each segment was decoded on its own. Parakeet treats a segment as a whole utterance:
+it capitalises the first word and closes the last with a full stop. Up to 0.8.1 `TakeDecoder`
+joined segment texts with a space, with no seam handling, so a pause mid-sentence gave
+"word. Capital" or "word Capital". Takes under 8 s are one segment and were never affected.
+
+**Fix (core, `TakeDecoder.piece`, `Transcriber.transcribeAfter`):**
+
+1. Each segment after the first, and the tail after Stop, is decoded after the last
+   `TakeDecoder.CONTEXT_SECONDS` (3 s) of the previous segment's raw audio. Context and segment
+   are trimmed apart (`Transcriber.trim`), joined as [context, segment, 0.8 s pad] and decoded
+   once. Only the tokens whose timestamp is at or after the trimmed context's length are kept
+   (sherpa-onnx 1.13.8 `OfflineRecognizerResult.tokens` / `.timestamps`, checked with `javap` on
+   the AAR, 2026-10-23); they carry their own leading spaces, so they are joined and trimmed.
+2. `stop` = whether the text of the tokens before the boundary ends in `.` `?` `!`: the model's
+   own decision at the seam, made while hearing what followed. No usable context → `stop` null
+   and a plain decode: first segment; previous segment not cut in a pause (its trailing quiet,
+   `Transcriber.trailingQuietSeconds`, under `PAUSE_CUT_SECONDS` 0.4 s, i.e. a hard cut that may
+   split a word); context under 0.3 s; or context without clear speech
+   (`Transcriber.hasSpeech`, the same frame test `trim` uses; the counterpart of desktop
+   `has_speech`). Unlike desktop, Android cannot ask the `Recorder` whether a cut was in a pause
+   without changing the `onSegment` signature (which Hebrish Keyboard compiles against), so it
+   reads it from the audio.
+3. Held full stop (`holdStop`, `afterHeldStop`, ports of desktop `hold_stop` /
+   `after_held_stop`): a non-final piece ending in a single `.` is handed over without it. The
+   next piece with text gets `". "` and a capital when `stop` is true, a plain space and the
+   model's case when false, and the desktop `CONTINUES` rule when null (lower-case first word or
+   a function word in `TakeDecoder.CONTINUES` continues; anything else is a new sentence). At
+   Stop with nothing more, the `.` is handed over alone. Applies to Type as you go (`onText`), the
+   whole-take path (`held`) and the history text (`keep`) alike.
+4. ALL CAPS (`OutputStyle`) is applied after the seam logic, which needs the real case.
+
+**Caller contract change:** text handed over can now start with `". "` (the held stop). The
+keyboard (`commit`, `commitPart`), floating mic (`setText`, `insertInto`, `deliverPart`, `hold`)
+and Try it (`insert`) all space pieces with `TakeDecoder.join`: a space after a word, none
+before text starting with `. , ; : ? !`. The floating mic's paste-at-cursor path (0.7.6, cursor
+past the reported text) pastes text as is, with no separator, as before.
+
+**Measured on desktop (V, desktop measurements, not Android):** `desktop/scripts/seam_bench.py`,
+108 benchmark clips each given one 0.7-2.0 s pause inside a sentence, 5 s interval:
+mid-sentence capitals 73 → 30, false full stops 27 → 10, WER 6.38 % → 6.07 %, about 21 % more
+decode time. Android: compiled, not run on a device (I).
+
+**Cost on Android (I, worked out from the cut rules, not measured):** every segment after the
+first and the tail decode up to 3 s more audio. After trimming the context keeps up to about
+2.75 s (the cut's ≥ 0.6 s of quiet is trimmed to the 0.35 s margin). Android segments are 8-28 s
+(not cut at every pause: the first cut needs 8 s of audio), so per segment that is roughly
++35 % audio at 8 s and +10 % at 28 s, against desktop's 5 s pieces. The tail is where it shows:
+a 2 s tail after the last cut becomes about 4.75 s of audio, so the **wait after Stop** on a long
+take can grow by the decode time of ~2.75 s of audio. Encoder cost grows with length, so the
+time overhead tracks these ratios roughly (I). The history export records it: `context_s` (audio
+decoded again as context, before trimming) beside `decode_s`, `wait_s` and `rtf`, so
+Android's real overhead can be read from Daniel's takes.
+
 ## Not yet verified (as of 2026-10-20)
+
+- 0.8.2 on a device: seams in a long take with mid-sentence pauses (keyboard, floating mic, Type
+  as you go on and off), the held "." at Stop, no double or missing spaces around a held stop in
+  WhatsApp and Gmail, the wait after Stop with context (`wait_s`, `context_s` in the export).
 
 - 0.8.1 on a device: a row per take from the keyboard, floating mic and Try it; the export to
   Google Drive through the picker; the CSV opening in Sheets with commas, quotes and line breaks

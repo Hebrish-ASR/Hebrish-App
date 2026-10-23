@@ -85,6 +85,7 @@ object History {
             put("load_s", round3(stats.loadSeconds))
             put("wait_s", round3(stats.waitSeconds))
             put("segments", stats.segments)
+            put("context_s", round3(stats.contextSeconds))
             put("type_as_you_go", stats.typeAsYouGo)
             put("all_caps", stats.allCaps)
         }
@@ -116,11 +117,12 @@ object History {
     /**
      * The export's columns. The first six match the desktop's history; then the exact weights
      * and the inference diagnostics, flattened out of `decode` so a spreadsheet can chart them.
-     * `rtf` is decode_s / seconds (under 1 = faster than real time); `wait_s` is Stop to text.
+     * `rtf` is decode_s / seconds (under 1 = faster than real time); `wait_s` is Stop to text;
+     * `context_s` (0.8.2) is audio decoded again as context at the seams (empty for 0.8.1 rows).
      */
     val CSV_COLUMNS = listOf(
         "at", "text", "words", "seconds", "model", "source",
-        "model_rev", "decode_s", "rtf", "wait_s", "load_s", "segments", "type_as_you_go", "all_caps",
+        "model_rev", "decode_s", "rtf", "wait_s", "load_s", "segments", "context_s", "type_as_you_go", "all_caps",
         "engine", "threads", "cores", "device", "soc", "android", "app", "uid",
     )
 
@@ -141,7 +143,7 @@ object History {
                     val row = listOf(
                         iso.format(Date((c.getDouble(1) * 1000).toLong())), c.getString(2), c.getInt(3).toString(),
                         seconds?.let { "%.2f".format(Locale.US, it) } ?: "", c.getString(5), c.getString(6),
-                        c.getString(7) ?: "", opt("decode_s"), rtf, opt("wait_s"), opt("load_s"), opt("segments"),
+                        c.getString(7) ?: "", opt("decode_s"), rtf, opt("wait_s"), opt("load_s"), opt("segments"), opt("context_s"),
                         opt("type_as_you_go"), opt("all_caps"), opt("engine"), opt("threads"), opt("cores"),
                         opt("device"), opt("soc"), opt("android"), opt("app"), c.getString(0),
                     )

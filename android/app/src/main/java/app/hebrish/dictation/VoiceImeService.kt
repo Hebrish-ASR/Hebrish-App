@@ -286,8 +286,7 @@ class VoiceImeService : InputMethodService() {
 
     /** One piece of the take: typed in at the cursor and added to [takeText]. False if no field took it. */
     private fun commitPart(text: String): Boolean {
-        if (takeText.isNotEmpty()) takeText.append(' ')
-        takeText.append(text)
+        takeText.append(TakeDecoder.join(takeText, text))
         return commit(text)
     }
 
@@ -299,8 +298,8 @@ class VoiceImeService : InputMethodService() {
         if (passwordField) return false
         val ic = currentInputConnection ?: return false
         val before = ic.getTextBeforeCursor(1, 0)
-        val sep = if (!before.isNullOrEmpty() && !before[0].isWhitespace()) " " else ""
-        return ic.commitText(sep + text, 1)
+        // TakeDecoder.join: a space after a word, none before a held full stop (". Next", 0.8.2).
+        return ic.commitText(TakeDecoder.join(before ?: "", text), 1)
     }
 
     /** Re-inserts the last transcript (kept in Prefs, so it survives the process being killed). */

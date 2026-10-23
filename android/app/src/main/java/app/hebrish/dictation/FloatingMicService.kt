@@ -698,8 +698,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     /** One piece of the take's text: into the take's field, keeping it as the target for the next piece. */
     private fun deliverPart(text: String) {
-        if (takeText.isNotEmpty()) takeText.append(' ')
-        takeText.append(text)
+        takeText.append(TakeDecoder.join(takeText, text))
         val keep = target
         deliver(text)
         target = keep
@@ -766,7 +765,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         if (start !in 0..current.length || end !in 0..current.length) { start = current.length; end = current.length }
         if (start > end) start = end.also { end = start }
         val before = current.substring(0, start)
-        val insert = (if (before.isNotEmpty() && !before.last().isWhitespace()) " " else "") + text
+        val insert = TakeDecoder.join(before, text)
         if (setText(node, current, start, end, text)) {
             if (placeholder) Log.i(TAG, "Replaced placeholder text (${reported.length} chars)")
             return true
@@ -783,7 +782,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
      */
     private fun setText(node: AccessibilityNodeInfo, current: String, start: Int, end: Int, text: String): Boolean {
         val before = current.substring(0, start)
-        val insert = (if (before.isNotEmpty() && !before.last().isWhitespace()) " " else "") + text
+        val insert = TakeDecoder.join(before, text)
         val set = Bundle().apply {
             putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, before + insert + current.substring(end))
         }
@@ -799,7 +798,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     /** No field took [text]: keep it for the Insert button, and on the clipboard. */
     private fun hold(text: String) {
         val first = pending == null
-        pending = pending?.let { "$it $text" } ?: text
+        pending = pending?.let { it + TakeDecoder.join(it, text) } ?: text
         copy(pending!!)
         if (first) toast(getString(R.string.bubble_held))     // once, not again for every segment
         render()

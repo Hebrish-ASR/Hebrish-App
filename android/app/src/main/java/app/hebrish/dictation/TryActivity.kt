@@ -179,8 +179,7 @@ class TryActivity : Activity() {
     private fun insert(said: String) {
         val e = text.text
         val at = text.selectionStart.coerceAtLeast(0)
-        val prev = if (at > 0) e[at - 1] else '\n'
-        val chunk = if (prev.isWhitespace()) said else " $said"
+        val chunk = TakeDecoder.join(e.subSequence(0, at), said)
         e.insert(at, chunk)
         text.setSelection(at + chunk.length)
     }

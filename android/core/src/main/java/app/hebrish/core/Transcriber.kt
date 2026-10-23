@@ -100,12 +100,50 @@ object Transcriber {
         }
     }
 
-    private fun decode(rec: OfflineRecognizer, audio: FloatArray): String {
+    /**
+     * Blocking. [samples] decoded after [context], the audio just before it (0.8.2, the desktop
+     * 0.7.6 seam fix; docs/maintaining.md, "Context at the seams"). Both are trimmed apart, then
+     * decoded once as [context, samples, pad]; only the tokens timed at or after the end of the
+     * context are kept, so the model writes the first word in its mid-sentence case. Returns that
+     * text and whether the model ended the context with a sentence mark (. ? !), or null when the
+     * context gave it nothing to say (no tokens before the boundary).
+     */
+    fun transcribeAfter(ctx: Context, samples: FloatArray, context: FloatArray): Pair<String, Boolean?> {
+        val before = trim(context)
+        val speech = trim(samples)
+        val at = before.size / SAMPLE_RATE.toFloat()
+        val audio = FloatArray(before.size + speech.size + (SAMPLE_RATE * PAD_SECONDS).toInt())
+        before.copyInto(audio)
+        speech.copyInto(audio, before.size)
+        val r = synchronized(lock) { result(load(ctx), audio) }
+        val tokens = r.tokens
+        val times = r.timestamps
+        var k = tokens.size
+        for (i in tokens.indices) if (i < times.size && times[i] >= at) { k = i; break }
+        // Tokens carry their own leading spaces (as on desktop): join, then trim.
+        val heard = tokens.copyOfRange(0, k).joinToString("").trim()
+        val text = tokens.copyOfRange(k, tokens.size).joinToString("").trim()
+        return text to if (heard.isEmpty()) null else heard.last() in ".?!"
+    }
+
+    /**
+     * True when [samples] hold clear speech by [trim]'s measure (a 20 ms frame well above the
+     * background); the Android counterpart of the desktop's `has_speech`.
+     */
+    fun hasSpeech(samples: FloatArray): Boolean = speechFrames(samples) != null
+
+    /** Seconds of quiet after the last speech frame, or null without clear speech. */
+    fun trailingQuietSeconds(samples: FloatArray): Float? =
+        speechFrames(samples)?.let { (samples.size - (it.last + 1) * (SAMPLE_RATE / 50)) / SAMPLE_RATE.toFloat() }
+
+    private fun decode(rec: OfflineRecognizer, audio: FloatArray): String = result(rec, audio).text.trim()
+
+    private fun result(rec: OfflineRecognizer, audio: FloatArray): com.k2fsa.sherpa.onnx.OfflineRecognizerResult {
         val stream = rec.createStream()
         try {
             stream.acceptWaveform(audio, SAMPLE_RATE)
             rec.decode(stream)
-            return rec.getResult(stream).text.trim()
+            return rec.getResult(stream)
         } finally {
             stream.release()
         }
@@ -119,8 +157,18 @@ object Transcriber {
      */
     fun trim(samples: FloatArray): FloatArray {
         val frame = SAMPLE_RATE / 50
+        val speech = speechFrames(samples) ?: return samples
+        val margin = (SAMPLE_RATE * MARGIN_SECONDS).toInt()
+        val from = (speech.first * frame - margin).coerceAtLeast(0)
+        val to = ((speech.last + 1) * frame + margin).coerceAtMost(samples.size)
+        return if (from == 0 && to == samples.size) samples else samples.copyOfRange(from, to)
+    }
+
+    /** First and last 20 ms frame of clear speech, or null (too short, or no clear speech). */
+    private fun speechFrames(samples: FloatArray): IntRange? {
+        val frame = SAMPLE_RATE / 50
         val frames = samples.size / frame
-        if (frames < 10) return samples
+        if (frames < 10) return null
         val rms = FloatArray(frames) { f ->
             var sum = 0.0
             for (i in f * frame until (f + 1) * frame) sum += samples[i].toDouble() * samples[i]
@@ -129,13 +177,8 @@ object Transcriber {
         val sorted = rms.sortedArray()
         val noise = sorted[frames / 10]
         val loud = sorted[frames * 95 / 100]
-        if (loud < 0.01f || loud < noise * 3) return samples
+        if (loud < 0.01f || loud < noise * 3) return null
         val threshold = maxOf(0.003f, noise + (loud - noise) * 0.1f)
-        val first = rms.indexOfFirst { it > threshold }
-        val last = rms.indexOfLast { it > threshold }
-        val margin = (SAMPLE_RATE * MARGIN_SECONDS).toInt()
-        val from = (first * frame - margin).coerceAtLeast(0)
-        val to = ((last + 1) * frame + margin).coerceAtMost(samples.size)
-        return if (from == 0 && to == samples.size) samples else samples.copyOfRange(from, to)
+        return rms.indexOfFirst { it > threshold }..rms.indexOfLast { it > threshold }
     }
 }
