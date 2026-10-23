@@ -68,7 +68,7 @@ def compile(entries):
         found = m.group(0)
         if word != word.lower():          # rule 5: a word with a capital is written as in the dictionary
             return word
-        if itself and found.lower() == word:
+        if itself and " ".join(found.lower().split()) == " ".join(word.split()):
             return found                  # same characters: the model's case stays
         return word[:1].upper() + word[1:] if found[:1].isupper() else word
 

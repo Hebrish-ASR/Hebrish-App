@@ -26,6 +26,7 @@
     {"in": "Gona go.", "out": "Gonna go."},
     {"in": "Bring your to dot   zehoot please", "out": "Bring your teudat zehut please"},
     {"in": "Teudat Zehut", "out": "Teudat Zehut"},
+    {"in": "Teudat  Zehut", "out": "Teudat  Zehut"},
     {"in": "I recommend sa beach for phones", "out": "I recommend Sabich for phones"},
     {"in": "try sabich parakeet 110m", "out": "try Sabich parakeet 110m"},
     {"in": "try sabich-parakeet-110m", "out": "try Sabich-Parakeet-110M"},
