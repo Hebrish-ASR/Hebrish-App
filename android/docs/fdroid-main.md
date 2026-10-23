@@ -9,7 +9,8 @@ a source, **[I]** = inferred. Nothing here has been submitted yet.
 **Status 2026-10-23:** to-do step 1 is done for this app (branch `fdroid-from-source`, CI run
 39987070650 green): sherpa-onnx is built from source, and the AAB holds
 `libsherpa-onnx-jni.so` (3.7 MB, 1.13.8, no espeak/piper strings, 16 KB-aligned LOAD
-segments, no build-id note) next to Maven's `libonnxruntime.so`. Not yet run on a phone.
+segments, no build-id note) next to Maven's `libonnxruntime.so`. Daniel dictated with the
+branch APK on his phone on 2026-10-23: works. Merged as PR #1.
 Hebrish Keyboard still downloads the AAR (it already uses `ndkBuild` for HeliBoard's own
 native code, and a module takes one `externalNativeBuild`, so it needs a separate approach).
 
