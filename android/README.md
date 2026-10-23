@@ -179,7 +179,7 @@ echo "sdk.dir=$HOME/Android/Sdk" > local.properties
 JAVA_HOME=/path/to/jdk-21 ./gradlew assembleFdroidRelease   # compiles sherpa-onnx (NDK r26d, CMake 3.22.1)
 ```
 
-Without the `RELEASE_*` env vars the release APK is signed with the debug key. Releases come
+Without the `RELEASE_*` env vars the release APK is unsigned (`app-fdroid-release-unsigned.apk`), as on F-Droid's build server; use `assembleFdroidDebug` for a build to install. Releases come
 from `../.github/workflows/android.yml`: push an `android-vX.Y.Z` tag and it builds a signed APK and
 attaches it to a GitHub release. Maintainer notes are in [`docs/maintaining.md`](docs/maintaining.md).
 

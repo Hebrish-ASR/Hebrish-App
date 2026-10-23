@@ -1,0 +1,1 @@
+On-device English dictation that writes Hebrew words correctly

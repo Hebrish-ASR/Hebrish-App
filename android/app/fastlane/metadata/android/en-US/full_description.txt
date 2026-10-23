@@ -1,0 +1,22 @@
+Hebrish is on-device English dictation for people who mix Hebrew words into their English: makolet, arnona, teudat zehut, bituach leumi. Those words come out in one consistent romanized spelling instead of as nonsense.
+
+It runs a fine-tune of NVIDIA Parakeet TDT 0.6B v2 on your phone (sherpa-onnx, int8). Sabich, which also knows tech vocabulary, is the recommended model; Jachnun, the pure code-switching model, and stock Parakeet are in the model picker. It transcribes English with Hebrew words in it, not full Hebrew sentences.
+
+<b>Features</b>
+<ul>
+<li>A voice keyboard (input method) for any app.</li>
+<li>A floating mic that dictates into the text field you are in.</li>
+<li>Transcription history with CSV export, and a personal dictionary.</li>
+</ul>
+
+<b>Privacy</b>
+Speech recognition runs on the device; audio and transcripts never leave it. No accounts, analytics, ads or tracking. Network use: the one-time model download (about 660 MB, from cdn.hebrish.app or Hugging Face), the model catalogue, and checks for a newer model.
+
+<b>Good to know</b>
+<ul>
+<li>arm64 phones only, Android 9 or newer.</li>
+<li>The models are trained on one speaker's voice so far. Recordings from more voices are welcome: https://hebrish.app/contact</li>
+<li>Sabich v2.0 is licensed CC-BY-NC-4.0: free for personal, research, education and non-commercial use; commercial use needs a licence (https://hebrish.app/terms).</li>
+</ul>
+
+Made by Daniel Rosehill in Jerusalem. More at https://hebrish.app

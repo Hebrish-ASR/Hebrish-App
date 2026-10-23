@@ -13,6 +13,11 @@
 # already exists, or the release notes (.github/<app>-release-notes.md) don't start with
 # **X.Y.Z. Commits only the version file and the notes (other sessions may have work in the
 # tree), then makes an annotated tag. --push pushes main and the tag, which starts CI.
+#
+# Android also gets the F-Droid changelog for the new versionCode
+# (android/app/fastlane/metadata/android/en-US/changelogs/<versionCode>.txt, at most 500
+# characters; f-droid.org shows it). Write it by hand for a fuller text, or it is made from the
+# notes' first line.
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
@@ -44,11 +49,14 @@ case $APP in
     android)
         CODE=$(sed -n 's/^ *versionCode = \([0-9]*\)$/\1/p' "$FILE")
         sed -i "s/^\( *versionCode = \)[0-9]*$/\1$((CODE + 1))/; s/^\( *versionName = \)\".*\"$/\1\"$VER\"/" "$FILE"
-        grep -q "versionName = \"$VER\"" "$FILE" ;;
+        grep -q "versionName = \"$VER\"" "$FILE"
+        CHANGELOG="android/app/fastlane/metadata/android/en-US/changelogs/$((CODE + 1)).txt"
+        [ -f "$CHANGELOG" ] || head -1 "$NOTES" | sed 's/\*\*//g; s/\[\([^]]*\)\]([^)]*)/\1/g' > "$CHANGELOG"
+        [ "$(wc -m < "$CHANGELOG")" -le 500 ] || { echo "$CHANGELOG is over 500 characters" >&2; exit 1; } ;;
 esac
 
-git add "$FILE" "$NOTES"
-git diff --cached --quiet -- "$FILE" "$NOTES" || git commit -q -m "${APP^} $VER" -- "$FILE" "$NOTES"
+git add "$FILE" "$NOTES" ${CHANGELOG:+"$CHANGELOG"}
+git diff --cached --quiet -- "$FILE" "$NOTES" ${CHANGELOG:+"$CHANGELOG"} || git commit -q -m "${APP^} $VER" -- "$FILE" "$NOTES" ${CHANGELOG:+"$CHANGELOG"}
 git tag -a "$TAG" -m "Hebrish for $APP $VER"
 echo "Tagged $TAG at $(git rev-parse --short HEAD) ($FILE: $VER)"
 if [ "$PUSH" = --push ]; then

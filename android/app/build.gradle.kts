@@ -105,8 +105,10 @@ android {
             // Reproducible builds: META-INF/version-control-info differs between a clone and a
             // worktree of the same commit.
             vcsInfo { include = false }
-            signingConfig = if (System.getenv("RELEASE_KEYSTORE") != null)
-                signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            // Unsigned without the RELEASE_* env vars (0.11.0; was the debug key). F-Droid's build
+            // server strips `signingConfigs { }` and needs an unsigned APK to compare with ours,
+            // so keep this on one line and never fall back to another key (docs/fdroid-main.md).
+            if (System.getenv("RELEASE_KEYSTORE") != null) signingConfig = signingConfigs.getByName("release")
         }
     }
 

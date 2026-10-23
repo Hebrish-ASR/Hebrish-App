@@ -87,3 +87,42 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" "Hebrish-${VER}.apk" \
             --title "Hebrish for Android ${VER}" --notes-file .github/android-release-notes.md
+
+  # Reproducible-build check (0.11.0), the way f-droid.org will check each release: rebuild the
+  # same commit unsigned, in another path with another JDK 21 vendor (F-Droid's build server is
+  # Debian trixie, OpenJDK 21), copy the release APK's signature onto it and verify. A failure
+  # means f-droid.org would refuse to publish our signed APK (docs/fdroid-main.md, "Signing").
+  repro:
+    needs: apk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          path: elsewhere/src
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "21"
+      - name: Unsigned build
+        working-directory: elsewhere/src/android
+        run: ./gradlew --no-daemon --no-build-cache assembleFdroidRelease
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk
+          path: signed
+      - name: Compare with the release APK
+        run: |
+          pip install --quiet apksigcopier==1.1.1
+          # apksigner from build-tools 34, as F-Droid uses (35.0.0-rc1+ verify differently).
+          bt="$ANDROID_HOME/build-tools/34.0.0"; [ -x "$bt/apksigner" ] || { yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;34.0.0" >/dev/null; }
+          export PATH="$bt:$PATH"
+          unsigned=elsewhere/src/android/app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk
+          sha256sum signed/*.apk "$unsigned"
+          apksigcopier compare signed/*.apk --unsigned "$unsigned" && echo "Reproducible: the signed release APK matches an independent unsigned build."
+      - name: Show what differs
+        if: failure()
+        run: |
+          sudo apt-get install -y -qq diffoscope >/dev/null
+          diffoscope --max-report-size 2000000 --text - signed/*.apk \
+            elsewhere/src/android/app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk | head -400 || true
