@@ -1,5 +1,5 @@
-"""Tray menu's Output submenu: radio checks follow the config, picks write it and resync the
-window. Off-screen, with a stub controller; skipped where PySide6 isn't installed (Linux CI)."""
+"""Tray menu's Output submenu: output checks (independent since 1.000) and the paste shortcut
+radio follow the config, picks write it and resync the window. Off-screen, with a stub controller; skipped where PySide6 isn't installed (Linux CI)."""
 
 import os
 
@@ -28,8 +28,8 @@ class Ctl:
     _tray_output = Controller._tray_output
     _tray_chord = Controller._tray_chord
 
-    def __init__(self, insert="paste", chord="ctrl+v"):
-        self.cfg = Cfg(insert=insert, paste_chord=chord)
+    def __init__(self, cursor=True, clipboard=False, window=False, chord="ctrl+v"):
+        self.cfg = Cfg(out_cursor=cursor, out_clipboard=clipboard, out_window=window, paste_chord=chord)
         self.win = Win()
 
 
@@ -50,9 +50,9 @@ def checked(acts):
 
 
 def test_checks_follow_config():
-    ctl = Ctl("clipboard", "ctrl+shift+v")
+    ctl = Ctl(cursor=False, clipboard=True, chord="ctrl+shift+v")
     menu_for(ctl)
-    assert checked(ctl._output_acts) == ["clipboard"]
+    assert checked(ctl._output_acts) == ["out_clipboard"]
     assert checked(ctl._chord_acts) == ["ctrl+shift+v"]
     assert not ctl._chord_acts["ctrl+v"].isEnabled()      # no paste, so no paste shortcut
 
@@ -63,11 +63,21 @@ def test_custom_chord_checks_neither():
     assert checked(ctl._chord_acts) == []
 
 
-def test_pick_writes_config_and_syncs_window():
+def test_outputs_combine():
     ctl = Ctl()
     menu_for(ctl)
-    ctl._output_acts["app"].trigger()
+    ctl._output_acts["out_window"].trigger()
     ctl._chord_acts["ctrl+shift+v"].trigger()
-    assert ctl.cfg["insert"] == "app" and ctl.cfg["paste_chord"] == "ctrl+shift+v"
+    assert ctl.cfg["out_cursor"] and ctl.cfg["out_window"] and ctl.cfg["paste_chord"] == "ctrl+shift+v"
     assert ctl.win.synced == 2
-    assert checked(ctl._output_acts) == ["app"]          # exclusive group
+    ctl._sync_output_menu()
+    assert checked(ctl._output_acts) == ["out_cursor", "out_window"]     # not exclusive
+
+
+def test_last_output_stays_on():
+    ctl = Ctl()
+    menu_for(ctl)
+    ctl._output_acts["out_cursor"].trigger()
+    assert ctl.cfg["out_cursor"]
+    ctl._sync_output_menu()
+    assert checked(ctl._output_acts) == ["out_cursor"]

@@ -31,8 +31,11 @@ LIVE = [(0, "Off: everything when you stop"), (3, "Fast: every ~3 seconds"),
         (5, "Normal: every ~5 seconds"), (8, "Relaxed: every ~8 seconds"), (-1, "Custom…")]
 STREAM = [("phrase", "A phrase at a time"),
           ("sentence", "A sentence at a time"), ("word", "Every word")]
-OUTPUT = [("paste", "Paste at the cursor"), ("clipboard", "Clipboard only"),
-          ("app", "This window's text box only")]
+# Outputs (1.000): config switches, any combination; at least one stays on.
+OUTPUT = [("out_cursor", "At the cursor"), ("out_clipboard", "Clipboard"), ("out_window", "This window")]
+OUTPUT_TIPS = {"out_cursor": "Paste each piece where your cursor is, as you talk",
+               "out_clipboard": "Put the whole take on the clipboard when it ends",
+               "out_window": "Show takes in the text box above, a blank line between them"}
 PASTE_CHORDS = [("ctrl+v", "Paste with Ctrl+V"), ("ctrl+shift+v", "Paste with Ctrl+Shift+V (terminals)")]
 FEEDBACK = [("beeps", "Beeps (start and stop)"), ("voice", "Voice (“Recording”, “Paused”, “Transcribing”…)"),
             ("off", "Off")]
@@ -339,9 +342,11 @@ class MainWindow(QMainWindow):
         head.addWidget(self.words)
         b.addLayout(head)
         self.text = QPlainTextEdit()
-        self.text.setPlaceholderText("Press Talk or your hotkey and start talking. The text appears "
-                                     "here as well as wherever Output sends it, and you can edit it.")
-        self.text.setStyleSheet("font-size: 14px;")
+        self.text.setPlaceholderText("Takes appear here when Output has \"This window\" on, each "
+                                     "after a blank line, and you can edit them. Every take is in "
+                                     "History either way.")
+        # 16 px since 1.000 (was 14; Daniel, 2026-10-24: "the size of the text in the window just a bit" larger)
+        self.text.setStyleSheet("font-size: 16px;")
         b.addWidget(self.text, 1)
         row = QHBoxLayout()
         self.btn_copy_text = QPushButton(QIcon.fromTheme("edit-copy"), "Copy")
@@ -355,8 +360,15 @@ class MainWindow(QMainWindow):
             row.addWidget(w)
         row.addStretch(1)
         row.addWidget(QLabel("Output"))
-        self.output_combo = self._combo("insert", OUTPUT)
-        row.addWidget(self.output_combo)
+        self.output_buttons = {}
+        for key, label in OUTPUT:
+            btn = QPushButton(label, checkable=True, checked=bool(self.cfg[key]))
+            btn.setToolTip(OUTPUT_TIPS[key])
+            btn.setStyleSheet(f"QPushButton:checked {{ background: {BRAND_GREEN}; color: white; "
+                              f"border-color: {BRAND_GREEN}; }}")
+            btn.toggled.connect(lambda on, k=key: self._on_output(k, on))
+            self.output_buttons[key] = btn
+            row.addWidget(btn)
         b.addLayout(row)
         self.text.textChanged.connect(self._count)
         lay.addWidget(box, 1)
@@ -415,13 +427,40 @@ class MainWindow(QMainWindow):
                                      f"<span style='color:gray'>{self.meter.rms_db:.0f} dB · peak "
                                      f"{self.meter.peak_db:.0f} dB</span>")
 
-    def new_take(self):
-        """A take is starting: with `clear_each_take` the text box starts empty (0.7.0, Daniel
-        2026-10-22: it used to collect every take into one long blob). The text is in History."""
-        self.text.clear()
+    def new_take(self, clear: bool):
+        """A take is starting. With `clear_each_take` the text box starts empty (0.7.0, Daniel
+        2026-10-22: it used to collect every take into one long blob); otherwise (the default
+        since 1.000) the take starts after a blank line, so takes read as separate blocks
+        (Daniel, 2026-10-24: "natural segments between the transcription"). Text is in History."""
+        if clear:
+            self.text.clear()
+        self._take_break = True
+
+    def _on_output(self, key, on):
+        """An Output button. The last one on can't be turned off: with none, a take would go
+        only to History, which looks like nothing happened."""
+        if not on and not any(self.cfg[k] for k, _ in OUTPUT if k != key):
+            self.output_buttons[key].blockSignals(True)
+            self.output_buttons[key].setChecked(True)
+            self.output_buttons[key].blockSignals(False)
+            self.status("At least one output stays on.")
+            return
+        self.cfg.set(key, on)
+        self.update_state()
+
+    _take_break = False
 
     def _append_piece(self, text):
         cur = self.text.toPlainText()
+        if self._take_break:
+            # A take's first piece: a blank line after whatever earlier takes left in the box.
+            self._take_break = False
+            # Exactly one blank line, whatever trailing spaces or breaks the box ends with.
+            body = cur.rstrip()
+            self.text.setPlainText(body + "\n\n" + text.lstrip() if body else text.lstrip())
+            self.text.moveCursor(self.text.textCursor().MoveOperation.End)
+            self.text.ensureCursorVisible()
+            return
         # streaming pieces and held full stops (0.7.1) carry their own leading space or mark
         sep = "" if not cur or cur.endswith((" ", "\n")) or text.startswith((" ", ".", ",", ";", ":", "?", "!")) else " "
         self.text.moveCursor(self.text.textCursor().MoveOperation.End)
@@ -1089,15 +1128,16 @@ class MainWindow(QMainWindow):
         chord.textChanged.connect(lambda t: self._on_chord(chord, t))
         form.addRow("Paste shortcut", chord)
         b.addLayout(form)
-        b.addWidget(muted("Output (paste, clipboard or the text box) and the microphone are on "
-                          "the Dictate tab."))
+        b.addWidget(muted("Output (at the cursor, clipboard, this window: any combination) and the "
+                          "microphone are on the Dictate tab."))
         b.addWidget(self._check("trailing_space", "Add a space after each transcript"))
         caps = self._check("all_caps", "Dictate in ALL CAPS (from the next take)")
         caps.setToolTip("Just for fun: everything you dictate is pasted in capitals. History and the "
                         "File tab keep the normal case.")
         b.addWidget(caps)
         b.addWidget(self._check("clear_each_take", "Start the Dictate tab's text box empty for each "
-                                                   "take (earlier takes are in History)"))
+                                                   "take (otherwise takes collect, a blank line "
+                                                   "between them; all are in History)"))
         b.addWidget(self._check("keep_history", "Keep a history of every transcript (History tab)", self._on_history_setting))
         lay.addWidget(box)
 
@@ -1359,12 +1399,14 @@ class MainWindow(QMainWindow):
 
     def sync_output(self):
         """Output and paste shortcut were changed from the tray menu."""
-        for w in (self.output_combo, self.chord_entry):
+        widgets = [*self.output_buttons.values(), self.chord_entry]
+        for w in widgets:
             w.blockSignals(True)
-        self.output_combo.setCurrentIndex(max(0, self.output_combo.findData(self.cfg["insert"])))
+        for key, btn in self.output_buttons.items():
+            btn.setChecked(bool(self.cfg[key]))
         self.chord_entry.setText(self.cfg["paste_chord"])
         self.chord_entry.setStyleSheet("")
-        for w in (self.output_combo, self.chord_entry):
+        for w in widgets:
             w.blockSignals(False)
         self.update_state()
 

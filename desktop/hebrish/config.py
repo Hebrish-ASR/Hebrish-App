@@ -54,7 +54,13 @@ DEFAULTS = {
     "overlay": "off",             # off | active (while dictating) | always
     "overlay_pos": None,          # [x, y] of the overlay's top-left; None = bottom centre
     "overlay_opacity": 85,        # idle opacity %, "always" mode
-    "insert": "paste",            # paste | clipboard | app (the Dictate tab's text box only)
+    # Where text goes (1.000, Daniel 2026-10-24): three switches, any combination. At the cursor
+    # (clipboard + paste chord) only by default; the Dictate tab's text box shows takes only when
+    # out_window is on. Up to 0.8.0 one choice, `insert`: paste | clipboard | app.
+    "out_cursor": True,
+    "out_clipboard": False,       # the whole take on the clipboard when it ends (pieces, if not pasting)
+    "out_window": False,          # the Dictate tab's text box
+
     "paste_chord": "ctrl+v",      # e.g. ctrl+shift+v if you dictate mostly into terminals
     "trailing_space": True,
     "all_caps": False,            # type everything in capitals, just for fun (0.7.2)
@@ -68,7 +74,8 @@ DEFAULTS = {
     "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad)
     "num_threads": 0,             # decoder threads; 0 = auto (physical cores, at most 8)
     "keep_history": True,         # keep every transcript in history.db (History tab); 0.7.0: on
-    "clear_each_take": True,      # the Dictate tab's text box starts empty for each take (0.7.0)
+    "clear_each_take": False,     # the Dictate tab's text box starts empty for each take (0.7.0; off
+                                  # since 1.000: takes collect, a blank line between them)
     "models_dir": "",             # where model weights live; "" = DATA_DIR/models
     "update_check_hours": 24,     # 0 = never check automatically
     "auto_update": True,          # download a new model version without asking (0.5.1: default on)
@@ -187,6 +194,16 @@ def upgrade(stored: dict) -> dict:
     # keep_history False was almost always the forced default: switch it on once.
     if stored and "clear_each_take" not in stored:
         stored["keep_history"] = True
+    # 1.000 (Daniel, 2026-10-24): `insert` became three switches, and the text box no longer
+    # shows takes unless asked ("by default the paste mode should only be going into ... the
+    # cursor position and shouldn't be displayed there in the window"). Takes in the box collect
+    # with a blank line between them, so clear_each_take goes off once.
+    if "insert" in stored:
+        mode = stored.pop("insert")
+        stored["out_cursor"] = mode == "paste"
+        stored["out_clipboard"] = mode == "clipboard"
+        stored["out_window"] = mode == "app"
+        stored["clear_each_take"] = False
     # 0.7.3 (Daniel, 2026-10-22, D-2026-10-22-20): the app keeps no audio; the setting is gone.
     stored.pop("keep_audio", None)
     # 0.7.1 (Daniel, 2026-10-22: text "a bit too long" in coming): each preset is shorter, Fast
@@ -244,7 +261,7 @@ class Config(dict):
         stored = load_json(CONFIG_PATH)
         old = bool(stored) and ("mode" in stored or "keep_old_versions" in stored
                                 or "feedback" not in stored or "send_chord" not in stored
-                                or "clear_each_take" not in stored)
+                                or "clear_each_take" not in stored or "insert" in stored)
         self.update({k: v for k, v in upgrade(stored).items() if k in DEFAULTS})
         if old or not CONFIG_PATH.exists():
             self.save()

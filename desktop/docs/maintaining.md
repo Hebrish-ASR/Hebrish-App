@@ -15,7 +15,7 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | `hotkey_evdev.py` / `hotkey_win.py` | per-OS key sources: `/dev/input` on Linux, a pynput low-level hook on Windows |
 | `inserter.py` + `inserter_linux.py` / `inserter_win.py` | clipboard, then a paste chord (uinput / SendInput) |
 | `autostart.py` | XDG autostart entry / HKCU `Run` key, toggled from Settings → System or the tray's *Start at login* (both go through `Controller.set_autostart`). `refresh()` rewrites the stored command at every start, because it is the path at the time it was turned on: a portable Windows zip unzipped to a new folder for a new version left the Run key starting the old exe (I, from the code; not seen on Windows hardware). Checkable tray actions connect `triggered` themselves: PySide's `addAction(text, slot)` calls the slot with no `checked` argument, so up to 0.6.3 the tray's *Show overlay* raised `TypeError` and did nothing (V, off-screen, 2026-10-21) |
-| `ui/app.py` | `Controller`, tray, single instance + `--toggle` over `QLocalServer`, `--selftest`, `main()`. The tray's *Output* submenu (0.7.5) sets `insert` (paste / clipboard / text box, from `window.OUTPUT`) and `paste_chord` (Ctrl+V or Ctrl+Shift+V, `window.PASTE_CHORDS`); its checks are re-read from the config on `aboutToShow`, and a pick calls `MainWindow.sync_output()`, so tray and Settings stay in step. A custom chord typed in Settings leaves both chord items unchecked |
+| `ui/app.py` | `Controller`, tray, single instance + `--toggle` over `QLocalServer`, `--selftest`, `main()`. The tray's *Output* submenu (0.7.5) toggles the outputs (`out_cursor` / `out_clipboard` / `out_window` since 1.000, independent checks, from `window.OUTPUT`; up to 0.8.0 one radio choice, `insert`) and `paste_chord` (Ctrl+V or Ctrl+Shift+V, `window.PASTE_CHORDS`); its checks are re-read from the config on `aboutToShow`, and a pick calls `MainWindow.sync_output()`, so tray and Settings stay in step. A custom chord typed in Settings leaves both chord items unchecked |
 | `ui/overlay.py` | the floating overlay widget, `OverlayHost` (in-process or an XWayland child), and the child's `__main__` |
 | `ui/splash.py` | the start-up screen |
 | `ui/meter.py` | the Dictate tab's level meter (zones, peak tick, clip lamp) |
@@ -747,6 +747,36 @@ Enter. Decisions: `planning/decisions.md` in this repo.
 - **Not verified on Windows** (no machine; CI tests only). Android has no equivalent yet:
   `planning/backlog.md`.
 
+## Outputs as switches; the text box off by default (1.000, 2026-10-24)
+
+Daniel, 2026-10-24: with Output on paste, every take also appeared in the Dictate tab's text box,
+"which I definitely don't want". Asked for the outputs as toggle buttons that combine ("so you could
+choose to have what we currently have"), paste at the cursor only by default, a slightly larger
+text in the box, and "a blank line inserted between transcriptions" so separate thoughts read as
+blocks. D-2026-10-24-02.
+
+- **Config:** `insert` (paste | clipboard | app) is replaced by three booleans, `out_cursor`
+  (default on), `out_clipboard`, `out_window` (both off). `config.upgrade` maps an old `insert`
+  once: paste → cursor only (so the box goes quiet on existing installs too, as asked), clipboard →
+  clipboard only, app → window only; and sets `clear_each_take` off (its default since 1.000).
+- **Where the switches act** (`ui/app.py`): `_show` emits `Signals.piece` only with `out_window`;
+  `_insert` pastes with `out_cursor`, else copies the piece with `out_clipboard`, else nothing.
+  With `out_clipboard` the **whole take** is copied in `_done` (ALL CAPS applied), after
+  `CLIPBOARD_AFTER_PASTE_MS` (600) when also pasting, so the target app reads the last piece
+  before the clipboard changes (I: the delay is a guess, not measured). Stop and send needs
+  `out_cursor`. History is written whatever the switches say.
+- **At least one output stays on** (window `_on_output`, tray `_tray_output`): with none, a take
+  would only reach History and look like nothing happened.
+- **UI:** three checkable buttons in the Dictate tab (`OUTPUT`, `OUTPUT_TIPS`), green when on
+  (`BRAND_GREEN`); the tray's Output items became independent checks, the paste shortcuts stay a
+  radio group, enabled while `out_cursor` is on.
+- **Text box:** 16 px (was 14). `new_take(clear)` runs at every take start; unless
+  `clear_each_take`, the take's first piece goes after exactly one blank line (`_take_break`;
+  trailing spaces and breaks are normalised by rewriting the box, which resets its undo stack).
+- Tests: `test_config_outputs.py`, `test_window_takes.py`, `test_tray_output.py`, and
+  `test_live.py`'s worker harness. Screenshot checked off-screen (2026-10-24); not used on a real
+  session yet (I).
+
 ## App updates in the app (0.6.2, 2026-10-21)
 
 Model updates are `model_store`'s job; `hebrish/app_update.py` (no Qt) is for the app itself.
@@ -945,8 +975,8 @@ from his Voice Notepad app (`AI-Transcription-Notepad`: `tts_announcer.py`, `mic
   defaults reach existing installs too (Daniel's request). Tests: `test_upgrade_to_0_5_0_defaults`.
 - **Tabs:** Dictate / File / History (only while `keep_history`) / Models / Settings / About;
   `MainWindow.pages` maps names to widgets (`present_tab("model")` etc.). The Dictate tab's text
-  box gets every decoded piece through `Signals.piece`. Output `app` (`insert`) skips the
-  inserter, so the text goes only there. The File tab (`ui/transcribe.py`) lost its own
+  box gets every decoded piece through `Signals.piece` (since 1.000 only with `out_window` on:
+  see "Outputs as switches"). The File tab (`ui/transcribe.py`) lost its own
   3-hour recorder (`long_recorder`); the take cap (`audio.DICTATION_MAX_S`) went from 15 to 60
   minutes, and `_live_tick` stops a take at the cap (before, the recorder silently stopped
   appending at 15 minutes).

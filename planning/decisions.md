@@ -9,6 +9,21 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-24-02: Desktop outputs are switches; paste at the cursor only by default
+
+- **Decision:** The desktop's Output is three independent switches (at the cursor, clipboard,
+  this window), at least one on. Default and migration: at the cursor only, so takes no longer
+  show in the Dictate tab's text box unless *This window* is on. Takes in the box collect with a
+  blank line between them (`clear_each_take` off). Text box font 16 px. Desktop 1.000.
+- **Why:** Daniel, 2026-10-24: paste "writes to the window as well in the app, which I definitely
+  don't want"; "buttons that can be toggled on and off ... so you could choose to have what we
+  currently have, but by default the paste mode should only be going into ... the cursor position";
+  "a blank line inserted between transcriptions" for "natural segments".
+- **Alternatives:** a fourth radio entry "paste + window" (no: he asked for combinable toggles);
+  all switches off allowed (no: a take would look lost; History still has it).
+- **By:** Daniel (switches, default, blank line, size), agent (whole-take clipboard copy, at least
+  one on, migrating paste users to cursor-only).
+
 ### D-2026-10-24-01: Versions are M.NNN from a unified 1.000; earlier GitHub releases deleted
 
 - **Decision:** Android and desktop both release as **1.000** (2026-10-24), then 1.001, 1.002, ...

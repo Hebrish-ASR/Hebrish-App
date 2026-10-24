@@ -234,9 +234,12 @@ def _run_worker(texts, jobs, cfg=None):
     it = iter(texts)
     ctl = SimpleNamespace(
         engine=SimpleNamespace(streaming=False, transcribe_after=lambda s, c, vad=False: _say(next(it))),
-        cfg={"vad": False, "trailing_space": True, "all_caps": False, "insert": "paste", "paste_chord": "ctrl+v", **(cfg or {})},
+        cfg={"vad": False, "trailing_space": True, "all_caps": False, "out_cursor": True, "out_clipboard": False,
+             "out_window": False, "paste_chord": "ctrl+v", **(cfg or {})},
         sig=sig, inserter=SimpleNamespace(insert=lambda t, how, chord: pastes.append(t)),
         _take=1, _send_take=0, _jobs=queue.Queue())
+    ctl._show = lambda t: Controller._show(ctl, t)
+    ctl._insert = lambda t: Controller._insert(ctl, t)
     for pause, final in jobs:
         ctl._jobs.put((1, np.zeros(SR, np.float32), final, pause))
     threading.Thread(target=Controller._worker, args=(ctl,), daemon=True).start()

@@ -28,7 +28,7 @@ from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in
 from ..engine import Engine, after_held_stop, hold_stop, live_split
 from ..history import History
 from ..hotkey import make_listener
-from ..inserter import make_inserter
+from ..inserter import copy_to_clipboard, make_inserter
 from . import about
 from .overlay import OverlayHost
 
@@ -41,6 +41,9 @@ APP_CHECK_S = 24 * 3600       # app update check while running: about daily (at 
 # input for the cue's length plus this, for output latency (0.7.0, Daniel 2026-10-22: spoken
 # prompts were ending up in the transcript).
 CUE_MARGIN_S = 0.15
+# With both the cursor and the clipboard on, the whole take is copied this long after the take's
+# last paste chord, so the target app has read the clipboard (the last piece) before it changes.
+CLIPBOARD_AFTER_PASTE_MS = 600
 BEEPS = {"recording": 880, "transcribing": 620, "discarded": (660, 440), "retake": (523, 880)}
 
 
@@ -196,8 +199,7 @@ class Controller(QObject):
             self.notify("Microphone error", str(e))
             return
         self._take += 1
-        if self.cfg["clear_each_take"]:
-            self.win.new_take()
+        self.win.new_take(self.cfg["clear_each_take"])
         self.recorder.mute(self.cue(cue) + CUE_MARGIN_S)
         self.set_state("recording")
 
@@ -344,13 +346,12 @@ class Controller(QObject):
                     if text:
                         text = fix(text)      # whole words with their own spaces; stream.sent keeps the raw text
                         parts.append(text)
-                        self.sig.piece.emit(out(text))
-                        if self.cfg["insert"] != "app":
-                            self.inserter.insert(out(text + space), self.cfg["insert"], self.cfg["paste_chord"])
-                    elif space and parts and not stream.sent.endswith(" ") and self.cfg["insert"] == "paste":
+                        self._show(out(text))
+                        self._insert(out(text + space))
+                    elif space and parts and not stream.sent.endswith(" ") and self.cfg["out_cursor"]:
                         # the last words went out at a pause, without the space after them
                         self.inserter.insert(out(space), "paste", self.cfg["paste_chord"])
-                    if final and live and parts and job == self._send_take and self.cfg["insert"] == "paste":
+                    if final and live and parts and job == self._send_take and self.cfg["out_cursor"]:
                         self._send()
                     if final:
                         whole = "".join(parts).strip()
@@ -372,18 +373,16 @@ class Controller(QObject):
                         parts[-1] += "."
                 elif held and final:
                     lead, parts[-1] = "." + end, parts[-1] + "."
-                    self.sig.piece.emit(out(lead))
-                    if self.cfg["insert"] != "app":
-                        self.inserter.insert(out(lead), self.cfg["insert"], self.cfg["paste_chord"])
+                    self._show(out(lead))
+                    self._insert(out(lead))
                 if text:
                     held = not final and hold_stop(text, pause)
                     text = fix(text[:-1] if held else text)
                     parts.append(text)
-                    self.sig.piece.emit(out(lead + text))
+                    self._show(out(lead + text))
                     space = "" if held else " " if not final else end
-                    if self.cfg["insert"] != "app":
-                        self.inserter.insert(out(lead + text + space), self.cfg["insert"], self.cfg["paste_chord"])
-                if final and live and parts and job == self._send_take and self.cfg["insert"] == "paste":
+                    self._insert(out(lead + text + space))
+                if final and live and parts and job == self._send_take and self.cfg["out_cursor"]:
                     self._send()
                 if final:
                     heard = parts or len(samples) < audio.SAMPLE_RATE // 2 or not live
@@ -393,6 +392,25 @@ class Controller(QObject):
                     self.sig.transcribed.emit("".join(parts).strip() if stream else " ".join(parts), e, None)
                 else:
                     log.exception("live piece failed")
+
+    def _show(self, text):
+        """A piece for the Dictate tab's text box, when that output is on (decode thread)."""
+        if self.cfg["out_window"]:
+            self.sig.piece.emit(text)
+
+    def _insert(self, text):
+        """A piece out of the app (decode thread): pasted at the cursor, or, with only the
+        clipboard on, copied. The window is [_show]'s; the whole take's copy is [_done]'s."""
+        if self.cfg["out_cursor"]:
+            self.inserter.insert(text, "paste", self.cfg["paste_chord"])
+        elif self.cfg["out_clipboard"]:
+            self.inserter.insert(text, "clipboard", self.cfg["paste_chord"])
+
+    def _copy_take(self, text):
+        try:
+            copy_to_clipboard(text)
+        except Exception:
+            log.exception("couldn't copy the take")
 
     def _send(self):
         """Stop and send: press send_chord after the take's last paste (decode thread)."""
@@ -415,8 +433,14 @@ class Controller(QObject):
                 self.latencies.append(time.monotonic() - self._stopped_at)
             self._overlay_done = True              # "Inserted" for a moment
             QTimer.singleShot(1100, self._overlay_clear_done)
-            if self.cfg["insert"] == "clipboard":
-                self.cue("copied")
+            if self.cfg["out_clipboard"]:
+                # The whole take, not just its last piece (1.000). After a paste, wait for the
+                # target app to read the clipboard first, or it would paste the whole take.
+                whole = text.upper() if self.cfg["all_caps"] else text
+                QTimer.singleShot(CLIPBOARD_AFTER_PASTE_MS if self.cfg["out_cursor"] else 0,
+                                  lambda: self._copy_take(whole))
+                if not self.cfg["out_cursor"]:
+                    self.cue("copied")
             self.remember(text, samples)
         self._stopped_at = 0.0
         self.set_state("idle")
@@ -856,18 +880,20 @@ class Controller(QObject):
         self._update_tray()
 
     def _build_output_menu(self, menu):
-        """Output mode and paste shortcut, so switching to a terminal (ctrl+shift+v) or to
-        clipboard-only doesn't mean opening Settings. Checks are re-read from the config each
-        time the menu opens, so changes made in the window show here too."""
+        """Output switches and paste shortcut, so switching to a terminal (ctrl+shift+v) or to
+        clipboard-only doesn't mean opening Settings. The outputs (1.000) are independent checks,
+        the shortcuts a radio group. Checks are re-read from the config each time the menu opens,
+        so changes made in the window show here too."""
         from .window import OUTPUT, PASTE_CHORDS
         self._output_acts, self._chord_acts = {}, {}
         for acts, options, slot in ((self._output_acts, OUTPUT, self._tray_output),
                                     (self._chord_acts, PASTE_CHORDS, self._tray_chord)):
-            group = QActionGroup(menu)
+            group = QActionGroup(menu) if acts is self._chord_acts else None
             for val, label in options:
                 a = menu.addAction(label)
                 a.setCheckable(True)
-                group.addAction(a)
+                if group:
+                    group.addAction(a)
                 a.triggered.connect(lambda _on, v=val, f=slot: f(v))
                 acts[val] = a
             if acts is self._output_acts:
@@ -876,13 +902,17 @@ class Controller(QObject):
 
     def _sync_output_menu(self):
         for val, a in self._output_acts.items():
-            a.setChecked(self.cfg["insert"] == val)
+            a.setChecked(bool(self.cfg[val]))
         for val, a in self._chord_acts.items():   # a custom chord leaves both unchecked
             a.setChecked(self.cfg["paste_chord"] == val)
-            a.setEnabled(self.cfg["insert"] == "paste")
+            a.setEnabled(bool(self.cfg["out_cursor"]))
 
-    def _tray_output(self, value):
-        self.cfg.set("insert", value)
+    def _tray_output(self, key):
+        """Flip one output; the last one on stays on (nothing would go anywhere but History)."""
+        from .window import OUTPUT
+        on = not self.cfg[key]
+        if on or any(self.cfg[k] for k, _ in OUTPUT if k != key):
+            self.cfg.set(key, on)
         self.win.sync_output()
 
     def _tray_chord(self, value):

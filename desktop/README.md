@@ -47,10 +47,11 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
   and **Discard**, then *Transcribing…* and *Inserted*. Show it *while dictating* or *always*
   (an idle mic button that starts a take, with its own opacity). Drag it anywhere; it opens
   towards the middle of the screen and never takes the keyboard focus.
-- **Output** (Dictate tab): *Paste at the cursor* (the default: the app puts the text on the
-  clipboard and sends Ctrl+V, so it works whatever keyboard layout is active, Hebrew included),
-  *Clipboard only*, or *This window's text box only*. Every take also lands in the Dictate tab's
-  editable text box (Copy, Save, Clear).
+- **Output** (Dictate tab, and the tray): three switches that combine. *At the cursor* (on by
+  default: the app puts the text on the clipboard and sends Ctrl+V, so it works whatever keyboard
+  layout is active, Hebrew included), *Clipboard* (the whole take on the clipboard when it ends),
+  and *This window* (takes in the Dictate tab's editable text box, a blank line between them;
+  Copy, Save, Clear). At least one stays on. Every take is in History either way (1.000).
 - **Microphone** (Dictate tab): the mic in use (for *System default*, which device that is right
   now), a switcher with rescan, and a level meter: too quiet / good / loud zones, the peak, and a
   CLIP lamp. *Test mic* shows the level without recording.
