@@ -12,7 +12,8 @@ import java.util.concurrent.Executors
  *
  * With [onText] set, each segment's text is handed over as soon as it is decoded ("type as you
  * go"), and [finish] returns only what has not been handed over yet. Without it, [finish] returns
- * the whole take. Callbacks run on the worker thread. Text goes through the personal dictionary
+ * the whole take. Callbacks run on the worker thread. Text goes through the disfluency chop
+ * ([Disfluency], always on), then the personal dictionary
  * ([PersonalDictionary]) and [OutputStyle], each read once per take, so a take never changes
  * style halfway.
  *
@@ -107,7 +108,7 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
         context = if (!last && (Transcriber.trailingQuietSeconds(samples) ?: 0f) >= PAUSE_CUT_SECONDS)
             samples.copyOfRange((samples.size - Transcriber.SAMPLE_RATE * CONTEXT_SECONDS).coerceAtLeast(0), samples.size)
         else null
-        var text = decoded
+        var text = Disfluency.chop(decoded)      // 1.001: fillers out first (../shared/disfluencies.md)
         var lead = ""
         if (text.isNotEmpty() && stopHeld) {
             val seam = afterHeldStop(text, stop)

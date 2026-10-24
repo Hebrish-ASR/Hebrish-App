@@ -875,6 +875,19 @@ desktop 0.8.0 implements the same rules.
   JVM: 21/21 (V, 2026-10-23). Android's regex is ICU, not the JVM's; the patterns use only
   `\p{L}`, `\p{N}`, lookarounds and CASE_INSENSITIVE|UNICODE_CASE, which both support (I).
 
+## Disfluency chop (unreleased, 2026-10-24)
+
+Request R-2026-10-24-1, B-38a, decision D-2026-10-24-04: *um, uh, eh, ehm, er, erm, hmm* are
+removed from every piece, always, for every model; no setting. Rules and the shared test set:
+`../shared/disfluencies.md`, `../shared/disfluency-cases.json`.
+
+- `core/Disfluency.kt`, `chop()`. `TakeDecoder.piece()` applies it to the decoded text before the
+  seam rules, the personal dictionary and ALL CAPS, so a filler never reaches History or the seam
+  logic. Hebrish Keyboard gets it with its next core submodule bump.
+- Testing: `scripts/check_disfluency.sh` (same JVM harness as `check_dictionary.sh`; needs
+  `JAVA_HOME` set to a JDK 21 if the default points elsewhere): 33/33 (V, 2026-10-24). The app was
+  not built locally (no NDK on the laptop); CI compiled it (see the commit).
+
 ## Floating mic out of the way: grip, bar along the edge, smaller defaults, icons (1.000, 2026-10-24)
 
 Daniel, 2026-10-24: "I'll start dictating, it'll open, and then suddenly it [is] overlaying some

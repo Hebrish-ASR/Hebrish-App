@@ -9,6 +9,15 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-24-05: S1-mini by Superwhisper on desktop only; on hold on Android
+
+- **Decision:** S1-mini by Superwhisper may be offered as a finishing step on desktop (B-40), if it
+  runs well on a laptop CPU and keeps romanised Hebrew words. On Android it is on hold.
+- **Why:** Daniel, 2026-10-24, after the research note: 462 MB, a few seconds per take on a recent
+  phone at best, English-only. "For mobile though, on hold."
+- **Alternatives:** an ONNX build for Android (none exists; not worth making while it is on hold).
+- **By:** Daniel. Research: [`research/post-processing`](../research/post-processing/README.md).
+
 ### D-2026-10-24-04: Disfluencies are always removed, in every app and with every model
 
 - **Decision:** Hesitation sounds (*um, uh, eh, erm, hmm*) and stutters are removed after decoding

@@ -22,7 +22,7 @@ from PySide6.QtGui import QActionGroup, QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from .. import __version__, app_update, audio, autostart, dictionary, model_store
+from .. import __version__, app_update, audio, autostart, dictionary, disfluency, model_store
 from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
 from ..engine import Engine, after_held_stop, hold_stop, live_split
@@ -413,7 +413,7 @@ class Controller(QObject):
                     text = stream.finish(samples) if final else stream.feed(samples)
                     space = " " if final and self.cfg["trailing_space"] else ""
                     if text:
-                        text = fix(text)      # whole words with their own spaces; stream.sent keeps the raw text
+                        text = fix(disfluency.chop(text))   # whole words with their own spaces; stream.sent keeps the raw text
                         parts.append(text)
                         self._show(out(text))
                         self._insert(out(text + space))
@@ -430,6 +430,7 @@ class Controller(QObject):
                 # 0.7.6: each piece is decoded after the end of the one before it (engine.CONTEXT_S),
                 # unless that one was cut without a pause (a forced cut may split a word)
                 text, stop = self.engine.transcribe_after(samples, ctx, vad=self.cfg["vad"]) if live else ("", None)
+                text = disfluency.chop(text)      # 1.001: fillers out first (../shared/disfluencies.md)
                 ctx = samples if pause else None
                 end = " " if self.cfg["trailing_space"] else ""
                 lead = ""

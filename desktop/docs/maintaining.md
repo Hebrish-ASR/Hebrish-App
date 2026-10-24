@@ -640,6 +640,18 @@ shared with Android: [`../../shared/personal-dictionary.md`](../../shared/person
   off-screen; the tab was also rendered off-screen and looked at. **Not verified (I):** a real take
   on Ubuntu or Windows.
 
+## Disfluency chop (unreleased, 2026-10-24)
+
+Request R-2026-10-24-1, B-38, decision D-2026-10-24-04: *um, uh, eh, ehm, er, erm, hmm* are
+removed from every piece, always, for every model; no setting. Rules and the shared test set:
+`../shared/disfluencies.md`, `../shared/disfluency-cases.json`.
+
+- `hebrish/disfluency.py`, `chop()`. `Controller._worker` applies it straight after decoding: for
+  Parakeet pieces before the seam rules, for Shakshuka's streamed words before the dictionary (a
+  streamed piece keeps its own leading space). The File tab (`ui/transcribe.py`) applies it too.
+  It reaches History; ALL CAPS comes after it.
+- Tests: `tests/test_disfluency.py` runs the shared cases (V, 2026-10-24: full suite 202 passed).
+
 ## ALL CAPS, and the 0.7.2 polish pass (2026-10-22)
 
 **ALL CAPS** (Daniel, 2026-10-22, R-2026-10-22-40, B-34: "just for fun"): config `all_caps`,
