@@ -30,7 +30,7 @@ Binaries: https://github.com/Hebrish-ASR/Hebrish-App/releases/download/android-v
 Builds:
   - versionName: 1.000
     versionCode: 24
-    commit: TAG_COMMIT_SHA
+    commit: 451a65285ce3e5983dee32392c430a30d5914afb
     subdir: android/app
     submodules: true
     gradle:
