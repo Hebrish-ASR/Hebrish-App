@@ -71,6 +71,9 @@ object Prefs {
     fun setTmGainDb(ctx: Context, v: Int) = sp(ctx).edit().putInt("tm_gain_db", v).apply()
     fun tmShowMeter(ctx: Context) = sp(ctx).getBoolean("tm_show_meter", true)
     fun setTmShowMeter(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("tm_show_meter", v).apply()
+    /** Transcription Mode keeps recording in the background (I-15; Setup's optional step). Off by default. */
+    fun tmBackground(ctx: Context) = sp(ctx).getBoolean("tm_background", false)
+    fun setTmBackground(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("tm_background", v).apply()
     fun micChoice(ctx: Context): String = sp(ctx).getString("mic_choice", Mic.AUTO) ?: Mic.AUTO
     fun setMicChoice(ctx: Context, v: String) = sp(ctx).edit().putString("mic_choice", v).apply()
 

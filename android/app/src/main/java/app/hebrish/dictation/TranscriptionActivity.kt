@@ -33,16 +33,20 @@ import java.io.File
  * [Tape] (its own mic, digital gain, a level meter that can be hidden, Record / Pause / Retake /
  * Stop / Transcribe), then transcribe it here in segments with [TakeDecoder].
  *
- * The recording runs while this screen is open, with the screen kept on: Android only lets an app
- * record in the foreground, and keeping on in the background would need a foreground service
- * (a new permission and a Play declaration; not done, see planning). Leaving the screen pauses;
- * the file stays and Resume carries on in it. A recording not transcribed (the app was closed,
- * the transcription failed or was cancelled) is offered again at the top.
+ * The recording itself is [Recording] (process-wide), so it can outlive this screen. With
+ * background recording on (Setup's optional step, `Prefs.tmBackground` plus notifications on
+ * Android 13+; I-15) [TranscriptionService] keeps it going with the screen off or another app in
+ * front. Without it, the screen is kept on while recording and leaving it pauses (Android only
+ * lets an app record in the foreground otherwise); the file stays and Resume carries on in it.
+ * A recording not transcribed (the app was closed, the transcription failed or was cancelled) is
+ * offered again at the top.
  */
 class TranscriptionActivity : Page() {
     private val ui = Handler(Looper.getMainLooper())
-    private val tape = Tape(onLimit = { ui.post { onLimit() } })
-    private var held: File? = null           // stopped, waiting for Transcribe
+    private val tape get() = Recording.tape
+    private var held: File?                  // stopped, waiting for Transcribe
+        get() = Recording.held
+        set(v) { Recording.held = v }
     private var leftover: File? = null
     private var decoding: File? = null
     @Volatile private var cancelled = false
@@ -77,6 +81,7 @@ class TranscriptionActivity : Page() {
     }
 
     override fun build() {
+        Recording.app = applicationContext
         text(R.string.tm_intro, top = 8)
 
         leftoverBox = group().apply { setPadding(dp(14), dp(10), dp(14), dp(10)) }
@@ -105,6 +110,7 @@ class TranscriptionActivity : Page() {
             meter.visibility = if (on) View.VISIBLE else View.GONE
             meterText.visibility = meter.visibility
         })
+        switch(R.string.tm_background, { Recording.background(this) }, { on -> setBackground(on) })
         meter = Meter(this)
         column.addView(meter, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(18)).apply { topMargin = dp(6) })
         meterText = text(top = 4).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f) }
@@ -113,11 +119,11 @@ class TranscriptionActivity : Page() {
 
         val controls = row().apply { (layoutParams as LinearLayout.LayoutParams).topMargin = dp(12) }
         btnRec = button(R.string.tm_record, controls) { recOrPause() }
-        btnRetake = button(R.string.tm_retake, controls) { confirmDrop { tape.discard(); dropHeld(); recOrPause() } }
+        btnRetake = button(R.string.tm_retake, controls) { confirmDrop { tape.discard(); dropHeld(); Recording.changed(); recOrPause() } }
         btnStop = button(R.string.tm_stop, controls) { stopTape() }
         val controls2 = row().apply { (layoutParams as LinearLayout.LayoutParams).topMargin = dp(4) }
         btnGo = primary(button(R.string.tm_transcribe, controls2) { transcribeTape() })
-        btnDiscard = button(R.string.tm_discard, controls2) { confirmDrop { tape.discard(); dropHeld(); sync() } }
+        btnDiscard = button(R.string.tm_discard, controls2) { confirmDrop { tape.discard(); dropHeld(); Recording.changed(); sync() } }
         // Elapsed time: small and grey at the end of the controls, there when you look for it.
         elapsed = TextView(this).apply {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -153,22 +159,49 @@ class TranscriptionActivity : Page() {
         sync()
     }
 
+    override fun onResume() {
+        super.onResume()
+        Recording.listener = { refresh() }
+        refresh()
+    }
+
     override fun onPause() {
         super.onPause()
-        if (tape.active && !tape.paused) {      // the mic can't stay open off-screen
+        Recording.listener = null
+        // Without background recording the mic can't stay open off-screen.
+        if (tape.active && !tape.paused && !Recording.background(this)) {
             tape.pause()
             Mic.release(this)
-            status.setText(R.string.tm_paused_left)
-            sync()
+            Recording.changed()
+            Recording.notice = R.string.tm_paused_left
         }
     }
 
     override fun onDestroy() {
-        tape.stop()                              // kept on disk, offered next time
-        Mic.release(this)
+        // Recording in the background carries on; otherwise the file is closed and offered next time.
+        if (!(tape.active && Recording.background(this))) {
+            if (tape.active) Recording.stop(this)
+        }
         cancelled = true
         decoder?.cancel()
         super.onDestroy()
+    }
+
+    /** Redraw from [Recording] (changed from the notification, or while this screen was away). */
+    private fun refresh() {
+        if (Recording.notice != 0) { status.setText(Recording.notice); Recording.notice = 0 }
+        showMic()
+        sync()
+    }
+
+    /**
+     * Background recording on or off. On needs notifications on Android 13+ (for the controls in
+     * the notification); asked here or in Setup.
+     */
+    private fun setBackground(on: Boolean) {
+        Prefs.setTmBackground(this, on)
+        if (on && !Recording.notificationsAllowed(this)) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFY)
+        Recording.changed()
     }
 
     // -- mic ---------------------------------------------------------------------------
@@ -233,20 +266,8 @@ class TranscriptionActivity : Page() {
             }
         }
         showMic()
+        Recording.changed()
         sync()
-    }
-
-    private fun onLimit() {
-        if (!tape.active) return
-        if (tape.seconds >= Tape.MAX_SECONDS) {
-            stopTape()
-            status.setText(R.string.tm_limit)
-        } else {                                 // the mic went away
-            tape.pause()
-            Mic.release(this)
-            status.setText(R.string.tm_mic_lost)
-            sync()
-        }
     }
 
     private fun heldSeconds(): Float = held?.takeIf { it.exists() }?.let { Tape.recover(it) } ?: 0f
@@ -268,14 +289,13 @@ class TranscriptionActivity : Page() {
     }
 
     private fun stopTape() {
-        held = tape.stop() ?: held
-        Mic.release(this)
+        Recording.stop(this)
         if (held != null) status.text = getString(R.string.tm_stopped, clock(heldSeconds()))
         sync()
     }
 
     private fun transcribeTape() {
-        if (tape.active) { held = tape.stop() ?: held; Mic.release(this) }
+        if (tape.active) Recording.stop(this)
         sync()
         held?.let { transcribe(it) }
     }
@@ -294,7 +314,7 @@ class TranscriptionActivity : Page() {
         for (b in listOf(btnRec, btnRetake, btnStop, btnGo, btnDiscard)) b.alpha = if (b.isEnabled) 1f else 0.45f
         progress.visibility = if (busy) View.VISIBLE else View.GONE
         btnCancel.visibility = progress.visibility
-        if (rec && !tape.paused) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (rec && !tape.paused && !Recording.background(this)) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         ui.removeCallbacks(tick)
         if (rec) ui.post(tick) else {
@@ -436,6 +456,7 @@ class TranscriptionActivity : Page() {
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        if (requestCode == REQ_NOTIFY) { Recording.changed(); return refresh() }
         if (requestCode == REQ_MIC && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) recOrPause()
         else if (requestCode == REQ_MIC) status.setText(R.string.try_need_mic)
     }
@@ -484,22 +505,23 @@ class TranscriptionActivity : Page() {
         }
     }
 
-    private companion object {
-        const val REQ_MIC = 11
-        const val PARAGRAPH_S = 30
-        const val CONFIRM_DROP_S = 60f
-        const val CLIP_HOLD_MS = 1500L
+    companion object {
+        private const val REQ_MIC = 11
+        private const val REQ_NOTIFY = 12
+        private const val PARAGRAPH_S = 30
+        private const val CONFIRM_DROP_S = 60f
+        private const val CLIP_HOLD_MS = 1500L
         // Level zones (desktop audio.QUIET_DB / LOUD_DB, from Voice Notepad's mic test: aim for -30 to -12).
-        const val FLOOR_DB = -60f
-        const val QUIET_DB = -40f
-        const val LOUD_DB = -12f
-        val GOOD_GREEN = Color.rgb(0x2e, 0x9e, 0x5b)
-        val LOUD_AMBER = Color.rgb(0xb0, 0x7a, 0x0c)
-        val CLIP_RED = Color.rgb(0xD6, 0x28, 0x28)
-        val ZONES = listOf(Triple(FLOOR_DB, QUIET_DB, Color.rgb(0x9a, 0xa3, 0xa0)), Triple(QUIET_DB, LOUD_DB, GOOD_GREEN),
+        private const val FLOOR_DB = -60f
+        private const val QUIET_DB = -40f
+        private const val LOUD_DB = -12f
+        private val GOOD_GREEN = Color.rgb(0x2e, 0x9e, 0x5b)
+        private val LOUD_AMBER = Color.rgb(0xb0, 0x7a, 0x0c)
+        private val CLIP_RED = Color.rgb(0xD6, 0x28, 0x28)
+        private val ZONES = listOf(Triple(FLOOR_DB, QUIET_DB, Color.rgb(0x9a, 0xa3, 0xa0)), Triple(QUIET_DB, LOUD_DB, GOOD_GREEN),
             Triple(LOUD_DB, -3f, Color.rgb(0xE8, 0xA3, 0x17)), Triple(-3f, 0f, CLIP_RED))
 
-        fun dbfs(x: Float) = if (x > 1e-6f) (20 * kotlin.math.log10(x)) else -120f
+        private fun dbfs(x: Float) = if (x > 1e-6f) (20 * kotlin.math.log10(x)) else -120f
 
         fun clock(s: Float): String {
             val t = s.toInt()

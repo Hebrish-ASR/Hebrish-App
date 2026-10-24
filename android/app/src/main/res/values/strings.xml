@@ -285,7 +285,11 @@
     <!-- Transcription Mode (R-2026-10-24-5): long recordings, then transcribe -->
     <string name="title_transcription">Transcription Mode</string>
     <string name="nav_transcription_summary">Record for as long as you need, then transcribe</string>
-    <string name="tm_intro">Record a long take, then transcribe it. The recording is saved on your phone as you go and deleted once the transcript is in History. Keep this screen open: leaving it pauses the recording.</string>
+    <string name="tm_intro">Record a long take, then transcribe it. The recording is saved on your phone as you go and deleted once the transcript is in History. Unless background recording is on, keep this screen open: leaving it pauses the recording.</string>
+    <string name="tm_background">Keep recording in the background (screen off, other apps)</string>
+    <string name="tm_channel">Transcription Mode recording</string>
+    <string name="tm_notif_recording">Recording for Transcription Mode</string>
+    <string name="tm_notif_paused">Transcription Mode: paused</string>
     <string name="tm_mic">Mic: %1$s</string>
     <string name="tm_mic_auto">Automatic (%1$s)</string>
     <string name="tm_mic_change">Change mic</string>
@@ -438,6 +442,9 @@
     <string name="setup_floating_title">Floating mic</string>
     <string name="setup_floating">A mic over every app, so you keep your usual keyboard. Android 13+ asks you to allow restricted settings first; the guide walks you through it.</string>
     <string name="setup_floating_button">Step by step</string>
+    <string name="setup_background_title">Record in the background</string>
+    <string name="setup_background">Only for Transcription Mode: keep a long recording going with the screen off or another app open. Android shows a notification with Pause and Stop while it records, so it asks to allow notifications.</string>
+    <string name="setup_background_button">Turn on</string>
     <string name="setup_battery_title">Keep it running</string>
     <string name="setup_battery">Let Hebrish run unrestricted on battery, so the phone doesn\'t stop it in the background.</string>
     <string name="setup_unused_title">Turn off \"Pause app activity if unused\"</string>

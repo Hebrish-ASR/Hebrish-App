@@ -18,7 +18,8 @@ import android.widget.TextView
  * system page. The same steps, with the same ids, are on hebrish.app/setup (`#step-<id>`).
  *
  * Counted as required: microphone, a model, a way to dictate (the voice keyboard or the floating
- * mic), battery unrestricted, and not pausing the app when unused. The floating mic is optional
+ * mic), battery unrestricted, and not pausing the app when unused. The floating mic and background
+ * recording for Transcription Mode (I-15) are optional
  * (the all-files step `files` went with the custom model location in 0.8.0). [Checklist] does the counting, so home can show "3 of 5 done".
  */
 class SetupActivity : Page() {
@@ -54,6 +55,9 @@ class SetupActivity : Page() {
                     startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
                 }.onFailure { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
             }
+        }
+        step("background", R.string.setup_background_title, R.string.setup_background, { Recording.background(this) }) { r ->
+            button(R.string.setup_background_button, r) { askBackground() }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             step("unused", R.string.setup_unused_title, R.string.setup_unused, { Setup.notPausedWhenUnused(this) }) { r ->
@@ -101,10 +105,26 @@ class SetupActivity : Page() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         render()
+        if (requestCode == REQ_NOTIFY) {
+            // Refused for good: only App info can allow notifications now.
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_DENIED && !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) appInfo()
+            return
+        }
         if (grantResults.firstOrNull() == PackageManager.PERMISSION_DENIED && !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) appInfo()
     }
 
     private fun askMic() = Setup.askMic(this)
+
+    /** Optional (I-15): background recording for Transcription Mode, plus notifications on Android 13+. */
+    private fun askBackground() {
+        Prefs.setTmBackground(this, true)
+        if (!Recording.notificationsAllowed(this)) requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFY)
+        render()
+    }
+
+    private companion object {
+        const val REQ_NOTIFY = 2
+    }
 
     private fun appInfo() = Setup.appInfo(this)
 
@@ -124,7 +144,7 @@ class SetupActivity : Page() {
 
 /** What counts towards "set up": shared by the checklist and the home screen. */
 object Checklist {
-    val OPTIONAL = setOf("floating")
+    val OPTIONAL = setOf("floating", "background")
 
     /** (done, required) over: mic, model, keyboard or floating mic, battery, not paused when unused. */
     fun progress(ctx: android.content.Context): Pair<Int, Int> {

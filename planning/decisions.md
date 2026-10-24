@@ -9,6 +9,18 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-24-07: Android records Transcription Mode in the background, opt-in from Setup
+
+- **Decision:** Android gets a `microphone` foreground service for Transcription Mode (B-42a), with
+  the permissions it needs (`FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE`,
+  `POST_NOTIFICATIONS`). It is optional: an optional Setup step and a switch on the screen turn it
+  on; off, Transcription Mode records only while its screen is open (D-2026-10-24-06).
+- **Why:** Daniel, 2026-10-24: "we should add into the setup on Android the background recording
+  … it can be optional: if you want to use it for this mode, then this permission is needed."
+- **Alternatives:** foreground-only recording (D-2026-10-24-06's first answer); background on for
+  everyone (asks every user for notifications they may never need).
+- **By:** Daniel. Supersedes the Android part of D-2026-10-24-06.
+
 ### D-2026-10-24-06: Transcription Mode keeps its recording on disk until it is transcribed
 
 - **Decision:** Transcription Mode (B-41, B-41a) writes each recording to a WAV in the app's own

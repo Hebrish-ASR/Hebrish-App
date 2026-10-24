@@ -973,9 +973,18 @@ R-2026-10-24-5, B-41a (parity with desktop B-41), D-2026-10-24-06. Home → **Tr
 - **Mic:** `Prefs.tmMic` (Automatic or a `Mic.key`), separate from the keyboard's `micChoice`.
   `Mic.preferred` takes the choice as a parameter now; `Mic.routeFor` opens the Bluetooth link.
   *Change mic* mid-recording reopens AudioRecord on the new device, same file.
-- **Foreground only:** the screen is kept on while recording, and `onPause` pauses (mic released,
-  file kept). Background recording would need a microphone foreground service (I-15). A mic that
-  disappears (read < 0) pauses with a message instead of ending the take.
+- **State is process-wide:** `Recording` (in `TranscriptionService.kt`) holds the `Tape` and the
+  held file; the screen redraws from it (`Recording.listener`), so a recording outlives the screen.
+- **Background (B-42a, D-2026-10-24-07):** opt-in, `Prefs.tmBackground` (Setup's optional step
+  `background`, or the switch on the screen) plus notifications on Android 13+
+  (`Recording.background`). Then Record starts `TranscriptionService`, a foreground service of type
+  `microphone`, started while the screen is in front as Android 14 requires. Its notification has a
+  chronometer and Pause/Resume and Stop (actions back into the service); later redraws go through
+  `NotificationManager.notify`, not a second `startForegroundService`, which Android 12+ may refuse
+  from the background. Without it: the screen is kept on and `onPause` pauses (mic released, file
+  kept). A mic that disappears (read < 0) pauses with a message instead of ending the take.
+- **Play:** the microphone foreground service has to be declared in the Play Console (App content →
+  Foreground service permissions) before a Play release carrying B-42a.
 - **Transcribe:** `Tape.segments` reads the file back in 100 ms chunks and cuts it with the live
   take's rules (`Recorder.Segmenting`, copied as `Tape.Cutter` rather than refactoring the
   keyboard's `Recorder`), feeding `TakeDecoder` (seams, held stops, dictionary, disfluency chop as
@@ -987,7 +996,8 @@ R-2026-10-24-5, B-41a (parity with desktop B-41), D-2026-10-24-06. Home → **Tr
 
 ## Not yet verified (as of 2026-10-20)
 
-- Transcription Mode (B-41a) on a device: a long take with the screen on, Bluetooth mic switch
+- Transcription Mode (B-41a, B-42a) on a device: a long take with the screen off and in another app
+  (background on), the notification's Pause/Stop and chronometer, a long take with the screen on, Bluetooth mic switch
   mid-recording, pause on leaving the screen, the leftover after force-stopping the app, the
   transcription of a 30+ minute file (memory, time), the meter's zones on a real mic.
 

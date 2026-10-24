@@ -5,6 +5,11 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Feedback (0.6.0): the optional buzz at start / stop / retake. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Transcription Mode in the background (I-15, optional in Setup): a microphone foreground
+         service, and notifications for its Pause / Stop controls. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Mic (0.6.0): routing a take to a Bluetooth headset mic (setCommunicationDevice / SCO). -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Used once, to download the model from Hugging Face. Recognition itself is offline. -->
@@ -35,6 +40,7 @@
         <activity android:name=".FloatingMicActivity" android:exported="false" android:label="@string/title_bubble" android:parentActivityName=".MainActivity" />
         <activity android:name=".FloatingMicGuideActivity" android:exported="false" android:label="@string/title_guide" android:parentActivityName=".MainActivity" />
         <activity android:name=".TranscriptionActivity" android:exported="false" android:label="@string/title_transcription" android:parentActivityName=".MainActivity" android:windowSoftInputMode="adjustResize" />
+        <service android:name=".TranscriptionService" android:exported="false" android:foregroundServiceType="microphone" />
         <activity android:name=".DictationActivity" android:exported="false" android:label="@string/title_dictation" android:parentActivityName=".MainActivity" />
         <activity android:name=".FloatingMicConsentActivity" android:exported="false" android:label="@string/title_consent" android:parentActivityName=".MainActivity" />
         <activity android:name=".InstallActivity" android:exported="false" android:label="@string/title_install" android:parentActivityName=".MainActivity" />
