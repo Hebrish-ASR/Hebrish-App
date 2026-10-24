@@ -5,6 +5,7 @@ import shutil
 import socket
 import struct
 import subprocess
+import threading
 import time
 
 from evdev import UInput, ecodes
@@ -94,6 +95,46 @@ def copy_to_clipboard(text: str):
     subprocess.run(clipboard_command(), input=text.encode(), check=True, timeout=5)
 
 
+# How long the paste path keeps serving the clipboard after the paste chord. The target app reads
+# the selection as it handles Ctrl+V, well under a second; this leaves room for a slow one.
+PASTE_HOLD_S = 1.5
+FOREGROUND = {"xclip": "-quiet", "wl-copy": "--foreground"}
+
+
+def copy_for_paste(text: str) -> subprocess.Popen:
+    """Set the clipboard for one paste and return the process serving it, kept in the
+    foreground (xclip -quiet, wl-copy --foreground) so it can be ended after the paste.
+
+    copy_to_clipboard's tool forks into the background and owns the selection until something
+    else takes it. On KWin that held the XWayland CLIPBOARD with the dictated text after the
+    Wayland clipboard had moved on (an image copied in a Wayland app), so X11 readers such as
+    Claude Code's image paste (`xclip -t image/png -o`) got stale text
+    (docs/debug-log/2026-10-24-xclip-holds-clipboard.md). The paste only needs the text for the
+    moment the target app reads it."""
+    cmd = clipboard_command()
+    proc = subprocess.Popen(cmd + [FOREGROUND[os.path.basename(cmd[0])]], stdin=subprocess.PIPE,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    proc.stdin.write(text.encode())
+    proc.stdin.close()
+    return proc
+
+
+def release_later(proc: subprocess.Popen, delay: float = PASTE_HOLD_S):
+    """End a copy_for_paste process after `delay`, so it stops owning the clipboard. It may
+    already have exited: another copy took the selection over (xclip quits on SelectionClear)."""
+    def end():
+        if proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+    t = threading.Timer(delay, end)
+    t.daemon = True
+    t.start()
+    return t
+
+
 class LinuxInserter:
     def __init__(self):
         self._ui = None
@@ -105,11 +146,18 @@ class LinuxInserter:
             self.error = f"Cannot open /dev/uinput ({e.strerror}); transcripts go to the clipboard only"
 
     def insert(self, text: str, method: str, chord: str):
-        copy_to_clipboard(text)
+        """method "clipboard" (or no uinput): the text stays on the clipboard. "paste": the
+        clipboard holds it only for the paste, then the selection is released (copy_for_paste);
+        the Clipboard output copies the whole take afterwards with copy_to_clipboard."""
         if method != "paste" or self._ui is None:
+            copy_to_clipboard(text)
             return
+        proc = copy_for_paste(text)
         time.sleep(0.12)          # let the compositor see the new clipboard owner
-        self.press(chord)
+        try:
+            self.press(chord)
+        finally:
+            release_later(proc)
 
     def press(self, chord: str):
         """Tap a chord (the paste shortcut, or Stop and send's Enter)."""
