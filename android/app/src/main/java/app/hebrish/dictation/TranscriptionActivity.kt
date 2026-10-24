@@ -27,6 +27,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import java.io.File
+import java.util.concurrent.Executors
 
 /**
  * Transcription Mode (R-2026-10-24-5; desktop: the Transcription tab): record a long take with
@@ -40,6 +41,12 @@ import java.io.File
  * lets an app record in the foreground otherwise); the file stays and Resume carries on in it.
  * A recording not transcribed (the app was closed, the transcription failed or was cancelled) is
  * offered again at the top.
+ *
+ * Paragraphs (B-44a, D-2026-10-24-09, `shared/paragraphs.md`): None, Time-based (a break about
+ * every [PARAGRAPH_S] of audio, at a segment boundary) or Paragraph model ([ParagraphModel], run
+ * once on the whole take when it is transcribed). The take's pieces and their time-based breaks
+ * are kept ([Take]), so changing the setting re-flows the transcript as long as the box still
+ * holds exactly what the app wrote ([shown]); text the user edited is never replaced.
  */
 class TranscriptionActivity : Page() {
     private val ui = Handler(Looper.getMainLooper())
@@ -52,6 +59,26 @@ class TranscriptionActivity : Page() {
     @Volatile private var cancelled = false
     private var decoder: TakeDecoder? = null
     private var meterOn = true
+
+    /** The take in the box: its pieces as decoded, each with its time-based break, so it can be re-flowed. */
+    private class Take(val base: String) {
+        val pieces = ArrayList<String>()
+        val breaks = ArrayList<Boolean>()
+        /** Decoding is over (the last piece is in). */
+        var done = false
+        /** The paragraph model's text for the take, once it has run. */
+        var modelText: String? = null
+        /** The paragraph model is running on it. */
+        var modelRunning = false
+    }
+    private var take: Take? = null
+    /** What the app last put in the box; the box is re-flowed or replaced only while it still holds exactly this. */
+    private var shown: String? = null
+    private var mode = ParagraphMode.TIME
+    /** Runs the paragraph model, one job at a time; owns [paraModel]. */
+    private val paraWorker = Executors.newSingleThreadExecutor()
+    private var paraModel: ParagraphModel? = null
+    private var paraModelDir: File? = null
 
     private lateinit var leftoverBox: LinearLayout
     private lateinit var leftoverText: TextView
@@ -69,6 +96,8 @@ class TranscriptionActivity : Page() {
     private lateinit var progress: ProgressBar
     private lateinit var btnCancel: Button
     private lateinit var text: EditText
+    private lateinit var paraLine: TextView
+    private lateinit var paraProgress: ProgressBar
 
     private val tick = object : Runnable {
         override fun run() {
@@ -138,6 +167,15 @@ class TranscriptionActivity : Page() {
         prow.addView(progress, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { gravity = Gravity.CENTER_VERTICAL })
         btnCancel = button(R.string.tm_cancel, prow) { cancelled = true; decoder?.cancel() }
 
+        // Paragraphs (B-44a): one line with the current choice, Change opens the three values.
+        mode = ParagraphMode.get(this)
+        val pline = row().apply { gravity = Gravity.CENTER_VERTICAL; (layoutParams as LinearLayout.LayoutParams).topMargin = dp(10) }
+        paraLine = TextView(this).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f) }
+        pline.addView(paraLine, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        button(R.string.tm_para_change, pline) { chooseParagraphs() }
+        paraProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 1000 }
+        column.addView(paraProgress, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+
         text = EditText(this).apply {
             setHint(R.string.tm_text_hint)
             gravity = Gravity.TOP or Gravity.START
@@ -156,18 +194,22 @@ class TranscriptionActivity : Page() {
 
         showMic()
         showLeftover()
+        showParagraphs()
         sync()
     }
 
     override fun onResume() {
         super.onResume()
         Recording.listener = { refresh() }
+        ParagraphStore.listener = { onParagraphDownload(it) }
         refresh()
+        showParagraphs()
     }
 
     override fun onPause() {
         super.onPause()
         Recording.listener = null
+        ParagraphStore.listener = null
         // Without background recording the mic can't stay open off-screen.
         if (tape.active && !tape.paused && !Recording.background(this)) {
             tape.pause()
@@ -184,6 +226,9 @@ class TranscriptionActivity : Page() {
         }
         cancelled = true
         decoder?.cancel()
+        // A paragraph run still queued finishes (and records History); then the session is closed.
+        paraWorker.execute { closeModel() }
+        paraWorker.shutdown()
         super.onDestroy()
     }
 
@@ -372,6 +417,8 @@ class TranscriptionActivity : Page() {
         lastTotal = total
         decoding = f
         cancelled = false
+        take = Take(text.text.toString())
+        shown = text.text.toString()
         val ends = java.util.Collections.synchronizedList(ArrayList<Long>())   // cumulative samples per segment
         var paraAt = -1L
         var fed = 0L
@@ -408,8 +455,9 @@ class TranscriptionActivity : Page() {
                 val brk = paraAt < 0 || end - paraAt >= PARAGRAPH_S * Transcriber.SAMPLE_RATE
                 ui.post {
                     result.onSuccess { last -> if (last.isNotBlank()) insert(last, brk) }
-                    if (result.isSuccess) History.record(this, d.text, d.stats(), History.RECORD)
+                    val t = take
                     finished(f, result.exceptionOrNull())
+                    if (result.isSuccess && t != null) taken(t, d.stats())
                 }
             }
         }.start()
@@ -435,11 +483,194 @@ class TranscriptionActivity : Page() {
 
     private var lastTotal = 0f
 
+    /** A decoded piece: kept with its time-based break, then the box is redrawn in the current setting. */
     private fun insert(said: String, paragraph: Boolean) {
+        val t = take ?: return
+        val unedited = unedited()
+        t.pieces.add(said)
+        t.breaks.add(paragraph)
+        if (unedited) return show(compose(t, mode))
+        // Edited meanwhile: add at the end as before 1.002, and stop re-flowing this take.
+        shown = null
         val e = text.text
-        val sep = if (e.isEmpty()) "" else if (paragraph) "\n\n" else null
-        val chunk = if (sep != null) sep + said.trimStart() else TakeDecoder.join(e, said)
-        e.append(chunk)
+        val sep = if (e.isEmpty()) "" else if (paragraph && mode == ParagraphMode.TIME) "\n\n" else null
+        e.append(if (sep != null) sep + said.trimStart() else TakeDecoder.join(e, said))
+    }
+
+    // -- paragraphs (B-44a) ------------------------------------------------------------
+    private fun unedited() = shown != null && text.text.toString() == shown
+
+    /** Puts [s] in the box: appended when it only adds to what is there (keeps the cursor and scroll), else replaced. */
+    private fun show(s: String) {
+        val cur = text.text.toString()
+        if (s != cur) {
+            if (s.startsWith(cur)) text.text.append(s, cur.length, s.length) else text.setText(s)
+        }
+        shown = s
+    }
+
+    /** The take in [m], after whatever was in the box when it started (a blank line between). */
+    private fun compose(t: Take, m: ParagraphMode): String {
+        val body = flow(t, m)
+        return if (t.base.isEmpty()) body else if (body.isEmpty()) t.base else t.base + "\n\n" + body
+    }
+
+    /**
+     * The take's text in [m]. Paragraph model: the model's text once it has run; one block while
+     * decoding or while it runs; Time-based when it is missing or failed (the spec's fallback).
+     */
+    private fun flow(t: Take, m: ParagraphMode): String = when (m) {
+        ParagraphMode.NONE -> joined(t, false)
+        ParagraphMode.TIME -> joined(t, true)
+        ParagraphMode.MODEL -> t.modelText
+            ?: if (t.modelRunning || (!t.done && ParagraphStore.isReady(this))) joined(t, false) else joined(t, true)
+    }
+
+    /**
+     * The pieces joined as decoding hands them over ([TakeDecoder.join]); with [breaks], a blank
+     * line before each piece that starts a time-based paragraph. A held-back full stop at the start
+     * of such a piece (". Next") stays with the paragraph before.
+     */
+    private fun joined(t: Take, breaks: Boolean): String {
+        val sb = StringBuilder()
+        for ((i, p) in t.pieces.withIndex()) {
+            if (sb.isEmpty()) { sb.append(p.trimStart()); continue }
+            if (breaks && t.breaks[i]) {
+                val lead = p.takeWhile { it in ".,;:?!" }
+                val rest = p.drop(lead.length).trimStart()
+                sb.append(lead)
+                if (rest.isNotEmpty()) sb.append("\n\n").append(rest)
+            } else sb.append(TakeDecoder.join(sb, p))
+        }
+        return sb.toString()
+    }
+
+    /** Transcription finished: Paragraph model runs now; otherwise History gets the take as shown. */
+    private fun taken(t: Take, stats: TakeDecoder.Stats) {
+        t.done = true
+        if (mode == ParagraphMode.MODEL) runModel(t, stats)
+        else History.record(this, flow(t, mode), stats, History.RECORD)
+        if (mode == ParagraphMode.MODEL && !ParagraphStore.isReady(this)) {
+            if (unedited()) show(compose(t, mode))
+            status.text = getString(R.string.tm_para_not_installed)
+        }
+    }
+
+    /**
+     * Runs the paragraph model on [t] (on [paraWorker]), then applies it if the box is unedited.
+     * [stats] set: the take has just finished and goes into History once its text is final.
+     */
+    private fun runModel(t: Take, stats: TakeDecoder.Stats?) {
+        val inst = ParagraphStore.installed(this)
+        val flat = joined(t, false)
+        if (inst == null || !ParagraphStore.isReady(this) || flat.isBlank()) {
+            if (flat.isBlank() && inst != null) t.modelText = flat
+            if (stats != null) History.record(this, flow(t, ParagraphMode.MODEL), stats, History.RECORD)
+            return
+        }
+        val dir = ParagraphStore.dir(this, inst)
+        val threshold = ParagraphStore.threshold(this, inst)
+        val before = status.text
+        t.modelRunning = true
+        status.text = getString(R.string.tm_para_running)
+        val app = applicationContext
+        paraWorker.execute {
+            val r = runCatching { model(dir, threshold).apply(flat) }
+            if (r.isFailure) closeModel()
+            ui.post {
+                t.modelRunning = false
+                r.onSuccess { t.modelText = it }
+                val current = take === t && mode == ParagraphMode.MODEL
+                val applied = current && unedited()
+                if (applied) show(compose(t, ParagraphMode.MODEL))
+                if (stats != null) History.record(app, if (applied || !current) flow(t, ParagraphMode.MODEL) else flat, stats, History.RECORD)
+                if (current) status.text = when {
+                    r.isFailure -> getString(R.string.tm_para_failed, r.exceptionOrNull()?.message ?: "?")
+                    !applied -> getString(R.string.tm_para_edited)
+                    else -> before
+                }
+            }
+        }
+    }
+
+    /** The kept ORT session for [dir], created on first use. [paraWorker] only. */
+    private fun model(dir: File, threshold: Double): ParagraphModel {
+        paraModel?.takeIf { paraModelDir == dir && it.threshold == threshold }?.let { return it }
+        closeModel()
+        return ParagraphModel(dir, threshold, Transcriber.threads).also { paraModel = it; paraModelDir = dir }
+    }
+
+    /** [paraWorker] only. */
+    private fun closeModel() {
+        runCatching { paraModel?.close() }
+        paraModel = null
+        paraModelDir = null
+    }
+
+    /** The setting changed, or the model arrived: re-flow the current take if the box is still what the app wrote. */
+    private fun reflow() {
+        val t = take ?: return
+        if (t.pieces.isEmpty()) return
+        if (!unedited()) { status.setText(R.string.tm_para_edited); return }
+        // The model's first run on this take: the box keeps its current text until the result.
+        if (mode == ParagraphMode.MODEL && t.done && t.modelText == null && !t.modelRunning && ParagraphStore.isReady(this)) runModel(t, null)
+        else if (!t.modelRunning || mode != ParagraphMode.MODEL) show(compose(t, mode))
+    }
+
+    private fun chooseParagraphs() {
+        val modes = ParagraphMode.values()
+        val names = modes.map {
+            when (it) {
+                ParagraphMode.NONE -> getString(R.string.tm_para_none_long)
+                ParagraphMode.TIME -> getString(R.string.tm_para_time_long)
+                ParagraphMode.MODEL -> getString(if (ParagraphStore.isReady(this)) R.string.tm_para_model_long else R.string.tm_para_model_download)
+            }
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.tm_paragraphs)
+            .setSingleChoiceItems(names.toTypedArray(), modes.indexOf(mode)) { dlg, i ->
+                dlg.dismiss()
+                setParagraphs(modes[i])
+            }
+            .show()
+    }
+
+    private fun setParagraphs(m: ParagraphMode) {
+        Prefs.setTmParagraphs(this, m.key)
+        mode = m
+        if (m != ParagraphMode.MODEL) paraWorker.execute { closeModel() }
+        else if (!ParagraphStore.isReady(this)) ParagraphStore.download(this)
+        showParagraphs()
+        reflow()
+    }
+
+    private fun showParagraphs() {
+        val name = getString(when (mode) {
+            ParagraphMode.NONE -> R.string.tm_para_none
+            ParagraphMode.TIME -> R.string.tm_para_time
+            ParagraphMode.MODEL -> R.string.tm_para_model
+        })
+        val s = ParagraphStore.status
+        paraLine.text = when {
+            s is ParagraphStore.Status.Running -> getString(R.string.tm_para_downloading, name,
+                if (s.total > 0) (s.done * 100 / s.total).toInt() else 0)
+            mode == ParagraphMode.MODEL && !ParagraphStore.isReady(this) -> getString(R.string.tm_para_line_missing, name)
+            else -> getString(R.string.tm_para_line, name)
+        }
+        paraProgress.visibility = if (s is ParagraphStore.Status.Running) View.VISIBLE else View.GONE
+        if (s is ParagraphStore.Status.Running) paraProgress.progress = if (s.total > 0) (s.done * 1000 / s.total).toInt() else 0
+    }
+
+    private fun onParagraphDownload(s: ParagraphStore.Status) {
+        showParagraphs()
+        when (s) {
+            is ParagraphStore.Status.Done -> if (mode == ParagraphMode.MODEL) {
+                status.setText(R.string.tm_para_downloaded)
+                reflow()
+            }
+            is ParagraphStore.Status.Failed -> status.text = getString(R.string.tm_para_download_failed, s.message)
+            else -> Unit
+        }
     }
 
     private fun copy() {

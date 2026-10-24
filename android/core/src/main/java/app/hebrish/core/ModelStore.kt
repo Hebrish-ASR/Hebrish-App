@@ -248,14 +248,23 @@ object ModelStore {
      * installed model. Blocking; call from a worker thread. [progress] receives bytes done
      * across all files.
      */
-    fun download(ctx: Context, model: Catalogue.Model, m: Manifest, cancelled: () -> Boolean, progress: (Long) -> Unit) {
-        val dir = dir(ctx, model = model, m = m)!!.apply { mkdirs() }
-        val need = m.files.sumOf { f -> File(dir, f.name).let { if (it.exists() && it.length() == f.size) 0L else f.size - File(it.path + ".part").length().coerceAtMost(f.size) } }
+    fun download(ctx: Context, model: Catalogue.Model, m: Manifest, cancelled: () -> Boolean, progress: (Long) -> Unit) =
+        downloadFiles(dir(ctx, model = model, m = m)!!, m.files, { url(model, m, it) }, cancelled, progress)
+
+    /**
+     * [download]'s loop for any set of files: each missing file of [files] into [dir] from
+     * [urlOf] (by file name), resumable `.part`, size and SHA-256 checked before it is renamed into
+     * place. Also used for the paragraph-break model (the app's ParagraphStore, B-44a), which is
+     * not a catalogue model. Blocking; call from a worker thread.
+     */
+    fun downloadFiles(dir: File, files: List<ModelFile>, urlOf: (String) -> String, cancelled: () -> Boolean, progress: (Long) -> Unit) {
+        dir.mkdirs()
+        val need = files.sumOf { f -> File(dir, f.name).let { if (it.exists() && it.length() == f.size) 0L else f.size - File(it.path + ".part").length().coerceAtMost(f.size) } }
         if (dir.usableSpace < need + 50_000_000) {
             throw java.io.IOException("Not enough free space: need ${need / 1_000_000} MB, have ${dir.usableSpace / 1_000_000} MB")
         }
         var doneBefore = 0L
-        for (f in m.files) {
+        for (f in files) {
             val target = File(dir, f.name)
             if (target.exists() && target.length() == f.size) {
                 doneBefore += f.size
@@ -266,7 +275,7 @@ object ModelStore {
             if (part.length() > f.size) part.delete()
             while (part.length() < f.size) {
                 if (cancelled()) throw InterruptedException("cancelled")
-                val conn = URL(url(model, m, f.name)).openConnection() as HttpURLConnection
+                val conn = URL(urlOf(f.name)).openConnection() as HttpURLConnection
                 conn.connectTimeout = 20_000
                 conn.readTimeout = 30_000
                 conn.instanceFollowRedirects = true

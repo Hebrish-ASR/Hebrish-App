@@ -74,6 +74,12 @@ object Prefs {
     /** Transcription Mode keeps recording in the background (I-15; Setup's optional step). Off by default. */
     fun tmBackground(ctx: Context) = sp(ctx).getBoolean("tm_background", false)
     fun setTmBackground(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("tm_background", v).apply()
+    /** Transcription Mode's Paragraphs setting (B-44a): ParagraphMode.key, or null until chosen ([ParagraphMode.get]). */
+    fun tmParagraphs(ctx: Context): String? = sp(ctx).getString("tm_paragraphs", null)
+    fun setTmParagraphs(ctx: Context, v: String) = sp(ctx).edit().putString("tm_paragraphs", v).apply()
+    /** The installed paragraph-break model's manifest (ParagraphStore.Installed JSON), or null. */
+    fun paragraphModel(ctx: Context): String? = sp(ctx).getString("paragraph_model", null)
+    fun setParagraphModel(ctx: Context, v: String?) = sp(ctx).edit().putString("paragraph_model", v).apply()
     fun micChoice(ctx: Context): String = sp(ctx).getString("mic_choice", Mic.AUTO) ?: Mic.AUTO
     fun setMicChoice(ctx: Context, v: String) = sp(ctx).edit().putString("mic_choice", v).apply()
 

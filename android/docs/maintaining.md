@@ -1012,10 +1012,76 @@ R-2026-10-24-5, B-41a (parity with desktop B-41), D-2026-10-24-06. Home → **Tr
 - Compiled locally (`compileFdroidDebugKotlin`, JDK 21, after installing NDK 26.3.11579264;
   the native cmake step still fails on the laptop, so the APK comes from CI). Not run on a device.
 
+## Transcription Mode: Paragraphs setting (unreleased, B-44a, 2026-10-24)
+
+D-2026-10-24-09, parity with desktop B-44. Spec: `../shared/paragraphs.md`; test file
+`../shared/paragraph-cases.json`. Transcription Mode has a **Paragraphs** line under the progress
+bar ("Paragraphs: Time-based" + *Change*), which opens a single-choice dialog: **None** (one block),
+**Time-based** (the 30 s split, `PARAGRAPH_S`), **Paragraph model**. Remembered in
+`Prefs.tmParagraphs`; unset means Paragraph model if installed, else Time-based (`ParagraphMode.get`).
+Dictation (keyboard, floating mic, Try it) is unchanged.
+
+- **Code:** `Paragraphs.kt` (Python-style word split, `windows()`, most-central merge, join, and
+  `WordPiece`: BERT uncased as HF `tokenizers` runs it), `ParagraphModel.kt` (ORT Java API from the
+  `onnxruntime-android` AAR the app already ships; session created on first use on a worker, kept
+  while the screen is open with Paragraph model chosen, closed when the setting changes or the
+  screen is destroyed; `Transcriber.threads` intra-op threads). Neither imports `android.*`, so the
+  check script compiles them as they are. Not in `core/`: Hebrish Keyboard compiles `core` without
+  the ORT Java classes. `libonnxruntime4j_jni.so` was already in the APK (from the same AAR), so no
+  new native binary.
+- **Download:** `ParagraphStore.kt`. `latest.json` from `cdn.hebrish.app/models/paragraph-breaks/`,
+  files into `filesDir/models/paragraph-breaks/<version>/` through `ModelStore.downloadFiles` (the
+  speech models' loop, split out of `ModelStore.download`: resumable `.part`, SHA-256, rename when
+  verified; an additive core change). The manifest is stored (`Prefs.paragraphModel`) only after
+  every file verified, then other version folders are deleted. Threshold: the manifest's, else
+  `config.json`'s `paragraph_threshold`. Not a catalogue model, not in the model picker. Progress
+  shows in the Paragraphs line and a bar under it.
+- **Flow:** `TranscriptionActivity.Take` keeps the take's pieces with their time-based break flags,
+  and `shown` is what the app last wrote. Each piece redraws the box in the current setting
+  (appended when it only adds text). With Paragraph model the box fills as one block while
+  decoding; when transcription finishes the model runs on `paraWorker`, and its text replaces the
+  box only if the box still equals `shown`; otherwise the status line says the paragraphs were not
+  changed. Changing the setting re-flows the take under the same rule. Model missing (or still
+  downloading), failing to load or throwing: Time-based for that take, with a status message; when
+  a download finishes, the current unedited take is redone. History gets the take as the app showed
+  it (with its paragraphs; the model's text when it ran), recorded once the text is final, also if
+  the screen closed meanwhile. A held-back full stop at the start of a time-based paragraph's first
+  piece (". Next") now stays at the end of the paragraph before (before B-44a it began the new one).
+- **Background (B-42a):** unchanged. Only the recording runs in `TranscriptionService`; transcription
+  and the paragraph step run in the screen, as before.
+- **Tests:** `scripts/check_paragraphs.sh` (JDK 21, `uv`, network on first run; cached in
+  `~/.cache/hebrish-checks`). 2026-10-24 (V): windows and word_pieces of all 11 cases exact; 3000
+  fuzz words (Latin with accents, Greek incl. final sigma, Cyrillic, Hebrew with points, CJK, kana,
+  Hangul, combining marks, controls, Cf, private use, unassigned, U+FFFD, NUL, symbols, emoji,
+  special-token text such as `[SEP]`, words over 100 characters) identical to HF `tokenizers` ids;
+  fp32 `model.onnx` (the strict target, from the Hub) vs `probs_fp32`: max |dp| 6.6e-06 (limit
+  0.001), all 11 `output_fp32` identical; int8 on ORT Java 1.28.0: output differs from the input
+  only in whitespace, break decisions differ from fp32 on 8 of 1,412 words (limit max(2, 2%) per
+  case); Kotlin + ORT Java 1.28.0 vs the Hub's `paragraphs.py` + ORT Python 1.28.0 on the int8 model:
+  max |dp| 5.6e-08, every output identical. 3099/3099 checks. The fuzz caught one rule the spec draft had wrong:
+  unassigned code points (Cn) are kept (HF gives [UNK]), only Cc/Cf/Co/Cs are dropped.
+- **int8 drift (V, 2026-10-24):** the int8 model's scores depend on the ORT version and CPU far
+  beyond the spec's first 0.02 tolerance (which is why fp32 is now the strict target). Same laptop, same inputs: ORT 1.28.0 and 1.29.0 agree, 1.30.0 and
+  1.31.0 agree, and the two pairs differ by up to 0.62 per word (syn-2-0002, word 175); against
+  the cases' ORT 1.31 values the app's ORT 1.28 gives 14 word scores off by more than 0.02 and 3
+  break decisions different over the 11 cases. int8 vs fp32 differs by up to 0.98 on single words
+  on either version. The app ships int8 and ORT 1.28 (tied to sherpa-onnx), so phone results can
+  differ from desktop's on borderline breaks; the text never changes, only where blank lines go.
+- **Latency:** laptop x86, 1 thread, int8, ORT Java 1.28: 0.20 s for 208 words, 0.83 s for 566
+  words (2 windows); about 0.4 s for the first call (session load). Phone: not measured (no device).
+- **Size:** the model is downloaded (34 MB). Debug APK +54,016 bytes (fdroid) / +54,020 (play),
+  clean builds before and after, all dex and resources.
+- Built locally (`assembleFdroidDebug`, `assemblePlayDebug`, JDK 21, NDK 26.3.11579264) in a fresh
+  clone with submodules. Not run on a device.
+
 ## Not yet verified (as of 2026-10-20)
 
 - Overlapping takes (B-43a) on a device: floating mic and keyboard, tap during "transcribing",
   texts in order, type-as-you-go on and off, switching back after the last take lands.
+- Paragraphs setting (B-44a) on a device: the download and its progress, the model's latency and
+  memory on a phone, ORT Java sharing `libonnxruntime.so` with sherpa-onnx in one process (two ORT
+  environments' worth of callers; expected to work, (I)), re-flow after switching, the edited-text
+  rule, the fallback when offline.
 - Transcription Mode (B-41a, B-42a) on a device: a long take with the screen off and in another app
   (background on), the notification's Pause/Stop and chronometer, a long take with the screen on, Bluetooth mic switch
   mid-recording, pause on leaving the screen, the leftover after force-stopping the app, the

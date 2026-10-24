@@ -1084,9 +1084,11 @@
       "group": "history-and-files",
       "name": "Transcription Mode Paragraphs setting: None, Time-based or Paragraph model (break classifier, downloaded on demand)",
       "android": {
-        "status": "missing",
-        "evidence": "",
-        "notes": "planning/backlog.md B-44a"
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "android/app/src/main/java/app/hebrish/dictation/Paragraphs.kt, ParagraphModel.kt (ORT Java from the onnxruntime-android AAR), ParagraphStore.kt (CDN download); setting in TranscriptionActivity.kt; scripts/check_paragraphs.sh (shared/paragraph-cases.json, fp32 strict, int8 by break decisions, 3000 fuzz words vs HF tokenizers)",
+        "verified": false,
+        "notes": "Compiled (both flavors) and checked on the JVM; not run on a device, phone latency unmeasured"
       },
       "ubuntu": {
         "status": "present",
@@ -1170,7 +1172,8 @@
   "unreleased": {
     "android": [
       "Transcriber passes the catalogue feature_dim (0.7.0 passes 80 and relies on the model metadata; no behaviour change)",
-      "Disfluency chop (B-38)"
+      "Disfluency chop (B-38)",
+      "Transcription Mode Paragraphs setting (B-44a)"
     ],
     "desktop": [
       "Disfluency chop (B-38)",
