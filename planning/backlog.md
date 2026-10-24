@@ -2,9 +2,25 @@
 
 Last updated 2026-10-24. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
 `released <version>`. Work is queued in **one sprint per platform** (desktop = Ubuntu + Windows,
-which share `desktop/`; Android). A sprint ends with a release. Parity is the aim (decision
+which share `desktop/`; Android). A sprint ends with a release, when the release gate below says so. Parity is the aim (decision
 D-2026-10-22-05): an item done on one platform gets a matching item in the other sprint, unless
 it makes no sense there. Agents add to sprints with the `queue-sprint` skill.
+
+## Release gate
+
+Set 2026-10-24 by Daniel: "I'll let you know when we finish this sprint … I don't want to keep
+creating tiny point releases every time we just have one change." Work is committed and pushed as
+it is done; versions are released only when this gate is met (maintainer skill `release-gate`).
+Contributors: this is why a merged change may wait for the next release.
+
+| Field | Value |
+| --- | --- |
+| Sprint | Post-processing (after Apps 1.000) |
+| Release when | on-word |
+| Condition | Daniel says the sprint is done |
+| Platforms | Android and desktop (Ubuntu + Windows), released together at the end of the sprint |
+| Waiting to ship | B-38 / B-38a disfluency chop (both apps, bd60ad8). In progress: B-40 / B-40a paragraphs with the retrained classifier |
+| Hotfix rule | Only a release that is broken for users (won't install, crashes on start, loses data) ships early, and Daniel is told |
 
 ## Sprint plan (2026-10-22)
 
