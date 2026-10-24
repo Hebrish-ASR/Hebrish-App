@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
 # Set an app's version and create its release tag in one step, so the two can't drift:
-#   scripts/release-tag.sh desktop 0.6.3 [--push]
-#   scripts/release-tag.sh android 0.7.1 [--push]
+#   scripts/release-tag.sh desktop 1.001 [--push]
+#   scripts/release-tag.sh android 1.001 [--push]
 #
-# The tag (desktop-vX.Y.Z / android-vX.Y.Z) is the release's identity: CI builds from it, the
+# Versions are MAJOR.NNN, three digits after the point (Daniel, 2026-10-24; D-2026-10-24-01):
+# 1.000 was the first, unified across Android and desktop; then 1.001, 1.002, ... Each app still
+# releases on its own. Up to 2026-10-24 versions were X.Y.Z (last: Android 0.10.0, desktop 0.8.0).
+#
+# The tag (desktop-vM.NNN / android-vM.NNN) is the release's identity: CI builds from it, the
 # GitHub release, CDN file names, latest.json and F-Droid all take the version from it. The
 # version in the code (desktop/hebrish/__init__.py __version__, which the window footer, .deb
 # and update check read; android/app/build.gradle.kts versionName, plus versionCode + 1) must
 # equal it, and both workflows fail a tag that doesn't match (step "Tag matches version").
 #
-# Refuses when: the version isn't X.Y.Z, isn't newer than the last tag for that app, the tag
+# Refuses when: the version isn't M.NNN, isn't newer than the last tag for that app, the tag
 # already exists, or the release notes (.github/<app>-release-notes.md) don't start with
-# **X.Y.Z. Commits only the version file and the notes (other sessions may have work in the
+# **M.NNN. Commits only the version file and the notes (other sessions may have work in the
 # tree), then makes an annotated tag. --push pushes main and the tag, which starts CI.
 #
 # Android also gets the F-Droid changelog for the new versionCode
@@ -21,10 +25,10 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-APP=${1:?usage: release-tag.sh desktop|android X.Y.Z [--push]}
-VER=${2:?usage: release-tag.sh desktop|android X.Y.Z [--push]}
+APP=${1:?usage: release-tag.sh desktop|android M.NNN [--push]}
+VER=${2:?usage: release-tag.sh desktop|android M.NNN [--push]}
 PUSH=${3:-}
-[[ $VER =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version must be X.Y.Z, got $VER" >&2; exit 1; }
+[[ $VER =~ ^[0-9]+\.[0-9]{3}$ ]] || { echo "version must be M.NNN (e.g. 1.001), got $VER" >&2; exit 1; }
 TAG="$APP-v$VER"
 NOTES=".github/$APP-release-notes.md"
 

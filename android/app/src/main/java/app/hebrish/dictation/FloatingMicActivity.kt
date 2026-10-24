@@ -15,7 +15,7 @@ import android.widget.TextView
  * The floating mic: whether it is on (with the step-by-step guide, [FloatingMicGuideActivity]),
  * where it sits and how it looks (icon, size, opacity, mic colour), and the bar shown while you talk (direction, size,
  * opacity, clear). Every control writes Prefs; FloatingMicService moves the mic live, and dragging the mic updates these
- * controls while the screen is open. Sliders have − / + buttons for one step at a time (0.11.0, Daniel: "so that you can
+ * controls while the screen is open. Sliders have − / + buttons for one step at a time (1.000, Daniel: "so that you can
  * really dial in exactly what you're looking for").
  */
 class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeListener {

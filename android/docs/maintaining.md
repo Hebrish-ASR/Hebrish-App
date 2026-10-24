@@ -95,7 +95,7 @@ Verified 2026-10-19: `assembleDebug` compiles with JDK 21 and the APK contains
 
 ## sherpa-onnx API notes (1.13.8, read with javap from the AAR 2026-10-18)
 
-- Since 0.11.0 (2026-10-23) sherpa-onnx is built from source for F-Droid (`fdroid-main.md`):
+- Since 1.000 (2026-10-23) sherpa-onnx is built from source for F-Droid (`fdroid-main.md`):
   submodules in `third_party/` (sherpa-onnx at tag v1.13.8 plus every FetchContent dependency,
   pinned to the tags its `cmake/*.cmake` names), `app/src/main/cpp/CMakeLists.txt`, ONNX Runtime
   from Maven Central. The Kotlin API is five unmodified files in
@@ -491,7 +491,14 @@ register, and falls back to the https link) and `ContactActivity`. Setup checks 
 screens are in `Setup` (MainActivity.kt). Every screen but home has `parentActivityName`
 `.MainActivity` and an Up arrow. Prefs keys did not change, so 0.3.0 settings carry over.
 
-## Version and tag (2026-10-21)
+## Version and tag (2026-10-21; M.NNN since 2026-10-24)
+
+Since 2026-10-24 versions are `M.NNN`: Android and desktop both restarted at **1.000** (Daniel:
+"we'll use three decimal places of version releases, so v1.000 is this"), then 1.001, 1.002, ...;
+`release-tag.sh` refuses anything else. 0.11.0 and 0.11.1 were tagged that day, cancelled in CI
+before anything was published, and the tags deleted; their work shipped as 1.000 (versionCode 24).
+All earlier GitHub releases (Android 0.1.0-0.10.0, desktop 0.1.0-0.8.0) were deleted the same day;
+their `android-v0.*` / `desktop-v0.*` tags were kept. D-2026-10-24-01.
 
 Release with `scripts/release-tag.sh android <ver> --push` (repo root): it sets `versionName`
 to `<ver>` and `versionCode` + 1 in `app/build.gradle.kts`, commits only that file and
@@ -868,7 +875,7 @@ desktop 0.8.0 implements the same rules.
   JVM: 21/21 (V, 2026-10-23). Android's regex is ICU, not the JVM's; the patterns use only
   `\p{L}`, `\p{N}`, lookarounds and CASE_INSENSITIVE|UNICODE_CASE, which both support (I).
 
-## Floating mic out of the way: grip, bar along the edge, smaller defaults, icons (0.11.0, 2026-10-24)
+## Floating mic out of the way: grip, bar along the edge, smaller defaults, icons (1.000, 2026-10-24)
 
 Daniel, 2026-10-24: "I'll start dictating, it'll open, and then suddenly it [is] overlaying some
 text I'm working on." Asked for: moving the overlay during a take; left as the default side; a
@@ -879,7 +886,7 @@ opaque background"); idle icons with the app logo's H and the Hebrew letter ayin
 objective, in his words: "the expansion happens in the least obtrusive part of the screen".
 
 - **Moving during a take.** Dragging the mic or any part of the bar already worked since 0.3.0
-  (`Drag`), but the only obvious handle was the mic, and a tap on it during a take is Stop. 0.11.0
+  (`Drag`), but the only obvious handle was the mic, and a tap on it during a take is Stop. 1.000
   adds a grip (`ic_drag`, `grip`) at the bar's outer end, shown whenever the bar is (take or held
   transcript). Drag only, no tap action. (I) that the grip is what was missing; not reproduced.
 - **Bar along the edge** (`Prefs.bubbleBarDirection`, `bubble_bar_direction`, default `along`;
@@ -916,7 +923,7 @@ objective, in his words: "the expansion happens in the least obtrusive part of t
   upward column's mic not jumping on open/close (measured height before layout); the column on a
   right-edge mic; 50 % bar buttons still hittable; clear bar legibility over light and dark apps.
 
-## "Pasted from your clipboard": a tip, not a fix (0.11.1, 2026-10-24)
+## "Pasted from your clipboard": a tip, not a fix (1.000, 2026-10-24)
 
 Daniel, 2026-10-24: every floating-mic insert makes Android say the app "pasted from your
 clipboard"; "definitely going to get on everyone's nerves". Asked to prevent it, or else tell users

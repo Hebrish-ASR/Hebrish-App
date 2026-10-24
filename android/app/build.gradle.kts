@@ -4,7 +4,7 @@ plugins {
 }
 
 // sherpa-onnx is built from source (app/src/main/cpp/CMakeLists.txt, submodules in
-// ../third_party) since 0.11.0: F-Droid refuses the prebuilt GitHub release AAR used before
+// ../third_party) since 1.000: F-Droid refuses the prebuilt GitHub release AAR used before
 // (docs/fdroid-main.md). Its Kotlin API is vendored in src/main/java/com/k2fsa/sherpa/onnx.
 // Bump all three together: the submodule, the vendored .kt files and this string.
 val sherpaVersion = "1.13.8"
@@ -31,8 +31,8 @@ android {
         minSdk = 28
         // 36 since 0.8.0: Google Play refuses new apps and updates below it from 2026-08-31.
         targetSdk = 36
-        versionCode = 25
-        versionName = "0.11.1"
+        versionCode = 23
+        versionName = "0.10.0"
         // Phones only: x86 libs would add ~25 MB for emulator use nobody needs here.
         ndk { abiFilters += "arm64-v8a" }
 
@@ -105,7 +105,7 @@ android {
             // Reproducible builds: META-INF/version-control-info differs between a clone and a
             // worktree of the same commit.
             vcsInfo { include = false }
-            // Unsigned without the RELEASE_* env vars (0.11.0; was the debug key). F-Droid's build
+            // Unsigned without the RELEASE_* env vars (1.000; was the debug key). F-Droid's build
             // server strips `signingConfigs { }` and needs an unsigned APK to compare with ours,
             // so keep this on one line and never fall back to another key (docs/fdroid-main.md).
             if (System.getenv("RELEASE_KEYSTORE") != null) signingConfig = signingConfigs.getByName("release")

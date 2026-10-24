@@ -127,15 +127,15 @@ all: your regular keyboard stays up and the text goes straight into the field.
   mic screen sets the same things directly and moves the mic live: height in 0.1 % steps (plus
   ▲ ▼ nudges of 0.5 %), place across the screen (*Anywhere*), gap from the edge (0–48 dp),
   size (20–96 dp) and idle opacity (down to 1 %), each with − / + buttons for single steps.
-  The icon can be the mic, the Hebrish H or the letter ע (0.11.0). New installs start on the
+  The icon can be the mic, the Hebrish H or the letter ע (1.000). New installs start on the
   left edge at 44 dp. *Show only while a text field is focused* hides the mic the rest of the time.
-- **While you talk** (0.11.0): the bar opens towards the middle of the screen, by default along
+- **While you talk** (1.000): the bar opens towards the middle of the screen, by default along
   the edge as a narrow column (or across the screen). Drag it by its grip (⠿) to move it off
   what you are writing. Its size (50–100 %), background opacity, and a *clear bar* (buttons
   only, each on its own backdrop) are on the Floating mic screen.
 - **"Pasted from your clipboard":** the floating mic inserts text by pasting, so Android 12+
   shows this notice every time. Apps can't hide it; turn it off in Settings → Privacy → *Show
-  clipboard access* (the Floating mic screen has a button there; 0.11.1).
+  clipboard access* (the Floating mic screen has a button there; 1.000).
 - **Long-press the idle mic** to insert the last transcript again.
 - **Double-tap the idle mic** to shrink it to a small dot when it is in the way; tap the dot to
   bring it back (0.8.0).

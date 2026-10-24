@@ -1,5 +1,5 @@
-**0.8.0: A personal dictionary.**
+**1.000: Hebrish 1.0.**
 
-- New **Dictionary** tab: add the words you want written your way (names, brands, Hebrew terms) and, optionally, what the model writes instead ("heard as", e.g. `hebrew ish` for `Hebrish`). Hebrish fixes them in every take from then on: the spelling and capitals of the word itself (`github`, `git hub` → `GitHub`), and any heard-as phrase. It corrects the text after the model writes it, so it doesn't slow anything down, and it can't make the model hear a word it never writes.
-- The File tab uses the dictionary too, and History keeps the corrected text.
+Versions now count 1.000, 1.001, 1.002, and so on, for the desktop app and Android alike. This is the same app as 0.8.0, renumbered. Earlier releases have been taken down from GitHub; this one includes everything they had, including the personal dictionary from 0.8.0.
+
 - Ubuntu 26.04 .deb and a portable Windows zip. Not yet tested on Windows hardware. Downloads: [hebrish.app/download](https://hebrish.app/download).

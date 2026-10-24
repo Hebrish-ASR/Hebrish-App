@@ -118,7 +118,9 @@ you talk, and you're returned to HeliBoard with the text inserted. Details:
 | `planning/` | Public project tracking: feature requests, backlog (with ideas for future versions), decision log |
 | `CLAUDE.md` | Agent instructions, public on purpose. The project's skills are in the public [`hebrish` marketplace](https://github.com/Hebrish-ASR/Hebrish-Claude-Plugins), plugin `hebrish-maintainers` |
 
-Releases: tag `android-vX.Y.Z` builds the signed APK in CI. Tag `desktop-vX.Y.Z` builds the
+Versions are `M.NNN` (three digits after the point): 1.000 (2026-10-24) was the first, for both
+apps, and every GitHub release before it was deleted that day (the `*-v0.*` tags remain).
+Releases: tag `android-vM.NNN` builds the signed APK in CI. Tag `desktop-vM.NNN` builds the
 Windows zip in CI; the Ubuntu .deb is built with `desktop/build-deb.sh` and added to the same
 release. Then overwrite the one stable file per platform on the Hebrish CDN
 (`https://cdn.hebrish.app/apps/{android,ubuntu,windows}/`: `Hebrish-latest.apk`,

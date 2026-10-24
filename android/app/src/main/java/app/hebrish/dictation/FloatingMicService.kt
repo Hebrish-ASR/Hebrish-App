@@ -59,7 +59,7 @@ import android.widget.Toast
  * horizontal place, edge gap, size, idle opacity, bar opacity and mic colour (Prefs.bubble*).
  * The bar always opens towards the middle of the screen, so the mic stays where it was parked.
  *
- * Out of the way (0.11.0, Daniel 2026-10-24: "it'll open, and then suddenly it's overlaying some
+ * Out of the way (1.000, Daniel 2026-10-24: "it'll open, and then suddenly it's overlaying some
  * text I'm working on"): the bar has a grip at its outer end, so it can be moved mid-take without
  * going near the mic (a tap on it is Stop). By default the bar opens along the edge the mic is on,
  * up or down towards the middle, a narrow strip instead of a line across the text
@@ -107,7 +107,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private lateinit var takeControls: List<View>
     /** Shown while a transcript is waiting for a field ([pending]). */
     private lateinit var pendingControls: List<View>
-    /** Drag handle at the bar's outer end, shown during a take (0.11.0). */
+    /** Drag handle at the bar's outer end, shown during a take (1.000). */
     private lateinit var grip: ImageButton
     /** Bar buttons without a filled circle of their own: they get a backdrop in a clear bar. */
     private lateinit var plainButtons: List<ImageButton>
@@ -413,7 +413,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     /**
      * Positions the bubble from Prefs. The window is anchored to the side of the screen the mic
      * is on (gravity LEFT or RIGHT), so when the bar appears it grows towards the middle, and the
-     * mic is the child next to that side. Along the edge (0.11.0) the bar is a column: below the
+     * mic is the child next to that side. Along the edge (1.000) the bar is a column: below the
      * mic if the mic is in the top half, above it otherwise; above means the window's top is
      * moved up by the bar's measured height, so the mic itself stays put.
      */
@@ -884,7 +884,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     /**
      * Android 12+ shows "<app> pasted from your clipboard" on every paste from another app's clip,
-     * so every floating-mic insert triggers it (0.11.1, Daniel 2026-10-24: "definitely going to get
+     * so every floating-mic insert triggers it (1.000, Daniel 2026-10-24: "definitely going to get
      * on everyone's nerves"). Apps can't suppress it: the switch is the secure setting
      * clipboard_show_access_notifications, which needs WRITE_SECURE_SETTINGS; the only way round it
      * is SET_TEXT, dropped in 0.9.1 for jumping fields and lost line breaks. So, once, a long toast

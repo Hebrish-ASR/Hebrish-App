@@ -9,6 +9,24 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-24-01: Versions are M.NNN from a unified 1.000; earlier GitHub releases deleted
+
+- **Decision:** Android and desktop both release as **1.000** (2026-10-24), then 1.001, 1.002, ...
+  (three digits after the point; each app still releases on its own). All 45 earlier GitHub
+  releases (Android 0.1.0-0.10.0, desktop 0.1.0-0.8.0) are deleted; their git tags stay.
+  The floating-mic round tagged 0.11.0 / 0.11.1 that day was cancelled before publishing and
+  ships as 1.000.
+- **Why:** Daniel, 2026-10-24: "There's no point in pushing out this only to quickly succeed it",
+  "I really don't want to clog it up with a huge amount of releases", "we'll use three decimal
+  places of version releases, so v1.000 is this".
+- **Alternatives:** 2.0.0 (Daniel's first suggestion; dropped for 1.0 because "Release v2" on
+  hebrish.app names the 2026-10-22 model batch); X.Y.Z continued; deleting the tags too (not
+  asked; kept so old builds stay traceable).
+- **Checked:** desktop `app_update.parse_version` orders 1.000 > 0.10.0 and 1.010 > 1.009
+  (tests added); Debian and F-Droid accept the format; the Android app compares no versions.
+  `scripts/release-tag.sh` now refuses anything but M.NNN.
+- **By:** Daniel (scheme, deletion, 1.0), agent (keeping tags, the version checks).
+
 ### D-2026-10-23-01: Personal dictionary corrects the text after decoding, shared with Android's
 
 - **Decision:** Both apps get a personal dictionary applied to the model's text after decoding

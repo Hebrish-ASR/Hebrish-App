@@ -34,7 +34,7 @@ object Prefs {
     fun lastTranscript(ctx: Context): String? = sp(ctx).getString("last_transcript", null)
     fun setLastTranscript(ctx: Context, v: String) = sp(ctx).edit().putString("last_transcript", v).apply()
 
-    /** The one-time tip about Android's "pasted from your clipboard" notice has been shown (0.11.1). */
+    /** The one-time tip about Android's "pasted from your clipboard" notice has been shown (1.000). */
     fun clipboardTipShown(ctx: Context) = sp(ctx).getBoolean("clipboard_tip_shown", false)
     fun setClipboardTipShown(ctx: Context) = sp(ctx).edit().putBoolean("clipboard_tip_shown", true).apply()
 
@@ -89,7 +89,7 @@ object Prefs {
     const val SIDE_FREE = "free"
 
     /**
-     * Screen edge the floating mic is parked on, or [SIDE_FREE]. Left by default since 0.11.0 (Daniel,
+     * Screen edge the floating mic is parked on, or [SIDE_FREE]. Left by default since 1.000 (Daniel,
      * 2026-10-24); a value saved by an earlier drag or choice is kept.
      */
     fun bubbleSide(ctx: Context): String = sp(ctx).getString("bubble_side", SIDE_LEFT) ?: SIDE_LEFT
@@ -107,7 +107,7 @@ object Prefs {
     /** Opacity of the idle mic in percent; a take in progress is always fully opaque. */
     fun bubbleAlpha(ctx: Context) = sp(ctx).getInt("bubble_alpha", 85)
     fun setBubbleAlpha(ctx: Context, v: Int) = sp(ctx).edit().putInt("bubble_alpha", v.coerceIn(ALPHA_MIN, 100)).apply()
-    /** 1 % since 0.11.0 (was 25): Daniel wanted every opacity control to go "all the way down". */
+    /** 1 % since 1.000 (was 25): Daniel wanted every opacity control to go "all the way down". */
     const val ALPHA_MIN = 1
 
     /** Opacity of the bar's background during a take, in percent; the mic and buttons stay opaque. */
@@ -127,16 +127,16 @@ object Prefs {
 
     /**
      * Diameter of the floating mic in dp, [SIZE_MIN]..[SIZE_MAX] (0.3.0 offered only 44, 56 and 68).
-     * Default 44 since 0.11.0 (was 56; Daniel: "the default should also be smaller").
+     * Default 44 since 1.000 (was 56; Daniel: "the default should also be smaller").
      */
     fun bubbleSize(ctx: Context) = sp(ctx).getInt("bubble_size", 44).coerceIn(SIZE_MIN, SIZE_MAX)
     fun setBubbleSize(ctx: Context, v: Int) = sp(ctx).edit().putInt("bubble_size", v.coerceIn(SIZE_MIN, SIZE_MAX)).apply()
-    /** 20 dp since 0.11.0 (was 36): about the smallest a finger still hits. */
+    /** 20 dp since 1.000 (was 36): about the smallest a finger still hits. */
     const val SIZE_MIN = 20
     const val SIZE_MAX = 96
 
     /**
-     * Size of the bar's buttons and text during a take, in percent of the full size (0.11.0):
+     * Size of the bar's buttons and text during a take, in percent of the full size (1.000):
      * smaller covers less of what you are writing. The mic itself keeps [bubbleSize].
      */
     fun bubbleBarScale(ctx: Context) = sp(ctx).getInt("bubble_bar_scale", 80).coerceIn(BAR_SCALE_MIN, 100)
@@ -144,7 +144,7 @@ object Prefs {
     const val BAR_SCALE_MIN = 50
 
     /**
-     * Clear bar (0.11.0): no bar background at all; each button, the timer and the mic chip sit on
+     * Clear bar (1.000): no bar background at all; each button, the timer and the mic chip sit on
      * their own mostly opaque backdrop, so the text under the bar shows between them.
      */
     fun bubbleBarClear(ctx: Context) = sp(ctx).getBoolean("bubble_bar_clear", false)
@@ -155,7 +155,7 @@ object Prefs {
     /** The bar opens along the edge the mic is on, up or down towards the middle: a narrow strip. */
     const val BAR_ALONG = "along"
     /**
-     * Which way the bar opens during a take (0.11.0). Along the edge by default: it covers a
+     * Which way the bar opens during a take (1.000). Along the edge by default: it covers a
      * narrow strip at the side instead of a line across the text (Daniel, 2026-10-24: "the expansion
      * happens in the least obtrusive part of the screen").
      */
@@ -167,7 +167,7 @@ object Prefs {
     const val ICON_LOGO = "logo"
     /** The Hebrew letter ayin (the first letter of עבריש) on Hebrish green. */
     const val ICON_AYIN = "ayin"
-    /** What the idle mic shows (0.11.0). [ICON_LOGO] and [ICON_AYIN] are always on Hebrish green; [bubbleColor] is for [ICON_MIC]. */
+    /** What the idle mic shows (1.000). [ICON_LOGO] and [ICON_AYIN] are always on Hebrish green; [bubbleColor] is for [ICON_MIC]. */
     fun bubbleIcon(ctx: Context): String = sp(ctx).getString("bubble_icon", ICON_MIC) ?: ICON_MIC
     fun setBubbleIcon(ctx: Context, v: String) = sp(ctx).edit().putString("bubble_icon", v).apply()
 

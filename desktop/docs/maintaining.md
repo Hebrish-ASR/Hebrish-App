@@ -755,7 +755,8 @@ Model updates are `model_store`'s job; `hebrish/app_update.py` (no Qt) is for th
   hebrish.app's `/get/<os>` follows) and compares `files.ubuntu.version` (Linux) or
   `files.windows.version` with `hebrish.__version__`, numerically (`parse_version`: a leading
   `v`, a Debian revision and a suffix like `rc1` are dropped, trailing zeros ignored, so
-  0.10.0 > 0.9.0). The top-level `version` is never used: Android and desktop version
+  0.10.0 > 0.9.0; since 2026-10-24 versions are M.NNN, and 1.000 → (1,), 1.010 → (1, 10), so
+  1.000 > 0.10.0 and 1.010 > 1.009: tested in `tests/test_app_update.py`). The top-level `version` is never used: Android and desktop version
   separately (on 2026-10-21 Android was 0.7.0, desktop 0.6.1).
 - **The GET goes through `model_store._get`**, for its `User-Agent`. Cloudflare's bot filter
   answers 403 to urllib's default `Python-urllib/3.x` on cdn.hebrish.app (V, 2026-10-21: plain

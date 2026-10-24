@@ -1,4 +1,4 @@
-<!-- Floating mic icon "Hebrish H" (0.11.0): the H of the mark (same path as ic_hebrish), without the square,
+<!-- Floating mic icon "Hebrish H" (1.000): the H of the mark (same path as ic_hebrish), without the square,
      on a 36-unit viewport cropped round the glyph so it fills the mic like ic_mic does. The mic's circle is the green. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="36" android:viewportHeight="36">
     <group android:translateX="-14" android:translateY="-14.5">

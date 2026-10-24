@@ -1,5 +1,5 @@
 # Draft of metadata/app.hebrish.dictation.yml for the fdroiddata merge request (gitlab.com/fdroid/fdroiddata).
-# Fill in the first Builds entry from the first release made this way (0.11.0 or later): its tag
+# Fill in the first Builds entry from the first release made this way (1.000 or later): its tag
 # commit SHA, versionName and versionCode. After the MR is merged, the copy in fdroiddata is the
 # live one and F-Droid's bot appends new versions itself (AutoUpdateMode); this file stays as the
 # reference for what was submitted. See ../fdroid-main.md.
@@ -28,7 +28,7 @@ Repo: https://github.com/Hebrish-ASR/Hebrish-App.git
 Binaries: https://github.com/Hebrish-ASR/Hebrish-App/releases/download/android-v%v/Hebrish-%v.apk
 
 Builds:
-  - versionName: 0.11.0
+  - versionName: 1.000
     versionCode: 24
     commit: TAG_COMMIT_SHA
     subdir: android/app
@@ -44,5 +44,5 @@ AllowedAPKSigningKeys: 5cf6822350d0b2ff124021a0df10bec1c63a6e5e6159fa6029507134a
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^android-v\d+\.\d+\.\d+$
-CurrentVersion: 0.11.0
+CurrentVersion: 1.000
 CurrentVersionCode: 24

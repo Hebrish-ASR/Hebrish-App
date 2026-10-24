@@ -1,1 +1,0 @@
-Android 12+ says "pasted from your clipboard" each time the floating mic puts text in. Apps cannot turn it off; you can, in Settings → Privacy → Show clipboard access. The app now says so once, and the Floating mic screen links there. Also in this round: the floating mic bar opens along the edge, has a grip, can be scaled down or made clear, and there are new idle icons.
