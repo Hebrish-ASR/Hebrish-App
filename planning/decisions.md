@@ -9,6 +9,18 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-24-04: Disfluencies are always removed, in every app and with every model
+
+- **Decision:** Hesitation sounds (*um, uh, eh, erm, hmm*) and stutters are removed after decoding
+  on every platform, for every model, with no setting to keep them (B-38). Meaning-dependent
+  fillers (*like*, *you know*) and false starts are left to the models.
+- **Why:** Daniel, 2026-10-24: the fine-tunes are trained to drop disfluencies, and a
+  deterministic fallback gets the result sooner; "I can't think there's any reason why people would
+  want those disfluencies."
+- **Alternatives:** a setting (no use case for keeping them); relying on the fine-tunes alone
+  (stock and older models still emit them).
+- **By:** Daniel. Research: [`research/post-processing`](../research/post-processing/README.md).
+
 ### D-2026-10-24-03: Paste last transcription; the "No text field" prompt is opt-in
 
 - **Decision:** Desktop keeps the last transcription and pastes it again on an action key, a tray

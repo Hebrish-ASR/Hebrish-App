@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated 2026-10-22. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
+Last updated 2026-10-24. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
 `released <version>`. Work is queued in **one sprint per platform** (desktop = Ubuntu + Windows,
 which share `desktop/`; Android). A sprint ends with a release. Parity is the aim (decision
 D-2026-10-22-05): an item done on one platform gets a matching item in the other sprint, unless
@@ -24,6 +24,9 @@ tables below hold the detail and status.
 
 | Id | Item | Status |
 | --- | --- | --- |
+| B-38 | **Disfluency chop, always on.** Hesitation sounds (*um, uh, eh, ehm, erm, hmm*) and stutters removed after decoding, then the cleanup (spaces, orphan commas, sentence capital), per piece, for every model; no setting. Specified once in `shared/` with shared test cases, from ASR-Regex-Post-Processing `topics/disfluencies.md` (ICU-valid). Not *like* / *you know* / false starts. R-2026-10-24-1; D-2026-10-24-04; [research](../research/post-processing/README.md) | planned |
+| B-39 | **Numbers to digits.** Spelled numbers written as digits ("two thousand and twenty four" → 2024), conservatively ("one of the" stays). A number-word parser specified in `shared/` with shared cases; the NeMo ITN grammar through sherpa-onnx `ruleFsts` is tried as the alternative. On by default, with a setting. R-2026-10-24-2; [research](../research/post-processing/README.md) | planned |
+| B-40 | **Finishing step: None / Paragraphs / S1-mini by Superwhisper.** Applied to the whole take when it is inserted in one go; local models via llama.cpp, downloaded on demand from the catalogue. S1-mini gets its Styling / Structure / Context pickers and must be named "S1-mini by Superwhisper" (licence). Measure both on Hebrish transcripts first (romanised words kept, break F1, latency). R-2026-10-24-3, -4; [research](../research/post-processing/README.md) | planned |
 | B-1 | **Insert-as-you-go presets.** Fast ~5 s, Normal ~7 s (new default, was ~10 s), Relaxed ~10 s, Off, Custom (3–60 s). Existing installs at the old 10 s move to 7 once. R-2026-10-22-1; D-2026-10-22-02, -03 | released desktop 0.7.0 |
 | B-2 | **Stop and send.** An optional action key: stop, wait for the last words to be pasted, then press the send key (Enter by default, configurable). R-2026-10-22-2; D-2026-10-22-04. Windows tested in CI only | released desktop 0.7.0 |
 | B-6 | **Character voices.** Voice feedback in Herman's, Corn's or Hilbert's voice (Settings → Sounds → Voice), replacing the stock TTS voice. R-2026-10-22-5; D-2026-10-22-07 | released desktop 0.7.0 |
@@ -54,6 +57,9 @@ tables below hold the detail and status.
 
 | Id | Item | Status |
 | --- | --- | --- |
+| B-38a | **Disfluency chop on Android** (parity with B-38). Hesitation sounds (*um, uh, eh, ehm, erm, hmm*) and stutters removed after decoding, then the cleanup (spaces, orphan commas, sentence capital), per piece, for every model; no setting. Specified once in `shared/` with shared test cases, from ASR-Regex-Post-Processing `topics/disfluencies.md` (ICU-valid). Not *like* / *you know* / false starts. R-2026-10-24-1; D-2026-10-24-04; [research](../research/post-processing/README.md) | planned |
+| B-39a | **Numbers to digits on Android** (parity with B-39). Spelled numbers written as digits ("two thousand and twenty four" → 2024), conservatively ("one of the" stays). A number-word parser specified in `shared/` with shared cases; the NeMo ITN grammar through sherpa-onnx `ruleFsts` is tried as the alternative. On by default, with a setting. R-2026-10-24-2; [research](../research/post-processing/README.md) | planned |
+| B-40a | **Finishing step on Android** (parity with B-40), recent phones only: None / Paragraphs / S1-mini by Superwhisper.** Applied to the whole take when it is inserted in one go; local models via llama.cpp, downloaded on demand from the catalogue. S1-mini gets its Styling / Structure / Context pickers and must be named "S1-mini by Superwhisper" (licence). Measure both on Hebrish transcripts first (romanised words kept, break F1, latency). R-2026-10-24-3, -4; [research](../research/post-processing/README.md) | planned |
 | B-29 | **Floating mic: no ×.** The 0.7.3 × sat where a finger grabs the mic, so every drag closed it; removed, the floating mic is hidden only by turning it off. Model labels shortened (B-31). R-2026-10-22-36 | released android 0.7.4 |
 | B-9 | **Floating mic: horizontal offset.** Today the floating mic can be moved up and down the screen edge. Add a horizontal offset: by default the mic sits a little in from the screen edge (hard to reach right at the edge), and the user adjusts from there: negative puts it flush with the edge, positive moves it further in. Applies on whichever side it is snapped to. R-2026-10-22-9 | planned |
 | B-10 | **Design pass.** The app is taking shape, and splitting settings over many pages works well, but the screens need visual design: consistent cards, spacing, headers and icons, using the brand standard (Hebrish-Mgmt `brand/`). R-2026-10-22-7 | planned |

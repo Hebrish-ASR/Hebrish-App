@@ -23,3 +23,4 @@ links back here.
 | Topic | Question | Status |
 | --- | --- | --- |
 | [streaming-revision](streaming-revision/README.md) | Live word-by-word dictation that corrects earlier words when later speech changes their meaning (Deepgram-style). How is it built, and which base model fits it? | answered (2026-10-22) |
+| [post-processing](post-processing/README.md) | Disfluency chop, numbers to digits, paragraph inference and S1-mini by Superwhisper after the speech model: what can be regex, what runs locally on a phone, and how the chain is offered | open (2026-10-24) |
