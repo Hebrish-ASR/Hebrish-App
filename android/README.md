@@ -133,6 +133,9 @@ all: your regular keyboard stays up and the text goes straight into the field.
   the edge as a narrow column (or across the screen). Drag it by its grip (⠿) to move it off
   what you are writing. Its size (50–100 %), background opacity, and a *clear bar* (buttons
   only, each on its own backdrop) are on the Floating mic screen.
+- **"Pasted from your clipboard":** the floating mic inserts text by pasting, so Android 12+
+  shows this notice every time. Apps can't hide it; turn it off in Settings → Privacy → *Show
+  clipboard access* (the Floating mic screen has a button there; 0.11.1).
 - **Long-press the idle mic** to insert the last transcript again.
 - **Double-tap the idle mic** to shrink it to a small dot when it is in the way; tap the dot to
   bring it back (0.8.0).
