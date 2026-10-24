@@ -9,6 +9,23 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-24-09: Transcription Mode offers Paragraphs: None, Time-based or Paragraph model
+
+- **Decision:** Transcription Mode (desktop and Android) gets a Paragraphs setting: *None* (one
+  block), *Time-based* (the existing ~30 s split) or *Paragraph model* (the MiniLM-L12 break
+  classifier, downloaded on demand from the CDN, run once on the finished transcript). Spec:
+  `shared/paragraphs.md`. Dictation is unchanged. B-44, B-44a.
+- **Why:** Daniel, 2026-10-24: "I don't like the line split … didn't we train up a small paragraph
+  classifier? … we could have options for to use the classifier model, or to use Time Based, or None
+  so the user has the option".
+- **Default:** Paragraph model when installed, else Time-based (agent's choice; Daniel named none).
+- **Supersedes:** the app part of D-2026-10-24-08 for Transcription Mode only. Still in force: no
+  paragraph passages in Hebrish ASR training (ASR-Training `ISOLATED_TAGS`); the dataset stays
+  `danielrosehill/Paragraph-Dictation-Passages`.
+- **Note:** the classifier is text-only and trained on synthetic memos (break F1 0.85 on 26 held-out
+  memos); an audio-aware model is the separate project's next step and could replace it later.
+- **By:** Daniel.
+
 ### D-2026-10-24-08: Paragraph inference is not part of Hebrish
 
 - **Decision:** No paragraph step in the apps. B-40 keeps only S1-mini by Superwhisper (desktop);
