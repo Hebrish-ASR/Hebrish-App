@@ -7,7 +7,9 @@
   uv run scripts/paragraph_cases.py [--revision <hf sha>]
 
 Downloads paragraphs.py and onnx/ from danielrosehill/MiniLM-L12-ASR-Paragraph-Breaks (Hub) and
-recomputes word_pieces, windows, probs_int8 and output for every case. Spec: shared/paragraphs.md.
+recomputes word_pieces, windows, probs_fp32/output_fp32 (onnx/model.onnx: the parity target, CPU-
+independent to ~1e-4) and probs_int8/output (onnx/model_int8.onnx, informational: int8 scores depend
+on the CPU's int8 kernels) for every case. Spec: shared/paragraphs.md, "Parity test".
 """
 import argparse
 import importlib.util
@@ -27,6 +29,7 @@ spec = importlib.util.spec_from_file_location("paragraphs", d / "paragraphs.py")
 P = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(P)
 tok, sess, thr = P.load(local=d / "onnx")
+_, sess32, _ = P.load(fp32=True, local=d / "onnx")
 unk = tok.token_to_id("[UNK]")
 data = json.loads(CASES.read_text())
 for c in data["cases"]:
@@ -36,6 +39,8 @@ for c in data["cases"]:
     c["windows"] = [list(w) for w in P.windows(pieces)] if words else []
     c["probs_int8"] = [round(p, 5) for p in P.word_probs(tok, sess, words)] if words else []
     c["output"] = P.paragraphs(c["input"], tok, sess, thr)
+    c["probs_fp32"] = [round(p, 5) for p in P.word_probs(tok, sess32, words)] if words else []
+    c["output_fp32"] = P.paragraphs(c["input"], tok, sess32, thr)
 data["threshold"] = thr
 CASES.write_text(json.dumps(data, indent=1, ensure_ascii=False))
 print(f"{len(data['cases'])} cases, threshold {thr}")

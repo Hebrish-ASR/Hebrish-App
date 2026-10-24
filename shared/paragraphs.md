@@ -90,11 +90,23 @@ setting per app, remembered:
 
 [`paragraph-cases.json`](paragraph-cases.json): 11 cases (empty, one word, unicode/accents/currency/
 emoji/CJK/romanised Hebrew, a 120-character word, control characters, the "Hi John" greeting, three
-test memos, and the longest test memo, which needs 2 windows). Each has `word_pieces` and `windows`
-(must match exactly), `probs_int8` (from `model_int8.onnx` on x86-64 with onnxruntime 1.31: compare
-with tolerance 0.02, since int8 kernels differ by CPU and ONNX Runtime version), and `output`
-(compare when no score is within 0.02 of the threshold). Regenerate it with `uv run scripts/paragraph_cases.py` (reference code
-and model from the Hub) if the model version changes.
+test memos, and the longest test memo, which needs 2 windows). Each has:
+
+- `word_pieces` and `windows`: must match exactly.
+- `probs_fp32` / `output_fp32`, from the fp32 model (`onnx/model.onnx` on the Hub, 133 MB; not on
+  the CDN, tests fetch it): **the strict target**. Scores within 0.001; output equal unless a score
+  lies within 0.001 of the threshold. fp32 checks the implementation (tokenizer, windows, merge,
+  join) independently of the CPU.
+- `probs_int8` / `output`, from `model_int8.onnx` (what the apps ship) on a Zen 2 laptop (AVX2, no
+  VNNI) with onnxruntime 1.31: **informational**. int8 scores depend on the CPU's int8 kernels: on
+  2026-10-24 a GitHub Linux runner with the same onnxruntime gave scores up to 0.24 away from these
+  (V), and on the laptop int8 is up to 0.98 away from fp32 on single words (V). Break decisions
+  agree far better: across the 11 cases int8 and fp32 differ on 7 of 1,408 words (V). So test int8
+  only by break decisions: on the test machine, int8 decisions differ from `probs_fp32` on at most
+  max(2, 2% of words) words per case.
+
+Regenerate it with `uv run scripts/paragraph_cases.py` (reference code and both models from the Hub)
+if the model version changes.
 
 Latency (I, laptop x86 CPU, 1 thread): about 0.65 s for a 340-word take with int8. Phone: not
 measured yet.

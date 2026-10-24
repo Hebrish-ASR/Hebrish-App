@@ -3,10 +3,14 @@ Time-based / Paragraph model layout of a transcript (paragraphs.Pieces).
 
 The model tests fetch the model from the CDN once into ~/.cache/hebrish-tests (or
 $HEBRISH_TEST_CACHE) with paragraphs.download(), so the download path is exercised too; they are
-skipped when offline or when onnxruntime isn't installed."""
+skipped when offline or when onnxruntime isn't installed. The strict score parity runs on the fp32
+model (onnx/model.onnx, fetched from the Hub into the same cache), because int8 scores depend on the
+CPU (shared/paragraphs.md, "Parity test"); the shipped int8 model gets a break-decision check."""
 
 import json
 import os
+import shutil
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -16,7 +20,9 @@ from hebrish import model_store, paragraphs as P
 CASES = json.loads((Path(__file__).resolve().parents[2] / "shared" / "paragraph-cases.json")
                    .read_text(encoding="utf-8"))
 IDS = [c["name"] for c in CASES["cases"]]
-TOL = 0.02
+TOL = 0.001
+FP32_URL = ("https://huggingface.co/danielrosehill/MiniLM-L12-ASR-Paragraph-Breaks/resolve/main/"
+            "onnx/model.onnx")
 
 
 @pytest.fixture(scope="module")
@@ -42,6 +48,24 @@ def breaker(model_dir):
     return P.Breaker(model_dir)
 
 
+@pytest.fixture(scope="module")
+def breaker32(model_dir):
+    """The fp32 model in a folder laid out like an install (vocab and config from the int8 one)."""
+    d = model_dir.parent.parent / f"{P.MODEL_ID}-fp32" / model_dir.name
+    if not (d / P.MODEL_FILE).exists():
+        d.mkdir(parents=True, exist_ok=True)
+        for f in (P.VOCAB_FILE, "config.json"):
+            shutil.copy(model_dir / f, d / f)
+        part = d / (P.MODEL_FILE + ".part")
+        try:
+            with urllib.request.urlopen(FP32_URL, timeout=60) as r, open(part, "wb") as out:
+                shutil.copyfileobj(r, out)
+        except OSError as e:
+            pytest.skip(f"fp32 paragraph model not cached and not downloadable: {e}")
+        part.rename(d / P.MODEL_FILE)
+    return P.Breaker(d)
+
+
 def test_threshold(breaker):
     assert breaker.threshold == CASES["threshold"]
 
@@ -55,18 +79,28 @@ def test_word_pieces_and_windows(breaker, case):
 
 
 @pytest.mark.parametrize("case", CASES["cases"], ids=IDS)
-def test_probs(breaker, case):
-    got = breaker.probs(case["input"].split())
-    assert len(got) == len(case["probs_int8"])
-    worst = max((abs(a - b) for a, b in zip(got, case["probs_int8"])), default=0)
+def test_probs_fp32(breaker32, case):
+    got = breaker32.probs(case["input"].split())
+    assert len(got) == len(case["probs_fp32"])
+    worst = max((abs(a - b) for a, b in zip(got, case["probs_fp32"])), default=0)
     assert worst <= TOL, worst
 
 
 @pytest.mark.parametrize("case", CASES["cases"], ids=IDS)
-def test_output(breaker, case):
-    if any(abs(p - CASES["threshold"]) <= TOL for p in case["probs_int8"][1:]):
+def test_output_fp32(breaker32, case):
+    if any(abs(p - CASES["threshold"]) <= TOL for p in case["probs_fp32"][1:]):
         pytest.skip("a score is within the tolerance of the threshold")
-    assert breaker.apply(case["input"]) == case["output"]
+    assert breaker32.apply(case["input"]) == case["output_fp32"]
+
+
+@pytest.mark.parametrize("case", CASES["cases"], ids=IDS)
+def test_int8_decisions(breaker, case):
+    """int8 scores vary by CPU; its break decisions must still match fp32 almost everywhere."""
+    thr = CASES["threshold"]
+    got = breaker.probs(case["input"].split())[1:]
+    want = case["probs_fp32"][1:]
+    differ = sum((a >= thr) != (b >= thr) for a, b in zip(got, want))
+    assert differ <= max(2, 0.02 * len(want)), differ
 
 
 def test_only_whitespace_changes(breaker):
