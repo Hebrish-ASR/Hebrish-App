@@ -79,7 +79,8 @@ DEFAULTS = {
     # Transcription Mode (the Transcription tab's recorder, longform.py; R-2026-10-24-5)
     "tm_audio_device": "",        # its own mic: "" = system default, independent of Dictate's
     "tm_gain_db": 0,              # digital gain, longform.GAIN_MIN_DB..GAIN_MAX_DB
-    "tm_show_meter": True,        # the level meter and its readout; hide to record without watching it
+    "tm_levels": "docked",        # gain + level meter (B-45): docked (hidden) | shown (in the card) |
+                                  # floating (its own small window). Up to 1.002 `tm_show_meter`
     "tm_paragraphs": "",          # none | time | model (paragraphs.MODES, B-44); "" = not chosen: model
                                   # when the paragraph model is installed, else time
     "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad)
@@ -217,6 +218,10 @@ def upgrade(stored: dict) -> dict:
         stored["clear_each_take"] = False
     # 0.7.3 (Daniel, 2026-10-22, D-2026-10-22-20): the app keeps no audio; the setting is gone.
     stored.pop("keep_audio", None)
+    # B-45 (Daniel, 2026-10-24: "I prefer less distraction"): the "Show level" box became the
+    # Levels panel, docked (hidden) by default. The old switch is dropped, not carried over: it
+    # defaulted to on, so it says nothing about what he wants now.
+    stored.pop("tm_show_meter", None)
     # 0.7.1 (Daniel, 2026-10-22: text "a bit too long" in coming): each preset is shorter, Fast
     # 5 -> 3, Normal 7 -> 5, Relaxed 10 -> 8. A config without `stream_release` predates that:
     # keep the preset it was on, once. Custom values stay.
@@ -272,7 +277,8 @@ class Config(dict):
         stored = load_json(CONFIG_PATH)
         old = bool(stored) and ("mode" in stored or "keep_old_versions" in stored
                                 or "feedback" not in stored or "send_chord" not in stored
-                                or "clear_each_take" not in stored or "insert" in stored)
+                                or "clear_each_take" not in stored or "insert" in stored
+                                or "tm_show_meter" in stored)
         self.update({k: v for k, v in upgrade(stored).items() if k in DEFAULTS})
         if old or not CONFIG_PATH.exists():
             self.save()

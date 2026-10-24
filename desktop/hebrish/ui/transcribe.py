@@ -1,9 +1,10 @@
 """Transcription tab (Transcription Mode, R-2026-10-24-5): record a long take, or drop or pick an
 audio file, and the transcript fills an editable text box piece by piece.
 
-The recorder (longform.TapeRecorder) has its own mic, a digital gain, a level meter that can be
-hidden, and Record / Pause / Retake / Stop / Transcribe; Transcribe goes straight from recording
-to the transcript. The audio is on disk while it records and is deleted once the transcript is in
+The recorder (longform.TapeRecorder) has its own mic, a Levels panel (digital gain + level meter:
+docked = hidden by default, shown in the card, or floating in its own small window; B-45), and
+Record / Pause / Retake / Stop / Transcribe; Transcribe goes straight from recording to the
+transcript. The audio is on disk while it records and is deleted once the transcript is in
 History; a recording that wasn't transcribed is offered again. Hotkey dictation is the Dictate
 tab's; up to 1.000 this tab was "File" and only opened files (up to 0.4.0 it also recorded).
 
@@ -16,9 +17,9 @@ import threading
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QObject, Qt, QTimer, Signal
 from PySide6.QtGui import QIcon, QTextCursor
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel,
+from PySide6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QLabel,
                                QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider,
                                QToolButton, QVBoxLayout, QWidget)
 
@@ -28,6 +29,7 @@ from .meter import LevelMeter, verdict
 
 PARAGRAPH_S = 30
 CONFIRM_DROP_S = 60      # Retake / Discard ask first when the recording is longer than this
+LEVELS = ("docked", "shown", "floating")     # cfg tm_levels (B-45)
 
 
 class _Sig(QObject):
@@ -43,6 +45,25 @@ class _Sig(QObject):
 
 PARAGRAPH_MODES = (("None", paragraphs.NONE), ("Time-based", paragraphs.TIME),
                    ("Paragraph model", paragraphs.MODEL))
+
+
+class _LevelsWindow(QWidget):
+    """The floating Levels panel: a tool window over the Hebrish window (Qt.Tool, so it stays
+    above its parent and has no taskbar entry, but not above other apps). Closing it docks the
+    panel (hidden); the page hides it while the main window is hidden."""
+    closed = Signal()
+
+    def __init__(self, parent):
+        super().__init__(parent, Qt.Tool)
+        self.setObjectName("levelsWindow")
+        self.setWindowTitle("Levels: Hebrish")
+        self.setMinimumWidth(380)
+        self.lay = QVBoxLayout(self)
+        self.lay.setContentsMargins(14, 12, 14, 12)
+
+    def closeEvent(self, ev):
+        super().closeEvent(ev)
+        self.closed.emit()
 
 
 def _clock(s: float) -> str:
@@ -99,9 +120,14 @@ class TranscribePage(QWidget):
         head = QHBoxLayout()
         head.addWidget(QLabel("Record", objectName="cardTitle"))
         head.addStretch(1)
-        self.show_meter = QCheckBox("Show level", checked=bool(self.cfg["tm_show_meter"]))
-        self.show_meter.toggled.connect(self._on_show_meter)
-        head.addWidget(self.show_meter)
+        self.btn_levels = QToolButton(text="Levels", checkable=True)
+        self.btn_levels.setIcon(QIcon.fromTheme("audio-input-microphone"))
+        self.btn_levels.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.btn_levels.setToolTip("Show or hide the gain and the level meter. Hidden, recording "
+                                   "still uses the gain you set.")
+        self.btn_levels.clicked.connect(
+            lambda: self._set_levels("docked" if self._levels_state != "docked" else "shown"))
+        head.addWidget(self.btn_levels)
         b.addLayout(head)
 
         row = QHBoxLayout()
@@ -120,6 +146,11 @@ class TranscribePage(QWidget):
         self._fill_mics()
         self.mic.currentIndexChanged.connect(self._on_mic)
 
+        # Levels panel (B-45): one set of widgets, moved between the card and a floating window.
+        self.levels = QWidget()
+        lv = QVBoxLayout(self.levels)
+        lv.setContentsMargins(0, 0, 0, 0)
+        lv.setSpacing(8)
         row = QHBoxLayout()
         row.addWidget(QLabel("Gain"))
         self.gain = QSlider(Qt.Horizontal, minimum=longform.GAIN_MIN_DB, maximum=longform.GAIN_MAX_DB,
@@ -135,7 +166,11 @@ class TranscribePage(QWidget):
         reset.setToolTip("No gain")
         reset.clicked.connect(lambda: self.gain.setValue(0))
         row.addWidget(reset)
-        b.addLayout(row)
+        self.btn_undock = QToolButton()
+        self.btn_undock.clicked.connect(
+            lambda: self._set_levels("shown" if self._levels_state == "floating" else "floating"))
+        row.addWidget(self.btn_undock)
+        lv.addLayout(row)
         self._on_gain(self.gain.value())
 
         self.meter_box = QWidget()
@@ -147,12 +182,21 @@ class TranscribePage(QWidget):
         self.meter_label = QLabel()
         self.meter_label.setStyleSheet("font-size: 12px;")
         m.addWidget(self.meter_label)
-        b.addWidget(self.meter_box)
-        self.meter_box.setVisible(self.show_meter.isChecked())
+        lv.addWidget(self.meter_box)
+        self._levels_home = b            # the card's layout; the panel sits after the mic row
+        self._levels_at = b.count()
+        b.addWidget(self.levels)
+        self._float = None               # _LevelsWindow, made the first time it floats
+        self._watched = None             # the main window, watched for show/hide
+        state = self.cfg["tm_levels"]
+        self._levels_state = state if state in LEVELS else "docked"
 
         row = QHBoxLayout()
         self.btn_rec = QPushButton(QIcon.fromTheme("media-record"), "Record")
-        self.btn_rec.clicked.connect(self._rec_or_pause)
+        self.btn_rec.setToolTip("Start a recording")
+        self.btn_rec.clicked.connect(self._record)
+        self.btn_pause = QPushButton(QIcon.fromTheme("media-playback-pause"), "Pause")
+        self.btn_pause.clicked.connect(self._pause)
         self.btn_retake = QPushButton(QIcon.fromTheme("edit-undo"), "Retake")
         self.btn_retake.setToolTip("Throw this recording away and start again")
         self.btn_retake.clicked.connect(self._retake)
@@ -167,7 +211,7 @@ class TranscribePage(QWidget):
         self.btn_drop_tape.setText("✕")
         self.btn_drop_tape.setToolTip("Discard this recording")
         self.btn_drop_tape.clicked.connect(self._discard)
-        for w in (self.btn_rec, self.btn_retake, self.btn_stop, self.btn_go, self.btn_drop_tape):
+        for w in (self.btn_rec, self.btn_pause, self.btn_retake, self.btn_stop, self.btn_go, self.btn_drop_tape):
             row.addWidget(w)
         row.addStretch(1)
         # Elapsed time: small and grey, at the end of the controls, so it is there when you look
@@ -242,6 +286,7 @@ class TranscribePage(QWidget):
 
         self._busy(False)
         self._count()
+        self._place_levels()
         self._sync()
         self._show_leftover()
 
@@ -276,24 +321,89 @@ class TranscribePage(QWidget):
             return
         self.cfg.set("tm_gain_db", v)
 
-    def _on_show_meter(self, on):
-        self.meter_box.setVisible(on)
-        self.cfg.set("tm_show_meter", on)
+    # -- levels panel (B-45) ----------------------------------------------------------
+    def _set_levels(self, state: str):
+        """docked: hidden (the gain still applies); shown: in the card; floating: its own
+        window. Remembered in tm_levels."""
+        self._levels_state = state if state in LEVELS else "docked"
+        if self.cfg["tm_levels"] != self._levels_state:
+            self.cfg.set("tm_levels", self._levels_state)
+        self._place_levels()
 
-    def _rec_or_pause(self):
+    def _on_screen(self) -> bool:
+        win = self.window()
+        return win is not self and win.isVisible()
+
+    def _place_levels(self):
+        st = self._levels_state
+        floating = st == "floating" and self._on_screen()
+        if floating:
+            if self._float is None:
+                self._float = _LevelsWindow(self.window())
+                self._float.closed.connect(lambda: self._set_levels("docked"))
+            if self.levels.parent() is not self._float:
+                self._levels_home.removeWidget(self.levels)     # explicit: Qt may not do it
+                self._float.lay.addWidget(self.levels)
+            self.levels.show()
+            self._float.show()
+            self._float.raise_()
+        else:
+            if self._float is not None:
+                self._float.hide()       # hide(), not close(): close means "dock it"
+            if self._float is not None and self.levels.parent() is self._float:
+                self._float.lay.removeWidget(self.levels)
+                self._levels_home.insertWidget(self._levels_at, self.levels)
+            # floating while the main window is hidden: kept here, hidden, until it shows
+            self.levels.setVisible(st == "shown")
+        self.btn_levels.setChecked(st != "docked")
+        self.btn_undock.setText("Dock" if st == "floating" else "Undock")
+        self.btn_undock.setIcon(QIcon.fromTheme("window-restore" if st == "floating" else "window-new"))
+        self.btn_undock.setToolTip("Put the levels back in the Record card" if st == "floating" else
+                                   "Pop the levels out into a small window of their own")
+        self._tick()                     # fill the readout now, not at the next timer tick
+
+    def showEvent(self, ev):
+        super().showEvent(ev)
+        win = self.window()
+        if win is not self and self._watched is not win:
+            self._watched = win
+            win.installEventFilter(self)
+        if self._levels_state == "floating":
+            self._place_levels()
+
+    def eventFilter(self, obj, ev):
+        if obj is self._watched and self._levels_state == "floating" and \
+                ev.type() in (QEvent.Show, QEvent.Hide):
+            QTimer.singleShot(0, self._place_levels)     # after the window's own show/hide
+        return False
+
+    # -- recorder controls -------------------------------------------------------------
+    def _record(self):
+        """Start a recording. Record is disabled while one is running: Pause/Resume is its own
+        button (B-45; up to 1.002 Record turned into Pause)."""
         t = self.tape
         if t.active:
+            return
+        if self.ctl.state != "idle":
+            self.ctl.win.status("Dictation is running: stop it first.")
+            return
+        self.ctl.stop_monitor()
+        try:
+            t.start(self.cfg["tm_audio_device"])
+        except Exception as e:
+            QMessageBox.warning(self, "Couldn't open the microphone", str(e))
+            return
+        self._sync()
+
+    def _pause(self):
+        t = self.tape
+        if not t.active:
+            return
+        try:
             t.resume() if t.paused else t.pause()
-        else:
-            if self.ctl.state != "idle":
-                self.ctl.win.status("Dictation is running: stop it first.")
-                return
-            self.ctl.stop_monitor()
-            try:
-                t.start(self.cfg["tm_audio_device"])
-            except Exception as e:
-                QMessageBox.warning(self, "Couldn't open the microphone", str(e))
-                return
+        except Exception as e:           # resume reopens the mic, which may be gone
+            QMessageBox.warning(self, "Couldn't open the microphone",
+                                f"{e}\n\nThe recording is paused; pick another mic and press Resume.")
         self._sync()
 
     def _confirm_drop(self, what: str) -> bool:
@@ -314,7 +424,8 @@ class TranscribePage(QWidget):
             return
         self.tape.discard()
         self._drop_held()
-        self._rec_or_pause()
+        self._record()
+        self._sync()
 
     def _discard(self):
         if not self._confirm_drop("Discard recording"):
@@ -382,10 +493,14 @@ class TranscribePage(QWidget):
         (a recording held for Transcribe), or busy transcribing."""
         t, busy = self.tape, self.cancel is not None
         rec, held = t.active, self._held is not None and not t.active
-        self.btn_rec.setText("Resume" if rec and t.paused else "Pause" if rec else "Record")
-        self.btn_rec.setIcon(QIcon.fromTheme("media-playback-start" if rec and t.paused else
-                                             "media-playback-pause" if rec else "media-record"))
-        self.btn_rec.setEnabled(not busy and not held)
+        paused = rec and t.paused
+        self.btn_rec.setEnabled(not busy and not held and not rec)
+        self.btn_pause.setText("Resume" if paused else "Pause")
+        self.btn_pause.setIcon(QIcon.fromTheme("media-playback-start" if paused else
+                                               "media-playback-pause"))
+        self.btn_pause.setToolTip("Carry on recording" if paused else
+                                  "Pause the recording: the mic goes off until you press Resume")
+        self.btn_pause.setEnabled(rec)
         self.btn_retake.setEnabled(not busy and (rec or held))
         self.btn_stop.setEnabled(rec)
         self.btn_go.setEnabled(not busy and (rec or held))

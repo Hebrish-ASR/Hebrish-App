@@ -40,7 +40,7 @@ PASTE_CHORDS = [("ctrl+v", "Paste with Ctrl+V"), ("ctrl+shift+v", "Paste with Ct
 FEEDBACK = [("beeps", "Beeps (start and stop)"), ("voice", "Voice (“Recording”, “Paused”, “Transcribing”…)"),
             ("off", "Off")]
 # Saved silently, so no toast: moving the overlay
-NO_TOAST = {"overlay_pos", "tm_gain_db", "tm_show_meter", "tm_audio_device"}
+NO_TOAST = {"overlay_pos", "tm_gain_db", "tm_levels", "tm_audio_device"}
 
 
 def card(title: str = "") -> tuple[QFrame, QVBoxLayout]:

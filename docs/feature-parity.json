@@ -1102,6 +1102,27 @@
         "verified": false
       },
       "notes": "2026-10-24, B-44/B-44a, D-2026-10-24-09. Spec and parity cases shared: shared/paragraphs.md, shared/paragraph-cases.json. Dictation unchanged."
+    },
+    {
+      "id": "transcription-pause-levels",
+      "group": "history-and-files",
+      "name": "Transcription Mode: dedicated Pause/Resume button; gain and level meter docked (hidden) by default, shown in the card or floating in their own window",
+      "android": {
+        "status": "missing",
+        "notes": "B-45a planned; Record/Pause is still one button and the meter has a Show level switch"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/ui/transcribe.py (TranscribePage: btn_pause, Levels panel, _LevelsWindow); cfg tm_levels; tests/test_transcribe_controls.py"
+      },
+      "windows": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/ui/transcribe.py (TranscribePage: btn_pause, Levels panel, _LevelsWindow); cfg tm_levels; tests/test_transcribe_controls.py",
+        "verified": false
+      },
+      "notes": "2026-10-24, B-45/B-45a, R-2026-10-24-7. Desktop config tm_levels: docked | shown | floating (default docked); tm_show_meter dropped."
     }
   ],
   "engine_rules": [
@@ -1177,7 +1198,8 @@
     ],
     "desktop": [
       "Disfluency chop (B-38)",
-      "Transcription Mode Paragraphs setting (B-44)"
+      "Transcription Mode Paragraphs setting (B-44)",
+      "Transcription Mode Pause button and levels docked by default (B-45)"
     ]
   },
   "twin_lag": {
