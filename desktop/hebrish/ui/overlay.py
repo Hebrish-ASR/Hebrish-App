@@ -39,7 +39,7 @@ BTN = 32
 BARS = 14
 
 TIPS = {"mic": {"idle": "Start dictation", "recording": "Stop and transcribe",
-                "busy": "Transcribing", "done": ""},
+                "busy": "Transcribing: click to start the next take", "done": "Start dictation"},
         "pause": "Pause", "resume": "Resume", "retake": "Retake: discard and start again",
         "discard": "Discard this take",
         "paste": "Paste the last transcription where the cursor is now",
@@ -327,7 +327,7 @@ class Overlay(QWidget):
             self.action.emit("paste_last")
         elif self.state == "nofield" and hit == "dismiss":
             self.action.emit("dismiss_no_field")
-        elif hit == "mic" and self.state in ("idle", "recording"):
+        elif hit == "mic" and self.state in ("idle", "recording", "busy", "done"):   # busy: the next take queues
             self.action.emit("toggle")
         elif hit in ("pause", "resume", "retake", "discard"):
             self.action.emit("pause" if hit == "resume" else hit)

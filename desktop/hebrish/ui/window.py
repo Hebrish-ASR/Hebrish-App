@@ -764,8 +764,9 @@ class MainWindow(QMainWindow):
         st = self.ctl.state
         self.rec.setProperty("state", st)
         self.rec.setProperty("pulse", False)
-        self.rec.setText({"idle": "Talk", "recording": "Stop", "busy": "…"}[st])
-        self.rec.setEnabled(st != "busy")
+        queued = st == "busy" and self.ctl.queued_ok       # earlier takes transcribing: Talk still works
+        self.rec.setText({"idle": "Talk", "recording": "Stop", "busy": "Talk" if queued else "…"}[st])
+        self.rec.setEnabled(st != "busy" or queued)
         rec = st == "recording"
         self.btn_pause.setEnabled(rec)
         self.btn_pause.setText("Resume" if rec and self.ctl.recorder.paused else "Pause")
@@ -778,6 +779,8 @@ class MainWindow(QMainWindow):
         self.rec.style().polish(self.rec)
         self._pulse.start() if st == "recording" else self._pulse.stop()
         self.state_label.setText("Paused" if st == "recording" and self.ctl.recorder.paused else
+                                 "Listening… (last take still transcribing)" if st == "recording" and self.ctl.pending else
+                                 "Transcribing… Talk to start the next" if queued else
                                  {"idle": "Ready", "recording": "Listening…", "busy": "Working…"}[st])
         self.hint_label.setText(describe(self.cfg))
         for slot, lbl in getattr(self, "hk_labels", {}).items():

@@ -64,6 +64,7 @@ class Signals(QObject):
     action = Signal(str)
     captured = Signal(str)
     transcribed = Signal(str, object, object)   # text, error, the take's samples (for history)
+    take_began = Signal()           # the decoder reached a new take: the Dictate tab's box starts a block
     piece = Signal(str)             # each decoded piece of a take, for the Dictate tab's text box
     no_field = Signal()             # focus.text_target() said False after a take (detect_no_field)
     fetched = Signal(object, object)    # manifest or None, error: download_model()
@@ -91,7 +92,6 @@ class Controller(QObject):
         self.downloading_id: str | None = None     # the model being downloaded
         self.reload_pending = False
         self.loading = False
-        self._stopped_at = 0.0
         self.latencies: deque[float] = deque(maxlen=200)   # stop -> text inserted, seconds
         self.splash = splash
         self._overlay_done = False
@@ -112,6 +112,7 @@ class Controller(QObject):
         self.sig.cancel.connect(self.cancel)
         self.sig.action.connect(self.do_action)
         self.sig.transcribed.connect(self._done)
+        self.sig.take_began.connect(lambda: self.win.new_take(self.cfg["clear_each_take"]))
         self.sig.no_field.connect(self._show_no_field)
         self.sig.loaded.connect(self._loaded)
         self.sig.checked.connect(self._checked)
@@ -136,8 +137,13 @@ class Controller(QObject):
 
         # Decoding runs on one worker, in order: (take, samples, final). Live insertion queues
         # pieces of the take while it is still recording; stop() queues the rest as final.
-        # A discarded take bumps self._take, so its queued pieces are dropped.
+        # A discarded take's id goes in self._dropped, so its queued pieces are skipped.
+        # Takes can overlap (1.001, R-2026-10-24-6): a new take may start while earlier ones are
+        # still being decoded; self.pending counts those, and their text arrives in order.
         self._take = 0
+        self._dropped: set[int] = set()
+        self.pending = 0               # stopped takes whose final text hasn't come back yet
+        self._stops: deque[float] = deque()   # when each pending take was stopped, oldest first
         self._send_take = 0             # Stop and send: the take whose last text gets send_chord
         self._jobs: queue.Queue = queue.Queue()
         threading.Thread(target=self._worker, daemon=True, name="decode").start()
@@ -198,7 +204,10 @@ class Controller(QObject):
         self.stop() if self.state == "recording" else self.start()
 
     def start(self, cue="recording"):
-        if self.state != "idle":
+        # Busy only because earlier takes are still transcribing: start anyway (R-2026-10-24-6).
+        # Up to 1.000 the press was ignored while the last take decoded, so the user believed
+        # they were recording, and their next press started a take when they meant to stop one.
+        if self.state == "recording" or (self.state == "busy" and not self.queued_ok):
             return
         if self.engine.loaded_dir is None and not model_store.active():
             self.win.present_tab("model")
@@ -214,9 +223,14 @@ class Controller(QObject):
             self.notify("Microphone error", str(e))
             return
         self._take += 1
-        self.win.new_take(self.cfg["clear_each_take"])
         self.recorder.mute(self.cue(cue) + CUE_MARGIN_S)
         self.set_state("recording")
+
+    @property
+    def queued_ok(self) -> bool:
+        """A take can start now: idle, or busy only with earlier takes still transcribing
+        (not loading or moving a model)."""
+        return self.state == "idle" or (self.state == "busy" and self.pending > 0 and not self.loading)
 
     def cue(self, event: str) -> float:
         """Audible feedback (config `feedback`): beeps for start and stop, or a spoken prompt
@@ -234,11 +248,11 @@ class Controller(QObject):
     def cancel(self, quiet=False):
         """Discard the take. With live insertion, text already inserted stays."""
         if self.state == "recording":
-            self._take += 1
+            self._dropped.add(self._take)
             self.recorder.stop()
             if not quiet:
                 self.cue("discarded")
-            self.set_state("idle")
+            self.set_state("busy" if self.pending else "idle")
 
     def pause(self):
         if self.state == "recording":
@@ -283,8 +297,8 @@ class Controller(QObject):
             self._clear_no_field()
         elif action == "send":
             # While recording: stop, and send once the last text is in. Already stopped and
-            # still transcribing (_stopped_at is set): send this take when it lands.
-            if self.state == "recording" or (self.state == "busy" and self._stopped_at):
+            # still transcribing (pending): send this take when it lands.
+            if self.state == "recording" or (self.state == "busy" and self.pending):
                 self._send_take = self._take
                 self.stop()
 
@@ -361,7 +375,8 @@ class Controller(QObject):
         if self.state != "recording":
             return
         samples = self.recorder.stop()
-        self._stopped_at = time.monotonic()
+        self._stops.append(time.monotonic())
+        self.pending += 1
         self.cue("transcribing")
         self.set_state("busy")
         self._jobs.put((self._take, samples, True, None))
@@ -393,6 +408,8 @@ class Controller(QObject):
             job, samples, final, pause = self._jobs.get()
             if job != take:
                 take, parts, stream, heard_audio, held, ctx = job, [], None, [], False, None
+                if job not in self._dropped:
+                    self.sig.take_began.emit()
                 # ALL CAPS (0.7.2, Daniel 2026-10-22, "just for fun"): applied only to what is pasted
                 # and shown in the text box, so the seam and release rules still see case, and
                 # History (which can become training data) keeps the normal case.
@@ -408,7 +425,7 @@ class Controller(QObject):
             heard_audio.append(samples)
             whole_take = (lambda: np.concatenate(heard_audio)) if final else None
             try:
-                live = job == self._take
+                live = job not in self._dropped
                 if live and self.engine.streaming and (stream or not final):
                     # Shakshuka with live insertion: pieces are whole words that continue the
                     # text exactly (they carry their own spaces), so nothing is added between them.
@@ -493,19 +510,28 @@ class Controller(QObject):
         except Exception:
             log.exception("send chord %r failed", self.cfg["send_chord"])
 
+    def _feedback(self, event):
+        """A cue after a take, which may play while the next take records: keep it off that take."""
+        played = self.cue(event)
+        if self.state == "recording":
+            self.recorder.mute(played + CUE_MARGIN_S)
+
     def _done(self, text, err, samples=None):
         log.info("transcript %r err=%r", text, err)
+        stopped_at = self._stops.popleft() if self._stops else 0.0
+        self.pending = max(0, self.pending - 1)
         if err == NO_SPEECH:
-            self.cue("no_speech")
+            self._feedback("no_speech")
             self.win.status("No speech heard, so nothing was inserted. (Voice detection is on the Dictate tab.)")
         elif err:
-            self.cue("failed")
+            self._feedback("failed")
             self.notify("Transcription failed", str(err))
         elif text:
-            if self._stopped_at:
-                self.latencies.append(time.monotonic() - self._stopped_at)
-            self._overlay_done = True              # "Inserted" for a moment
-            QTimer.singleShot(1100, self._overlay_clear_done)
+            if stopped_at:
+                self.latencies.append(time.monotonic() - stopped_at)
+            if self.state != "recording":          # "Inserted" for a moment, unless the next take is on
+                self._overlay_done = True
+                QTimer.singleShot(1100, self._overlay_clear_done)
             if self.cfg["out_clipboard"]:
                 # The whole take, not just its last piece (1.000). After a paste, wait for the
                 # target app to read the clipboard first, or it would paste the whole take.
@@ -513,14 +539,14 @@ class Controller(QObject):
                 QTimer.singleShot(CLIPBOARD_AFTER_PASTE_MS if self.cfg["out_cursor"] else 0,
                                   lambda: self._copy_take(whole))
                 if not self.cfg["out_cursor"]:
-                    self.cue("copied")
+                    self._feedback("copied")
             self.last_text = text.upper() if self.cfg["all_caps"] else text
             if self.cfg["out_cursor"] and self.cfg["detect_no_field"]:
                 self._check_field(self.last_text)
             self.remember(text, samples)
-        self._stopped_at = 0.0
-        self.set_state("idle")
-        if self.reload_pending:
+        if self.state != "recording":
+            self.set_state("busy" if self.pending else "idle")
+        if self.reload_pending and self.state == "idle":
             self.load_model()
 
     def _decode_info(self, source: str) -> dict:
@@ -1023,7 +1049,7 @@ class Controller(QObject):
         self.tray.setIcon(icon(f"tray-{name}"))
         self.tray.setToolTip(f"{APP_NAME}: {dict(idle='ready', recording='listening', busy='working').get(self.state)}")
         self.act_toggle.setText("Stop dictation" if self.state == "recording" else "Start dictation")
-        self.act_toggle.setEnabled(self.state != "busy")
+        self.act_toggle.setEnabled(self.state != "busy" or self.queued_ok)
         self.act_overlay.setVisible(self.overlay.available)
         self.act_overlay.setChecked(self.cfg["overlay"] != "off")
         self.act_update.setVisible(self.update_available() and not self.downloading)

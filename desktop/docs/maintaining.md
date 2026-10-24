@@ -640,6 +640,22 @@ shared with Android: [`../../shared/personal-dictionary.md`](../../shared/person
   off-screen; the tab was also rendered off-screen and looked at. **Not verified (I):** a real take
   on Ubuntu or Windows.
 
+## Overlapping takes (unreleased, 2026-10-24)
+
+R-2026-10-24-6, B-43; story in `docs/debug-log/2026-10-24-record-ignored-while-transcribing.md`.
+**Rule: a record press is never silently dropped because a take is still transcribing.**
+
+- `Controller.pending` counts stopped takes whose final text hasn't landed; `queued_ok` is true
+  when idle, or busy only for that reason (not while `loading` a model). `start()` checks it.
+- The decode worker is one thread with one queue, so overlapping takes need no new machinery:
+  the earlier take's final job is ahead of the new take's pieces. Discards mark `_dropped`; the
+  worker decodes any take not in it (`live`). Don't go back to "live = latest take id": with
+  overlap, the latest take is not the only one still owed text.
+- `_done` never leaves `recording`; otherwise it goes to `busy` while `pending`, else `idle`.
+- The Dictate tab's text block starts on `take_began` (emitted by the worker), so text arrives
+  grouped by take even when they overlap.
+- Cues after a take (`_feedback`) mute the recorder if the next take is already recording.
+
 ## Transcription Mode (unreleased, 2026-10-24)
 
 R-2026-10-24-5, B-41, D-2026-10-24-06. The File tab is now **Transcription** (`ui/transcribe.py`;

@@ -229,7 +229,7 @@ def _run_worker(texts, jobs, cfg=None):
     # a text, or (text, stop) for a piece decoded with context (engine.transcribe_after)
     _say = lambda t: t if isinstance(t, tuple) else (t, None)
     pastes, done = [], threading.Event()
-    sig = SimpleNamespace(piece=SimpleNamespace(emit=lambda t: None),
+    sig = SimpleNamespace(piece=SimpleNamespace(emit=lambda t: None), take_began=SimpleNamespace(emit=lambda: None),
                           transcribed=SimpleNamespace(emit=lambda t, e, a: (pastes.append(("DONE", t)), done.set())))
     it = iter(texts)
     ctl = SimpleNamespace(
@@ -237,7 +237,7 @@ def _run_worker(texts, jobs, cfg=None):
         cfg={"vad": False, "trailing_space": True, "all_caps": False, "out_cursor": True, "out_clipboard": False,
              "out_window": False, "paste_chord": "ctrl+v", **(cfg or {})},
         sig=sig, inserter=SimpleNamespace(insert=lambda t, how, chord: pastes.append(t)),
-        _take=1, _send_take=0, _jobs=queue.Queue())
+        _take=1, _dropped=set(), _send_take=0, _jobs=queue.Queue())
     ctl._show = lambda t: Controller._show(ctl, t)
     ctl._insert = lambda t: Controller._insert(ctl, t)
     for pause, final in jobs:
