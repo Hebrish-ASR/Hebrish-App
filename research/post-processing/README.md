@@ -10,16 +10,17 @@ as a fallback to the training and to get results sooner. Specifically:
    "I can't think there's any reason why people would want those disfluencies."
 2. **Numbers**: "the year was two thousand and twenty four" should come out as "the year was 2024".
    Other regex-able fixes (capitalisation).
-3. **Paragraph inference** with Daniel's own model (ASR-Paragraph-Breaks, Gemma 3 270M).
+3. **Paragraph inference** with Daniel's own model. **Dropped from Hebrish 2026-10-24** (D-2026-10-24-08):
+   it needs a different architecture and is a separate project (ASR-Paragraph-Breaks), not an app stage.
 4. **S1-mini by Superwhisper**, the first dedicated ASR clean-up model: can it run on a phone, is
-   there a bigger one for desktop, and can the apps offer a chain (raw ASR / ASR + paragraphs /
+   there a bigger one for desktop, and can the apps offer a chain (raw ASR /
    ASR + S1-mini with its control line), local in every case.
 
 ## Status
 
 `open` (2026-10-24). Disfluency chop built (B-38, unreleased, `shared/disfluencies.md`), with *er*
 included (Daniel, 2026-10-24). S1-mini by Superwhisper: desktop only, if it runs well there; on hold on
-Android (D-2026-10-24-05). Paragraphs: retrain as a classifier (below).
+Android (D-2026-10-24-05). Paragraphs: out of scope (D-2026-10-24-08).
 
 ## Findings
 
@@ -31,10 +32,9 @@ Android (D-2026-10-24-05). Paragraphs: retrain as a classifier (below).
   file (`shared/personal-dictionary.md`, `shared/dictionary-cases.json`). Confirmed from the code.
 - Text leaves the app **piece by piece** while you speak (insert-as-you-go / type-as-you-go). A
   per-piece rule (disfluencies, most numbers) fits that; anything that needs the whole take
-  (paragraphs, S1-mini) can only run when the take ends, and only when the take is inserted in one go.
+  (S1-mini) can only run when the take ends, and only when the take is inserted in one go.
 - The Parakeet-family vocabularies cannot emit a line break at all
-  (`docs/debug-log/2026-10-23-overlay-eats-line-break.md`), so paragraphs must come from a
-  post-processor until a model is retrained with a newline token.
+  (`docs/debug-log/2026-10-23-overlay-eats-line-break.md`).
 
 ### Disfluencies
 
@@ -62,18 +62,6 @@ Android (D-2026-10-24-05). Paragraphs: retrain as a classifier (below).
   is followed by a unit / *percent* / *am, pm*; years "twenty twenty four" only after *in / the year /
   since / by*. Inferred; to be settled by the test cases.
 
-### Paragraph model (ASR-Paragraph-Breaks)
-
-- `danielrosehill/Gemma-3-270M-ASR-Paragraph-Breaks`: break F1 0.78 on 26 held-out memos, 2 of 26
-  outputs fell back to the input (`ASR-Paragraph-Breaks/README.md`, 2026-10-21). Every output is
-  checked: if anything but whitespace changed, the input is kept. Confirmed.
-- Size: the int8 ONNX is 437.5 MB (`onnx/model_quantized.onnx`), the fp32 1.74 GB (HF API,
-  read 2026-10-24). Most of it is Gemma's 262k-token embedding table, not the 270M of compute.
-- It is generative: it rewrites the whole text token by token, so latency grows with the take.
-  SaT (`segment-any-text/sat-3l-sm`, wtpsplit) predicts a newline probability per token in one
-  pass, which is far cheaper; the repo names it as the baseline to beat. Whether the F1 gap justifies
-  the cost on a phone is unmeasured.
-
 ### S1-mini by Superwhisper
 
 Source: <https://huggingface.co/superwhisper/s1-mini> and <https://superwhisper.com/blog/s1>, read
@@ -99,31 +87,6 @@ Source: <https://huggingface.co/superwhisper/s1-mini> and <https://superwhisper.
   (~130 output tokens) would take a few seconds after the take ends. Workable as an opt-in on recent
   phones, too slow and too large for older ones and for type-as-you-go.
 
-## Paragraph model format
-
-Daniel, 2026-10-24: retrain the paragraph model into a format that suits the app, rather than work
-around the prototype. Recommendation (inferred from the findings above, not yet trained):
-
-- **Task: token classification, not generation.** One label per word: "a paragraph starts here".
-  The training data already has it: every annotation stores `break_offsets` into the flat text
-  (`ASR-Paragraph-Breaks/docs/data-format.md`), so no new labelling is needed, and r4's planned
-  noise augmentation and greeting/sign-off rules carry over unchanged. Word-level (not sentence-level)
-  labels allow the greeting and sign-off splits after a comma that r4 was meant to fix.
-- **Why it suits the apps:** one forward pass instead of rewriting the text token by token
-  (milliseconds, flat cost per take); the text cannot change by construction, so the
-  whitespace-only fallback check goes; it runs on the onnxruntime that sherpa-onnx already puts in
-  both apps (no llama.cpp on Android); and its threshold can be a setting (fewer / more paragraphs).
-- **Base: a small English encoder with a WordPiece tokenizer**, so the tokenizer is a few dozen lines
-  of Kotlin and Python: ELECTRA-small (14M parameters, ~15 MB int8) and MiniLM-L12-H384 (33M,
-  ~35 MB int8) as two arms, against the Gemma prototype's 437 MB. The text is Latin script, so a
-  multilingual model buys nothing; romanised Hebrew words split into sub-words, which does not
-  matter for where a paragraph breaks. Long takes: a sliding window of ~512 tokens with overlap.
-- **Also live:** a variant trained with right context limited to the current sentence could decide
-  the break before each new piece as it arrives, so paragraphs work with insert-as-you-go too.
-  Worth one extra arm.
-- **Compare against** r2 (break F1 0.78, 26 golden memos) and SaT `sat-3l-sm` on the same test set.
-  Training cost on Modal: well under US$1 for both arms (minutes on an L4).
-
 ## Recommendation
 
 One pipeline on every platform, each stage specified once in `shared/` with shared test cases:
@@ -133,7 +96,7 @@ One pipeline on every platform, each stage specified once in `shared/` with shar
 | 1. Personal dictionary | exists | on | per piece |
 | 2. **Disfluency chop** (*um, uh, eh, ehm, er, erm, hmm*, then cleanup) | regex, both apps | **always on, no setting** (Daniel) | per piece, every model |
 | 3. **Numbers to digits** | number-word parser, both apps | on, with a setting | per piece |
-| 4. **Finishing** (one of): *None* · *Paragraphs* (retrained break classifier) · *Clean-up: S1-mini by Superwhisper* (desktop only; Styling / Structure / Context pickers) | paragraphs: ONNX on the onnxruntime both apps already ship; S1-mini: llama.cpp on desktop; downloaded on demand like speech models | None | the whole take, only when it is inserted in one go (insert-as-you-go off, File / Transcribe tab, Paste last) |
+| 4. **Finishing** (one of): *None* · *Clean-up: S1-mini by Superwhisper* (desktop only; Styling / Structure / Context pickers) | S1-mini: llama.cpp on desktop; downloaded on demand like speech models | None | the whole take, only when it is inserted in one go (insert-as-you-go off, File / Transcribe tab, Paste last) |
 
 Notes on the design:
 
@@ -141,7 +104,7 @@ Notes on the design:
   filler.
 - S1-mini on desktop only, through llama.cpp (GGUF; desktop B-35 already brings a GGML build path).
   There is no ONNX build of S1-mini and none is needed on desktop.
-- Keep the paragraph model's whitespace-only guard, and add one for S1-mini: if a word from the
+- A guard for S1-mini: if a word from the
   personal dictionary or the Hebrish lexicon is changed or dropped, fall back to the stage-3 text.
 - Listed in the model catalogue (`shared/catalogue.json`) as a separate "text clean-up" kind, so the
   download, size and hardware lines work as for speech models.
@@ -154,8 +117,6 @@ Notes on the design:
    `shared/disfluency-cases.json`; ships in the next release of each app.
 2. **B-39 Numbers to digits** (both apps): shared spec and cases first; try the NeMo ITN → sherpa-onnx
    `ruleFsts` route in parallel, keep whichever passes the cases.
-3. **B-40 Finishing stage**: retrain the paragraph model as a classifier (above) in
-   ASR-Paragraph-Breaks; measure S1-mini on Hebrish benchmark transcripts on the laptop CPU
-   (romanised-word preservation, latency) before adding it to desktop. Android: paragraphs only.
-4. Paragraphs in the ASR itself (a newline token in a retrained Sabich) stays a model-side
-   question for ASR-Training, not this repo.
+3. **B-40 Finishing stage**: measure S1-mini on Hebrish benchmark transcripts on the laptop CPU
+   (romanised-word preservation, latency) before adding it to desktop. Paragraph inference is not
+   part of Hebrish (D-2026-10-24-08).

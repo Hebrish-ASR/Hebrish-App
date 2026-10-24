@@ -61,5 +61,5 @@ Paragraph breaks from the model: the Parakeet-family vocabularies shipped in the
 v1.0, Sabich v2.0, Shakshuka v2.0) were checked on 2026-10-23 and none has a newline token
 (1,025 tokens each, `tokens.txt`). The models cannot output a paragraph break whatever the
 training data contains. The harness would also lose a break at a segment boundary: `TakeDecoder`
-joins segments with a space and `Transcriber` trims each one. Breaks have to come from a vocabulary
-change or a post-processor (ASR-Paragraph-Breaks).
+joins segments with a space and `Transcriber` trims each one. Paragraph inference is not part of
+Hebrish (D-2026-10-24-08).

@@ -9,6 +9,22 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-24-08: Paragraph inference is not part of Hebrish
+
+- **Decision:** No paragraph step in the apps. B-40 keeps only S1-mini by Superwhisper (desktop);
+  B-40a (paragraphs on Android) is dropped, and the shared spec and CDN copy made for it the same day
+  were removed. Paragraph inference continues as its own project (ASR-Paragraph-Breaks), with its own
+  dictated-passage dataset `danielrosehill/Paragraph-Dictation-Passages`, which no Hebrish model trains on
+  (ASR-Training `cs_lib.ISOLATED_TAGS`).
+- **Why:** Daniel: it "requires a different architecture", and the passages should not "corrupt the
+  training data with something that can't actually work". He wants to train a dedicated model on that
+  data extensively.
+- **Alternatives:** Shipping the text-only r5b break classifier (break F1 0.85 on synthetic memos) as
+  an opt-in step on all platforms; started, then stopped before anything was released.
+- **Not needed:** a Sabich retrain. The ASR never saw breaks: the 3 passage takes (44 s, 2026-10-21)
+  have one-line transcripts, and at most r9 (Release v2) included them among about 714 minutes.
+- **By:** Daniel. Supersedes the paragraph part of R-2026-10-24-3 / -4 and B-40.
+
 ### D-2026-10-24-07: Android records Transcription Mode in the background, opt-in from Setup
 
 - **Decision:** Android gets a `microphone` foreground service for Transcription Mode (B-42a), with
