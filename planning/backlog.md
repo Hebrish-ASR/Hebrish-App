@@ -20,7 +20,7 @@ Contributors: this is why a merged change may wait for the next release.
 | Release when | on-word |
 | Condition | Daniel says the sprint is done |
 | Platforms | Android and desktop (Ubuntu + Windows), released together at the end of the sprint |
-| Sprint items | B-39 / B-39a numbers to digits; B-40 / B-40a paragraphs with the retrained break classifier (the retrain was running in ASR-Paragraph-Breaks on 2026-10-24); the Transcription Mode follow-ups still open (B-25 tidy-and-save view) |
+| Sprint items | B-39 / B-39a numbers to digits; B-40 / B-40a paragraphs with the retrained break classifier (done and published 2026-10-24: `danielrosehill/MiniLM-L12-ASR-Paragraph-Breaks`, full-context, `onnx/model_int8.onnx` 32 MB, break F1 0.85, threshold 0.26; port notes and parity data in ASR-Paragraph-Breaks `docs/training.md`, "What app integration needs next"; the CDN copy is made with the port); the Transcription Mode follow-ups still open (B-25 tidy-and-save view) |
 | Waiting to ship | (nothing yet) |
 | Hotfix rule | Only a release that is broken for users (won't install, crashes on start, loses data) ships early, and Daniel is told |
 
