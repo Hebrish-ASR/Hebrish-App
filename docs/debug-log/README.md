@@ -53,7 +53,7 @@ Newest first.
 
 | Date | Platform | Symptom | Status | Entry |
 | --- | --- | --- | --- | --- |
-| 2026-10-24 | desktop-linux | Thinks it's recording when it isn't (record pressed while the last take was transcribing was ignored) | fixed, unreleased | [2026-10-24-record-ignored-while-transcribing.md](2026-10-24-record-ignored-while-transcribing.md) |
+| 2026-10-24 | desktop-linux | Thinks it's recording when it isn't (record pressed while the last take was transcribing was ignored) | fixed in 1.001 | [2026-10-24-record-ignored-while-transcribing.md](2026-10-24-record-ignored-while-transcribing.md) |
 | 2026-10-23 | android | Floating mic: the field jumps on insert and the line break before it is still deleted | fixed in 0.9.1 | [2026-10-23-overlay-paste-jumps.md](2026-10-23-overlay-paste-jumps.md) |
 | 2026-10-23 | android | Capitals and full stops in the middle of sentences after a pause | fixed in 0.8.2 | [2026-10-23-android-mid-sentence-capitals.md](2026-10-23-android-mid-sentence-capitals.md) |
 | 2026-10-23 | android | Floating mic deletes the line break before the dictated text | fixed in 0.7.6 | [2026-10-23-overlay-eats-line-break.md](2026-10-23-overlay-eats-line-break.md) |

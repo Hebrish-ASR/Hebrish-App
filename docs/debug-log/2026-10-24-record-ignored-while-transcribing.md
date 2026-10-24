@@ -4,7 +4,7 @@ platform: desktop-linux
 environment: Ubuntu, KDE Plasma Wayland (Daniel's daily use); the logic is shared with Windows
 component: desktop/hebrish/ui/app.py (Controller.start, stop, _done, _worker)
 affected: "<= 1.000"
-fixed_in: "next desktop release (unreleased, after 1.000)"
+fixed_in: "desktop 1.001, Android 1.001"
 status: fixed
 ---
 

@@ -1041,17 +1041,17 @@
       "name": "Disfluency chop: um, uh, eh, er, hmm removed after decoding, always on",
       "android": {
         "status": "present",
-        "since": "unreleased",
+        "since": "1.001",
         "evidence": "android/core/src/main/java/app/hebrish/core/Disfluency.kt; TakeDecoder.piece applies it first; scripts/check_disfluency.sh (JVM, 33/33)"
       },
       "ubuntu": {
         "status": "present",
-        "since": "unreleased",
+        "since": "1.001",
         "evidence": "desktop/hebrish/disfluency.py; applied first in desktop/hebrish/ui/app.py Controller._worker (both engines) and ui/transcribe.py; tests/test_disfluency.py"
       },
       "windows": {
         "status": "present",
-        "since": "unreleased",
+        "since": "1.001",
         "evidence": "desktop/hebrish/disfluency.py; applied first in desktop/hebrish/ui/app.py Controller._worker (both engines) and ui/transcribe.py; tests/test_disfluency.py",
         "verified": false
       },
@@ -1063,17 +1063,17 @@
       "name": "Transcription Mode: long recording (own mic, gain, level meter, pause/retake/stop) then transcribe",
       "android": {
         "status": "present",
-        "since": "unreleased",
+        "since": "1.001",
         "evidence": "android/app/src/main/java/app/hebrish/dictation/TranscriptionActivity.kt; core/Tape.kt"
       },
       "ubuntu": {
         "status": "present",
-        "since": "unreleased",
+        "since": "1.001",
         "evidence": "desktop/hebrish/ui/transcribe.py; desktop/hebrish/longform.py"
       },
       "windows": {
         "status": "present",
-        "since": "unreleased",
+        "since": "1.001",
         "evidence": "desktop/hebrish/ui/transcribe.py; desktop/hebrish/longform.py",
         "verified": false
       },

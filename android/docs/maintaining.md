@@ -875,7 +875,7 @@ desktop 0.8.0 implements the same rules.
   JVM: 21/21 (V, 2026-10-23). Android's regex is ICU, not the JVM's; the patterns use only
   `\p{L}`, `\p{N}`, lookarounds and CASE_INSENSITIVE|UNICODE_CASE, which both support (I).
 
-## Disfluency chop (unreleased, 2026-10-24)
+## Disfluency chop (1.001, 2026-10-24)
 
 Request R-2026-10-24-1, B-38a, decision D-2026-10-24-04: *um, uh, eh, ehm, er, erm, hmm* are
 removed from every piece, always, for every model; no setting. Rules and the shared test set:
@@ -960,7 +960,7 @@ to turn it off.
 - Not compiled locally: since the F-Droid source build (pulled 2026-10-24) the laptop needs NDK
   26.3.11579264 to configure the project; CI compiled it.
 
-## Overlapping takes (unreleased, 2026-10-24)
+## Overlapping takes (1.001, 2026-10-24)
 
 R-2026-10-24-6, B-43a (desktop B-43; story in `docs/debug-log/2026-10-24-record-ignored-while-transcribing.md`).
 **Rule: a mic tap is never ignored because the last take is still transcribing.**
@@ -978,7 +978,7 @@ R-2026-10-24-6, B-43a (desktop B-43; story in `docs/debug-log/2026-10-24-record-
 - Try it is unchanged (one take at a time, mic disabled while busy): it is a demo.
 - Compiled locally (both flavors). Not run on a device.
 
-## Transcription Mode (unreleased, 2026-10-24)
+## Transcription Mode (1.001, 2026-10-24)
 
 R-2026-10-24-5, B-41a (parity with desktop B-41), D-2026-10-24-06. Home → **Transcription Mode**
 (`TranscriptionActivity`, a `Page`).

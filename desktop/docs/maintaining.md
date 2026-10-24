@@ -640,7 +640,7 @@ shared with Android: [`../../shared/personal-dictionary.md`](../../shared/person
   off-screen; the tab was also rendered off-screen and looked at. **Not verified (I):** a real take
   on Ubuntu or Windows.
 
-## Overlapping takes (unreleased, 2026-10-24)
+## Overlapping takes (1.001, 2026-10-24)
 
 R-2026-10-24-6, B-43; story in `docs/debug-log/2026-10-24-record-ignored-while-transcribing.md`.
 **Rule: a record press is never silently dropped because a take is still transcribing.**
@@ -656,7 +656,7 @@ R-2026-10-24-6, B-43; story in `docs/debug-log/2026-10-24-record-ignored-while-t
   grouped by take even when they overlap.
 - Cues after a take (`_feedback`) mute the recorder if the next take is already recording.
 
-## Transcription Mode (unreleased, 2026-10-24)
+## Transcription Mode (1.001, 2026-10-24)
 
 R-2026-10-24-5, B-41, D-2026-10-24-06. The File tab is now **Transcription** (`ui/transcribe.py`;
 the page key stays `"file"`). A recorder sits on top, the file picker under it (drop anywhere on
@@ -691,7 +691,7 @@ the tab still works), the transcript below.
   engine (record → pause → stop → transcribe → file deleted, History row `source=record`; leftover
   offered on a new page). Not yet tried on a real mic for a long take.
 
-## Disfluency chop (unreleased, 2026-10-24)
+## Disfluency chop (1.001, 2026-10-24)
 
 Request R-2026-10-24-1, B-38, decision D-2026-10-24-04: *um, uh, eh, ehm, er, erm, hmm* are
 removed from every piece, always, for every model; no setting. Rules and the shared test set:
