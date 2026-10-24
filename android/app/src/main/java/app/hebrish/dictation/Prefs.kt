@@ -84,12 +84,15 @@ object Prefs {
     /** Anywhere: no snapping to an edge; the horizontal place is [bubbleX]. */
     const val SIDE_FREE = "free"
 
-    /** Screen edge the floating mic is parked on, or [SIDE_FREE]. */
-    fun bubbleSide(ctx: Context): String = sp(ctx).getString("bubble_side", SIDE_RIGHT) ?: SIDE_RIGHT
+    /**
+     * Screen edge the floating mic is parked on, or [SIDE_FREE]. Left by default since 0.11.0 (Daniel,
+     * 2026-10-24); a value saved by an earlier drag or choice is kept.
+     */
+    fun bubbleSide(ctx: Context): String = sp(ctx).getString("bubble_side", SIDE_LEFT) ?: SIDE_LEFT
     fun setBubbleSide(ctx: Context, v: String) = sp(ctx).edit().putString("bubble_side", v).apply()
 
     /** Horizontal place when [SIDE_FREE]: 0 = left edge, 1 = right edge. */
-    fun bubbleX(ctx: Context) = sp(ctx).getFloat("bubble_x", 0.9f)
+    fun bubbleX(ctx: Context) = sp(ctx).getFloat("bubble_x", 0.1f)
     fun setBubbleX(ctx: Context, v: Float) = sp(ctx).edit().putFloat("bubble_x", v.coerceIn(0f, 1f)).apply()
 
     /** Gap between the mic and the edge it is parked on, in dp. */
@@ -100,12 +103,13 @@ object Prefs {
     /** Opacity of the idle mic in percent; a take in progress is always fully opaque. */
     fun bubbleAlpha(ctx: Context) = sp(ctx).getInt("bubble_alpha", 85)
     fun setBubbleAlpha(ctx: Context, v: Int) = sp(ctx).edit().putInt("bubble_alpha", v.coerceIn(ALPHA_MIN, 100)).apply()
-    const val ALPHA_MIN = 25
+    /** 1 % since 0.11.0 (was 25): Daniel wanted every opacity control to go "all the way down". */
+    const val ALPHA_MIN = 1
 
     /** Opacity of the bar's background during a take, in percent; the mic and buttons stay opaque. */
     fun bubbleBarAlpha(ctx: Context) = sp(ctx).getInt("bubble_bar_alpha", 100)
     fun setBubbleBarAlpha(ctx: Context, v: Int) = sp(ctx).edit().putInt("bubble_bar_alpha", v.coerceIn(BAR_ALPHA_MIN, 100)).apply()
-    const val BAR_ALPHA_MIN = 20
+    const val BAR_ALPHA_MIN = 1
 
     /** Colour of the idle mic (ARGB), one of [BUBBLE_COLORS]; during a take it is always red. */
     fun bubbleColor(ctx: Context) = sp(ctx).getInt("bubble_color", BUBBLE_COLORS[0])
@@ -117,11 +121,51 @@ object Prefs {
     fun bubbleY(ctx: Context) = sp(ctx).getFloat("bubble_y", 0.6f)
     fun setBubbleY(ctx: Context, v: Float) = sp(ctx).edit().putFloat("bubble_y", v.coerceIn(0f, 1f)).apply()
 
-    /** Diameter of the floating mic in dp, [SIZE_MIN]..[SIZE_MAX] (0.3.0 offered only 44, 56 and 68). */
-    fun bubbleSize(ctx: Context) = sp(ctx).getInt("bubble_size", 56).coerceIn(SIZE_MIN, SIZE_MAX)
+    /**
+     * Diameter of the floating mic in dp, [SIZE_MIN]..[SIZE_MAX] (0.3.0 offered only 44, 56 and 68).
+     * Default 44 since 0.11.0 (was 56; Daniel: "the default should also be smaller").
+     */
+    fun bubbleSize(ctx: Context) = sp(ctx).getInt("bubble_size", 44).coerceIn(SIZE_MIN, SIZE_MAX)
     fun setBubbleSize(ctx: Context, v: Int) = sp(ctx).edit().putInt("bubble_size", v.coerceIn(SIZE_MIN, SIZE_MAX)).apply()
-    const val SIZE_MIN = 36
+    /** 20 dp since 0.11.0 (was 36): about the smallest a finger still hits. */
+    const val SIZE_MIN = 20
     const val SIZE_MAX = 96
+
+    /**
+     * Size of the bar's buttons and text during a take, in percent of the full size (0.11.0):
+     * smaller covers less of what you are writing. The mic itself keeps [bubbleSize].
+     */
+    fun bubbleBarScale(ctx: Context) = sp(ctx).getInt("bubble_bar_scale", 80).coerceIn(BAR_SCALE_MIN, 100)
+    fun setBubbleBarScale(ctx: Context, v: Int) = sp(ctx).edit().putInt("bubble_bar_scale", v.coerceIn(BAR_SCALE_MIN, 100)).apply()
+    const val BAR_SCALE_MIN = 50
+
+    /**
+     * Clear bar (0.11.0): no bar background at all; each button, the timer and the mic chip sit on
+     * their own mostly opaque backdrop, so the text under the bar shows between them.
+     */
+    fun bubbleBarClear(ctx: Context) = sp(ctx).getBoolean("bubble_bar_clear", false)
+    fun setBubbleBarClear(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("bubble_bar_clear", v).apply()
+
+    /** The bar opens across the screen, towards the middle (0.4.0 to 0.10.0). */
+    const val BAR_ACROSS = "across"
+    /** The bar opens along the edge the mic is on, up or down towards the middle: a narrow strip. */
+    const val BAR_ALONG = "along"
+    /**
+     * Which way the bar opens during a take (0.11.0). Along the edge by default: it covers a
+     * narrow strip at the side instead of a line across the text (Daniel, 2026-10-24: "the expansion
+     * happens in the least obtrusive part of the screen").
+     */
+    fun bubbleBarDirection(ctx: Context): String = sp(ctx).getString("bubble_bar_direction", BAR_ALONG) ?: BAR_ALONG
+    fun setBubbleBarDirection(ctx: Context, v: String) = sp(ctx).edit().putString("bubble_bar_direction", v).apply()
+
+    const val ICON_MIC = "mic"
+    /** The H of the Hebrish mark on Hebrish green. */
+    const val ICON_LOGO = "logo"
+    /** The Hebrew letter ayin (the first letter of עבריש) on Hebrish green. */
+    const val ICON_AYIN = "ayin"
+    /** What the idle mic shows (0.11.0). [ICON_LOGO] and [ICON_AYIN] are always on Hebrish green; [bubbleColor] is for [ICON_MIC]. */
+    fun bubbleIcon(ctx: Context): String = sp(ctx).getString("bubble_icon", ICON_MIC) ?: ICON_MIC
+    fun setBubbleIcon(ctx: Context, v: String) = sp(ctx).edit().putString("bubble_icon", v).apply()
 
     /** Show the floating mic only while a text field has focus (otherwise always, and during a take). */
     fun bubbleOnlyTyping(ctx: Context) = sp(ctx).getBoolean("bubble_only_typing", false)

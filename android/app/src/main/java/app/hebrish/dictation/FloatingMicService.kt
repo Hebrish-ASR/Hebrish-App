@@ -59,6 +59,15 @@ import android.widget.Toast
  * horizontal place, edge gap, size, idle opacity, bar opacity and mic colour (Prefs.bubble*).
  * The bar always opens towards the middle of the screen, so the mic stays where it was parked.
  *
+ * Out of the way (0.11.0, Daniel 2026-10-24: "it'll open, and then suddenly it's overlaying some
+ * text I'm working on"): the bar has a grip at its outer end, so it can be moved mid-take without
+ * going near the mic (a tap on it is Stop). By default the bar opens along the edge the mic is on,
+ * up or down towards the middle, a narrow strip instead of a line across the text
+ * (Prefs.bubbleBarDirection); its buttons can be scaled down (Prefs.bubbleBarScale), and a clear
+ * bar drops the background so only the buttons, each on its own backdrop, cover anything
+ * (Prefs.bubbleBarClear). The idle mic can show the Hebrish H or the letter ayin instead of the
+ * mic glyph (Prefs.bubbleIcon).
+ *
  * Staying up (0.7.3): with "only while typing" on, the bubble appears when a field gets focus and
  * then stays, even when the field loses focus or the bubble is dragged, so it can be moved off
  * what you are reading before you tap it. There is no close button (0.7.4): a × beside the mic
@@ -98,6 +107,11 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private lateinit var takeControls: List<View>
     /** Shown while a transcript is waiting for a field ([pending]). */
     private lateinit var pendingControls: List<View>
+    /** Drag handle at the bar's outer end, shown during a take (0.11.0). */
+    private lateinit var grip: ImageButton
+    /** Bar buttons without a filled circle of their own: they get a backdrop in a clear bar. */
+    private lateinit var plainButtons: List<ImageButton>
+    private lateinit var insert: TextView
     private val micBg = GradientDrawable().apply { shape = GradientDrawable.OVAL }
     private val barBg = GradientDrawable()
     private var state = State.IDLE
@@ -127,6 +141,10 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private var singleTapPending = false
     /** Whether [place] last laid the mic out as the dot; render() re-places when that changes. */
     private var placedMini = false
+    /** Whether [place] last laid the bar out open ([expanded]); an upward bar needs re-placing then. */
+    private var placedExpanded = false
+    /** [place] put the mic at the bottom of an upward bar (along the edge, mic in the lower half). */
+    private var placedUp = false
     /** Until this uptime mic taps are ignored: the second tap of a double-tap that restored the dot. */
     private var ignoreTapsUntil = 0L
     /** While recording the mic's colour breathes, so a take in progress is obvious at a glance. */
@@ -298,6 +316,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         fun button(drawable: Int, cd: Int, fill: Int? = null, action: () -> Unit) = ImageButton(themed).apply {
             setImageResource(drawable)
             contentDescription = getString(cd)
+            scaleType = ImageView.ScaleType.FIT_CENTER
             // Retake and Discard get a filled circle (0.7.2), so they are easy to find and hit.
             background = fill?.let { GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(getColor(it)) } }
             setPadding(dp(10), dp(10), dp(10), dp(10))
@@ -326,7 +345,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             timer,
             source,
         )
-        val insert = TextView(themed).apply {
+        insert = TextView(themed).apply {
             setText(R.string.bubble_insert)
             setTextColor(getColor(R.color.ime_text))
             textSize = 15f
@@ -338,7 +357,17 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             setOnClickListener { insertPending() }
             setOnTouchListener(Drag({ performClick() }))
         }
-        pendingControls = listOf(insert, button(R.drawable.ic_close, R.string.bubble_dismiss) { dismissPending() })
+        val dismiss = button(R.drawable.ic_close, R.string.bubble_dismiss) { dismissPending() }
+        pendingControls = listOf(insert, dismiss)
+        grip = ImageButton(themed).apply {
+            setImageResource(R.drawable.ic_drag)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            contentDescription = getString(R.string.bubble_grip_cd)
+            background = null
+            alpha = 0.8f
+            setOnTouchListener(Drag())
+        }
+        plainButtons = listOf(grip, pauseBtn, dismiss)
         barBg.setColor(getColor(R.color.ime_bg))
         root = LinearLayout(themed).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -358,6 +387,9 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         wm.addView(root, params)
         render()
     }
+
+    /** The bar is showing: a take is open, or a transcript is waiting for Insert. */
+    private fun expanded() = open || (pending != null && state == State.IDLE)
 
     /** True while the mic is shown as the small dot: minimised, idle and holding nothing. */
     private fun mini() = Prefs.bubbleMinimised(this) && state == State.IDLE && pending == null
@@ -381,33 +413,79 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     /**
      * Positions the bubble from Prefs. The window is anchored to the side of the screen the mic
      * is on (gravity LEFT or RIGHT), so when the bar appears it grows towards the middle, and the
-     * mic is the child next to that side.
+     * mic is the child next to that side. Along the edge (0.11.0) the bar is a column: below the
+     * mic if the mic is in the top half, above it otherwise; above means the window's top is
+     * moved up by the bar's measured height, so the mic itself stays put.
      */
     private fun place(attached: Boolean = true) {
         val r = root ?: return
         placedMini = mini()
+        placedExpanded = expanded()
         val size = micSize()
-        val w = resources.displayMetrics.widthPixels
+        val m = resources.displayMetrics
+        val w = m.widthPixels
         val pad = dp(PAD_DP)
         val x = micLeft(size)
         val left = x + size / 2 < w / 2
+        val micTop = (Prefs.bubbleY(this) * (m.heightPixels - size)).toInt()
+        val along = Prefs.bubbleBarDirection(this) == Prefs.BAR_ALONG
+        val up = along && micTop + size / 2 > m.heightPixels / 2
+        placedUp = up
         mic.removeAllViews()
         val inner = size - 2 * (size / 5)
         mic.addView(icon, FrameLayout.LayoutParams(inner, inner, Gravity.CENTER))
         mic.addView(spinner, FrameLayout.LayoutParams(inner, inner, Gravity.CENTER))
         r.removeAllViews()
-        // The mic is the child nearest its edge; the bar keeps its own left-to-right order.
+        r.orientation = if (along) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+        // Along the edge the column hugs the mic's edge, so a wide chip can't shift the mic.
+        r.gravity = if (along) (if (left) Gravity.LEFT else Gravity.RIGHT) else Gravity.CENTER_VERTICAL
+        val scale = Prefs.bubbleBarScale(this) / 100f
+        val btn = (BUTTON_DP * scale).toInt()
+        val btnPad = (BUTTON_PAD_DP * scale).toInt()
+        // The mic is the child nearest its edge (or, along it, nearest the middle of the screen's
+        // far side); the grip is at the bar's other end; the bar keeps its own order.
         val bar = takeControls + pendingControls
-        for (c in if (left) listOf<View>(mic) + bar else bar + mic) {
-            r.addView(c, if (c === mic) LinearLayout.LayoutParams(size, size) else LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                setMargins(dp(2), 0, dp(2), 0)
-            })
+        val micFirst = if (along) !up else left
+        for (c in if (micFirst) listOf<View>(mic) + bar + grip else listOf<View>(grip) + bar + mic) {
+            val lp = when {
+                c === mic -> LinearLayout.LayoutParams(size, size)
+                c is ImageButton -> LinearLayout.LayoutParams(dp(btn), dp(btn)).also { c.setPadding(dp(btnPad), dp(btnPad), dp(btnPad), dp(btnPad)) }
+                else -> LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            }
+            if (c !== mic) if (along) lp.setMargins(0, dp(2), 0, dp(2)) else lp.setMargins(dp(2), 0, dp(2), 0)
+            r.addView(c, lp)
         }
+        timer.textSize = 14f * scale
+        source.textSize = 12f * scale
+        source.maxWidth = dp(if (along) SOURCE_ALONG_DP else SOURCE_MAX_DP)
+        insert.textSize = 15f * scale
+        styleBackdrops()
         params.gravity = Gravity.TOP or if (left) Gravity.LEFT else Gravity.RIGHT
         params.x = (if (left) x - pad else w - x - size - pad).coerceAtLeast(0)
-        params.y = (Prefs.bubbleY(this) * (resources.displayMetrics.heightPixels - size)).toInt() - pad
+        params.y = if (up) {
+            r.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+            micTop + size + pad - r.measuredHeight
+        } else micTop - pad
         if (attached) runCatching { wm.updateViewLayout(r, params) }
+    }
+
+    /**
+     * Clear bar: the plain buttons, the timer and Insert each get a mostly opaque backdrop
+     * ([BACKDROP_ALPHA]) of the bar's colour; otherwise none, the bar's background does that job.
+     * The mic chip and Retake / Discard have their own fills either way. One drawable per view.
+     */
+    private fun styleBackdrops() {
+        val clear = Prefs.bubbleBarClear(this)
+        fun backdrop(oval: Boolean) = GradientDrawable().apply {
+            if (oval) shape = GradientDrawable.OVAL else cornerRadius = dp(12).toFloat()
+            setColor(getColor(R.color.ime_bg))
+            alpha = BACKDROP_ALPHA
+        }
+        for (b in plainButtons) b.background = if (clear) backdrop(true) else null
+        timer.background = if (clear) backdrop(false) else null
+        insert.background = if (clear) backdrop(false) else null
+        val tp = if (clear) dp(6) else 0
+        timer.setPadding(dp(8), tp, dp(if (clear) 8 else 4), tp)
     }
 
     /**
@@ -420,12 +498,14 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         val pad = dp(PAD_DP)
         val anchoredLeft = params.gravity and Gravity.HORIZONTAL_GRAVITY_MASK == Gravity.LEFT
         val x = if (anchoredLeft) params.x + pad else m.widthPixels - params.x - pad - size
+        // An upward bar has the mic at the bottom of the window, not the top.
+        val micTop = if (placedUp) params.y + (root?.height ?: 0) - pad - size else params.y + pad
         if (Prefs.bubbleSide(this) == Prefs.SIDE_FREE) {
             Prefs.setBubbleX(this, x.toFloat() / (m.widthPixels - size).coerceAtLeast(1))
         } else {
             Prefs.setBubbleSide(this, if (x + size / 2 < m.widthPixels / 2) Prefs.SIDE_LEFT else Prefs.SIDE_RIGHT)
         }
-        Prefs.setBubbleY(this, ((params.y + pad).toFloat() / (m.heightPixels - size).coerceAtLeast(1)))
+        Prefs.setBubbleY(this, (micTop.toFloat() / (m.heightPixels - size).coerceAtLeast(1)))
         // Unchanged values fire no prefs callback, so place() directly as well.
         place()
     }
@@ -831,8 +911,6 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     private fun render() {
         val r = root ?: return
-        // A take or a held transcript shows the full mic and bar; the dot comes back after.
-        if (mini() != placedMini) place()
         val waiting = pending != null && state == State.IDLE
         val wanted = !Prefs.bubbleOnlyTyping(this) || editableFocused || stuck
         val show = wanted || state != State.IDLE || waiting
@@ -840,13 +918,24 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         r.background = if (open || waiting) barBg.apply { cornerRadius = dp(Prefs.bubbleSize(this@FloatingMicService)).toFloat() } else null
         for (c in takeControls) c.visibility = if (open) View.VISIBLE else View.GONE
         for (c in pendingControls) c.visibility = if (waiting) View.VISIBLE else View.GONE
-        barBg.alpha = Prefs.bubbleBarAlpha(this) * 255 / 100
+        grip.visibility = if (open || waiting) View.VISIBLE else View.GONE
+        // A take or a held transcript shows the full mic and bar; the dot comes back after. An
+        // upward bar is placed from its measured height, so opening or closing it re-places too.
+        if (mini() != placedMini || expanded() != placedExpanded) place()
+        barBg.alpha = if (Prefs.bubbleBarClear(this)) 0 else Prefs.bubbleBarAlpha(this) * 255 / 100
+        val iconStyle = Prefs.bubbleIcon(this)
         micBg.setColor(when {
             open && flashing() -> getColor(R.color.bubble_retake)
             open -> getColor(R.color.bubble_recording)
+            iconStyle != Prefs.ICON_MIC -> getColor(R.color.hebrish_green)
             else -> Prefs.bubbleColor(this)
         })
-        icon.setImageResource(if (open) R.drawable.ic_stop else R.drawable.ic_mic)
+        icon.setImageResource(when {
+            open -> R.drawable.ic_stop
+            iconStyle == Prefs.ICON_LOGO -> R.drawable.ic_bubble_h
+            iconStyle == Prefs.ICON_AYIN -> R.drawable.ic_bubble_ayin
+            else -> R.drawable.ic_mic
+        })
         icon.visibility = if (state == State.TRANSCRIBING) View.GONE else View.VISIBLE
         spinner.visibility = if (state == State.TRANSCRIBING) View.VISIBLE else View.GONE
         mic.contentDescription = getString(if (open) R.string.try_cd_stop else R.string.cd_mic)
@@ -908,6 +997,13 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         const val FLASH_MS = 1000L
         /** Widest the mic source chip gets; [Mic.shortLabel] already cuts long names. */
         const val SOURCE_MAX_DP = 110
+        /** Widest the chip gets in a bar along the edge, so the column stays narrow. */
+        const val SOURCE_ALONG_DP = 72
+        /** A bar button at full size (Prefs.bubbleBarScale 100), and its padding round the icon. */
+        const val BUTTON_DP = 44
+        const val BUTTON_PAD_DP = 10
+        /** Backdrop opacity (0..255) behind each control in a clear bar: mostly opaque. */
+        const val BACKDROP_ALPHA = 230
         /** Most nodes [findFocusedEditable] visits per search. */
         const val MAX_NODES = 1500
     }

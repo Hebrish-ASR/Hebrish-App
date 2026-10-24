@@ -1,0 +1,7 @@
+<!-- Floating mic icon "ayin" (0.11.0): the Hebrew letter ayin (U+05E2), the first letter of עבריש, from Noto Sans Hebrew Bold
+     (the brand's Hebrew face), outline extracted with fontTools onto a 64 grid (30 units tall, centred), cropped like ic_bubble_h. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="36" android:viewportHeight="36">
+    <group android:translateX="-14" android:translateY="-14">
+        <path android:fillColor="#FFFBF8F2" android:pathData="M18.94 47V41.22L25 40.02L20.33 17.83L27.22 17L30.64 33.96Q31.14 36.37 30.31 38.96Q31.88 38.59 33.11 37.82Q34.33 37.06 35.21 35.63Q36.09 34.2 36.65 31.77Q37.2 29.34 37.48 25.64L38.03 17.37H45.06L44.46 25.88Q44.23 29.39 43.56 32.46Q42.89 35.54 41.36 37.99Q39.84 40.44 37.08 42.17Q34.33 43.9 29.99 44.78Z"/>
+    </group>
+</vector>

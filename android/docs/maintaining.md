@@ -868,6 +868,54 @@ desktop 0.8.0 implements the same rules.
   JVM: 21/21 (V, 2026-10-23). Android's regex is ICU, not the JVM's; the patterns use only
   `\p{L}`, `\p{N}`, lookarounds and CASE_INSENSITIVE|UNICODE_CASE, which both support (I).
 
+## Floating mic out of the way: grip, bar along the edge, smaller defaults, icons (0.11.0, 2026-10-24)
+
+Daniel, 2026-10-24: "I'll start dictating, it'll open, and then suddenly it [is] overlaying some
+text I'm working on." Asked for: moving the overlay during a take; left as the default side; a
+smaller default; every opacity/size control down to its minimum with − / + buttons "so that you
+can really dial in exactly what you're looking for"; a size setting for the expanded bar; a clear
+mode ("a transparent background for the expander, so that the buttons are set against a mostly
+opaque background"); idle icons with the app logo's H and the Hebrew letter ayin on green. The
+objective, in his words: "the expansion happens in the least obtrusive part of the screen".
+
+- **Moving during a take.** Dragging the mic or any part of the bar already worked since 0.3.0
+  (`Drag`), but the only obvious handle was the mic, and a tap on it during a take is Stop. 0.11.0
+  adds a grip (`ic_drag`, `grip`) at the bar's outer end, shown whenever the bar is (take or held
+  transcript). Drag only, no tap action. (I) that the grip is what was missing; not reproduced.
+- **Bar along the edge** (`Prefs.bubbleBarDirection`, `bubble_bar_direction`, default `along`;
+  `across` is the 0.4.0–0.10.0 behaviour). Along: the root `LinearLayout` is vertical, children
+  hug the mic's side (`r.gravity` LEFT/RIGHT, so a wide chip can't shift the mic), the source
+  chip is capped at `SOURCE_ALONG_DP` (72). The column opens **down** from a mic in the top half
+  and **up** from one in the bottom half. Up keeps window gravity TOP and moves the window's
+  top by the bar's measured height (`r.measure(UNSPECIFIED)` in `place()`), so `Drag` and the
+  coordinate system are unchanged; the mic is then the last child (`placedUp`), which
+  `savePosition()` uses to recover the mic's top. Because the up-placement depends on whether the
+  bar is showing, `render()` sets visibilities first and re-places when `expanded()` changes
+  (`placedExpanded`), as it already did for the dot (`placedMini`). Not chosen: Gravity.BOTTOM
+  anchoring, whose origin (above or below the navigation bar) differs from `displayMetrics`.
+- **Bar size** (`Prefs.bubbleBarScale`, 50–100 %, default 80): bar buttons are `BUTTON_DP` (44)
+  × scale square with `BUTTON_PAD_DP` (10) × scale padding, `FIT_CENTER`; the timer, chip and
+  Insert text scale too. The mic keeps `bubbleSize`.
+- **Clear bar** (`Prefs.bubbleBarClear`, off by default): bar background alpha 0; the plain
+  buttons (grip, Pause, the held-transcript ×) get an oval backdrop and the timer and Insert a
+  rounded one, in `ime_bg` at `BACKDROP_ALPHA` 230/255 (`styleBackdrops()`, one drawable per
+  view). Retake/Discard and the chip already have fills.
+- **Icons** (`Prefs.bubbleIcon`: `mic` default, `logo`, `ayin`). `ic_bubble_h` is the mark's H
+  path (from `ic_hebrish`) on a 36-unit viewport cropped round it; `ic_bubble_ayin` is U+05E2
+  from Noto Sans Hebrew Bold (the brand's Hebrew face), outline extracted with fontTools onto the
+  same 64 grid. Both are drawn cream on `hebrish_green`, ignoring the colour swatches; during a
+  take the mic is red with Stop as before. Rendered as SVG to check centring (2026-10-24).
+- **Defaults and ranges:** side `left` (was right), `bubbleX` 0.1 (was 0.9), size 44 dp (was 56),
+  size range 20–96 dp (was 36–96), idle opacity and bar opacity minimum 1 % (were 25 % and 20 %).
+  New defaults only apply where no value is saved: an install whose mic was ever dragged keeps
+  its side and height.
+- **Settings screen:** − / + buttons beside the label of each slider (size, idle opacity, bar
+  size, bar opacity) step by 1 (`stepped()`); radio rows via `choice()` (side, icon, bar
+  direction); a "While you talk" section for the bar settings.
+- Compiled, not run on a device (I). To verify on a phone: dragging by the grip mid-take; the
+  upward column's mic not jumping on open/close (measured height before layout); the column on a
+  right-edge mic; 50 % bar buttons still hittable; clear bar legibility over light and dark apps.
+
 ## Not yet verified (as of 2026-10-20)
 
 - 0.9.0 on a device: reading and adding to the system personal dictionary with the voice
