@@ -31,8 +31,8 @@ android {
         minSdk = 28
         // 36 since 0.8.0: Google Play refuses new apps and updates below it from 2026-08-31.
         targetSdk = 36
-        versionCode = 24
-        versionName = "1.000"
+        versionCode = 25
+        versionName = "1.001"
         // Phones only: x86 libs would add ~25 MB for emulator use nobody needs here.
         ndk { abiFilters += "arm64-v8a" }
 

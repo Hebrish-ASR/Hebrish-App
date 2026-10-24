@@ -1,12 +1,7 @@
-**1.000: Hebrish 1.0. The floating mic gets out of the way.**
+**1.001: Transcription Mode, record while the last take finishes, and no more "um".**
 
-Versions now count 1.000, 1.001, 1.002, and so on, for Android and the desktop app alike. Earlier releases have been taken down from GitHub; this one includes everything they had.
-
-- While you talk, the bar now opens along the edge of the screen by default, as a narrow column next to the mic, instead of across the text you are writing. It opens towards the middle: down from a mic near the top, up from one near the bottom. *Across the screen* is still an option.
-- The bar has a grip (⠿) at its end: drag it to move the bar mid-take without touching the mic, which is Stop.
-- New settings under Floating mic → *While you talk*: bar size (50–100 %), and a clear bar with no background, where each button sits on its own backdrop.
-- Size and opacity sliders now have − and + buttons for one step at a time. Opacity goes down to 1 %, size down to 20 dp.
-- New icons for the idle mic: the Hebrish H or the Hebrew letter ayin (ע), on Hebrish green.
-- New installs start with a smaller mic (44 dp) on the left edge. If you have moved the mic before, it stays where you put it.
-- Android 12+ says an app "pasted from your clipboard" every time the floating mic puts text in. Apps can't turn that off, but you can: Settings → Privacy → *Show clipboard access*. The app says so once, and the Floating mic screen has a button to the privacy settings.
+- **Transcription Mode** (home screen): record a long take, then transcribe it. It has its own mic choice (switch mics mid-recording), a gain slider, a level meter with a clip light that you can hide, and Record/Pause, Retake, Stop, Transcribe and Discard, with the elapsed time small at the side. The recording is saved on the phone as you go, so a crash doesn't lose it, and deleted once the transcript is in History. A recording that wasn't transcribed is offered again.
+- **Recording in the background**, optional: a new step in Setup lets Transcription Mode keep recording with the screen off or another app open, with Pause and Stop in a notification. It asks to allow notifications. Without it, keep the screen open while you record.
+- **Tap the mic while the last take is still transcribing** and the next take starts at once. The floating mic and the voice keyboard used to ignore that tap. The texts still go in in order.
+- **Hesitations are removed**: *um*, *uh*, *eh*, *er*, *hmm* no longer appear in what you dictate, with every model.
 - Not yet tested on a phone. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).

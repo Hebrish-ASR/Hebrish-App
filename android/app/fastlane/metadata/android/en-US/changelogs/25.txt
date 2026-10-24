@@ -1,0 +1,1 @@
+1.001: Transcription Mode, record while the last take finishes, and no more "um".
