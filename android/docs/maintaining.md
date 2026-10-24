@@ -886,7 +886,7 @@ removed from every piece, always, for every model; no setting. Rules and the sha
   logic. Hebrish Keyboard gets it with its next core submodule bump.
 - Testing: `scripts/check_disfluency.sh` (same JVM harness as `check_dictionary.sh`; needs
   `JAVA_HOME` set to a JDK 21 if the default points elsewhere): 33/33 (V, 2026-10-24). The app was
-  not built locally (no NDK on the laptop); CI compiled it (see the commit).
+  not built locally (no NDK on the laptop); the CI `apk` job built bd60ad8 (run 40084327871, V).
 
 ## Floating mic out of the way: grip, bar along the edge, smaller defaults, icons (1.000, 2026-10-24)
 
