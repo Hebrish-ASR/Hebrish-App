@@ -11,9 +11,12 @@ It must never take keyboard focus, because the transcript is pasted into whateve
   onto the xcb platform (XWayland) as an override-redirect window: compositors put those where
   they ask, stack them above managed windows and never give them focus. The main app stays
   native Wayland. With no XWayland ($DISPLAY unset) the overlay is unavailable.
+"No text field" (state `nofield`, 1.000): after a take that found no text field to paste into
+(hebrish.focus), a label, a Paste button and ×: click into the right field, then Paste. It
+works because the overlay never takes the focus; the mic does the same as Paste.
 Parent and child talk JSON lines over the child's stdin/stdout: the parent sends
 {"visible", "state", "seconds", "level", "paused", "opacity", "pos"}, the child sends
-{"action": "toggle|pause|retake|discard"} and {"pos": [x, y]} after a drag.
+{"action": "toggle|pause|retake|discard|paste_last|dismiss_no_field"} and {"pos": [x, y]} after a drag.
 """
 
 import json
@@ -38,7 +41,10 @@ BARS = 14
 TIPS = {"mic": {"idle": "Start dictation", "recording": "Stop and transcribe",
                 "busy": "Transcribing", "done": ""},
         "pause": "Pause", "resume": "Resume", "retake": "Retake: discard and start again",
-        "discard": "Discard this take"}
+        "discard": "Discard this take",
+        "paste": "Paste the last transcription where the cursor is now",
+        "dismiss": "Dismiss"}
+TIPS["mic"]["nofield"] = TIPS["paste"]
 
 
 def mode() -> tuple[str, str]:
@@ -125,7 +131,7 @@ class Overlay(QWidget):
         self.update()
 
     def _text(self) -> str:
-        return {"busy": "Transcribing…", "done": "Inserted"}.get(self.state, "")
+        return {"busy": "Transcribing…", "done": "Inserted", "nofield": "No text field"}.get(self.state, "")
 
     # -- geometry ------------------------------------------------------------------
     def _screen_rect(self) -> QRect:
@@ -137,6 +143,9 @@ class Overlay(QWidget):
         if self.state == "recording":
             parts = [("timer", fm.horizontalAdvance("00:00") + 10), ("bars", BARS * 5 + 6),
                      ("resume" if self.paused else "pause", BTN), ("retake", BTN), ("discard", BTN)]
+        elif self.state == "nofield":
+            parts = [("label", fm.horizontalAdvance(self._text()) + 14),
+                     ("paste", fm.horizontalAdvance("Paste") + 24), ("dismiss", BTN)]
         elif self._text():
             parts = [("label", fm.horizontalAdvance(self._text()) + 14)]
         else:
@@ -186,13 +195,22 @@ class Overlay(QWidget):
                 p.drawText(rect, Qt.AlignCenter, self._text())
             elif name in ("pause", "resume", "retake", "discard"):
                 self._paint_button(p, name, QRectF(rect))
+            elif name == "dismiss":
+                self._paint_button(p, "discard", QRectF(rect), hover=self.hover == name)
+            elif name == "paste":
+                pill = QRectF(rect).adjusted(3, 12, -3, -12)
+                p.setPen(Qt.NoPen)
+                p.setBrush(QColor(GREEN).lighter(125 if self.hover == name else 100))
+                p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2)
+                p.setPen(white)
+                p.drawText(pill, Qt.AlignCenter, "Paste")
 
     def _paint_mic(self, p: QPainter, r: QRectF):
         st = self.state
-        col = QColor({"idle": BLUE, "recording": RED, "busy": AMBER, "done": GREEN}[st])
+        col = QColor({"idle": BLUE, "recording": RED, "busy": AMBER, "done": GREEN, "nofield": AMBER}[st])
         if st == "recording" and self.paused:
             col = QColor("#6B7785")
-        if self.hover == "mic" and st in ("idle", "recording"):
+        if self.hover == "mic" and st in ("idle", "recording", "nofield"):
             col = col.lighter(115)
         c = r.center()
         if st == "recording" and not self.paused:     # a halo that follows the voice
@@ -236,9 +254,9 @@ class Overlay(QWidget):
             p.drawRoundedRect(QRectF(x, cy - h / 2, 3, h), 1.5, 1.5)
             x += 5
 
-    def _paint_button(self, p: QPainter, name: str, r: QRectF):
+    def _paint_button(self, p: QPainter, name: str, r: QRectF, hover: bool | None = None):
         c = r.center()
-        if self.hover == name:
+        if self.hover == name if hover is None else hover:
             p.setPen(Qt.NoPen)
             p.setBrush(QColor(255, 255, 255, 38))
             p.drawEllipse(c, 14, 14)
@@ -271,7 +289,7 @@ class Overlay(QWidget):
     # -- mouse: click a part, or drag the whole thing ----------------------------------
     def _hit(self, pos: QPoint) -> str:
         for name, rect in self.items.items():
-            if name in ("mic", "pause", "resume", "retake", "discard") and rect.contains(pos):
+            if name in ("mic", "pause", "resume", "retake", "discard", "paste", "dismiss") and rect.contains(pos):
                 return name
         return ""
 
@@ -305,7 +323,11 @@ class Overlay(QWidget):
             self.moved.emit(self.anchor.x(), self.anchor.y())
             return
         hit = self._hit(ev.position().toPoint())
-        if hit == "mic" and self.state in ("idle", "recording"):
+        if self.state == "nofield" and hit in ("mic", "paste"):
+            self.action.emit("paste_last")
+        elif self.state == "nofield" and hit == "dismiss":
+            self.action.emit("dismiss_no_field")
+        elif hit == "mic" and self.state in ("idle", "recording"):
             self.action.emit("toggle")
         elif hit in ("pause", "resume", "retake", "discard"):
             self.action.emit("pause" if hit == "resume" else hit)

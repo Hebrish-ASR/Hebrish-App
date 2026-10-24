@@ -44,6 +44,7 @@ DEFAULTS = {
     "key_retake": "",
     "key_discard": "",
     "key_send": "",               # Stop and send: stop, insert, then press send_chord
+    "key_paste_last": "",         # paste the last transcription again (1.000)
     "send_chord": "enter",        # e.g. ctrl+enter for apps where Enter is a new line
     "double_tap_retake": True,    # double tap of the toggle key while recording = Retake
     "double_tap_ms": 300,         # how long a stopping tap waits for the second tap
@@ -60,6 +61,10 @@ DEFAULTS = {
     "out_cursor": True,
     "out_clipboard": False,       # the whole take on the clipboard when it ends (pieces, if not pasting)
     "out_window": False,          # the Dictate tab's text box
+    # After a pasted take, ask AT-SPI whether a text field had focus and, if not, show "No text
+    # field" with Paste in the overlay (1.000, hebrish.focus). Opt-in: it turns the desktop's
+    # accessibility switch on, and some apps report no field when there is one.
+    "detect_no_field": False,
 
     "paste_chord": "ctrl+v",      # e.g. ctrl+shift+v if you dictate mostly into terminals
     "trailing_space": True,

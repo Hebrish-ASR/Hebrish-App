@@ -777,6 +777,33 @@ blocks. D-2026-10-24-02.
   `test_live.py`'s worker harness. Screenshot checked off-screen (2026-10-24); not used on a real
   session yet (I).
 
+## Paste last transcription, and "No text field" (1.000, 2026-10-24)
+
+Daniel, 2026-10-24: with paste at the cursor only, a take pasted into the wrong window is lost
+("I'm not going to have a way to retrieve that text"). Asked for the last transcription kept in
+memory with a customizable shortcut to paste it, and, when the transcription fires with no text
+input position, a pop-up "no text target available" with a Paste button. Drift detection (the
+user left the window the take started in) is backlog I-14. D-2026-10-24-03.
+
+- **Paste last** (`Controller.paste_last`): `last_text` is set in `_done` (ALL CAPS applied, as
+  pasted); empty after a restart, then History's newest row (with `keep_history`). Pastes with
+  `trailing_space`, 0.25 s after the trigger on a thread, so the action key or the click has been
+  released before the chord. Ignored during a take. Triggers: action key `key_paste_last`
+  (`hotkey.ACTIONS`, so Settings → Action keys shows it; a single key like the other action keys,
+  not a chord), the tray's *Paste last transcription*, the overlay's Paste.
+- **No text field** (`hebrish/focus.py`, opt-in `detect_no_field`): after a take with
+  `out_cursor`, `focus.text_target()` runs on a thread; only `False` acts: `_show_no_field` copies
+  the whole take to the clipboard and puts the overlay in state `nofield` (amber mic, label, Paste,
+  ×; mic and Paste send `paste_last`, × `dismiss_no_field`) for `NO_FIELD_S` (30 s). The overlay
+  shows it even when set to off, because it is the only window that doesn't take the focus, so
+  the user can click into the field and then Paste. Why opt-in, with measurements, in focus.py's
+  docstring: AT-SPI is off by default on KDE (the setting turns it on via `busctl`, also at
+  start), and Konsole's focused object is a non-editable "filler", hence the terminal allowlist.
+  The .deb recommends `python3-gi` and `gir1.2-atspi-2.0`; without them the check says None.
+  Windows: no check (None); Paste last works there.
+- Tests: `tests/test_paste_last.py`. Overlay state rendered off-screen (2026-10-24). The AT-SPI
+  query was run against a live KDE session (Konsole active); the prompt itself not yet seen in use (I).
+
 ## App updates in the app (0.6.2, 2026-10-21)
 
 Model updates are `model_store`'s job; `hebrish/app_update.py` (no Qt) is for the app itself.

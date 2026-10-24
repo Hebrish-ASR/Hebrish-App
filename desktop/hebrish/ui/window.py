@@ -1131,6 +1131,13 @@ class MainWindow(QMainWindow):
         b.addWidget(muted("Output (at the cursor, clipboard, this window: any combination) and the "
                           "microphone are on the Dictate tab."))
         b.addWidget(self._check("trailing_space", "Add a space after each transcript"))
+        nf = self._check("detect_no_field", "Experimental: when a take finds no text field, offer "
+                                            "Paste in the overlay", self._on_detect_no_field)
+        nf.setToolTip("After each pasted take, Hebrish asks the desktop's accessibility interface "
+                      "whether a text field had focus. Turning this on switches that interface on "
+                      "for every app. Some apps report no field when there is one. The Paste last "
+                      "transcription key (Action keys) works either way.")
+        b.addWidget(nf)
         caps = self._check("all_caps", "Dictate in ALL CAPS (from the next take)")
         caps.setToolTip("Just for fun: everything you dictate is pasted in capitals. History and the "
                         "File tab keep the normal case.")
@@ -1396,6 +1403,11 @@ class MainWindow(QMainWindow):
 
     def status(self, text):
         self.status_label.setText(text)
+
+    def _on_detect_no_field(self):
+        if self.cfg["detect_no_field"]:
+            from .. import focus
+            focus.enable_bus(True)
 
     def sync_output(self):
         """Output and paste shortcut were changed from the tray menu."""

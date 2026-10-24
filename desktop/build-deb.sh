@@ -66,7 +66,7 @@ Installed-Size: $(du -sk "$ROOT/usr" | cut -f1)
 Maintainer: Hebrish <info@hebrish.app>
 Homepage: https://github.com/Hebrish-ASR/Hebrish-App
 Depends: python3 (>= $PYVER), python3 (<< $PYNEXT), python3-pyside6.qtwidgets, python3-pyside6.qtnetwork, qt6-svg-plugins, python3-numpy, python3-sounddevice, python3-evdev, libportaudio2, wl-clipboard, xclip, qt6-wayland
-Recommends: ffmpeg
+Recommends: ffmpeg, python3-gi, gir1.2-atspi-2.0
 Conflicts: parakeet-dictation, codeswitch-dictation, voice-to-hebrish
 Replaces: codeswitch-dictation, voice-to-hebrish
 Description: Hebrish: on-device dictation with NVIDIA Parakeet

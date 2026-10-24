@@ -9,6 +9,19 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-24-03: Paste last transcription; the "No text field" prompt is opt-in
+
+- **Decision:** Desktop keeps the last transcription and pastes it again on an action key, a tray
+  item or the overlay's Paste. The "No text field" prompt (AT-SPI focus check, overlay with Paste)
+  ships off by default, as an experimental setting.
+- **Why:** Daniel, 2026-10-24: text pasted into the wrong window was unrecoverable; he asked for
+  both. Opt-in because the check needs the desktop accessibility switch on for every app (off by
+  default on KDE) and gave a false "no field" for Konsole on the first try (2026-10-24), so on by
+  default it would interrupt the main use, dictating into a terminal.
+- **Alternatives:** a modal dialog (takes the focus, so Paste would go into the dialog); a desktop
+  notification (no button that pastes into the field). Drift detection: backlog I-14.
+- **By:** Daniel (features), agent (opt-in default, overlay as the prompt).
+
 ### D-2026-10-24-02: Desktop outputs are switches; paste at the cursor only by default
 
 - **Decision:** The desktop's Output is three independent switches (at the cursor, clipboard,

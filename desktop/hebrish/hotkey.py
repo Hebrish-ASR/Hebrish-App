@@ -29,7 +29,8 @@ import time
 MODIFIERS = {"KEY_LEFTCTRL", "KEY_RIGHTCTRL", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT",
              "KEY_LEFTALT", "KEY_RIGHTALT", "KEY_LEFTMETA", "KEY_RIGHTMETA"}
 ACTIONS = [("start", "Start"), ("stop", "Stop"), ("pause", "Pause / resume"),
-           ("retake", "Retake"), ("discard", "Discard"), ("send", "Stop and send")]
+           ("retake", "Retake"), ("discard", "Discard"), ("send", "Stop and send"),
+           ("paste_last", "Paste last transcription")]
 SLOTS = ["hotkey", "ptt_hotkey"] + [f"key_{a}" for a, _ in ACTIONS]   # one key per slot, at most
 
 

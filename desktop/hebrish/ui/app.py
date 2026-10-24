@@ -44,6 +44,8 @@ CUE_MARGIN_S = 0.15
 # With both the cursor and the clipboard on, the whole take is copied this long after the take's
 # last paste chord, so the target app has read the clipboard (the last piece) before it changes.
 CLIPBOARD_AFTER_PASTE_MS = 600
+# How long the overlay offers "No text field · Paste" before it goes back to normal.
+NO_FIELD_S = 30
 BEEPS = {"recording": 880, "transcribing": 620, "discarded": (660, 440), "retake": (523, 880)}
 
 
@@ -63,6 +65,7 @@ class Signals(QObject):
     captured = Signal(str)
     transcribed = Signal(str, object, object)   # text, error, the take's samples (for history)
     piece = Signal(str)             # each decoded piece of a take, for the Dictate tab's text box
+    no_field = Signal()             # focus.text_target() said False after a take (detect_no_field)
     fetched = Signal(object, object)    # manifest or None, error: download_model()
     moved = Signal(object)          # error or None: move_models()
     loaded = Signal(object)
@@ -92,6 +95,11 @@ class Controller(QObject):
         self.latencies: deque[float] = deque(maxlen=200)   # stop -> text inserted, seconds
         self.splash = splash
         self._overlay_done = False
+        # The last transcription as it went out (ALL CAPS applied), for Paste last (1.000, Daniel
+        # 2026-10-24: pasted into the wrong window, "I'm not going to have a way to retrieve that
+        # text"). In memory; after a restart Paste last falls back to History's newest entry.
+        self.last_text = ""
+        self._no_field = False           # the overlay shows "No text field" with Paste
         # Every transcript (0.7.0): SQLite with a full-text index, hebrish.history. The 0.6.x
         # history.json (last 50) is imported once.
         self.history = History(HISTORY_DB)
@@ -104,6 +112,7 @@ class Controller(QObject):
         self.sig.cancel.connect(self.cancel)
         self.sig.action.connect(self.do_action)
         self.sig.transcribed.connect(self._done)
+        self.sig.no_field.connect(self._show_no_field)
         self.sig.loaded.connect(self._loaded)
         self.sig.checked.connect(self._checked)
         self.sig.downloaded.connect(self._downloaded)
@@ -121,6 +130,9 @@ class Controller(QObject):
                                      self.sig.cancel.emit, lambda: self.state == "recording",
                                      self.sig.action.emit)
         self.hotkeys.start()
+        if self.cfg["detect_no_field"]:
+            from .. import focus
+            focus.enable_bus(True)        # apps register with AT-SPI only while it is on
 
         # Decoding runs on one worker, in order: (take, samples, final). Live insertion queues
         # pieces of the take while it is still recording; stop() queues the rest as final.
@@ -262,6 +274,10 @@ class Controller(QObject):
         elif action == "retake":
             self.cancel(quiet=True)
             self.start(cue="retake")
+        elif action == "paste_last":
+            self.paste_last()
+        elif action == "dismiss_no_field":
+            self._clear_no_field()
         elif action == "send":
             # While recording: stop, and send once the last text is in. Already stopped and
             # still transcribing (_stopped_at is set): send this take when it lands.
@@ -269,14 +285,67 @@ class Controller(QObject):
                 self._send_take = self._take
                 self.stop()
 
+    def paste_last(self):
+        """Paste the last transcription at the cursor (action key, tray, the overlay's Paste).
+        Not during a take: its own pieces are being pasted."""
+        if self.state != "idle":
+            return
+        text = self.last_text
+        if not text and self.cfg["keep_history"]:
+            rows = self.history.recent(1)
+            text = rows[0]["text"] if rows else ""
+        if not text:
+            self.win.status("No transcription to paste yet.")
+            return
+        self._clear_no_field()
+        end = " " if self.cfg["trailing_space"] else ""
+
+        def go():
+            # Let the action key (or the click on the overlay) finish first: a paste chord
+            # pressed while another key is still down can come out as a different shortcut.
+            time.sleep(0.25)
+            try:
+                self.inserter.insert(text + end, "paste", self.cfg["paste_chord"])
+            except Exception:
+                log.exception("paste last failed")
+        threading.Thread(target=go, daemon=True).start()
+
+    def _check_field(self, take_text):
+        """detect_no_field: after a pasted take, ask AT-SPI (off the GUI thread) whether a text
+        field had focus; hebrish.focus says why only a definite "no" prompts."""
+        from .. import focus
+
+        def ask():
+            if focus.text_target() is False:
+                self.sig.no_field.emit()
+        threading.Thread(target=ask, daemon=True).start()
+
+    def _show_no_field(self):
+        if self.state != "idle" or not self.last_text:
+            return
+        # The whole take on the clipboard too, so Ctrl+V works wherever the user clicks next.
+        self._copy_take(self.last_text)
+        self._no_field = True
+        self._overlay_push()
+        QTimer.singleShot(NO_FIELD_S * 1000, self._clear_no_field)
+
+    def _clear_no_field(self):
+        if self._no_field:
+            self._no_field = False
+            self._overlay_push()
+
     def overlay_changed(self):
         self._overlay_push()
 
     def _overlay_push(self):
         st = "done" if self._overlay_done else ("idle" if self.loading else self.state)
+        if self._no_field and st == "idle":
+            st = "nofield"
         show = self.cfg["overlay"]
         self.overlay.send({
-            "visible": show == "always" or (show == "active" and st != "idle"),
+            # "No text field" shows even with the overlay off: it is the only place for Paste
+            # that doesn't take the keyboard focus from the field the user clicks into.
+            "visible": show == "always" or (show != "off" and st != "idle") or st == "nofield",
             "state": st, "paused": self.recorder.paused,
             "seconds": round(self.recorder.seconds, 1), "level": round(self.recorder.level, 3),
             "opacity": self.cfg["overlay_opacity"], "pos": self.cfg["overlay_pos"]})
@@ -441,6 +510,9 @@ class Controller(QObject):
                                   lambda: self._copy_take(whole))
                 if not self.cfg["out_cursor"]:
                     self.cue("copied")
+            self.last_text = text.upper() if self.cfg["all_caps"] else text
+            if self.cfg["out_cursor"] and self.cfg["detect_no_field"]:
+                self._check_field(self.last_text)
             self.remember(text, samples)
         self._stopped_at = 0.0
         self.set_state("idle")
@@ -853,6 +925,7 @@ class Controller(QObject):
         # Checkable actions connect triggered() themselves: PySide's addAction(text, slot) calls
         # the slot without the checked state, so a slot that takes it raised TypeError.
         self.act_toggle = m.addAction("Start dictation", self.toggle)
+        m.addAction("Paste last transcription", self.paste_last)
         self.act_overlay = m.addAction("Show overlay")
         self.act_overlay.setCheckable(True)
         self.act_overlay.triggered.connect(self._tray_overlay)

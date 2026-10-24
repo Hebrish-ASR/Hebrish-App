@@ -24,6 +24,14 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
   then presses the **Send key** (`enter` by default; `ctrl+enter` or `shift+enter` where Enter
   makes a new line). For chat boxes and Claude Code, where an Enter pressed while the last piece
   is still being transcribed would submit without it. Paste output only.
+- **Paste last transcription** (1.000, optional action key and a tray item): pastes the last
+  take again where the cursor is now, for when it went into the wrong window. Kept in memory;
+  after a restart it is History's newest entry.
+- **No text field** (1.000, experimental, off by default; Settings → Output): after a take,
+  Hebrish asks the desktop's accessibility interface whether a text field had focus. If not, the
+  overlay shows *No text field* with **Paste** (click into the field, then Paste; the overlay never
+  takes the focus) for 30 seconds, and the whole take is on the clipboard. Turning it on switches
+  the accessibility interface on for every app, and some apps report no field when there is one.
 - **Insert as you go** (Settings → Speed, on by default since 0.5.0): presets *Fast* (~3 s),
   *Normal* (~5 s, the default since 0.7.1; was ~7 s), *Relaxed* (~8 s), *Off*, or *Custom*
   (3–60 s). The take is decoded while you are still talking and the text is inserted at a pause, so a
