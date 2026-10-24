@@ -916,6 +916,30 @@ objective, in his words: "the expansion happens in the least obtrusive part of t
   upward column's mic not jumping on open/close (measured height before layout); the column on a
   right-edge mic; 50 % bar buttons still hittable; clear bar legibility over light and dark apps.
 
+## "Pasted from your clipboard": a tip, not a fix (0.11.1, 2026-10-24)
+
+Daniel, 2026-10-24: every floating-mic insert makes Android say the app "pasted from your
+clipboard"; "definitely going to get on everyone's nerves". Asked to prevent it, or else tell users
+to turn it off.
+
+- Cause: since 0.9.1 the floating mic inserts with clipboard + `ACTION_PASTE` (see "Floating mic
+  pastes instead of rewriting"). Android 12+ shows a clipboard-access toast whenever an app reads a
+  clip that another app set. AOSP `ClipboardService.showAccessNotificationLocked` skips it only
+  if the reader is the clip's owner or the default IME, or if the secure setting
+  `clipboard_show_access_notifications` is 0 (from AOSP, as remembered; not re-read 2026-10-24) (I).
+- Can't be prevented by the app: changing that setting needs `WRITE_SECURE_SETTINGS` (adb only),
+  and no clip flag suppresses the toast (`ClipDescription.EXTRA_IS_SENSITIVE` only hides the
+  Android 13 copy preview). The only way round it is `ACTION_SET_TEXT`, which was the default up
+  to 0.9.0 and was dropped for jumping fields and lost line breaks. Not brought back.
+- What ships: on Android 12+ (`SDK_INT >= S`), after the first successful paste, one long toast
+  (`bubble_clipboard_tip`, delayed `CLIPBOARD_TIP_DELAY_MS` so it follows Android's own toast;
+  `Prefs.clipboardTipShown`); and on the Floating mic screen a note plus **Open privacy settings**
+  (`Settings.ACTION_PRIVACY_SETTINGS`, falling back to `ACTION_SETTINGS`). The toggle is *Show
+  clipboard access* under Privacy on Pixel / stock Android 12+; the name and place on other
+  phones (Samsung, OnePlus) are not checked (I).
+- Not compiled locally: since the F-Droid source build (pulled 2026-10-24) the laptop needs NDK
+  26.3.11579264 to configure the project; CI compiled it.
+
 ## Not yet verified (as of 2026-10-20)
 
 - 0.9.0 on a device: reading and adding to the system personal dictionary with the voice

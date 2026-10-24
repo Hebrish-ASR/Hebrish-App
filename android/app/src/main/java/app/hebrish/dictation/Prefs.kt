@@ -34,6 +34,10 @@ object Prefs {
     fun lastTranscript(ctx: Context): String? = sp(ctx).getString("last_transcript", null)
     fun setLastTranscript(ctx: Context, v: String) = sp(ctx).edit().putString("last_transcript", v).apply()
 
+    /** The one-time tip about Android's "pasted from your clipboard" notice has been shown (0.11.1). */
+    fun clipboardTipShown(ctx: Context) = sp(ctx).getBoolean("clipboard_tip_shown", false)
+    fun setClipboardTipShown(ctx: Context) = sp(ctx).edit().putBoolean("clipboard_tip_shown", true).apply()
+
     /**
      * Long takes: insert each segment's text as soon as it is decoded (TakeDecoder's onText),
      * instead of all of it at Stop. Discard then only drops what hasn't gone in yet.

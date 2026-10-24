@@ -116,6 +116,13 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
         switch(R.string.bubble_only_typing, { Prefs.bubbleOnlyTyping(this) }, { Prefs.setBubbleOnlyTyping(this, it) })
         switch(R.string.bubble_clear_placeholder, { Prefs.clearPlaceholder(this) }, { Prefs.setClearPlaceholder(this, it) })
         small(R.string.bubble_clear_placeholder_hint)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            text(R.string.bubble_clipboard_notice, top = 12)
+            button(R.string.bubble_clipboard_settings) {
+                runCatching { startActivity(Intent(android.provider.Settings.ACTION_PRIVACY_SETTINGS)) }
+                    .onFailure { startActivity(Intent(android.provider.Settings.ACTION_SETTINGS)) }
+            }
+        }
         text(R.string.bubble_options_hint)
     }
 

@@ -158,6 +158,9 @@
     <string name="bubble_bar_direction_hint">Along the edge, the bar is a narrow column next to the mic, opening towards the middle of the screen.</string>
     <string name="bubble_bar_scale">Bar size: %1$d%%</string>
     <string name="bubble_bar_clear">Clear bar: buttons only, no background</string>
+    <string name="bubble_clipboard_tip">Tired of \"pasted from your clipboard\"? Android shows it every time. Turn it off: Settings → Privacy → Show clipboard access.</string>
+    <string name="bubble_clipboard_notice">Each time the floating mic puts text in, Android may say an app \"pasted from your clipboard\". That is Android\'s notice, and apps can\'t turn it off. You can: Settings → Privacy → Show clipboard access (the name and place vary by phone).</string>
+    <string name="bubble_clipboard_settings">Open privacy settings</string>
     <string name="bubble_colour">Mic colour</string>
     <string name="bubble_colour_cd">Mic colour %1$d</string>
     <string name="bubble_colour_hint">While you talk the mic is always red.</string>

@@ -848,12 +848,12 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
                 return true
             }
             copy(text)
-            return node.performAction(AccessibilityNodeInfo.ACTION_PASTE)
+            return node.performAction(AccessibilityNodeInfo.ACTION_PASTE).also { if (it) clipboardTip() }
         }
         // The separator is judged from what is before the cursor; a hidden tail ends in a break.
         val insert = TakeDecoder.join(if (hidden > 0) "\n" else current.substring(0, start), text)
         copy(insert)
-        if (node.performAction(AccessibilityNodeInfo.ACTION_PASTE)) return true
+        if (node.performAction(AccessibilityNodeInfo.ACTION_PASTE)) return true.also { clipboardTip() }
         Log.i(TAG, "Paste refused: rewriting the field")
         // Restore a hidden tail as line breaks (the case seen) so the rewrite doesn't drop it.
         if (hidden > 0) {
@@ -880,6 +880,20 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor)
         })
         return true
+    }
+
+    /**
+     * Android 12+ shows "<app> pasted from your clipboard" on every paste from another app's clip,
+     * so every floating-mic insert triggers it (0.11.1, Daniel 2026-10-24: "definitely going to get
+     * on everyone's nerves"). Apps can't suppress it: the switch is the secure setting
+     * clipboard_show_access_notifications, which needs WRITE_SECURE_SETTINGS; the only way round it
+     * is SET_TEXT, dropped in 0.9.1 for jumping fields and lost line breaks. So, once, a long toast
+     * says where to turn it off; the Floating mic screen has a button to Privacy settings.
+     */
+    private fun clipboardTip() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S || Prefs.clipboardTipShown(this)) return
+        Prefs.setClipboardTipShown(this)
+        main.postDelayed({ Toast.makeText(this, R.string.bubble_clipboard_tip, Toast.LENGTH_LONG).show() }, CLIPBOARD_TIP_DELAY_MS)
     }
 
     /** No field took [text]: keep it for the Insert button, and on the clipboard. */
@@ -1004,6 +1018,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         const val BUTTON_PAD_DP = 10
         /** Backdrop opacity (0..255) behind each control in a clear bar: mostly opaque. */
         const val BACKDROP_ALPHA = 230
+        /** After Android's own clipboard toast, so the tip is not hidden behind it. */
+        const val CLIPBOARD_TIP_DELAY_MS = 2500L
         /** Most nodes [findFocusedEditable] visits per search. */
         const val MAX_NODES = 1500
     }
