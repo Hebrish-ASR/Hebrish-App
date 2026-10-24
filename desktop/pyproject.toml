@@ -12,7 +12,12 @@ requires-python = ">=3.12"
 license = "MIT"
 # On Linux, PySide6 and python3-evdev come from the distro (install.sh makes the venv with
 # --system-site-packages; the .deb depends on the apt packages). Windows gets them from pip.
-dependencies = ["sherpa-onnx>=1.12", "sounddevice>=0.4", "numpy"]
+dependencies = [
+    "sherpa-onnx>=1.12",
+    "sounddevice>=0.4",
+    "numpy",
+    "onnxruntime>=1.17",
+]
 
 [project.optional-dependencies]
 windows = ["PySide6-Essentials>=6.8", "pynput>=1.7", "pyperclip>=1.8", "soundfile>=0.12"]

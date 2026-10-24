@@ -151,6 +151,12 @@ class History:
             self.db.execute("UPDATE dictations SET original = COALESCE(original, text), text = ?, "
                             "words = ? WHERE id = ?", (text.strip(), count_words(text), rid))
 
+    def relayout(self, rid: int, text: str):
+        """Same words, new paragraphs (the Transcription tab's Paragraphs setting, B-44). Not a
+        correction, so `original` is left alone; only whitespace may differ."""
+        with self.db:
+            self.db.execute("UPDATE dictations SET text = ? WHERE id = ?", (text.strip(), rid))
+
     def delete(self, rid: int):
         r = self.db.execute("SELECT audio FROM dictations WHERE id = ?", (rid,)).fetchone()
         if r and r["audio"]:

@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: sudo apt-get install -y -q libportaudio2
-      - run: pip install numpy sounddevice pytest
+      - run: pip install numpy sounddevice onnxruntime pytest     # onnxruntime: the paragraph-model parity tests
       - run: python -m pytest -q tests
 
   windows:
@@ -54,7 +54,10 @@ jobs:
         run: >
           pyinstaller --noconfirm --windowed --name Hebrish
           --icon packaging/windows/icon.ico
-          --collect-all sherpa_onnx --collect-all _sounddevice_data
+          --collect-all sherpa_onnx --collect-binaries onnxruntime --hidden-import onnxruntime
+          --exclude-module onnxruntime.tools --exclude-module onnxruntime.transformers
+          --exclude-module onnxruntime.quantization
+          --collect-all _sounddevice_data
           --collect-all soundfile --collect-all _soundfile_data
           --collect-data hebrish
           --hidden-import hebrish.hotkey_win --hidden-import hebrish.inserter_win

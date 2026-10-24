@@ -74,7 +74,10 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
 
 **File** (an audio file):
 - Drop a file on the drop zone (half the tab) or click it to choose one. With ffmpeg installed it reads any format; without it, WAV, FLAC, OGG and MP3.
-- The transcript fills an editable text box piece by piece, about one paragraph per 30 s, split at a pause.
+- The transcript fills an editable text box piece by piece. **Paragraphs:** *None* (one block),
+  *Time-based* (about one paragraph per 30 s, split at a pause) or *Paragraph model* (a small
+  model, downloaded once, 34 MB, that starts paragraphs where the topic moves on once the
+  transcript is done). Changing it re-flows the last transcript unless you've edited it.
 - New transcripts are added at the end of the text. Copy it, or save it as .txt or .md.
 - Long recordings: dictate with the Talk button (a take can run an hour), or record elsewhere and drop the file here.
 
@@ -111,7 +114,7 @@ sudo apt install ./hebrish_*_amd64.deb
 sudo usermod -aG input $USER     # for the hotkey; log in again afterwards
 ```
 
-The .deb bundles sherpa-onnx (Ubuntu doesn't ship it) and is pinned to Ubuntu 26.04's
+The .deb bundles sherpa-onnx and onnxruntime (Ubuntu ships neither) and is pinned to Ubuntu 26.04's
 python3 (3.14). It runs natively on Wayland (GNOME and KDE) and on X11; see
 [`docs/maintaining.md`](docs/maintaining.md), "Wayland", for how each part works there. It replaces the predecessor apps `voice-to-hebrish`, `codeswitch-dictation`
 and `parakeet-dictation` (Parakeet-Type-Ubuntu), so only one dictation app is installed, and

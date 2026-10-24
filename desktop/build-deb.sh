@@ -2,8 +2,10 @@
 # Build an Ubuntu .deb:  ./build-deb.sh  ->  dist/hebrish_<version>-1_amd64.deb
 #
 # /usr/lib/hebrish/ holds the app plus sherpa-onnx (+ sherpa-onnx-core,
-# which bundles onnxruntime), installed with `uv pip install --target`: Ubuntu ships
-# neither, and nothing is fetched at install time. Everything else comes from apt.
+# which bundles onnxruntime's C library for the speech models) and the onnxruntime Python package
+# (the paragraph model, B-44; its binding links ONNX Runtime statically, so the two coexist),
+# installed with `uv pip install --target`: Ubuntu ships none of them, and nothing is fetched at
+# install time. Everything else comes from apt.
 # The wheels are CPython-ABI specific, so the package is amd64 and pinned to the
 # python3 minor it was built against (see Depends).
 # Installs alongside the separate `parlance` package (Parlance-Dictation, which upgrades the
@@ -31,10 +33,14 @@ mkdir -p "$ROOT/DEBIAN" "$LIB" "$ROOT/usr/bin" "$ROOT/usr/share/applications" \
          "$ROOT/etc/apt/keyrings" "$ROOT/etc/apt/sources.list.d" "$ROOT/usr/share/metainfo"
 
 uv pip install --quiet --python "$PY" --target "$LIB" --no-deps "sherpa-onnx>=1.12" sherpa-onnx-core
+uv pip install --quiet --python "$PY" --target "$LIB" --no-deps "onnxruntime>=1.17"
+# Not used by the app: onnxruntime's C library (the Python binding has its own copy linked in;
+# a session runs without it, checked 2026-10-24 with 1.31.0) and its model-conversion tools. -32 MB.
+rm -rf "$LIB"/onnxruntime/capi/libonnxruntime.so.* "$LIB"/onnxruntime/{tools,transformers,quantization}
 uv pip install --quiet --python "$PY" --target "$LIB" --no-deps .
 rm -rf "$LIB/bin" "$LIB/.lock" "$LIB"/*.dist-info/{uv_build.json,uv_cache.json,direct_url.json}
 find "$LIB" -name '__pycache__' -type d -prune -exec rm -rf {} +
-bundled=$(cd "$LIB" && ls -d sherpa*.dist-info | sed 's/\.dist-info$//' | tr '\n' ' ')
+bundled=$(cd "$LIB" && ls -d sherpa*.dist-info onnxruntime*.dist-info | sed 's/\.dist-info$//' | tr '\n' ' ')
 
 install -m755 packaging/debian/$PKG packaging/debian/$PKG-model "$ROOT/usr/bin/"
 install -m644 packaging/$PKG.desktop "$ROOT/usr/share/applications/"

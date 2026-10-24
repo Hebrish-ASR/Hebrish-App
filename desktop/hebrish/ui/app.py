@@ -564,18 +564,30 @@ class Controller(QObject):
     def remember(self, text, samples=None, source="dictate", seconds=None):
         """Add a transcript to the history (when `keep_history`): text only, never audio (0.7.3,
         D-2026-10-22-20); samples only give the take's length. The Transcription tab calls this too, with
-        source="file" or "record" (Transcription Mode) and no samples."""
+        source="file" or "record" (Transcription Mode) and no samples. Returns the row id, or None."""
         if not self.cfg["keep_history"] or not text.strip():
-            return
+            return None
         cur = model_store.active()
         model = f"{cur[1].model} {cur[1].version}" if cur else ""
         if samples is not None:
             seconds = len(samples) / audio.SAMPLE_RATE
         try:
-            self.history.add(text, seconds=seconds, model=model, source=source,
-                             model_rev=cur[1].revision if cur else None, decode=self._decode_info(source))
+            rid = self.history.add(text, seconds=seconds, model=model, source=source,
+                                   model_rev=cur[1].revision if cur else None,
+                                   decode=self._decode_info(source))
         except Exception:
             log.exception("couldn't save the transcript to history")
+            return None
+        self.win.show_history()
+        return rid
+
+    def relayout_history(self, rid: int, text: str):
+        """The Transcription tab re-flowed a transcript's paragraphs (B-44): same words, new
+        layout, so History shows what the tab shows."""
+        try:
+            self.history.relayout(rid, text)
+        except Exception:
+            log.exception("couldn't update the transcript in history")
             return
         self.win.show_history()
 
@@ -1092,6 +1104,21 @@ def _selftest() -> int:
         print("voice prompts missing:", voice, file=out)
         if voice:
             raise RuntimeError("voice prompts not bundled (package-data data/voice/*.wav)")
+        # Paragraph model (B-44): the onnxruntime package beside sherpa-onnx's own onnxruntime
+        # library, in one process. Downloaded into a temp folder, not the user's models.
+        import tempfile
+        import onnxruntime
+        from .. import paragraphs
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            old = model_store.ROOT
+            model_store.set_root(Path(tmp))
+            try:
+                got = paragraphs.Breaker(paragraphs.download()).apply("Call me back when you can. Thanks.")
+            finally:
+                model_store.set_root(old)
+        print("onnxruntime", onnxruntime.__version__, "| paragraph model:", repr(got), file=out)
+        if got != "Call me back when you can.\n\nThanks.":
+            raise RuntimeError("the paragraph model gave the wrong breaks")
         print("SELFTEST OK", file=out)
         return 0
     except Exception as e:

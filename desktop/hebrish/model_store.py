@@ -501,25 +501,21 @@ def _sha256(path: Path, cancel: threading.Event | None) -> str:
     return h.hexdigest()
 
 
-def download(m: Manifest, on_progress=None, cancel: threading.Event | None = None,
-             keep_old: bool = False) -> Path:
-    """Fetch every file pinned to m.revision, verify, then activate.
-
-    `.part` files resume on the next attempt. The previous version stays usable until
-    the new one has verified; only then is it (optionally) deleted.
-    """
-    model = get_model(m.model)
-    dest = model_dir(m.model) / m.dirname
+def fetch_files(dest: Path, files: dict, url_for, on_progress=None,
+                cancel: threading.Event | None = None):
+    """Fetch `files` ({name: {"size", "sha256"}}) into `dest`, each from url_for(name), resuming
+    `.part` files and checking size and SHA-256 before the rename. A file already there at the
+    right size is kept. on_progress(done_bytes, total_bytes, name). Shared by the speech models
+    and the paragraph model (paragraphs.download)."""
     dest.mkdir(parents=True, exist_ok=True)
-
-    need = m.total_size - sum((dest / n).stat().st_size for n in FILES if (dest / n).exists())
+    total = sum(f["size"] for f in files.values())
+    need = total - sum((dest / n).stat().st_size for n in files if (dest / n).exists())
     free = shutil.disk_usage(dest).free
     if need > free:
         raise RuntimeError(f"Not enough disk space: need {need >> 20} MB, have {free >> 20} MB")
 
-    total, done = m.total_size, 0
-    for name in FILES:
-        info = m.files[name]
+    done = 0
+    for name, info in files.items():
         final, part = dest / name, dest / (name + ".part")
         if final.exists() and final.stat().st_size == info["size"]:
             done += info["size"]
@@ -528,8 +524,7 @@ def download(m: Manifest, on_progress=None, cancel: threading.Event | None = Non
         if have > info["size"]:
             part.unlink()
             have = 0
-        url = (m.base_url + name) if m.base_url else f"{HF}/{model.repo}/resolve/{m.revision}/{model.path(name)}"
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        req = urllib.request.Request(url_for(name), headers={"User-Agent": USER_AGENT})
         if have:
             req.add_header("Range", f"bytes={have}-")
         with urllib.request.urlopen(req, timeout=60) as r:
@@ -555,6 +550,21 @@ def download(m: Manifest, on_progress=None, cancel: threading.Event | None = Non
                 raise RuntimeError(f"{name}: SHA-256 mismatch (got {got[:12]}…)")
         part.rename(final)
         done += info["size"]
+
+
+def download(m: Manifest, on_progress=None, cancel: threading.Event | None = None,
+             keep_old: bool = False) -> Path:
+    """Fetch every file pinned to m.revision, verify, then activate.
+
+    `.part` files resume on the next attempt. The previous version stays usable until
+    the new one has verified; only then is it (optionally) deleted.
+    """
+    model = get_model(m.model)
+    dest = model_dir(m.model) / m.dirname
+
+    def url_for(name):
+        return (m.base_url + name) if m.base_url else f"{HF}/{model.repo}/resolve/{m.revision}/{model.path(name)}"
+    fetch_files(dest, {n: m.files[n] for n in FILES}, url_for, on_progress, cancel)
 
     (dest / "manifest.json").write_text(json.dumps(m.to_json(), indent=2))
     set_active(dest.name, m.model)

@@ -10,6 +10,7 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | `model_store.py` | HF check, download/verify, installed versions. No Qt import, so it is testable and also a CLI |
 | `app_update.py` | newer-app check against `latest.json`, how this copy updates (apt / deb-manual / windows / source), the pkexec apt upgrade, relaunch (0.6.2; "App updates in the app") |
 | `engine.py` | sherpa-onnx `OfflineRecognizer` (nemo_transducer) or, for Shakshuka, `OnlineRecognizer` (0.7.0): normalise, cut at pauses (`live_cut`, `split_points`), pad, `transcribe_chunks` generator; `LiveStream` for streaming takes |
+| `paragraphs.py` | Transcription Mode's Paragraphs setting (B-44): `Pieces` layout, the paragraph model (`Breaker`: pure-Python WordPiece + onnxruntime), its CDN download. See "Paragraphs" |
 | `audio.py` | sounddevice capture (pause/resume, level meter, `peek`/`consume` for live insertion), file decoding (ffmpeg, else soundfile), WAV save, beeps |
 | `hotkey.py` | the shared state machine for the two keys (toggle, push-to-talk) and the action keys, on evdev-style key names |
 | `hotkey_evdev.py` / `hotkey_win.py` | per-OS key sources: `/dev/input` on Linux, a pynput low-level hook on Windows |
@@ -676,7 +677,7 @@ the tab still works), the transcript below.
 - **States:** idle → recording ⇄ paused → stopped (held, waiting for Transcribe) → transcribing.
   Retake = discard + record; Retake and Discard ask first past `CONFIRM_DROP_S` (60 s).
   Transcribe stops if needed, reads the file back on a thread and runs the usual
-  `transcribe_chunks` path (paragraph every ~30 s).
+  `transcribe_chunks` path (paragraphs per the Paragraphs setting, next section).
 - **Audio lifetime:** deleted once the transcript is in History (`source = "record"`, shown as
   "Transcription Mode"). A failed or cancelled transcription, a quit while recording
   (`ctl.quit` stops the tape cleanly) or a crash leaves the file, and the tab offers the oldest
@@ -690,6 +691,80 @@ the tab still works), the transcript below.
   and file, input clipping with gain down, pause/discard). The UI was driven off-screen with a fake
   engine (record → pause → stop → transcribe → file deleted, History row `source=record`; leftover
   offered on a new page). Not yet tried on a real mic for a long take.
+
+## Paragraphs: None, Time-based, Paragraph model (B-44, 2026-10-24)
+
+D-2026-10-24-09; the spec both apps follow is `../shared/paragraphs.md`, the parity cases
+`../shared/paragraph-cases.json`. Dictation (hotkey, overlay) has no paragraph step.
+
+- **UI:** the Transcript card's header, right of the title: **Paragraphs** [None | Time-based |
+  Paragraph model], config `tm_paragraphs` (`none` / `time` / `model`; `""` until the user picks =
+  Paragraph model if installed, else Time-based). A small "Downloading… %" bar appears left of it
+  while the model downloads. Tooltip explains the three.
+- **Code:** `hebrish/paragraphs.py` (no Qt). `Pieces` keeps the last transcript's pieces with a
+  Time-based start flag each (`PARAGRAPH_S` = 30 s of decoded audio, as before; an empty piece's
+  flag carries to the next piece), and `text(mode)` lays them out. `Breaker` is the model:
+  WordPiece in pure Python from `vocab.txt` (no `tokenizers` dependency), windows of ≤510 tokens
+  stepping 256, most-central merge, join with `"\n\n"`/`" "`, and a words-unchanged check that
+  returns the input if it ever fails. The ONNX session (onnxruntime, CPU, default threads) is made
+  on first use and kept (`paragraphs.breaker()`).
+- **Flow (`ui/transcribe.py`):** while decoding, pieces are written as before (Time-based: `"\n\n"`
+  at each flagged piece; None and Paragraph model: a space). With Paragraph model, the worker
+  thread runs the model on the whole transcript when decoding ends; `_finished` puts it in the box
+  only if the box still holds exactly what the app wrote (`_append` snapshots the box after each
+  piece and notes any change in between), then stores the shown text in History. Changing the
+  setting re-flows the last transcript (`_reflow`, the model on a thread) if the box is unedited,
+  and updates its History row (`History.relayout`: text only, `original` untouched since it is not
+  a correction). A changed box ends re-flowing for that transcript, with a status line. Earlier
+  transcripts in the box are never touched.
+- **Fallbacks:** model not downloaded (or still downloading) at the start: Time-based for that
+  transcript, with a status note; it re-flows to the model at the end if the download finished
+  meanwhile. Model load or run error: Time-based, status line names the error. Download error:
+  the setting goes back to Time-based (choose Paragraph model again to retry).
+- **Download:** `MANIFEST_URL` = `cdn.hebrish.app/models/paragraph-breaks/latest.json` →
+  `<models>/paragraph-breaks/<version>/` (`r5b` today), next to the speech models so it moves with
+  the model folder; `manifest.json` (the CDN manifest, threshold 0.26) written last marks it
+  complete; older versions are deleted. The byte loop is `model_store.fetch_files`, now shared with
+  the speech-model `download()` (`.part` resume, size + SHA-256). Not in the model picker, no
+  catalogue entry, and no update check yet: a new version is only fetched if the folder is gone.
+- **Tokenizer check (V, 2026-10-24):** `WordPiece.word` gave the same ids as Hugging Face
+  `tokenizers` (the model's `tokenizer.json`) on ~390k random words (letters with accents, Greek
+  incl. final sigma, Cyrillic, CJK, Hangul, emoji, currency, control/format/private-use/unassigned
+  code points, 100+ character words): 0 mismatches. Two details the spec words differently: HF
+  drops Cc, Cf **and Co** (private use) but keeps unassigned Cn (which then becomes `[UNK]`), and it
+  strips accents before lower-casing, character by character (`ΣΑΣ` → `σασ`, not Python's `σας`).
+- **Parity (V, 2026-10-24, this laptop, x86-64, onnxruntime 1.31.0):** all 11 cases: word pieces
+  and windows exact; probabilities identical to 5 decimals (max difference 0.00000; tolerance
+  0.02); all 11 outputs equal (the test skips `syn-2-0022-longest`'s output, one score 0.2641 being
+  within 0.02 of the threshold).
+- **Latency (V, laptop CPU, int8):** the longest case (566 words, 2 windows): median 525 ms with
+  default threads, 905 ms with 1 thread; session creation 238 ms (once).
+- **Beside sherpa-onnx (V on Linux):** sherpa-onnx loads its own `libonnxruntime.so`
+  (sherpa-onnx-core); the onnxruntime package's binding (`onnxruntime_pybind11_state`) links ONNX
+  Runtime statically and imports no `onnxruntime` library (Linux NEEDED list; Windows .pyd import
+  table also has no `onnxruntime.dll`, while `_sherpa_onnx.pyd` imports sherpa's). In one process:
+  sherpa-onnx 1.13.8 imported first, a Sabich v2.0 recognizer created and decoding, then an ORT
+  session running, then sherpa again: all fine. Windows: by the import tables only (I) until the CI
+  runs `tests/test_paragraphs.py::test_runs_beside_sherpa_onnx` and the frozen exe's `--selftest`,
+  which now downloads the model into a temp folder and checks one break.
+- **Packaging:** `pyproject.toml` depends on `onnxruntime>=1.17`. `build-deb.sh` bundles it
+  `--no-deps` (its import needs only numpy) and deletes what the app doesn't use:
+  `capi/libonnxruntime.so.*` (the C library; a session runs without it, V) and
+  `tools`/`transformers`/`quantization`. Measured on the `--target` folder: +31 MB installed,
+  about +8.5 MB in the xz-compressed .deb (without the trim: +64 MB / +17 MB). Windows zip:
+  `--collect-binaries onnxruntime --hidden-import onnxruntime`, the same three tool packages
+  excluded; the wheel is 14 MB, so roughly +14 MB zipped (I, not built here). Its unused
+  `capi/onnxruntime.dll` (18 MB) is still shipped: to drop it, delete it after the freeze and let
+  the self-test prove it.
+- **Tests:** `tests/test_paragraphs.py`: the parity cases (model fetched with `paragraphs.download()`
+  into `~/.cache/hebrish-tests` or `$HEBRISH_TEST_CACHE`, skipped offline or without onnxruntime),
+  the whitespace-only guard, the installed layout, ORT beside sherpa-onnx, and the None /
+  Time-based / model layout and fallback logic without the UI. The tab itself was driven
+  off-screen with a fake engine (V): default with and without the model, model applied at the end,
+  re-flow None → Time-based → model (History row follows), a second transcript left alone by a
+  re-flow of the last, an edited box left alone, editing during transcription, model error →
+  Time-based, and choosing Paragraph model with nothing installed (download from the CDN with
+  progress, then re-flow). Not yet tried in the running app on a real recording.
 
 ## Disfluency chop (1.001, 2026-10-24)
 

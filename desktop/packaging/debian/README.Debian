@@ -3,7 +3,7 @@ Hebrish for Ubuntu
 
   /usr/bin/hebrish         the app (window + tray)
   /usr/bin/hebrish-model   model CLI: list | use | status | check | download [<model>] [--replace]
-  /usr/lib/hebrish/        app code + bundled sherpa-onnx (not in Ubuntu)
+  /usr/lib/hebrish/        app code + bundled sherpa-onnx and onnxruntime (not in Ubuntu)
   ~/.config/hebrish/       config.json
   ~/.local/share/hebrish/  models/<model>/<version>/, state.json
 

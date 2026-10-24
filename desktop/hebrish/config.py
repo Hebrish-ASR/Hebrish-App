@@ -80,6 +80,8 @@ DEFAULTS = {
     "tm_audio_device": "",        # its own mic: "" = system default, independent of Dictate's
     "tm_gain_db": 0,              # digital gain, longform.GAIN_MIN_DB..GAIN_MAX_DB
     "tm_show_meter": True,        # the level meter and its readout; hide to record without watching it
+    "tm_paragraphs": "",          # none | time | model (paragraphs.MODES, B-44); "" = not chosen: model
+                                  # when the paragraph model is installed, else time
     "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad)
     "num_threads": 0,             # decoder threads; 0 = auto (physical cores, at most 8)
     "keep_history": True,         # keep every transcript in history.db (History tab); 0.7.0: on

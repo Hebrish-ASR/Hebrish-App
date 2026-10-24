@@ -5,19 +5,24 @@ The recorder (longform.TapeRecorder) has its own mic, a digital gain, a level me
 hidden, and Record / Pause / Retake / Stop / Transcribe; Transcribe goes straight from recording
 to the transcript. The audio is on disk while it records and is deleted once the transcript is in
 History; a recording that wasn't transcribed is offered again. Hotkey dictation is the Dictate
-tab's; up to 1.000 this tab was "File" and only opened files (up to 0.4.0 it also recorded)."""
+tab's; up to 1.000 this tab was "File" and only opened files (up to 0.4.0 it also recorded).
+
+Paragraphs (B-44, ../shared/paragraphs.md): None, Time-based (a paragraph about every PARAGRAPH_S of
+audio) or Paragraph model (paragraphs.Breaker, run once when the transcript is done). The last
+transcript's pieces are kept (paragraphs.Pieces), so changing the setting lays it out again as long
+as the box still holds exactly what the app wrote."""
 
 import threading
 import time
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QTextCursor
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel,
                                QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import audio, dictionary, disfluency, longform
+from .. import audio, dictionary, disfluency, longform, paragraphs
 from ..inserter import copy_to_clipboard
 from .meter import LevelMeter, verdict
 
@@ -31,6 +36,13 @@ class _Sig(QObject):
     done = Signal(object)
     loaded = Signal(object, str)       # samples or exception, file name
     tape = Signal(object, object)      # samples or exception, recording path
+    flowed = Signal(int, object)       # re-flow generation, transcript text or exception
+    dl_progress = Signal(object, object)   # bytes done, total
+    dl_done = Signal(object)           # None or exception
+
+
+PARAGRAPH_MODES = (("None", paragraphs.NONE), ("Time-based", paragraphs.TIME),
+                   ("Paragraph model", paragraphs.MODEL))
 
 
 def _clock(s: float) -> str:
@@ -49,6 +61,14 @@ class TranscribePage(QWidget):
         self.sig.done.connect(self._finished)
         self.sig.loaded.connect(self._file_loaded)
         self.sig.tape.connect(self._tape_loaded)
+        self.sig.flowed.connect(self._flowed)
+        self.sig.dl_progress.connect(self._dl_progress)
+        self.sig.dl_done.connect(self._dl_done)
+        self._last = None                # the last transcript, while it can be re-flowed (see _finished)
+        self._live = None                # the box as the app last wrote it, while transcribing
+        self._edited = False             # the user typed in the box while it was transcribing
+        self._flow_gen = 0
+        self._dl = None                  # cancel event of a paragraph-model download
         self.setAcceptDrops(True)
         self.tape = longform.TapeRecorder()
         self.tape.gain_db = float(self.cfg["tm_gain_db"])
@@ -168,11 +188,34 @@ class TranscribePage(QWidget):
         lay.addWidget(box)
 
         # -- transcript
-        box, b = card("Transcript")
+        box, b = card()
+        head = QHBoxLayout()
+        head.addWidget(QLabel("Transcript", objectName="cardTitle"))
+        head.addStretch(1)
+        self.dl_bar = QProgressBar(maximum=1000)
+        self.dl_bar.setFormat("Downloading… %p%")
+        self.dl_bar.setMaximumWidth(160)
+        self.dl_bar.setVisible(False)
+        head.addWidget(self.dl_bar)
+        head.addWidget(QLabel("Paragraphs"))
+        self.para = QComboBox()
+        for label, mode in PARAGRAPH_MODES:
+            self.para.addItem(label, mode)
+        self.para.setToolTip(
+            "How the transcript is split into paragraphs.\n"
+            "None: one block of text.\n"
+            "Time-based: a new paragraph about every 30 seconds of audio, at a pause.\n"
+            "Paragraph model: a small model reads the finished transcript and starts a paragraph "
+            "where the topic moves on (downloaded once, 34 MB).\n"
+            "Changing it re-flows the last transcript, unless you have edited it.")
+        self.para.setCurrentIndex(self.para.findData(self._para_mode()))
+        self.para.currentIndexChanged.connect(self._on_paragraphs)
+        head.addWidget(self.para)
+        b.addLayout(head)
         self.text = QPlainTextEdit()
         self.text.setPlaceholderText("The transcript lands here, and you can edit it. "
-                                     "Another recording or file is added at the end. Long recordings get a "
-                                     "paragraph for roughly every 30 seconds, split at a pause.")
+                                     "Another recording or file is added at the end. Paragraphs "
+                                     "follow the Paragraphs setting above.")
         self.text.setStyleSheet("font-size: 14px;")
         b.addWidget(self.text, 1)
         row = QHBoxLayout()
@@ -429,32 +472,53 @@ class TranscribePage(QWidget):
         self.cancel = threading.Event()
         cancel = self.cancel
         self._source = source
-        self._from = len(self.text.toPlainText())   # History gets this transcript, not the whole box
+        self._last = None
+        self._live, self._edited = self.text.toPlainText(), False
+        self._from = len(self._live)     # History gets this transcript, not the whole box
         self._busy(True)
         started = time.monotonic()
+        mode = self._asked = self._para_mode()
+        note = ""
+        if mode == paragraphs.MODEL and paragraphs.installed() is None:
+            mode = paragraphs.TIME
+            note = (" The paragraph model is still downloading" if self._dl else
+                    " The paragraph model isn't downloaded") + ", so paragraphs are time-based."
 
         def work():
             try:
                 fix = dictionary.compile(dictionary.load())     # personal dictionary, as in dictation
-                para_at = None     # pieces are ~10-25 s; start a paragraph every ~30 s of audio
+                # pieces are ~10-25 s; Time-based starts a paragraph every ~30 s of audio. With
+                # the Paragraph model they are joined with spaces until the end.
+                pieces = paragraphs.Pieces(PARAGRAPH_S * audio.SAMPLE_RATE)
                 for text in self.ctl.engine.transcribe_chunks(samples, cancel, vad=self.cfg["vad"]):
                     done, total = self.ctl.engine.last_progress
-                    new = para_at is None or done - para_at >= PARAGRAPH_S * audio.SAMPLE_RATE
-                    para_at = done if new else para_at
-                    self.sig.chunk.emit(("\n\n" if new else " ") + fix(disfluency.chop(text)))
+                    text = fix(disfluency.chop(text))
+                    sep = pieces.add(text, done, mode)
+                    if sep is not None:      # the first piece is set off from what's in the box
+                        self.sig.chunk.emit(("\n\n" if len(pieces.items) == 1 else sep) + text)
                     self.sig.progress.emit(done / total)
+                body, err = None, None
+                if mode == paragraphs.MODEL and pieces.items:
+                    try:
+                        body = pieces.text(paragraphs.MODEL, paragraphs.breaker())
+                    except Exception as e:   # fall back, never lose text
+                        body, err = pieces.text(paragraphs.TIME), e
                 self.sig.done.emit((len(samples) / audio.SAMPLE_RATE, time.monotonic() - started,
-                                    cancel.is_set()))
+                                    cancel.is_set(), pieces, mode, body, err, note))
             except Exception as e:
                 self.sig.done.emit(e)
         threading.Thread(target=work, daemon=True).start()
 
     def _append(self, text):
+        if self._live is not None and self.text.toPlainText() != self._live:
+            self._edited = True
         if not self.text.toPlainText().strip():
             text = text.lstrip()
         self.text.moveCursor(self.text.textCursor().MoveOperation.End)
         self.text.insertPlainText(text)
         self.text.ensureCursorVisible()
+        if self._live is not None:
+            self._live = self.text.toPlainText()
 
     def _finished(self, result):
         self.cancel = None
@@ -462,20 +526,146 @@ class TranscribePage(QWidget):
         if source is not None and source == self._held:
             self._held = None                # transcribed or not, it's no longer "stopped"
         self._busy(False)
+        live, self._live = self._live, None
         if isinstance(result, Exception):
             self._show_leftover()            # the recording stays on disk, offered again
             QMessageBox.warning(self, "Transcription failed", str(result))
             return
-        audio_s, took, cancelled = result
+        audio_s, took, cancelled, pieces, mode, body, err, note = result
+        unedited = not self._edited and self.text.toPlainText() == live
+        if unedited and pieces.items:
+            self._last = {"from": self._from, "pieces": pieces, "mode": mode,
+                          "shown": self.text.toPlainText(), "rid": None}
+        if mode == paragraphs.MODEL and pieces.items:
+            if self._last:
+                self._show_body(body, paragraphs.TIME if err else mode)
+                if err:
+                    note += f" The paragraph model failed ({err}), so paragraphs are time-based."
+            else:
+                note += " You edited the transcript while it was transcribing, so the paragraph model wasn't applied."
         if not cancelled:
-            self.ctl.remember(self.text.toPlainText()[self._from:].strip(),
-                              source="record" if source else "file",
-                              seconds=audio_s)
+            rid = self.ctl.remember(self.text.toPlainText()[self._from:].strip(),
+                                    source="record" if source else "file",
+                                    seconds=audio_s)
+            if self._last:
+                self._last["rid"] = rid
             if source is not None:
                 source.unlink(missing_ok=True)
         self._show_leftover()
         msg = f"Transcribed {_clock(audio_s)} of audio in {took:.1f} s"
-        self.ctl.win.status(msg + (" (cancelled part-way)." if cancelled else "."))
+        self.ctl.win.status(msg + (" (cancelled part-way)." if cancelled else ".") + note)
+        if self._last and (self._para_mode() != self._asked or (     # changed while transcribing,
+                mode != self._asked and err is None and paragraphs.installed() is not None)):
+            self._reflow()                   # or the model finished downloading meanwhile
+
+    # -- paragraphs (B-44) -----------------------------------------------------------
+    def _para_mode(self) -> str:
+        """The Paragraphs setting; not chosen yet: Paragraph model if it is installed, else
+        Time-based (../shared/paragraphs.md)."""
+        m = self.cfg.get("tm_paragraphs")
+        if m in paragraphs.MODES:
+            return m
+        return paragraphs.MODEL if paragraphs.installed() is not None else paragraphs.TIME
+
+    def _on_paragraphs(self, _i):
+        mode = self.para.currentData()
+        self.cfg.set("tm_paragraphs", mode)
+        if mode == paragraphs.MODEL and paragraphs.installed() is None:
+            self._download()                 # re-flows when it is done
+            return
+        self._reflow()
+
+    def _reflow(self):
+        """Lay out the last transcript again in the current mode, if the box is as the app left it."""
+        last = self._last
+        if not last or self.cancel is not None:
+            return
+        if self.text.toPlainText() != last["shown"]:
+            self._last = None
+            self.ctl.win.status("The transcript has been edited, so its paragraphs were left as they are.")
+            return
+        mode = self._para_mode()
+        self._flow_gen += 1
+        if mode != paragraphs.MODEL:
+            self._flowed(self._flow_gen, last["pieces"].text(mode))
+            return
+        if paragraphs.installed() is None:
+            return
+        gen, pieces = self._flow_gen, last["pieces"]
+        self.ctl.win.status("Finding paragraphs…")
+
+        def work():
+            try:
+                self.sig.flowed.emit(gen, pieces.text(paragraphs.MODEL, paragraphs.breaker()))
+            except Exception as e:
+                self.sig.flowed.emit(gen, e)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _flowed(self, gen, body):
+        last = self._last
+        if gen != self._flow_gen or not last or self.cancel is not None:
+            return                           # superseded, or a new transcription started
+        if self.text.toPlainText() != last["shown"]:
+            self._last = None
+            self.ctl.win.status("The transcript has been edited, so its paragraphs were left as they are.")
+            return
+        mode = self._para_mode()
+        if isinstance(body, Exception):
+            self.ctl.win.status(f"The paragraph model failed ({body}), so paragraphs are time-based.")
+            body, mode = last["pieces"].text(paragraphs.TIME), paragraphs.TIME
+        elif mode == paragraphs.MODEL:
+            self.ctl.win.status("Paragraphs found.")
+        self._show_body(body, mode)
+        if last["rid"]:                      # History stores what is shown
+            self.ctl.relayout_history(last["rid"], self.text.toPlainText()[last["from"]:].strip())
+
+    def _show_body(self, body: str, mode: str):
+        """Put `body` in place of the last transcript (the box is known to be unedited)."""
+        last = self._last
+        box = self.text.toPlainText()
+        region = box[last["from"]:]
+        new = box[:last["from"]] + region[:len(region) - len(region.lstrip())] + body
+        if new != box:
+            c = self.text.textCursor()
+            c.select(QTextCursor.SelectionType.Document)
+            c.insertText(new)                # one undo step
+            self.text.setTextCursor(c)
+        last["shown"], last["mode"] = self.text.toPlainText(), mode
+
+    def _download(self):
+        if self._dl is not None:
+            return
+        self._dl = cancel = threading.Event()
+        self.dl_bar.setValue(0)
+        self.dl_bar.setVisible(True)
+        self.ctl.win.status("Downloading the paragraph model (34 MB)…")
+
+        def work():
+            try:
+                paragraphs.download(lambda d, t, _n: self.sig.dl_progress.emit(d, t), cancel)
+                self.sig.dl_done.emit(None)
+            except Exception as e:
+                self.sig.dl_done.emit(e)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _dl_progress(self, done, total):
+        self.dl_bar.setValue(int(done * 1000 / max(1, total)))
+
+    def _dl_done(self, err):
+        self._dl = None
+        self.dl_bar.setVisible(False)
+        if err is not None:
+            self.ctl.win.status(f"Couldn't download the paragraph model ({err}). Paragraphs are "
+                                "time-based; choose Paragraph model again to retry.")
+            self.para.blockSignals(True)
+            self.para.setCurrentIndex(self.para.findData(paragraphs.TIME))
+            self.para.blockSignals(False)
+            self.cfg.set("tm_paragraphs", paragraphs.TIME)
+            self._reflow()
+            return
+        self.ctl.win.status("Paragraph model downloaded.")
+        if self._para_mode() == paragraphs.MODEL:
+            self._reflow()
 
     def _busy(self, on: bool):
         self.pbar.setVisible(on)
@@ -507,3 +697,4 @@ class TranscribePage(QWidget):
     def _clear(self):
         if QMessageBox.question(self, "Clear transcript", "Clear the text box?") == QMessageBox.Yes:
             self.text.clear()
+            self._last = None

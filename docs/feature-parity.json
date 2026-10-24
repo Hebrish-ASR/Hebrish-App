@@ -1078,6 +1078,28 @@
         "verified": false
       },
       "notes": "2026-10-24, B-41/B-41a. Android records only while its screen is open (I-15). Audio kept on disk until transcribed (D-2026-10-24-06)."
+    },
+    {
+      "id": "transcription-paragraphs",
+      "group": "history-and-files",
+      "name": "Transcription Mode Paragraphs setting: None, Time-based or Paragraph model (break classifier, downloaded on demand)",
+      "android": {
+        "status": "missing",
+        "evidence": "",
+        "notes": "planning/backlog.md B-44a"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/paragraphs.py (Pieces, Breaker, download); setting in desktop/hebrish/ui/transcribe.py (Transcript card header); tests/test_paragraphs.py (shared/paragraph-cases.json)"
+      },
+      "windows": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/paragraphs.py (Pieces, Breaker, download); setting in desktop/hebrish/ui/transcribe.py (Transcript card header); tests/test_paragraphs.py (shared/paragraph-cases.json)",
+        "verified": false
+      },
+      "notes": "2026-10-24, B-44/B-44a, D-2026-10-24-09. Spec and parity cases shared: shared/paragraphs.md, shared/paragraph-cases.json. Dictation unchanged."
     }
   ],
   "engine_rules": [
@@ -1151,7 +1173,8 @@
       "Disfluency chop (B-38)"
     ],
     "desktop": [
-      "Disfluency chop (B-38)"
+      "Disfluency chop (B-38)",
+      "Transcription Mode Paragraphs setting (B-44)"
     ]
   },
   "twin_lag": {
