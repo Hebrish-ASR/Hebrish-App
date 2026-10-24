@@ -40,7 +40,7 @@ PASTE_CHORDS = [("ctrl+v", "Paste with Ctrl+V"), ("ctrl+shift+v", "Paste with Ct
 FEEDBACK = [("beeps", "Beeps (start and stop)"), ("voice", "Voice (“Recording”, “Paused”, “Transcribing”…)"),
             ("off", "Off")]
 # Saved silently, so no toast: moving the overlay
-NO_TOAST = {"overlay_pos"}
+NO_TOAST = {"overlay_pos", "tm_gain_db", "tm_show_meter", "tm_audio_device"}
 
 
 def card(title: str = "") -> tuple[QFrame, QVBoxLayout]:
@@ -131,7 +131,7 @@ class MainWindow(QMainWindow):
         from .diagnostics import DiagnosticsPage
         self.pages["diagnostics"] = DiagnosticsPage(ctl, card, muted)
         self.pages["about"] = self._about_page()
-        for key, label in (("dictate", "Dictate"), ("file", "File"), ("history", "History"),
+        for key, label in (("dictate", "Dictate"), ("file", "Transcription"), ("history", "History"),
                            ("dictionary", "Dictionary"), ("model", "Models"), ("settings", "Settings"),
                            ("diagnostics", "Diagnostics"), ("about", "About")):
             self.tabs.addTab(self.pages[key], label)
@@ -725,7 +725,7 @@ class MainWindow(QMainWindow):
             if h["seconds"]:
                 bits.append(f"{h['seconds']:.0f} s")
             if h["source"] != "dictate":
-                bits.append({"file": "from a file", "import": "imported"}.get(h["source"], h["source"]))
+                bits.append({"file": "from a file", "record": "Transcription Mode", "import": "imported"}.get(h["source"], h["source"]))
             if h["original"]:
                 bits.append("corrected")
             if h["audio"]:
@@ -1140,7 +1140,7 @@ class MainWindow(QMainWindow):
         b.addWidget(nf)
         caps = self._check("all_caps", "Dictate in ALL CAPS (from the next take)")
         caps.setToolTip("Just for fun: everything you dictate is pasted in capitals. History and the "
-                        "File tab keep the normal case.")
+                        "Transcription tab keep the normal case.")
         b.addWidget(caps)
         b.addWidget(self._check("clear_each_take", "Start the Dictate tab's text box empty for each "
                                                    "take (otherwise takes collect, a blank line "

@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS dictations (
     words   INTEGER NOT NULL,
     seconds REAL,                       -- audio length; NULL when unknown (imported rows)
     model   TEXT NOT NULL DEFAULT '',   -- catalogue id and version, e.g. "shakshuka v1.0"
-    source  TEXT NOT NULL DEFAULT 'dictate',   -- dictate | file | import
+    source  TEXT NOT NULL DEFAULT 'dictate',   -- dictate | file | record | import
     audio   TEXT,                       -- unused since 0.7.3 (always NULL); was a file in history-audio/
     original TEXT,                      -- the model's text, set when the user first edits it
     model_rev TEXT,                     -- exact weights: the model version's commit (manifest revision); NULL before schema 2

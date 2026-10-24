@@ -9,6 +9,24 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-24-06: Transcription Mode keeps its recording on disk until it is transcribed
+
+- **Decision:** Transcription Mode (B-41, B-41a) writes each recording to a WAV in the app's own
+  data folder as it records, and deletes it once its transcript is in History. A recording that
+  was not transcribed (the app closed or crashed, the transcription failed or was cancelled) stays
+  and is offered again until it is transcribed or deleted. This is a bounded exception to
+  D-2026-10-22-20 (no audio kept), like D-2026-10-22-17's retry buffer: audio exists only until
+  its text does. On Android it records only while its screen is open (I-15 for the background).
+- **Why:** Long-form recording is the case where "the audio is the valuable part and must not be
+  lost" (project-context, long-form dictation): an hour in memory dies with the process. Daniel,
+  2026-10-24, asked for "long-form recording" with a seamless flow to transcription.
+  Android: a background recorder needs a foreground service, new permissions and a Play
+  declaration, which is Daniel's call.
+- **Alternatives:** recording into memory as dictation does (loses everything on a crash, and
+  ~350 MB per 90 minutes); keeping the audio after transcription (against D-2026-10-22-20); a
+  foreground service on Android now (I-15).
+- **By:** agent, from Daniel's request R-2026-10-24-5; open to Daniel's review.
+
 ### D-2026-10-24-05: S1-mini by Superwhisper on desktop only; on hold on Android
 
 - **Decision:** S1-mini by Superwhisper may be offered as a finishing step on desktop (B-40), if it

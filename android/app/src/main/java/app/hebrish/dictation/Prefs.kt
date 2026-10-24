@@ -64,6 +64,13 @@ object Prefs {
     fun setVibrate(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("vibrate", v).apply()
 
     /** Mic.AUTO (Bluetooth first) or a Mic.key of a chosen microphone. */
+    /** Transcription Mode (R-2026-10-24-5): its own mic (Mic.key or Mic.AUTO), gain in dB, level meter shown. */
+    fun tmMic(ctx: Context): String = sp(ctx).getString("tm_mic", Mic.AUTO) ?: Mic.AUTO
+    fun setTmMic(ctx: Context, v: String) = sp(ctx).edit().putString("tm_mic", v).apply()
+    fun tmGainDb(ctx: Context) = sp(ctx).getInt("tm_gain_db", 0)
+    fun setTmGainDb(ctx: Context, v: Int) = sp(ctx).edit().putInt("tm_gain_db", v).apply()
+    fun tmShowMeter(ctx: Context) = sp(ctx).getBoolean("tm_show_meter", true)
+    fun setTmShowMeter(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("tm_show_meter", v).apply()
     fun micChoice(ctx: Context): String = sp(ctx).getString("mic_choice", Mic.AUTO) ?: Mic.AUTO
     fun setMicChoice(ctx: Context, v: String) = sp(ctx).edit().putString("mic_choice", v).apply()
 

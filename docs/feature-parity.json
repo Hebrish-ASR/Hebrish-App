@@ -1056,6 +1056,28 @@
         "verified": false
       },
       "notes": "R-2026-10-24-1, B-38, D-2026-10-24-04. Rules and test set shared: shared/disfluencies.md, shared/disfluency-cases.json. No setting."
+    },
+    {
+      "id": "transcription-mode",
+      "group": "history-and-files",
+      "name": "Transcription Mode: long recording (own mic, gain, level meter, pause/retake/stop) then transcribe",
+      "android": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "android/app/src/main/java/app/hebrish/dictation/TranscriptionActivity.kt; core/Tape.kt"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/ui/transcribe.py; desktop/hebrish/longform.py"
+      },
+      "windows": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/ui/transcribe.py; desktop/hebrish/longform.py",
+        "verified": false
+      },
+      "notes": "2026-10-24, B-41/B-41a. Android records only while its screen is open (I-15). Audio kept on disk until transcribed (D-2026-10-24-06)."
     }
   ],
   "engine_rules": [

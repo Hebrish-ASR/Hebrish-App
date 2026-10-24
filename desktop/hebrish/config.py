@@ -76,6 +76,10 @@ DEFAULTS = {
     "quiet_from": "22:00",
     "quiet_to": "07:00",
     "audio_device": "",           # "" = system default; else a sounddevice name
+    # Transcription Mode (the Transcription tab's recorder, longform.py; R-2026-10-24-5)
+    "tm_audio_device": "",        # its own mic: "" = system default, independent of Dictate's
+    "tm_gain_db": 0,              # digital gain, longform.GAIN_MIN_DB..GAIN_MAX_DB
+    "tm_show_meter": True,        # the level meter and its readout; hide to record without watching it
     "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad)
     "num_threads": 0,             # decoder threads; 0 = auto (physical cores, at most 8)
     "keep_history": True,         # keep every transcript in history.db (History tab); 0.7.0: on

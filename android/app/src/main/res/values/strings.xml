@@ -282,6 +282,41 @@
     <string name="install_web">Install instructions on hebrish.app</string>
 
     <!-- Try it (TryActivity) -->
+    <!-- Transcription Mode (R-2026-10-24-5): long recordings, then transcribe -->
+    <string name="title_transcription">Transcription Mode</string>
+    <string name="nav_transcription_summary">Record for as long as you need, then transcribe</string>
+    <string name="tm_intro">Record a long take, then transcribe it. The recording is saved on your phone as you go and deleted once the transcript is in History. Keep this screen open: leaving it pauses the recording.</string>
+    <string name="tm_mic">Mic: %1$s</string>
+    <string name="tm_mic_auto">Automatic (%1$s)</string>
+    <string name="tm_mic_change">Change mic</string>
+    <string name="tm_mic_none">No other mic is connected.</string>
+    <string name="tm_gain">Gain: %1$s</string>
+    <string name="tm_show_level">Show level</string>
+    <string name="tm_level_idle">Level shows while recording</string>
+    <string name="tm_level_quiet">Too quiet (or not talking)</string>
+    <string name="tm_level_good">Good level</string>
+    <string name="tm_level_loud">Loud: fine, but close to clipping</string>
+    <string name="tm_level_clip">Clipping: turn the gain down or move back</string>
+    <string name="tm_record">Record</string>
+    <string name="tm_pause">Pause</string>
+    <string name="tm_resume">Resume</string>
+    <string name="tm_retake">Retake</string>
+    <string name="tm_stop">Stop</string>
+    <string name="tm_transcribe">Transcribe</string>
+    <string name="tm_discard">Discard</string>
+    <string name="tm_cancel">Cancel</string>
+    <string name="tm_confirm_drop">Throw away %1$s of recording?</string>
+    <string name="tm_paused_left">Paused when you left the screen. Tap Resume to carry on.</string>
+    <string name="tm_stopped">Stopped: %1$s recorded. Transcribe when you\'re ready.</string>
+    <string name="tm_limit">The recording reached its limit and stopped.</string>
+    <string name="tm_mic_lost">The mic stopped: paused. Pick a mic and tap Resume.</string>
+    <string name="tm_transcribing">Transcribing… %1$d%%</string>
+    <string name="tm_done">Transcribed %1$s of audio.</string>
+    <string name="tm_cancelled">Cancelled. The recording is kept: transcribe it again below.</string>
+    <string name="tm_leftover">A recording from %1$s (%2$s) hasn\'t been transcribed.</string>
+    <string name="tm_leftover_go">Transcribe it</string>
+    <string name="tm_delete">Delete</string>
+    <string name="tm_text_hint">The transcript lands here. You can edit it, then copy or share. Another recording is added at the end.</string>
     <string name="try_open">Try it now: no setup needed</string>
     <string name="try_open_hint">See what it does before you set it up as a keyboard.</string>
     <string name="try_open_no_model">Try it (download the model first)</string>

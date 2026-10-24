@@ -640,6 +640,41 @@ shared with Android: [`../../shared/personal-dictionary.md`](../../shared/person
   off-screen; the tab was also rendered off-screen and looked at. **Not verified (I):** a real take
   on Ubuntu or Windows.
 
+## Transcription Mode (unreleased, 2026-10-24)
+
+R-2026-10-24-5, B-41, D-2026-10-24-06. The File tab is now **Transcription** (`ui/transcribe.py`;
+the page key stays `"file"`). A recorder sits on top, the file picker under it (drop anywhere on
+the tab still works), the transcript below.
+
+- **Recorder:** `longform.TapeRecorder`. Not `audio.Recorder`: that holds the take in memory
+  (an hour is ~230 MB of float32 and is gone if the process dies). Each block goes straight to
+  `DATA_DIR/recordings/recording-<stamp>.wav` (16 kHz mono int16); the RIFF sizes are rewritten
+  every `HEADER_EVERY_S` (2 s) and on pause/stop, and `longform.recover()` fixes a file whose
+  header lags. Cap `MAX_S` = 4 h; the tab's timer stops it at the cap.
+- **Gain** is digital (`tm_gain_db`, −12…+24 dB), applied before the meter and the file, so
+  the meter shows what is recorded. The clip lamp lights for clipping at the input (before gain:
+  no setting undoes it) and for clipping the gain causes. The meter is `ui/meter.LevelMeter`,
+  shared with the Dictate tab; *Show level* (`tm_show_meter`) hides it and its readout.
+- **Mic:** its own setting, `tm_audio_device` ("" = system default), independent of Dictate's.
+  Changing it mid-recording closes the stream and opens the new device; the file carries on.
+- **States:** idle → recording ⇄ paused → stopped (held, waiting for Transcribe) → transcribing.
+  Retake = discard + record; Retake and Discard ask first past `CONFIRM_DROP_S` (60 s).
+  Transcribe stops if needed, reads the file back on a thread and runs the usual
+  `transcribe_chunks` path (paragraph every ~30 s).
+- **Audio lifetime:** deleted once the transcript is in History (`source = "record"`, shown as
+  "Transcription Mode"). A failed or cancelled transcription, a quit while recording
+  (`ctl.quit` stops the tape cleanly) or a crash leaves the file, and the tab offers the oldest
+  leftover: *Transcribe it* / *Delete*.
+- **Dictation vs Transcription Mode:** `ctl.start` refuses (notification) while the tape
+  records; Record refuses while a dictation take is running. Test mic is stopped on Record.
+- **History fix that came with it:** a File/recording transcript used to be stored as the whole
+  text box, so a second file in the same session duplicated the first in History. Now only the
+  text this transcription added is stored (`_from`).
+- Tests: `tests/test_longform.py` (written as it goes, recover after a "crash", gain before meter
+  and file, input clipping with gain down, pause/discard). The UI was driven off-screen with a fake
+  engine (record → pause → stop → transcribe → file deleted, History row `source=record`; leftover
+  offered on a new page). Not yet tried on a real mic for a long take.
+
 ## Disfluency chop (unreleased, 2026-10-24)
 
 Request R-2026-10-24-1, B-38, decision D-2026-10-24-04: *um, uh, eh, ehm, er, erm, hmm* are

@@ -44,6 +44,9 @@ class MainActivity : Page() {
         column.addView(tryBtn, android.widget.LinearLayout.LayoutParams(
             android.widget.LinearLayout.LayoutParams.MATCH_PARENT, dp(60)).apply { topMargin = dp(20) })
         small(R.string.try_open_hint).gravity = android.view.Gravity.CENTER
+        nav(R.string.title_transcription, { setText(R.string.nav_transcription_summary) }, TranscriptionActivity::class.java, group().also {
+            (it.layoutParams as android.view.ViewGroup.MarginLayoutParams).topMargin = dp(16)
+        })
 
         micLine = text(R.string.mic_missing, top = 16)
         micBtn = button(R.string.grant) { requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC) }

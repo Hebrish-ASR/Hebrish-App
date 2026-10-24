@@ -34,9 +34,8 @@ object Mic {
     fun isBluetooth(d: AudioDeviceInfo) = d.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || d.type == TYPE_BLE_HEADSET
 
     /** The mic the next take should use, or null for the system default (the phone's mic). */
-    fun preferred(ctx: Context): AudioDeviceInfo? {
+    fun preferred(ctx: Context, choice: String = Prefs.micChoice(ctx)): AudioDeviceInfo? {
         val all = inputs(ctx)
-        val choice = Prefs.micChoice(ctx)
         if (choice != AUTO) all.firstOrNull { key(it) == choice }?.let { return it }
         // Automatic, or the chosen mic isn't connected right now.
         return all.firstOrNull { isBluetooth(it) }
@@ -47,6 +46,11 @@ object Mic {
     fun prepare(ctx: Context, r: Recorder) {
         val d = preferred(ctx)
         r.preferredDevice = d
+        if (d != null && isBluetooth(d)) route(ctx, d)
+    }
+
+    /** Opens the Bluetooth link for [d] when it needs one (Transcription Mode's own mic choice). */
+    fun routeFor(ctx: Context, d: AudioDeviceInfo?) {
         if (d != null && isBluetooth(d)) route(ctx, d)
     }
 

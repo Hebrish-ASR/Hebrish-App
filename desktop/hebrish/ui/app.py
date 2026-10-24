@@ -204,6 +204,9 @@ class Controller(QObject):
             self.win.present_tab("model")
             self.win.banner("The model isn't downloaded yet. Hold tight, or click Download.")
             return
+        if self.win.transcribe.tape.active:
+            self.notify("Transcription Mode is recording", "Stop that recording before dictating.")
+            return
         self.stop_monitor()
         try:
             self.recorder.start(self.cfg["audio_device"])
@@ -534,8 +537,8 @@ class Controller(QObject):
 
     def remember(self, text, samples=None, source="dictate", seconds=None):
         """Add a transcript to the history (when `keep_history`): text only, never audio (0.7.3,
-        D-2026-10-22-20); samples only give the take's length. The File tab calls this too, with
-        source="file" and no samples."""
+        D-2026-10-22-20); samples only give the take's length. The Transcription tab calls this too, with
+        source="file" or "record" (Transcription Mode) and no samples."""
         if not self.cfg["keep_history"] or not text.strip():
             return
         cur = model_store.active()
@@ -1029,6 +1032,7 @@ class Controller(QObject):
             self.act_update.setText(f"Install update ({self.latest.version})")
 
     def quit(self):
+        self.win.transcribe.tape.stop()      # closed cleanly; offered again on the next start
         self.overlay.close()
         self.win.quitting = True
         self.tray.hide()

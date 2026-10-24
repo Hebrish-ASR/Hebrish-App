@@ -34,6 +34,7 @@
         <activity android:name=".KeyboardActivity" android:exported="false" android:label="@string/title_keyboard" android:parentActivityName=".MainActivity" />
         <activity android:name=".FloatingMicActivity" android:exported="false" android:label="@string/title_bubble" android:parentActivityName=".MainActivity" />
         <activity android:name=".FloatingMicGuideActivity" android:exported="false" android:label="@string/title_guide" android:parentActivityName=".MainActivity" />
+        <activity android:name=".TranscriptionActivity" android:exported="false" android:label="@string/title_transcription" android:parentActivityName=".MainActivity" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".DictationActivity" android:exported="false" android:label="@string/title_dictation" android:parentActivityName=".MainActivity" />
         <activity android:name=".FloatingMicConsentActivity" android:exported="false" android:label="@string/title_consent" android:parentActivityName=".MainActivity" />
         <activity android:name=".InstallActivity" android:exported="false" android:label="@string/title_install" android:parentActivityName=".MainActivity" />

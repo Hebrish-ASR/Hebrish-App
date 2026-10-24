@@ -58,10 +58,11 @@ object History {
     private fun db(ctx: Context): SQLiteDatabase =
         (db ?: synchronized(this) { db ?: Db(ctx.applicationContext).also { db = it } }).writableDatabase
 
-    /** Where a take came from: the voice keyboard, the floating mic, or the Try it screen. */
+    /** Where a take came from: the voice keyboard, the floating mic, the Try it screen, or Transcription Mode (as on desktop). */
     const val KEYBOARD = "keyboard"
     const val FLOATING = "floating"
     const val TRY = "try"
+    const val RECORD = "record"
 
     /**
      * Stores one finished take unless history is off or the take produced no text. Runs on a

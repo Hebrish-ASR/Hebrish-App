@@ -960,7 +960,36 @@ to turn it off.
 - Not compiled locally: since the F-Droid source build (pulled 2026-10-24) the laptop needs NDK
   26.3.11579264 to configure the project; CI compiled it.
 
+## Transcription Mode (unreleased, 2026-10-24)
+
+R-2026-10-24-5, B-41a (parity with desktop B-41), D-2026-10-24-06. Home → **Transcription Mode**
+(`TranscriptionActivity`, a `Page`).
+
+- **Recorder:** `core/Tape.kt`. Writes a WAV (16 kHz mono int16) to `filesDir/recordings/` as it
+  captures: app storage, so no storage permission (this answers I-10's question about all-files
+  access). Header rewritten every 2 s and on pause/stop; `Tape.recover` fixes a lagging one. Cap
+  4 h. Digital gain (`Prefs.tmGainDb`, −12…+24 dB) before the meter and the file; the clip lamp
+  lights for input clipping and gain clipping.
+- **Mic:** `Prefs.tmMic` (Automatic or a `Mic.key`), separate from the keyboard's `micChoice`.
+  `Mic.preferred` takes the choice as a parameter now; `Mic.routeFor` opens the Bluetooth link.
+  *Change mic* mid-recording reopens AudioRecord on the new device, same file.
+- **Foreground only:** the screen is kept on while recording, and `onPause` pauses (mic released,
+  file kept). Background recording would need a microphone foreground service (I-15). A mic that
+  disappears (read < 0) pauses with a message instead of ending the take.
+- **Transcribe:** `Tape.segments` reads the file back in 100 ms chunks and cuts it with the live
+  take's rules (`Recorder.Segmenting`, copied as `Tape.Cutter` rather than refactoring the
+  keyboard's `Recorder`), feeding `TakeDecoder` (seams, held stops, dictionary, disfluency chop as
+  for any take). The reader waits while the decoder is more than two segments behind, so memory
+  stays small. A paragraph roughly every 30 s of audio, as on desktop. History source `record`.
+  The file is deleted on success; on failure or Cancel it stays and is offered at the top.
+- Compiled locally (`compileFdroidDebugKotlin`, JDK 21, after installing NDK 26.3.11579264;
+  the native cmake step still fails on the laptop, so the APK comes from CI). Not run on a device.
+
 ## Not yet verified (as of 2026-10-20)
+
+- Transcription Mode (B-41a) on a device: a long take with the screen on, Bluetooth mic switch
+  mid-recording, pause on leaving the screen, the leftover after force-stopping the app, the
+  transcription of a 30+ minute file (memory, time), the meter's zones on a real mic.
 
 - 0.9.0 on a device: reading and adding to the system personal dictionary with the voice
   keyboard enabled but another keyboard in use (floating mic); a word added in HeliBoard or Gboard
