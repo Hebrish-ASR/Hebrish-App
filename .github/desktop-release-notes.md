@@ -1,11 +1,8 @@
-**1.000: Hebrish 1.0. Output becomes three switches.**
+**1.001: Transcription Mode, start the next take any time, and no more "um".**
 
-Versions now count 1.000, 1.001, 1.002, and so on, for the desktop app and Android alike. Earlier releases have been taken down from GitHub; this one includes everything they had, including the personal dictionary from 0.8.0.
-
-- **Output** on the Dictate tab (and in the tray menu) is now three buttons you can combine: *At the cursor*, *Clipboard* and *This window*. By default only *At the cursor* is on, so your dictation goes where you are typing and no longer also fills the app's text box. Turn on *This window* to collect takes there; *Clipboard* puts the whole take on the clipboard when it ends.
-- Your earlier choice carries over: paste becomes *At the cursor* only, clipboard-only and text-box-only stay as they were.
-- Takes in the text box are separated by a blank line, so separate thoughts read as separate blocks. The text is a little larger.
-- Every take is still in History, whatever the switches say.
-- **Paste last transcription**: an action key (Settings → Action keys) and a tray item that paste your last take again where the cursor is now, for when it went into the wrong window.
-- Experimental, off by default (Settings → Output): when a take finds no text field to paste into, the overlay shows *No text field* with a **Paste** button. Click into the field you meant, then Paste. It uses the desktop's accessibility interface, and some apps report no field when there is one.
+- **Transcription Mode**: the File tab is now *Transcription*. Record a long take there, with its own microphone (switch mid-recording), a gain slider, a level meter with a clip light that you can hide (*Show level*), and Record/Pause, Retake, Stop, Transcribe and Discard. The elapsed time sits small and grey at the end of the buttons. Transcribe goes straight from recording to an editable transcript, with paragraphs. Opening an audio file or dropping one on the tab works as before.
+- The recording is written to disk as you go, so a crash or quit loses at most a couple of seconds, and it is deleted once the transcript is in History. A recording that wasn't transcribed is offered again on the tab.
+- **Start the next take while the last one is still transcribing.** The hotkey, the Talk button, the tray and the overlay used to ignore that press, which made it easy to lose track of whether you were recording. Now the mic opens at once and the texts arrive in order.
+- **Hesitations are removed**: *um*, *uh*, *eh*, *er*, *hmm* no longer appear in what you dictate, with every model.
+- History stores just the new transcript when you transcribe a second file in the same session (it used to store the whole text box again).
 - Ubuntu 26.04 .deb and a portable Windows zip. Not yet tested on Windows hardware. Downloads: [hebrish.app/download](https://hebrish.app/download).
