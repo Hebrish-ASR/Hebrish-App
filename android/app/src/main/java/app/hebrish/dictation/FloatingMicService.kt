@@ -88,9 +88,26 @@ import android.widget.Toast
  * discard can pip and buzz ([Feedback]). The bar names the microphone in use ([Mic]; Bluetooth
  * first) in a chip that switches between Bluetooth and the phone's mic when tapped (0.7.2). Broadcast intents and bound hardware keys (a Bluetooth shutter remote, a keyboard)
  * drive the same actions as the buttons ([Remote], [onKeyEvent]; docs/external-control.md).
+ *
+ * Takes can overlap (B-43a, R-2026-10-24-6): a tap while the last take is still transcribing
+ * starts the next one at once instead of being ignored. Each take is a [Take] with its own field
+ * and decoder; a later take's text waits in [Take.waiting] until every earlier one has landed, so
+ * the texts go in in order.
  */
 class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPreferenceChangeListener {
+    /** TRANSCRIBING: no take open, earlier takes still decoding ([finishing]). */
     private enum class State { IDLE, RECORDING, PAUSED, TRANSCRIBING }
+
+    /** One take's output: the field it goes to, what it has put in so far, and text held back. */
+    private class Take(val target: AccessibilityNodeInfo?, val decoder: TakeDecoder) {
+        /** Everything this take has put in (type-as-you-go), for Prefs.lastTranscript. */
+        val text = StringBuilder()
+        /** Pieces decoded while an earlier take was still landing; delivered when it has. */
+        val waiting = ArrayList<String>()
+        /** The decoder's finish callback has come back (result kept until the take's turn). */
+        var ended = false
+        var error: Throwable? = null
+    }
 
     private val main = Handler(Looper.getMainLooper())
     private lateinit var wm: WindowManager
@@ -116,11 +133,10 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private val barBg = GradientDrawable()
     private var state = State.IDLE
     private var recorder: Recorder? = null
-    private var decoder: TakeDecoder? = null
-    /** Everything this take has put in so far (type-as-you-go), for Prefs.lastTranscript. */
-    private val takeText = StringBuilder()
-    /** The field that had focus when the take started; the transcript goes there if it still exists. */
-    private var target: AccessibilityNodeInfo? = null
+    /** The open take (recording or paused). */
+    private var take: Take? = null
+    /** Stopped takes whose text is still coming, oldest first. */
+    private val finishing = ArrayDeque<Take>()
     /** Transcript that found no field to go into; Insert puts it in once one has focus. */
     private var pending: String? = null
     private var editableFocused = false
@@ -173,8 +189,10 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         Mic.release(this)
         recorder?.cancel()
         recorder = null
-        decoder?.cancel()
-        decoder = null
+        take?.decoder?.cancel()
+        take = null
+        for (t in finishing) t.decoder.cancel()
+        finishing.clear()
         root?.let { runCatching { wm.removeView(it) } }
         root = null
         super.onDestroy()
@@ -187,9 +205,9 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         if (a != Remote.Action.STOP && a != Remote.Action.DISCARD && (!ModelStore.isReady(this) || !hasMic())) return onTap()
         when (a) {
             Remote.Action.TOGGLE -> onTap()
-            Remote.Action.START -> if (state == State.IDLE) startRecording()
+            Remote.Action.START -> if (!open) startRecording()
             Remote.Action.STOP -> if (open) stopAndTranscribe()
-            Remote.Action.RESTART -> if (open) retake() else if (state == State.IDLE) startRecording()
+            Remote.Action.RESTART -> if (open) retake() else startRecording()
             Remote.Action.PAUSE -> togglePause()
             Remote.Action.DISCARD -> discard()
         }
@@ -612,9 +630,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
                 toast(getString(if (!ModelStore.isReady(this)) R.string.ime_no_model else R.string.ime_no_permission))
                 startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
-            state == State.IDLE -> startRecording()
             open -> stopAndTranscribe()
-            else -> Unit
+            else -> startRecording()          // idle, or the last take still transcribing (B-43a)
         }
     }
 
@@ -622,21 +639,20 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private fun onLongPress(): Boolean {
         if (state != State.IDLE) return false
         val text = Prefs.lastTranscript(this)
-        if (text == null) toast(getString(R.string.bubble_no_last)) else {
-            target = null
-            deliver(text)
-        }
+        if (text == null) toast(getString(R.string.bubble_no_last)) else deliver(text, null, firstPart = true)
         return true
     }
 
-    private fun startRecording(cue: Feedback.Cue = Feedback.Cue.START) {
+    /** [into]: the field the take's text goes to; by default the one focused now. */
+    private fun startRecording(cue: Feedback.Cue = Feedback.Cue.START,
+                               into: AccessibilityNodeInfo? = focusedField()?.takeIf { !it.isPassword }) {
         Transcriber.preload(this)
         // A take started from a remote keeps the bubble up afterwards.
         stuck = true
-        target = focusedField()?.takeIf { !it.isPassword }
-        takeText.setLength(0)
         // Type as you go: each segment goes in when decoded. Otherwise it is all held for Stop.
-        val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { deliverPart(text) } } else null)
+        var t: Take? = null
+        val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { t?.let { deliverPart(it, text) } } } else null)
+        t = Take(into, d)
         val r = Recorder(
             onLevel = { l -> main.post { setLevel(l) } },
             onLimit = { main.post { if (state == State.RECORDING) stopAndTranscribe() } },
@@ -651,7 +667,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             return toast(getString(R.string.ime_mic_error, e.message ?: ""))
         }
         recorder = r
-        decoder = d
+        take = t
         showSource(r.routedDevice)
         state = State.RECORDING
         shownSeconds = -1
@@ -687,10 +703,13 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private fun dropTake() {
         recorder?.cancel()
         recorder = null
-        decoder?.cancel()
-        decoder = null
+        take?.decoder?.cancel()
+        take = null
         Mic.release(this)
     }
+
+    /** No take open: TRANSCRIBING while earlier takes are still landing, else IDLE. */
+    private fun settled() = if (finishing.isEmpty()) State.IDLE else State.TRANSCRIBING
 
     private fun showSource(d: android.media.AudioDeviceInfo?) {
         micName = Mic.shortLabel(this, d)
@@ -726,18 +745,16 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     /** Throws the take away and starts a fresh one at once, into the same field. */
     private fun retake() {
         if (!open) return
-        val keep = target
+        val keep = take?.target
         dropTake()
-        state = State.IDLE
-        startRecording(Feedback.Cue.RESTART)
-        if (keep != null) target = keep
+        state = settled()
+        startRecording(Feedback.Cue.RESTART, keep ?: focusedField()?.takeIf { !it.isPassword })
     }
 
     private fun discard() {
         if (!open) return
         dropTake()
-        target = null
-        state = State.IDLE
+        state = settled()
         Feedback.cue(this, Feedback.Cue.DISCARD)
         toast(getString(R.string.bubble_discarded))
         render()
@@ -745,43 +762,64 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     private fun stopAndTranscribe() {
         val r = recorder ?: return
-        val d = decoder ?: return
+        val t = take ?: return
         recorder = null
-        decoder = null
+        take = null
+        val d = t.decoder
         val samples = r.stop()
         Mic.release(this)
         Feedback.cue(this, Feedback.Cue.STOP)
         if (samples.size < Transcriber.SAMPLE_RATE / 4 && d.segmentsQueued == 0) {
             d.cancel()
-            state = State.IDLE
+            state = settled()
             render()
             return toast(getString(R.string.ime_too_short))
         }
+        finishing.addLast(t)
         state = State.TRANSCRIBING
         render()
         d.finish(samples) { result ->
             main.post {
-                state = State.IDLE
-                render()
-                result.onSuccess { text ->
-                    if (text.isNotEmpty()) deliverPart(text)
-                    if (takeText.isEmpty()) toast(getString(R.string.ime_nothing_heard))
-                    else {
-                        Prefs.setLastTranscript(this, takeText.toString())
-                        History.record(this, d.text, d.stats(), History.FLOATING)
-                    }
-                    target = null
-                }.onFailure { toast(getString(R.string.ime_error, it.message ?: it.javaClass.simpleName)) }
+                result.onSuccess { text -> if (text.isNotEmpty()) deliverPart(t, text) }
+                t.ended = true
+                t.error = result.exceptionOrNull()
+                if (finishing.firstOrNull() === t) land(t)
             }
         }
     }
 
-    /** One piece of the take's text: into the take's field, keeping it as the target for the next piece. */
-    private fun deliverPart(text: String) {
-        takeText.append(TakeDecoder.join(takeText, text))
-        val keep = target
-        deliver(text)
-        target = keep
+    /** [t] is the oldest take still landing and its decoder is done: wrap it up, then the next. */
+    private fun land(t: Take) {
+        finishing.remove(t)
+        val err = t.error
+        when {
+            err != null -> toast(getString(R.string.ime_error, err.message ?: err.javaClass.simpleName))
+            t.text.isEmpty() -> toast(getString(R.string.ime_nothing_heard))
+            else -> {
+                Prefs.setLastTranscript(this, t.text.toString())
+                History.record(this, t.decoder.text, t.decoder.stats(), History.FLOATING)
+            }
+        }
+        // The next take's turn: what it decoded meanwhile goes in now.
+        val next = finishing.firstOrNull() ?: take
+        if (next != null) {
+            for (piece in next.waiting) deliverNow(next, piece)
+            next.waiting.clear()
+            if (next !== take && next.ended) return land(next)
+        }
+        if (!open) state = settled()
+        render()
+    }
+
+    /** One piece of [t]'s text: in now, or held while an earlier take is still landing. */
+    private fun deliverPart(t: Take, text: String) {
+        val first = finishing.firstOrNull()
+        if (first != null && first !== t) t.waiting.add(text) else deliverNow(t, text)
+    }
+
+    private fun deliverNow(t: Take, text: String) {
+        t.text.append(TakeDecoder.join(t.text, text))
+        deliver(text, t.target, firstPart = t.text.length <= text.length)
     }
 
     /**
@@ -792,11 +830,10 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
      *    text and selection, then the cursor moved to the end of the insert.
      * 3. Otherwise it is held as [pending] (Insert button) and left on the clipboard.
      */
-    private fun deliver(text: String) {
-        val node = target?.takeIf { it.refresh() && it.isEditable }
+    private fun deliver(text: String, to: AccessibilityNodeInfo?, firstPart: Boolean) {
+        val node = to?.takeIf { it.refresh() && it.isEditable }
             ?: focusedField()
-        target = null
-        if (node == null || node.isPassword || !insertInto(node, text)) hold(text)
+        if (node == null || node.isPassword || !insertInto(node, text, firstPart)) hold(text)
     }
 
     /**
@@ -808,7 +845,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
      *    the text and set neither. Short (≤ [PLACEHOLDER_MAX] chars), single-line text with no
      *    real cursor (selection -1 or 0..0) is taken for a placeholder. That could replace a real
      *    one-word draft whose cursor sits at its start, hence the setting. Never applied once this
-     *    take has typed something ([takeText]), so type-as-you-go can't wipe its own text.
+     *    take has typed something ([Take.text]), so type-as-you-go can't wipe its own text.
      * (I: 2026-10-20, 3. inferred from the reported WhatsApp behaviour; not yet tried on a phone.)
      */
     private fun isPlaceholder(node: AccessibilityNodeInfo, current: String, firstPart: Boolean): Boolean {
@@ -832,9 +869,9 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
      * A background service can't read the clipboard (Android 10+), so the user's old clip can't be
      * restored; the transcript is left there, which is also the useful fallback.
      */
-    private fun insertInto(node: AccessibilityNodeInfo, text: String): Boolean {
+    private fun insertInto(node: AccessibilityNodeInfo, text: String, firstPart: Boolean): Boolean {
         val reported = node.text?.toString() ?: ""
-        val placeholder = isPlaceholder(node, reported, firstPart = takeText.length <= text.length)
+        val placeholder = isPlaceholder(node, reported, firstPart)
         val current = if (placeholder) "" else reported
         var start = node.textSelectionStart
         var end = node.textSelectionEnd
@@ -910,7 +947,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         val text = pending ?: return
         val node = focusedField()?.takeIf { !it.isPassword }
             ?: return toast(getString(R.string.bubble_tap_field))
-        if (!insertInto(node, text)) return toast(getString(R.string.bubble_on_clipboard))
+        if (!insertInto(node, text, firstPart = true)) return toast(getString(R.string.bubble_on_clipboard))
         pending = null
         render()
     }

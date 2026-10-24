@@ -66,5 +66,6 @@ pasted first and the new take follows.
 ## Related
 
 - `desktop/docs/maintaining.md`, "Overlapping takes".
-- Android parity: B-43a (the floating mic and keyboard ignore taps while transcribing, with a
-  spinner showing).
+- Android parity: B-43a, same day: the floating mic and keyboard ignored taps while
+  transcribing (with a spinner showing); fixed the same way (`android/docs/maintaining.md`,
+  "Overlapping takes").

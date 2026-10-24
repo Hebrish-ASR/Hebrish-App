@@ -960,6 +960,24 @@ to turn it off.
 - Not compiled locally: since the F-Droid source build (pulled 2026-10-24) the laptop needs NDK
   26.3.11579264 to configure the project; CI compiled it.
 
+## Overlapping takes (unreleased, 2026-10-24)
+
+R-2026-10-24-6, B-43a (desktop B-43; story in `docs/debug-log/2026-10-24-record-ignored-while-transcribing.md`).
+**Rule: a mic tap is never ignored because the last take is still transcribing.**
+
+- `FloatingMicService` and `VoiceImeService` keep a `Take` per take (its `TakeDecoder`, the text
+  it put in, pieces `waiting`, and on the floating mic the target field) instead of one
+  `decoder` / `takeText` / `target`. `take` is the open one; `finishing` the stopped ones, oldest
+  first. `State.TRANSCRIBING` now means "no take open, earlier ones still landing" (`settled()`).
+- Order: each take has its own decoder thread and they share `Transcriber`'s lock, so a later
+  take's piece can be decoded first. `deliverPart` holds it in `waiting` while an older take is
+  still in `finishing`; `land()` (the oldest take's finish) records it in History, flushes the
+  next take's waiting pieces and lands that one too if its decoder already finished.
+- Keyboard: the mic stays enabled while transcribing (`show` no longer disables it). Status
+  messages and "switch back when done" wait until nothing is in flight.
+- Try it is unchanged (one take at a time, mic disabled while busy): it is a demo.
+- Compiled locally (both flavors). Not run on a device.
+
 ## Transcription Mode (unreleased, 2026-10-24)
 
 R-2026-10-24-5, B-41a (parity with desktop B-41), D-2026-10-24-06. Home → **Transcription Mode**
@@ -996,6 +1014,8 @@ R-2026-10-24-5, B-41a (parity with desktop B-41), D-2026-10-24-06. Home → **Tr
 
 ## Not yet verified (as of 2026-10-20)
 
+- Overlapping takes (B-43a) on a device: floating mic and keyboard, tap during "transcribing",
+  texts in order, type-as-you-go on and off, switching back after the last take lands.
 - Transcription Mode (B-41a, B-42a) on a device: a long take with the screen off and in another app
   (background on), the notification's Pause/Stop and chronometer, a long take with the screen on, Bluetooth mic switch
   mid-recording, pause on leaving the screen, the leftover after force-stopping the app, the

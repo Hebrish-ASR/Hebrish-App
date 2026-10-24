@@ -27,15 +27,32 @@ import android.widget.TextView
  * falls through several methods. See docs/maintaining.md, "Returning to the keyboard".
  */
 class VoiceImeService : InputMethodService() {
+    /** LOADING / TRANSCRIBING: no take open, earlier takes still decoding ([finishing]). */
     private enum class State { IDLE, LOADING, RECORDING, PAUSED, TRANSCRIBING }
+
+    /**
+     * One take (B-43a, R-2026-10-24-6: takes can overlap; the mic works while the last take is
+     * still transcribing). Text decoded while an earlier take is still landing waits in [waiting],
+     * so the texts go in in order.
+     */
+    private class Take(val decoder: TakeDecoder) {
+        /** The take's text that went in already, for Prefs.lastTranscript. */
+        val text = StringBuilder()
+        val waiting = ArrayList<String>()
+        /** Some piece found no field to go into. */
+        var missed = false
+        var ended = false
+        var error: Throwable? = null
+    }
 
     private val main = Handler(Looper.getMainLooper())
     private var state = State.IDLE
     private var recorder: Recorder? = null
-    /** Decodes the take's segments while it is recorded, so Stop only waits for the tail. */
-    private var decoder: TakeDecoder? = null
-    /** The take's text that went in already (type as you go), for Prefs.lastTranscript. */
-    private val takeText = StringBuilder()
+    /** The open take; its decoder works on segments while it is recorded, so Stop only waits for the tail. */
+    private var take: Take? = null
+    /** Stopped takes whose text is still coming, oldest first. */
+    private val finishing = ArrayDeque<Take>()
+    private val open get() = state == State.RECORDING || state == State.PAUSED
     /** Set when the user asked to leave while a take was being transcribed: insert, then switch. */
     private var switchWhenDone = false
     private var shownSeconds = -1
@@ -112,9 +129,9 @@ class VoiceImeService : InputMethodService() {
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
-        if (state == State.RECORDING || state == State.PAUSED) {
+        if (open) {
             dropTake()
-            state = State.IDLE
+            state = settled()
             renderTake()
         }
     }
@@ -141,9 +158,8 @@ class VoiceImeService : InputMethodService() {
     private fun onMic() {
         when {
             !ModelStore.isReady(this) || !hasMic() -> openSetup()
-            state == State.IDLE -> startRecording()
-            state == State.RECORDING || state == State.PAUSED -> stopAndTranscribe()
-            else -> Unit
+            open -> stopAndTranscribe()
+            else -> startRecording()          // idle, or the last take still transcribing (B-43a)
         }
     }
 
@@ -152,8 +168,9 @@ class VoiceImeService : InputMethodService() {
     private fun startRecording(cue: Feedback.Cue = Feedback.Cue.START) {
         if (passwordField) return show(getString(R.string.ime_password), busy = false)
         preload()
-        takeText.setLength(0)
-        val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { commitPart(text) } } else null)
+        var t: Take? = null
+        val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { t?.let { deliverPart(it, text) } } } else null)
+        t = Take(d)
         val r = Recorder(
             onLevel = { l -> main.post { setLevel(l) } },
             onLimit = { main.post { if (state == State.RECORDING) stopAndTranscribe() } },
@@ -169,7 +186,7 @@ class VoiceImeService : InputMethodService() {
             return
         }
         recorder = r
-        decoder = d
+        take = t
         micName = Mic.label(this, r.routedDevice)
         state = State.RECORDING
         shownSeconds = -1
@@ -208,35 +225,39 @@ class VoiceImeService : InputMethodService() {
     private fun dropTake() {
         recorder?.cancel()
         recorder = null
-        decoder?.cancel()
-        decoder = null
+        take?.decoder?.cancel()
+        take = null
         Mic.release(this)
     }
 
+    /** No take open: TRANSCRIBING while earlier takes are still landing, else IDLE. */
+    private fun settled() = if (finishing.isEmpty()) State.IDLE else State.TRANSCRIBING
+
     /** Throws the take away and starts a fresh one at once. */
     private fun restart() {
-        if (state != State.RECORDING && state != State.PAUSED) return
+        if (!open) return
         dropTake()
-        state = State.IDLE
+        state = settled()
         startRecording(Feedback.Cue.RESTART)
     }
 
     private fun discard() {
-        if (state != State.RECORDING && state != State.PAUSED) return
+        if (!open) return
         dropTake()
-        state = State.IDLE
+        state = settled()
         Feedback.cue(this, Feedback.Cue.DISCARD)
         setLevel(0f)
         mic.setImageResource(R.drawable.ic_mic)
-        show(getString(R.string.ime_discarded), busy = false)
+        show(getString(R.string.ime_discarded), busy = finishing.isNotEmpty())
         renderTake()
     }
 
     private fun stopAndTranscribe() {
         val r = recorder ?: return
-        val d = decoder ?: return
+        val t = take ?: return
+        val d = t.decoder
         recorder = null
-        decoder = null
+        take = null
         val samples = r.stop()
         Mic.release(this)
         Feedback.cue(this, Feedback.Cue.STOP)
@@ -244,50 +265,76 @@ class VoiceImeService : InputMethodService() {
         mic.setImageResource(R.drawable.ic_mic)
         if (samples.size < Transcriber.SAMPLE_RATE / 4 && d.segmentsQueued == 0) {
             d.cancel()
-            state = State.IDLE
+            state = settled()
             renderTake()
-            show(getString(R.string.ime_too_short), busy = false)
-            if (switchWhenDone) switchBack()
+            show(getString(R.string.ime_too_short), busy = finishing.isNotEmpty())
+            if (switchWhenDone && state == State.IDLE) { switchWhenDone = false; switchBack() }
             return
         }
+        finishing.addLast(t)
         state = if (Transcriber.isLoaded(this)) State.TRANSCRIBING else State.LOADING
         renderTake()
         show(getString(if (state == State.LOADING) R.string.ime_loading else R.string.ime_transcribing), busy = true)
         d.finish(samples) { result ->
             main.post {
-                state = State.IDLE
-                val leave = switchWhenDone
-                switchWhenDone = false
-                result.onSuccess { text ->
-                    val inserted = text.isEmpty() || commitPart(text)
-                    if (takeText.isEmpty()) {
-                        show(getString(R.string.ime_nothing_heard), busy = false)
-                        if (leave) switchBack()
-                    } else {
-                        Prefs.setLastTranscript(this, takeText.toString())
-                        History.record(this, d.text, d.stats(), History.KEYBOARD)
-                        if (inserted) {
-                            show(getString(R.string.ime_tap_to_speak), busy = false)
-                            if (leave || Prefs.autoReturn(this)) switchBack()
-                        } else {
-                            // No field to type into (focus moved, field closed): keep this keyboard
-                            // up so Insert last is one tap away, even if the user asked to leave.
-                            show(getString(R.string.ime_not_inserted), busy = false)
-                        }
-                    }
-                    renderTake()
-                }.onFailure {
-                    show(getString(R.string.ime_error, it.message ?: it.javaClass.simpleName), busy = false)
-                    if (leave) switchBack()
-                }
+                result.onSuccess { text -> if (text.isNotEmpty()) deliverPart(t, text) }
+                t.ended = true
+                t.error = result.exceptionOrNull()
+                if (finishing.firstOrNull() === t) land(t)
             }
         }
     }
 
-    /** One piece of the take: typed in at the cursor and added to [takeText]. False if no field took it. */
-    private fun commitPart(text: String): Boolean {
-        takeText.append(TakeDecoder.join(takeText, text))
-        return commit(text)
+    /**
+     * [t] is the oldest take still landing and its decoder is done: record it, put in what the
+     * next take decoded meanwhile, and report once nothing is left in flight.
+     */
+    private fun land(t: Take) {
+        finishing.remove(t)
+        val err = t.error
+        if (err == null && t.text.isNotEmpty()) {
+            Prefs.setLastTranscript(this, t.text.toString())
+            History.record(this, t.decoder.text, t.decoder.stats(), History.KEYBOARD)
+        }
+        val next = finishing.firstOrNull() ?: take
+        if (next != null) {
+            for (piece in next.waiting) commitNow(next, piece)
+            next.waiting.clear()
+            if (next !== take && next.ended) return land(next)
+        }
+        if (open || finishing.isNotEmpty()) return renderTake()   // the next take's status line stays
+        state = State.IDLE
+        val leave = switchWhenDone
+        switchWhenDone = false
+        when {
+            err != null -> {
+                show(getString(R.string.ime_error, err.message ?: err.javaClass.simpleName), busy = false)
+                if (leave) switchBack()
+            }
+            t.text.isEmpty() -> {
+                show(getString(R.string.ime_nothing_heard), busy = false)
+                if (leave) switchBack()
+            }
+            !t.missed -> {
+                show(getString(R.string.ime_tap_to_speak), busy = false)
+                if (leave || Prefs.autoReturn(this)) switchBack()
+            }
+            // No field to type into (focus moved, field closed): keep this keyboard up so Insert
+            // last is one tap away, even if the user asked to leave.
+            else -> show(getString(R.string.ime_not_inserted), busy = false)
+        }
+        renderTake()
+    }
+
+    /** One piece of [t]: typed in at the cursor now, or held while an earlier take is still landing. */
+    private fun deliverPart(t: Take, text: String) {
+        val first = finishing.firstOrNull()
+        if (first != null && first !== t) t.waiting.add(text) else commitNow(t, text)
+    }
+
+    private fun commitNow(t: Take, text: String) {
+        t.text.append(TakeDecoder.join(t.text, text))
+        if (!commit(text)) t.missed = true
     }
 
     /**
@@ -382,7 +429,8 @@ class VoiceImeService : InputMethodService() {
         if (!::status.isInitialized) return
         status.text = msg
         spinner.visibility = if (busy) View.VISIBLE else View.GONE
-        mic.isEnabled = !busy
+        // The mic stays enabled while transcribing (B-43a): a tap starts the next take. Up to
+        // 1.000 it was disabled, so a tap then did nothing.
     }
 
     /** Pause / Restart / Discard while a take is open; Insert last when idle and there is one. */
