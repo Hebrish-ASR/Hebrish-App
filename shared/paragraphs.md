@@ -23,15 +23,18 @@ appears in the model picker, and it has no catalogue entry.
 
 ## Algorithm
 
-1. **Words:** split the take's text on whitespace (any Unicode whitespace run). No words: return
-   the text unchanged.
+1. **Words:** split the take's text on whitespace runs as Python's `str.split()` does: Unicode
+   whitespace plus U+001C–U+001F. No words: return the text unchanged.
 2. **WordPiece per word**, each word tokenized on its own, no special tokens. BERT uncased rules
    (the `tokenizer.json` is `BertNormalizer{clean_text, handle_chinese_chars, lowercase,
    strip_accents: null}` + `BertPreTokenizer` + `WordPiece{"##", max 100 chars, [UNK]}`):
-   - clean: drop U+0000, U+FFFD and control characters (category Cc/Cf, except `\t \n \r`, which
-     count as whitespace); map whitespace to a space.
+   - clean: drop U+0000, U+FFFD and characters of category Cc, Cf or Co (private use), except
+     `\t \n \r`, which count as whitespace; map whitespace to a space. Unassigned characters (Cn)
+     are kept and end up as `[UNK]`.
    - put spaces around CJK ideographs (the BERT `_is_chinese_char` ranges).
-   - lower-case, then strip accents: NFD, drop category Mn (`São` → `sao`, `naïve` → `naive`).
+   - strip accents (NFD, drop category Mn), **then** lower-case one character at a time, so there
+     is no final-sigma rule (`ΣΑΣ` → `σασ`; `São` → `sao`, `naïve` → `naive`). (V, 2026-10-24:
+     desktop's implementation matched the HF `tokenizers` library on ~390,000 random words.)
    - split on whitespace, then split off every punctuation character as its own piece. Punctuation
      = ASCII 33–47, 58–64, 91–96, 123–126, or Unicode category P*. Currency and other symbols
      (`₪`, `€`, emoji) are **not** punctuation: `₪1,200!` → `₪1` `,` `200` `!`.
