@@ -6,7 +6,7 @@
   "entries": [
     {
       "date": "2026-10-25",
-      "tag": "Android 1.003 · Desktop 1.004",
+      "tag": "Android 1.003 · Desktop 1.005",
       "title": "Models in plain words, a What's new list, and the floating mic types instead of pasting",
       "summary": "Each model now says what it's built on, for example \"Base model: Parakeet 0.6B v2 by NVIDIA\"; the technical detail is under Technical details."
     },
