@@ -1270,3 +1270,23 @@ full changelog. Checked: `./gradlew --offline :app:compileFdroidDebugKotlin
 :app:mergeFdroidDebugAssets` passes and the merged assets contain `updates.json` (V); a full
 `assembleDebug` could not run on 2026-10-25 because the native (sherpa-onnx) configure step failed
 on this checkout's submodule state, unrelated to this change; not run on a device (I).
+
+**Button bindings: on/off, Clear all, saved sets (unreleased, 2026-10-25).** Daniel: the floating
+mic grabbing bound keys all the time is inconvenient when the same Bluetooth remote is wanted for
+something else; asked for a way to switch the bindings off without losing them, a clear button,
+and saving/restoring them (named profiles acceptable if that is the simplest). Settings → Sound,
+microphone and buttons → Buttons now has (F-Droid build only; the Play build has no hardware keys):
+
+- **Use bound buttons** (`Prefs.keysOn`, key `key_bindings_on`, on by default). Off:
+  `FloatingMicService.onKeyEvent` returns false for every key, so the remote reaches other apps;
+  the bindings stay stored. Learn still works while off (the key is learned, then not taken).
+- **Clear all** (`Remote.clearAll`): unbinds every action and ends learning; saved sets are kept.
+- **Saved sets** (`Remote.saveProfile`/`useProfile`/`deleteProfile`): type a name, Save stores the
+  current bindings; each set is listed with its keys and **Use** (replaces the current bindings;
+  actions the set doesn't bind are cleared) and **Delete**. Same name overwrites. One prefs key,
+  `key_profiles`, JSON `{name: {ACTION: keyCode}}`, on the phone only, so a later settings backup
+  or cloud sync only has to carry that key and `key_<ACTION>`.
+
+Both new keys start with `key_`, so `ControlsActivity`'s preference listener re-renders on them.
+Checked: `./gradlew :app:compileFdroidDebugKotlin :app:compilePlayDebugKotlin` passes (V, JDK 21);
+not run on a device (I).

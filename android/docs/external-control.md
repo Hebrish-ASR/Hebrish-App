@@ -46,6 +46,12 @@ adb shell am broadcast -a app.hebrish.dictation.action.RESTART -p app.hebrish.di
 Settings → "Sound, microphone and buttons" → Buttons. Tap **Learn** next to an action, then press
 the button; its key code is stored (`Prefs.keyFor`, key `key_<ACTION>`). **Clear** removes it.
 
+- **Use bound buttons** (on by default) switches all bindings off without forgetting them: Hebrish
+  then takes no keys, so the same remote works in other apps. **Clear all** unbinds every action.
+- **Saved sets:** type a name and tap **Save** to keep the current bindings, e.g. one set per
+  remote; **Use** switches to a set (replacing the current bindings), **Delete** removes it. Stored
+  on the phone only (prefs key `key_profiles`).
+
 - Only bound keys are consumed; every other key reaches the app as usual. Back, Home and Recents
   are never bound.
 - Acts on key down, once; holding a key does not repeat the action.

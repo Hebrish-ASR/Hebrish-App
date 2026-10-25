@@ -87,6 +87,17 @@ object Prefs {
     fun keyFor(ctx: Context, a: Remote.Action) = sp(ctx).getInt("key_" + a.name, 0)
     fun setKeyFor(ctx: Context, a: Remote.Action, keyCode: Int) = sp(ctx).edit().putInt("key_" + a.name, keyCode).apply()
 
+    /**
+     * Bound keys are taken at all (1.004). Off: FloatingMicService takes no key, so the remote works
+     * in other apps, and the bindings stay stored. Learn still works while off. On by default.
+     */
+    fun keysOn(ctx: Context) = sp(ctx).getBoolean("key_bindings_on", true)
+    fun setKeysOn(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("key_bindings_on", v).apply()
+
+    /** Saved sets of bindings (1.004, Remote.saveProfile): JSON {name: {ACTION: keyCode}}, on this phone only. */
+    fun keyProfiles(ctx: Context): String = sp(ctx).getString("key_profiles", "{}") ?: "{}"
+    fun setKeyProfiles(ctx: Context, v: String) = sp(ctx).edit().putString("key_profiles", v).apply()
+
     /** While set, the next hardware key FloatingMicService sees is bound to this action (its name). */
     fun learning(ctx: Context): String? = sp(ctx).getString("key_learning", null)
     fun setLearning(ctx: Context, a: Remote.Action?) = sp(ctx).edit().putString("key_learning", a?.name).apply()

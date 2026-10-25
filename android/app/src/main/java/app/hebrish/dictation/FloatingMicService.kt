@@ -215,7 +215,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     /**
      * Hardware keys (flagRequestFilterKeyEvents in res/xml/floating_mic.xml). Only keys bound
-     * to an action are consumed, plus the next key while the settings screen is learning one.
+     * to an action are consumed, plus the next key while the settings screen is learning one;
+     * with Prefs.keysOn off (1.004) only that learned key is.
      * Back, Home and Recents are never taken. Acts on key down, once (not on auto-repeat).
      */
     override fun onKeyEvent(event: KeyEvent): Boolean = runCatching {
@@ -235,6 +236,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             main.post { toast(getString(R.string.controls_key_bound, Remote.keyName(code))) }
             return true
         }
+        if (!Prefs.keysOn(this)) return false
         val a = Remote.actionFor(this, code) ?: return false
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) main.post { onRemote(a) }
         true
