@@ -29,6 +29,17 @@ PAUSE_TARGET_S = 0.6
 FRAME = 320                       # 20 ms
 
 
+UNK = re.compile(r" *<unk> *")
+
+
+def drop_unk(text: str) -> str:
+    """The model's text without `<unk>` (token 0 of the Sabich/Jachnun BPE vocabulary). The model
+    writes it at a clause break, where its training text had a mark the vocabulary lacks (em/en
+    dash, semicolon, double quote): six times in Daniel's history, 2026-10-21 to 25 (1.003). A
+    space takes its place; docs/maintaining.md, "<unk> in the output"."""
+    return UNK.sub(" ", text) if "<unk>" in text else text
+
+
 def normalize(x: np.ndarray, target_dbfs=-20.0, max_gain=10.0) -> np.ndarray:
     rms = float(np.sqrt(np.mean(x ** 2))) if len(x) else 0.0
     if rms < 1e-5:
@@ -306,7 +317,7 @@ class LiveStream:
                 self._s.input_finished()
             while eng._rec.is_ready(self._s):
                 eng._rec.decode_stream(self._s)
-            text = eng._rec.get_result(self._s).lstrip()
+            text = drop_unk(eng._rec.get_result(self._s)).lstrip()
             self.decode_s += time.monotonic() - t0
         self.audio_s += len(samples) / SAMPLE_RATE
         return text
@@ -430,9 +441,9 @@ class Engine:
             s.input_finished()
             while self._rec.is_ready(s):
                 self._rec.decode_stream(s)
-            return self._rec.get_result(s).strip(), len(self._rec.get_result_all(s).tokens)
+            return drop_unk(self._rec.get_result(s)).strip(), len(self._rec.get_result_all(s).tokens)
         self._rec.decode_stream(s)
-        return s.result.text.strip(), len(s.result.tokens)
+        return drop_unk(s.result.text).strip(), len(s.result.tokens)
 
     def transcribe(self, samples: np.ndarray, vad: bool = False, record: bool = True,
                    ref: np.ndarray | None = None) -> str:

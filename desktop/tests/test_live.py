@@ -331,3 +331,12 @@ def test_a_quiet_take_is_speech():
     assert has_speech(take)
     assert not has_speech(_level(3, -60, 4))                        # flat noise, however loud: nothing
     assert not has_speech(np.zeros(SR * 2, np.float32))
+
+
+def test_unk_never_reaches_the_text():
+    # Six history rows (2026-10-21 to 25) had "<unk>" at a clause break, e.g. "then<unk>and".
+    from hebrish.engine import drop_unk
+    assert drop_unk("then<unk>and don't") == "then and don't"
+    assert drop_unk("manually<unk> we can") == "manually we can"
+    assert drop_unk("helpful <unk> checking") == "helpful checking"
+    assert drop_unk("no marks here") == "no marks here"

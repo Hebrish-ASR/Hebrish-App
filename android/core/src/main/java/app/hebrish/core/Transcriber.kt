@@ -121,8 +121,8 @@ object Transcriber {
         var k = tokens.size
         for (i in tokens.indices) if (i < times.size && times[i] >= at) { k = i; break }
         // Tokens carry their own leading spaces (as on desktop): join, then trim.
-        val heard = tokens.copyOfRange(0, k).joinToString("").trim()
-        val text = tokens.copyOfRange(k, tokens.size).joinToString("").trim()
+        val heard = dropUnk(tokens.copyOfRange(0, k).joinToString("")).trim()
+        val text = dropUnk(tokens.copyOfRange(k, tokens.size).joinToString("")).trim()
         return text to if (heard.isEmpty()) null else heard.last() in ".?!"
     }
 
@@ -136,7 +136,16 @@ object Transcriber {
     fun trailingQuietSeconds(samples: FloatArray): Float? =
         speechFrames(samples)?.let { (samples.size - (it.last + 1) * (SAMPLE_RATE / 50)) / SAMPLE_RATE.toFloat() }
 
-    private fun decode(rec: OfflineRecognizer, audio: FloatArray): String = result(rec, audio).text.trim()
+    private fun decode(rec: OfflineRecognizer, audio: FloatArray): String = dropUnk(result(rec, audio).text).trim()
+
+    private val UNK = Regex(" *<unk> *")
+
+    /**
+     * The model's text without `<unk>` (token 0 of the BPE vocabulary), which it writes at a clause
+     * break where its training text had a mark the vocabulary lacks (em/en dash, semicolon, double
+     * quote). A space takes its place. Desktop twin: `engine.drop_unk` (2026-10-25).
+     */
+    fun dropUnk(text: String): String = if ("<unk>" in text) text.replace(UNK, " ") else text
 
     private fun result(rec: OfflineRecognizer, audio: FloatArray): com.k2fsa.sherpa.onnx.OfflineRecognizerResult {
         val stream = rec.createStream()
