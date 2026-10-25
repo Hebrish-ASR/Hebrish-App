@@ -23,7 +23,7 @@ from .style import BLUE, BRAND_GREEN, GOLD, INK, MUTED, PAPER, display_font
 HUB = "https://github.com/Hebrish-ASR/English-Hebrew-Codeswitching-Parakeet-Finetune"
 MODEL = "https://huggingface.co/Hebrish/Jachnun"       # the HF home since 2026-10-20 (gated)
 LEADERBOARD = "https://huggingface.co/spaces/danielrosehill/English-Hebrew-Codeswitching-ASR-Leaderboard"
-DEMO = "https://huggingface.co/spaces/danielrosehill/English-Hebrew-Codeswitching-Parakeet-Demo"
+DEMO = "https://huggingface.co/spaces/Hebrish/Jachnun-Demo"
 SOURCE = "https://github.com/Hebrish-ASR/Hebrish-App"
 AUTHOR_SITE = "https://danielrosehill.com"
 
