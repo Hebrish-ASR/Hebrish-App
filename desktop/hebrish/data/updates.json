@@ -6,6 +6,18 @@
   "entries": [
     {
       "date": "2026-10-25",
+      "tag": "Android 1.003 · Desktop 1.004",
+      "title": "Models in plain words, a What's new list, and the floating mic types instead of pasting",
+      "summary": "Each model now says what it's built on, for example \"Base model: Parakeet 0.6B v2 by NVIDIA\"; the technical detail is under Technical details."
+    },
+    {
+      "date": "2026-10-25",
+      "tag": "Models",
+      "title": "Sabich v2.1: more recordings, and no more <unk>",
+      "summary": "Sabich v2.1 replaces v2.0 as the recommended model in the apps. It is a Sabich-only update to Release v2; Shakshuka, Jachnun and Meorav are unchanged."
+    },
+    {
+      "date": "2026-10-25",
       "tag": "Desktop 1.003",
       "title": "Your microphones in your order, and no more lost words",
       "summary": "Settings has a Microphones list: every mic Hebrish has seen on this computer, with a name you give it and a type (built-in, headset, wireless headset, shotgun, lav, dynamic and more)."
@@ -111,18 +123,6 @@
       "tag": "Models · Site · POC",
       "title": "Meorav, a text-to-speech line, and one page for every model",
       "summary": "Meorav is the first Hebrish model that goes from text to speech: a Qwen3-TTS fine-tune that reads code-switched English aloud, in Irish-accented English with the Hebrew words pronounced correctly."
-    },
-    {
-      "date": "2026-10-22",
-      "tag": "Desktop 0.7.0",
-      "title": "Desktop: streaming dictation with Shakshuka, and a history of what you dictate",
-      "summary": "Shakshuka is now the default for dictation on Ubuntu and Windows. It streams: words are typed while you are still talking, about a second behind."
-    },
-    {
-      "date": "2026-10-22",
-      "tag": "Android 0.7.4",
-      "title": "Android: move the floating mic without closing it",
-      "summary": "The × next to the floating mic is gone. It sat where your finger lands to grab the mic, so trying to drag the mic closed it."
     }
   ]
 }
