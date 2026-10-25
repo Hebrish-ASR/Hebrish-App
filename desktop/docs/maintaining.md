@@ -265,7 +265,7 @@ each part works there:
    bundles sherpa-onnx + sherpa-onnx-core, and is pinned to the build machine's python3
    minor (3.14). Then run `gh release upload desktop-v<ver> dist/*.deb`. CI can't build it
    because the GitHub runners' Ubuntu has an older python3.
-4. Publish the .deb to the APT repository: `scripts/publish-apt.sh dist/hebrish_<ver>-1_amd64.deb`
+4. Publish the .deb to the APT repository: `with-secrets scripts/publish-apt.sh dist/hebrish_<ver>-1_amd64.deb` (credentials from Infisical since 2026-10-25)
    (see "APT repository" below). Do it after the CDN upload and `latest.json`, so the in-app
    update notice never points at a version apt can't yet fetch.
 5. Screenshots: `.venv/bin/python scripts/screenshots.py`, then upload them (see
@@ -333,7 +333,7 @@ plus the `input` group (Flatpak) or classic confinement (Snap), so neither gains
 | Private key | 1Password "Hebrish APT signing key" (`htiwosgw63aj7hjlsteawbe6ua`), vault "API Keys & Programmatic", field `private_key` (armored); `op` returns it wrapped in quotes, the script strips them |
 | Public key | `packaging/apt/hebrish-archive-keyring.{gpg,asc}`, published at `apt/hebrish-archive-keyring.{gpg,asc}` |
 | Setup | `packaging/apt/setup.sh`, published at `apt/setup.sh`: `curl -fsSL https://cdn.hebrish.app/apt/setup.sh \| sudo sh` (checks the key fingerprint, writes the sources file, installs) |
-| Publish | `scripts/publish-apt.sh <deb>…` (no argument: re-sign what is in the pool) |
+| Publish | `with-secrets scripts/publish-apt.sh <deb>…` (no argument: re-sign what is in the pool) |
 
 - **The package enrols itself (0.6.2+).** `build-deb.sh` ships the keyring at
   `/etc/apt/keyrings/hebrish-archive-keyring.gpg` and `/etc/apt/sources.list.d/hebrish.sources`

@@ -12,17 +12,17 @@
 # Acquire-By-Hash, so a client that sees a cached-old or freshly-new InRelease always finds
 # matching index files.
 #
-# Needs: op (1Password service account), aws CLI, gpg, apt-ftparchive (apt-utils).
-# Credentials: 1Password "Hebrish CDN R2" and "Hebrish APT signing key", vault
-# "API Keys & Programmatic". Neither is written to disk outside a temp dir removed on exit.
+# Needs: aws CLI, gpg, apt-ftparchive (apt-utils).
+# Credentials (since 2026-10-25, from Infisical, not op): run it as `with-secrets scripts/publish-apt.sh ...`
+# so HEBRISH_CDN_R2_ACCESS_KEY_ID, HEBRISH_CDN_R2_SECRET_ACCESS_KEY and HEBRISH_APT_SIGNING_KEY
+# are set (synced from 1Password "Hebrish CDN R2" and "Hebrish APT signing key"). The key is
+# imported into a temp GNUPGHOME removed on exit.
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")/.."
 
 KEEP=${KEEP:-3}
 FPR=4745D63577C81400DBB743DFDBD1F5A22CA1B27B
-V="API Keys & Programmatic"
-R2_ITEM=m64h5flf53zz55i7iqfm6xx3hm
-KEY_ITEM=htiwosgw63aj7hjlsteawbe6ua
+: "${HEBRISH_CDN_R2_ACCESS_KEY_ID:?run under with-secrets}" "${HEBRISH_APT_SIGNING_KEY:?run under with-secrets}"
 E=https://81ee9810726226b99b56e4d84ffac020.r2.cloudflarestorage.com
 S3=s3://hebrish-cdn/apt
 POOL=pool/main/h/hebrish
@@ -36,11 +36,10 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 export GNUPGHOME="$WORK/gnupg"
 mkdir -m 700 "$GNUPGHOME"
-export AWS_ACCESS_KEY_ID=$(op item get $R2_ITEM --vault "$V" --fields username --reveal) \
-       AWS_SECRET_ACCESS_KEY=$(op item get $R2_ITEM --vault "$V" --fields credential --reveal) \
+export AWS_ACCESS_KEY_ID=$HEBRISH_CDN_R2_ACCESS_KEY_ID \
+       AWS_SECRET_ACCESS_KEY=$HEBRISH_CDN_R2_SECRET_ACCESS_KEY \
        AWS_DEFAULT_REGION=auto
-op item get $KEY_ITEM --vault "$V" --fields private_key --reveal | sed 's/^"//; s/"$//' \
-    | gpg --batch --quiet --import
+printf '%s\n' "$HEBRISH_APT_SIGNING_KEY" | sed 's/^"//; s/"$//' | gpg --batch --quiet --import
 gpg --list-secret-keys --with-colons | grep -q "^fpr:*$FPR:" || { echo "signing key not imported" >&2; exit 1; }
 
 REPO="$WORK/repo"
