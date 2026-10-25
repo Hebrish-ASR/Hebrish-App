@@ -22,10 +22,10 @@ from PySide6.QtGui import QActionGroup, QDesktopServices, QIcon
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from .. import __version__, app_update, audio, autostart, dictionary, disfluency, model_store
+from .. import __version__, app_update, audio, autostart, dictionary, disfluency, mics, model_store
 from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
-from ..engine import Engine, after_held_stop, hold_stop, live_split
+from ..engine import REF_S, Engine, after_held_stop, hold_stop, live_split
 from ..history import History
 from ..hotkey import make_listener
 from ..inserter import copy_to_clipboard, make_inserter
@@ -44,6 +44,10 @@ CUE_MARGIN_S = 0.15
 # With both the cursor and the clipboard on, the whole take is copied this long after the take's
 # last paste chord, so the target app has read the clipboard (the last piece) before it changes.
 CLIPBOARD_AFTER_PASTE_MS = 600
+# Two pastes are at least this far apart (R-2026-10-25-3: the last piece of a take, pasted soon
+# after the one before it, sometimes never showed up). Apps that read the clipboard themselves on
+# Ctrl+V (Claude Code runs wl-paste twice) need a moment before the clipboard changes again.
+PASTE_GAP_S = 0.4
 # How long the overlay offers "No text field · Paste" before it goes back to normal.
 NO_FIELD_S = 30
 BEEPS = {"recording": 880, "transcribing": 620, "discarded": (660, 440), "retake": (523, 880)}
@@ -75,6 +79,17 @@ class Signals(QObject):
     downloaded = Signal(object, object)
     app_checked = Signal(object, object, bool)  # app_update.Release or None, error, manual
     app_updated = Signal(bool, str)             # ok, message: the pkexec apt upgrade
+
+
+def _before(pieces: list, n: int):
+    """The last n samples of a take before its newest piece (engine REF_S), or None."""
+    out, have = [], 0
+    for p in reversed(pieces[:-1]):
+        out.append(p)
+        have += len(p)
+        if have >= n:
+            break
+    return np.concatenate(out[::-1])[-n:] if out else None
 
 
 class Controller(QObject):
@@ -146,6 +161,7 @@ class Controller(QObject):
         self._stops: deque[float] = deque()   # when each pending take was stopped, oldest first
         self._send_take = 0             # Stop and send: the take whose last text gets send_chord
         self._jobs: queue.Queue = queue.Queue()
+        self._pasted_at = 0.0           # time.monotonic() of the last paste chord (PASTE_GAP_S)
         threading.Thread(target=self._worker, daemon=True, name="decode").start()
         self._live_timer = QTimer(self, interval=500, timeout=self._live_tick)
 
@@ -218,7 +234,7 @@ class Controller(QObject):
             return
         self.stop_monitor()
         try:
-            self.recorder.start(self.cfg["audio_device"])
+            self.recorder.start(mics.resolve(self.cfg)[0])
         except Exception as e:
             self.notify("Microphone error", str(e))
             return
@@ -266,7 +282,7 @@ class Controller(QObject):
     def start_monitor(self):
         """Test mic: open the mic for the level meter only (nothing is recorded or decoded)."""
         if self.state == "idle" and not self.monitor.active:
-            self.monitor.start(self.cfg["audio_device"])
+            self.monitor.start(mics.resolve(self.cfg)[0])
 
     def stop_monitor(self):
         if self.monitor.active:
@@ -449,7 +465,12 @@ class Controller(QObject):
                     continue
                 # 0.7.6: each piece is decoded after the end of the one before it (engine.CONTEXT_S),
                 # unless that one was cut without a pause (a forced cut may split a word)
-                text, stop = self.engine.transcribe_after(samples, ctx, vad=self.cfg["vad"]) if live else ("", None)
+                ref = _before(heard_audio, REF_S * audio.SAMPLE_RATE)
+                text, stop = (self.engine.transcribe_after(samples, ctx, vad=self.cfg["vad"], ref=ref)
+                              if live else ("", None))
+                if final:
+                    log.info("last piece: %.1f s of audio, %d words", len(samples) / audio.SAMPLE_RATE,
+                             len(text.split()))
                 text = disfluency.chop(text)      # 1.001: fillers out first (../shared/disfluencies.md)
                 ctx = samples if pause else None
                 end = " " if self.cfg["trailing_space"] else ""
@@ -492,7 +513,12 @@ class Controller(QObject):
         """A piece out of the app (decode thread): pasted at the cursor, or, with only the
         clipboard on, copied. The window is [_show]'s; the whole take's copy is [_done]'s."""
         if self.cfg["out_cursor"]:
+            wait = PASTE_GAP_S - (time.monotonic() - self._pasted_at)
+            if wait > 0:
+                time.sleep(wait)
             self.inserter.insert(text, "paste", self.cfg["paste_chord"])
+            self._pasted_at = time.monotonic()
+            log.info("pasted %d chars", len(text))
         elif self.cfg["out_clipboard"]:
             self.inserter.insert(text, "clipboard", self.cfg["paste_chord"])
 
@@ -1057,9 +1083,13 @@ class Controller(QObject):
             self.toggle()
 
     def _update_tray(self):
-        name = "nomodel" if model_store.active() is None else self.state
+        # "finishing" (R-2026-10-25-3): Stop was pressed and the take's last words are still being
+        # decoded and pasted. Amber with three dots, so it doesn't read as done.
+        state = "finishing" if self.state == "busy" and self.pending and not self.loading else self.state
+        name = "nomodel" if model_store.active() is None else state
         self.tray.setIcon(icon(f"tray-{name}"))
-        self.tray.setToolTip(f"{APP_NAME}: {dict(idle='ready', recording='listening', busy='working').get(self.state)}")
+        self.tray.setToolTip(f"{APP_NAME}: " + dict(idle="ready", recording="listening", busy="working",
+                                                    finishing="finishing, the last words are on the way")[state])
         self.act_toggle.setText("Stop dictation" if self.state == "recording" else "Start dictation")
         self.act_toggle.setEnabled(self.state != "busy" or self.queued_ok)
         self.act_overlay.setVisible(self.overlay.available)

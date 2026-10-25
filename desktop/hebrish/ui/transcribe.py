@@ -23,8 +23,9 @@ from PySide6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QLabel,
                                QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import audio, dictionary, disfluency, longform, paragraphs
+from .. import audio, dictionary, disfluency, longform, mics, paragraphs
 from ..inserter import copy_to_clipboard
+from .mics import fill_combo
 from .meter import LevelMeter, verdict
 
 PARAGRAPH_S = 30
@@ -292,22 +293,12 @@ class TranscribePage(QWidget):
 
     # -- recorder --------------------------------------------------------------------
     def _fill_mics(self):
-        cur = self.cfg["tm_audio_device"]
-        self.mic.blockSignals(True)
-        self.mic.clear()
-        self.mic.addItem("System default", "")
-        for name in audio.input_devices():
-            self.mic.addItem(name, name)
-        if cur and self.mic.findData(cur) < 0:
-            self.mic.addItem(f"{cur} (not found)", cur)
-        self.mic.setCurrentIndex(max(0, self.mic.findData(cur)))
-        self.mic.blockSignals(False)
+        fill_combo(self.mic, self.cfg, "tm_audio_device")
 
     def _on_mic(self, _i):
-        dev = self.mic.currentData()
-        self.cfg.set("tm_audio_device", dev)
+        self.cfg.set("tm_audio_device", self.mic.currentData())
         try:
-            self.tape.switch_device(dev)
+            self.tape.switch_device(mics.resolve(self.cfg, "tm_audio_device")[0])
         except Exception as e:
             self.tape.pause()
             QMessageBox.warning(self, "Couldn't open the microphone",
@@ -389,7 +380,7 @@ class TranscribePage(QWidget):
             return
         self.ctl.stop_monitor()
         try:
-            t.start(self.cfg["tm_audio_device"])
+            t.start(mics.resolve(self.cfg, "tm_audio_device")[0])
         except Exception as e:
             QMessageBox.warning(self, "Couldn't open the microphone", str(e))
             return

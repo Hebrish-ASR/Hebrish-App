@@ -20,15 +20,16 @@ from ..config import APP_NAME, CONFIG_PATH, MODELS_DIR, STATE_PATH, TAGLINE, loa
 from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
 from . import about
+from .mics import MicsCard, fill_combo, in_use
 from .app import ICONS, icon
 from .meter import LevelMeter, verdict
 from .style import BLUE, BRAND_GREEN
 
 OVERLAY = [("off", "Off"), ("active", "While dictating"), ("always", "Always (a mic button)")]
-# Insert-as-you-go presets (0.7.1: Fast 3, Normal 5, Relaxed 8 s; 0.7.0 had 5/7/10).
-# Any other value is Custom; -1 is the Custom entry's own data.
-LIVE = [(0, "Off: everything when you stop"), (3, "Fast: every ~3 seconds"),
-        (5, "Normal: every ~5 seconds"), (8, "Relaxed: every ~8 seconds"), (-1, "Custom…")]
+# Insert-as-you-go presets (R-2026-10-25-3: Fast 4, Normal 6, Relaxed 10 s; 0.7.1 had 3/5/8, 0.7.0
+# 5/7/10). Any other value is Custom; -1 is the Custom entry's own data.
+LIVE = [(0, "Off: everything when you stop"), (4, "Fast: every ~4 seconds"),
+        (6, "Normal: every ~6 seconds"), (10, "Relaxed: every ~10 seconds"), (-1, "Custom…")]
 STREAM = [("phrase", "A phrase at a time"),
           ("sentence", "A sentence at a time"), ("word", "Every word")]
 # Outputs (1.000): config switches, any combination; at least one stays on.
@@ -40,7 +41,7 @@ PASTE_CHORDS = [("ctrl+v", "Paste with Ctrl+V"), ("ctrl+shift+v", "Paste with Ct
 FEEDBACK = [("beeps", "Beeps (start and stop)"), ("voice", "Voice (“Recording”, “Paused”, “Transcribing”…)"),
             ("off", "Off")]
 # Saved silently, so no toast: moving the overlay
-NO_TOAST = {"overlay_pos", "tm_gain_db", "tm_levels", "tm_audio_device"}
+NO_TOAST = {"overlay_pos", "tm_gain_db", "tm_levels", "tm_audio_device", "mics"}
 
 
 def card(title: str = "") -> tuple[QFrame, QVBoxLayout]:
@@ -376,28 +377,22 @@ class MainWindow(QMainWindow):
         return page
 
     def _fill_mics(self):
-        cur = self.cfg["audio_device"]
-        self.mic.blockSignals(True)
-        self.mic.clear()
-        self.mic.addItem("System default", "")
-        for name in audio.input_devices():
-            self.mic.addItem(name, name)
-        if cur and self.mic.findData(cur) < 0:
-            self.mic.addItem(f"{cur} (not found)", cur)
-        self.mic.setCurrentIndex(max(0, self.mic.findData(cur)))
-        self.mic.blockSignals(False)
+        fill_combo(self.mic, self.cfg, "audio_device")
         self._show_mic()
 
     def _show_mic(self):
-        name = self.cfg["audio_device"]
-        if not name:
-            real = audio.default_input_name()
-            name = f"{real} (system default)" if real else "System default"
-        self.mic_in_use.setText(f"In use: {name}")
+        self.mic_in_use.setText(f"In use: {in_use(self.cfg)}")
+
+    def mics_changed(self):
+        """Settings → Microphones changed an alias, the order or the Preferred order switch."""
+        self._fill_mics()
+        self.transcribe._fill_mics()
 
     def _on_mic(self, _i):
         self.cfg.set("audio_device", self.mic.currentData())
         self._show_mic()
+        if hasattr(self, "mics_card"):
+            self.mics_card.sync()
         if self.ctl.monitor.active:                 # re-open the test on the new mic
             self.ctl.stop_monitor()
             self._on_test(True)
@@ -1151,6 +1146,9 @@ class MainWindow(QMainWindow):
         b.addWidget(self._check("keep_history", "Keep a history of every transcript (History tab)", self._on_history_setting))
         lay.addWidget(box)
 
+        self.mics_card = MicsCard(self.cfg, self.mics_changed)
+        lay.addWidget(self.mics_card)
+
         box, b = card("Action keys")
         b.addWidget(muted("Optional keys for a macropad or foot pedals, one per action. Each acts "
                           "when pressed, alongside the toggle and push-to-talk keys. Start also "
@@ -1171,7 +1169,7 @@ class MainWindow(QMainWindow):
         lay.addWidget(box)
 
         box, b = card("Speed")
-        b.addWidget(muted("Inserting as you go (on by default, Normal: every ~5 seconds) decodes the take "
+        b.addWidget(muted("Inserting as you go (on by default, Normal: every ~6 seconds) decodes the take "
                           "while you are still talking, at a pause, so text appears as you speak "
                           "and only the last few seconds are left when you stop. When you stop "
                           "to think for a second, what you said so far goes in straight away. "

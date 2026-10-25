@@ -13,6 +13,8 @@ from pathlib import Path
 import numpy as np
 import sounddevice as sd
 
+from . import mics
+
 SAMPLE_RATE = 16000
 DICTATION_MAX_S = 60 * 60          # one take (hotkey or the Dictate tab); stops itself at the cap
 AUDIO_FILTER = "Audio files (*.wav *.mp3 *.m4a *.ogg *.oga *.opus *.flac *.webm *.aac *.mp4)"
@@ -158,6 +160,7 @@ class Recorder:
         self._stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="float32",
                                       device=device or None, callback=self._cb)
         self._stream.start()
+        mics.OPEN.add(self)
 
     def pause(self):
         """Stops the stream, so the mic (and the privacy indicator) goes off."""
@@ -191,6 +194,7 @@ class Recorder:
         if isinstance(s, sd.InputStream):
             s.stop()
             s.close()
+        mics.OPEN.discard(self)
 
     def stop(self) -> np.ndarray:
         self._close()

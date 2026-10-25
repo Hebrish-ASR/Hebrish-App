@@ -657,6 +657,51 @@ R-2026-10-24-6, B-43; story in `docs/debug-log/2026-10-24-record-ignored-while-t
   grouped by take even when they overlap.
 - Cues after a take (`_feedback`) mute the recorder if the next take is already recording.
 
+## Microphones: remembered, named, preferred order (B-47, 2026-10-25)
+
+R-2026-10-25-2. `hebrish/mics.py` holds the logic, `hebrish/ui/mics.py` the UI.
+
+- **Identity.** On Linux `list_mics()` reads `pactl -f json list sources` (monitors skipped). Key:
+  `<bus>:<vendor>:<product>:<serial>` (ids lower-case hex without `0x`; serial may be empty, e.g.
+  `pci:1022:15e3:` for a laptop's internal mic), `bluetooth:<address>` for Bluetooth, else
+  `name:<source>`. The key survives a different USB port and a card profile change (the source
+  name changes with the profile: `...-00.mono-fallback`). PortAudio opens the mic by the source
+  name, which its PulseAudio host API lists (Ubuntu 26.04's libportaudio2 has it); without that host API, by
+  the ALSA card (`(hw:N,M)` in the name). Elsewhere (Windows, no pactl) the key is `name:<device>`:
+  no ids, and a renamed device is a new mic.
+- **Config.** `mics` {key: alias, type, label, device, ids, bus, serial, first_seen, last_seen
+  (a date, so a take doesn't rewrite the config)}; `mic_order` (keys); `audio_device` /
+  `tm_audio_device` = `mics.PREFERRED` (`"@preferred"`) to use the order. Known keys not in
+  `mic_order` follow it in first-seen order (`mics.ordered`), which is what the card shows.
+- **At each take** (`Controller.start`, Test mic, the Transcription recorder) `mics.resolve(cfg)`
+  re-reads the mics and opens the first connected one in order, else the system default.
+  `mics.refresh()` re-initialises PortAudio (`sd._terminate()` / `sd._initialize()`) first, so a
+  mic plugged in after the app started is found; it is skipped while any stream is open
+  (`mics.OPEN`, kept by `audio.Recorder` and `longform.TapeRecorder`).
+- **UI.** Settings → Microphones (`MicsCard`): name (alias, double-click; empty shows the system's
+  name), type (`mics.TYPES`, a label only: nothing depends on it yet), bus and ids, Connected /
+  Last seen; ↑ ↓, Forget (not while connected: it would come straight back), Rescan, and *Dictate
+  with the first connected mic in this order*. The Dictate and Transcription mic boxes
+  (`fill_combo`) list System default, Preferred order, then connected mics by alias.
+- Measured 2026-10-25 on the maintainer's laptop: both inputs (internal mic, Jabra EVOLVE 30 II)
+  found with ids and opened by their stored device name.
+
+## Last words after Stop; the finishing state (B-48, 2026-10-25)
+
+R-2026-10-25-3; full record in `docs/debug-log/2026-10-25-last-words-lost-at-stop.md`.
+
+- Voice detection judges a live piece, and the last piece decoded at Stop, against the take so far
+  (`ref`, up to `engine.REF_S` = 30 s, `app._before`): speech is the old rule on the take's levels
+  or `VAD_REL_DB` (15 dB) over the take's 5th-percentile floor, never under `VAD_DEAD` (−70 dBFS).
+  Alone, a short soft last piece fell under `VAD_QUIET` and was dropped without a word.
+  Unmeasured on the benchmark: if stray words appear at the end of takes, raise `VAD_REL_DB`.
+- `PASTE_GAP_S` (0.4 s) between paste chords; each paste is logged (`pasted N chars`), as is the
+  last piece (`last piece: N s of audio, N words`).
+- Tray: `tray-finishing.svg` (amber, three dots) and "finishing, the last words are on the way"
+  while `state == "busy"` with takes pending and no model loading.
+- Presets Fast 4 / Normal 6 / Relaxed 10 s (were 3/5/8; default 6). `config.upgrade` moves a preset
+  value once, for configs without `mics`.
+
 ## Transcription Mode (1.001, 2026-10-24)
 
 R-2026-10-24-5, B-41, D-2026-10-24-06. The File tab is now **Transcription** (`ui/transcribe.py`;

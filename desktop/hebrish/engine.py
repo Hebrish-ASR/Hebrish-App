@@ -76,26 +76,45 @@ VAD_QUIET = 0.01
 VAD_MIN_SPEECH_S = 0.25
 VAD_LONG_S = 1.5
 VAD_KEEP_S = 0.8
+# A piece of a take (live pieces and the last one, decoded after Stop) is judged against the levels
+# of the take so far (`ref`), not its own (R-2026-10-25-3). Alone, the few seconds spoken just
+# before Stop were often too short and soft to pass: their loudest frames stayed under VAD_QUIET
+# on a headset at its default gain (B-46: speech around -41 dBFS), so the last words were dropped
+# and nothing said so. With `ref`, a frame is speech when it clears the usual rule on the take's
+# levels or stands VAD_REL_DB above the take's noise floor, and in any case VAD_DEAD (a dead or
+# muted mic). Not yet measured against the benchmark; the whole-take gate is B-46's.
+VAD_REL_DB = 15
+VAD_DEAD = 10 ** (-70 / 20)
+REF_S = 30                 # how much of the take before a piece serves as its `ref`
 
 
-def _speech_frames(x: np.ndarray) -> np.ndarray:
+def _frame_rms(x: np.ndarray) -> np.ndarray:
     n = len(x) // FRAME
-    rms = np.sqrt((x[: n * FRAME].reshape(n, FRAME) ** 2).mean(axis=1))
-    if not n:
+    return np.sqrt((x[: n * FRAME].reshape(n, FRAME) ** 2).mean(axis=1))
+
+
+def _speech_frames(x: np.ndarray, ref: np.ndarray | None = None) -> np.ndarray:
+    rms = _frame_rms(x)
+    if not len(rms):
         return rms > 1
-    floor, loud = np.percentile(rms, 10), np.percentile(rms, 95)
+    levels = rms if ref is None or len(ref) < FRAME else np.concatenate([_frame_rms(ref), rms])
+    floor, loud = np.percentile(levels, 10), np.percentile(levels, 95)
     if loud < VAD_QUIET:
-        return np.zeros(n, bool)
-    return rms > max(VAD_ABS, floor + (loud - floor) / 3)
+        return np.zeros(len(rms), bool)
+    gate = max(VAD_ABS, floor + (loud - floor) / 3)
+    if levels is not rms:
+        # the 5th percentile: a take spoken with few pauses has its noise floor in under 10% of frames
+        gate = max(VAD_DEAD, min(gate, np.percentile(levels, 5) * 10 ** (VAD_REL_DB / 20)))
+    return rms > gate
 
 
-def has_speech(x: np.ndarray) -> bool:
-    return int(_speech_frames(x).sum()) * FRAME >= VAD_MIN_SPEECH_S * SAMPLE_RATE
+def has_speech(x: np.ndarray, ref: np.ndarray | None = None) -> bool:
+    return int(_speech_frames(x, ref).sum()) * FRAME >= VAD_MIN_SPEECH_S * SAMPLE_RATE
 
 
-def shorten_silences(x: np.ndarray) -> np.ndarray:
+def shorten_silences(x: np.ndarray, ref: np.ndarray | None = None) -> np.ndarray:
     """Cut every non-speech run longer than VAD_LONG_S down to VAD_KEEP_S (keeping its two ends)."""
-    sp = _speech_frames(x)
+    sp = _speech_frames(x, ref)
     n, keep = len(sp), int(VAD_KEEP_S * SAMPLE_RATE / FRAME)
     out, last, i = [], 0, 0
     while i < n:
@@ -410,12 +429,13 @@ class Engine:
         self._rec.decode_stream(s)
         return s.result.text.strip(), len(s.result.tokens)
 
-    def transcribe(self, samples: np.ndarray, vad: bool = False, record: bool = True) -> str:
-        return " ".join(self.transcribe_chunks(samples, vad=vad, record=record))
+    def transcribe(self, samples: np.ndarray, vad: bool = False, record: bool = True,
+                   ref: np.ndarray | None = None) -> str:
+        return " ".join(self.transcribe_chunks(samples, vad=vad, record=record, ref=ref))
 
-    def _prepare(self, x: np.ndarray, vad: bool) -> np.ndarray:
+    def _prepare(self, x: np.ndarray, vad: bool, ref: np.ndarray | None = None) -> np.ndarray:
         if vad:
-            x = shorten_silences(x)
+            x = shorten_silences(x, ref)
         x = normalize(x)
         if not self.streaming:
             # Parakeet only. On Shakshuka it hurt 3 of 6 code-switched clips (a doubled
@@ -425,18 +445,19 @@ class Engine:
         return x
 
     def transcribe_after(self, samples: np.ndarray, context: np.ndarray | None, vad: bool = False,
-                         record: bool = True) -> tuple[str, bool | None]:
+                         record: bool = True, ref: np.ndarray | None = None) -> tuple[str, bool | None]:
         """A live piece decoded after the last CONTEXT_S of `context` (the audio just before it):
         (text of the piece alone, whether the model ended the context with a sentence mark). Falls
         back to transcribe (and None) without usable context: none, no speech in it, a streaming
-        model, or a piece long enough to be split."""
+        model, or a piece long enough to be split. `ref`: the take before this piece (voice
+        detection judges the piece by the take's levels, REF_S)."""
         ctx = None if context is None else context[-int(CONTEXT_S * SAMPLE_RATE):]
         if (ctx is None or self.streaming or len(samples) > (PIECE_S + LIVE_FORCE_S) * SAMPLE_RATE
-                or len(ctx) < MIN_TAKE_S * SAMPLE_RATE or not has_speech(ctx)):
-            return self.transcribe(samples, vad=vad, record=record), None
-        if len(samples) < MIN_TAKE_S * SAMPLE_RATE or (vad and not has_speech(samples)):
+                or len(ctx) < MIN_TAKE_S * SAMPLE_RATE or not has_speech(ctx, ref)):
+            return self.transcribe(samples, vad=vad, record=record, ref=ref), None
+        if len(samples) < MIN_TAKE_S * SAMPLE_RATE or (vad and not has_speech(samples, ref)):
             return "", None
-        ctx, x = self._prepare(ctx, vad), self._prepare(samples, vad)
+        ctx, x = self._prepare(ctx, vad, ref), self._prepare(samples, vad, ref)
         at = len(ctx) / SAMPLE_RATE
         pad = np.zeros(int(TAIL_PAD_S * SAMPLE_RATE), np.float32)
         with self._lock:
@@ -459,16 +480,18 @@ class Engine:
             return text, None
         return text, before[-1] in ".?!"
 
-    def transcribe_chunks(self, samples: np.ndarray, cancel=None, vad: bool = False, record: bool = True):
+    def transcribe_chunks(self, samples: np.ndarray, cancel=None, vad: bool = False, record: bool = True,
+                          ref: np.ndarray | None = None):
         """Yield the text of each piece (split_points) as it is decoded. The lock is taken per
         piece, so a hotkey dictation can slip in between pieces of a long file. With vad, a
-        take without speech yields nothing and long silences are shortened first."""
+        take without speech yields nothing and long silences are shortened first (judged by
+        `ref`'s levels too, when the samples are the end of a longer take)."""
         if len(samples) < MIN_TAKE_S * SAMPLE_RATE:
             return
-        if vad and not has_speech(samples):
+        if vad and not has_speech(samples, ref):
             self.last_progress = (1, 1)
             return
-        samples = self._prepare(samples, vad)
+        samples = self._prepare(samples, vad, ref)
         pad = np.zeros(int(TAIL_PAD_S * SAMPLE_RATE), np.float32)
         for a, b in split_points(samples):
             if cancel is not None and cancel.is_set():

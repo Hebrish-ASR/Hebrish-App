@@ -66,17 +66,27 @@ def test_old_default_threads_become_auto():
 def test_old_default_interval_becomes_normal():
     # 0.7.0: ~10 s was the default before send_chord existed; a chosen value stays
     # (0.7.1 then moves each preset down: 7 -> 5, 10 -> 8)
-    assert upgrade({"feedback": "beeps", "live_insert_s": 10})["live_insert_s"] == 5
+    # (R-2026-10-25-3 then moves each up: 5 -> 6, 8 -> 10)
+    assert upgrade({"feedback": "beeps", "live_insert_s": 10})["live_insert_s"] == 6
     assert upgrade({"feedback": "beeps", "live_insert_s": 15})["live_insert_s"] == 15
-    assert upgrade({"send_chord": "enter", "live_insert_s": 10})["live_insert_s"] == 8
-    assert DEFAULTS["live_insert_s"] == 5 and DEFAULTS["send_chord"] == "enter"
+    assert upgrade({"send_chord": "enter", "live_insert_s": 10})["live_insert_s"] == 10
+    assert DEFAULTS["live_insert_s"] == 6 and DEFAULTS["send_chord"] == "enter"
 
 
 def test_presets_move_down_once():
     # 0.7.1: Fast 5 -> 3, Normal 7 -> 5, Relaxed 10 -> 8; a config with stream_release has moved
+    m = {"mics": {}}
     for old, new in ((5, 3), (7, 5), (10, 8), (12, 12), (0, 0)):
-        assert upgrade({"feedback": "beeps", "send_chord": "enter", "live_insert_s": old})["live_insert_s"] == new
-    assert upgrade({"send_chord": "enter", "stream_release": "phrase", "live_insert_s": 7})["live_insert_s"] == 7
+        assert upgrade({"feedback": "beeps", "send_chord": "enter", "live_insert_s": old, **m})["live_insert_s"] == new
+    assert upgrade({"send_chord": "enter", "stream_release": "phrase", "live_insert_s": 7, **m})["live_insert_s"] == 7
+
+
+def test_presets_move_up_once():
+    # R-2026-10-25-3: Fast 3 -> 4, Normal 5 -> 6, Relaxed 8 -> 10; a config with mics has moved
+    s = {"feedback": "beeps", "send_chord": "enter", "stream_release": "phrase"}
+    for old, new in ((3, 4), (5, 6), (8, 10), (7, 7), (0, 0)):
+        assert upgrade({**s, "live_insert_s": old})["live_insert_s"] == new
+    assert upgrade({**s, "mics": {}, "live_insert_s": 5})["live_insert_s"] == 5
 
 
 def test_cuts_at_fast_interval():
@@ -233,11 +243,11 @@ def _run_worker(texts, jobs, cfg=None):
                           transcribed=SimpleNamespace(emit=lambda t, e, a: (pastes.append(("DONE", t)), done.set())))
     it = iter(texts)
     ctl = SimpleNamespace(
-        engine=SimpleNamespace(streaming=False, transcribe_after=lambda s, c, vad=False: _say(next(it))),
+        engine=SimpleNamespace(streaming=False, transcribe_after=lambda s, c, vad=False, ref=None: _say(next(it))),
         cfg={"vad": False, "trailing_space": True, "all_caps": False, "out_cursor": True, "out_clipboard": False,
              "out_window": False, "paste_chord": "ctrl+v", **(cfg or {})},
         sig=sig, inserter=SimpleNamespace(insert=lambda t, how, chord: pastes.append(t)),
-        _take=1, _dropped=set(), _send_take=0, _jobs=queue.Queue())
+        _take=1, _dropped=set(), _send_take=0, _jobs=queue.Queue(), _pasted_at=0.0)
     ctl._show = lambda t: Controller._show(ctl, t)
     ctl._insert = lambda t: Controller._insert(ctl, t)
     for pause, final in jobs:
@@ -288,3 +298,28 @@ def test_context_capitalises_a_sentence_the_model_starts():
     from hebrish.engine import after_held_stop
     assert after_held_stop("we stop.", True) == ". We stop."
     assert after_held_stop("Modal runs it.", False) == " Modal runs it."
+
+
+def _level(s, dbfs, seed=0):
+    """s seconds of noise at an RMS of dbfs."""
+    return (np.random.default_rng(seed).standard_normal(int(s * SR)) * 10 ** (dbfs / 20)).astype(np.float32)
+
+
+def test_last_piece_is_judged_by_the_take():
+    # R-2026-10-25-3: a headset at its default gain (B-46: floor -76, soft speech about -41 dBFS).
+    # The last piece alone stays under VAD_QUIET and was dropped; against the take it is speech.
+    from hebrish.engine import has_speech
+    take = np.concatenate([_level(1, -76, 1), _level(6, -30, 2), _level(1, -76, 3)])
+    tail = np.concatenate([_level(0.4, -76, 4), _level(1.5, -45, 5), _level(0.3, -76, 6)])
+    assert not has_speech(tail)
+    assert has_speech(tail, ref=take)
+    assert not has_speech(_level(2, -74, 7), ref=take)          # room noise after Stop: still nothing
+
+
+def test_last_piece_keeps_its_soft_speech():
+    # shorten_silences must not take a soft last piece for a long silence
+    from hebrish.engine import shorten_silences
+    take = np.concatenate([_level(1, -76, 1), _level(6, -30, 2)])
+    tail = _level(3, -45, 5)
+    assert len(shorten_silences(tail)) < len(tail)
+    assert len(shorten_silences(tail, ref=take)) == len(tail)

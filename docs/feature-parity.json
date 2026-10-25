@@ -228,6 +228,26 @@
       "notes": "Windows: PortAudio's default input name; Linux asks pactl."
     },
     {
+      "id": "mic-preferences",
+      "group": "capture-and-triggers",
+      "name": "Remembered mics: alias, type, preferred order (first connected is used)",
+      "android": {
+        "status": "missing"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/mics.py; desktop/hebrish/ui/mics.py MicsCard"
+      },
+      "windows": {
+        "status": "partial",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/mics.py list_mics (PortAudio names only)",
+        "verified": false
+      },
+      "notes": "R-2026-10-25-2. Linux keys mics by bus, vendor/product id and serial (pactl); Windows by device name, so no ids and a renamed device is a new mic."
+    },
+    {
       "id": "level-meter",
       "group": "capture-and-triggers",
       "name": "Level meter",

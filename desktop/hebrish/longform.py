@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 import sounddevice as sd
 
-from . import audio
+from . import audio, mics
 from .config import DATA_DIR
 
 RECORDINGS_DIR = DATA_DIR / "recordings"
@@ -90,12 +90,14 @@ class TapeRecorder:
         self._stream = sd.InputStream(samplerate=audio.SAMPLE_RATE, channels=1, dtype="float32",
                                       device=device or None, callback=self._cb)
         self._stream.start()
+        mics.OPEN.add(self)
 
     def _close_stream(self):
         if self._stream is not None:
             self._stream.stop()
             self._stream.close()
             self._stream = None
+        mics.OPEN.discard(self)
         self.rms = self.peak = self.level = 0.0
 
     def switch_device(self, device: str):

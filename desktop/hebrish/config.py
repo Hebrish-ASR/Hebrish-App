@@ -49,8 +49,9 @@ DEFAULTS = {
     "double_tap_retake": True,    # double tap of the toggle key while recording = Retake
     "double_tap_ms": 300,         # how long a stopping tap waits for the second tap
     "escape_discards": True,      # Esc while recording discards the take
-    "live_insert_s": 5,           # decode while recording and insert every ~N s, at a pause; 0 = off
-                                  # presets Fast 3, Normal 5, Relaxed 8 (0.7.1; 0.7.0: 5/7/10), else Custom
+    "live_insert_s": 6,           # decode while recording and insert every ~N s, at a pause; 0 = off
+                                  # presets Fast 4, Normal 6, Relaxed 10 (R-2026-10-25-3; 0.7.1: 3/5/8;
+                                  # 0.7.0: 5/7/10), else Custom
     "stream_release": "phrase",   # streaming models: paste every word | phrase | sentence (engine.STREAM_RELEASE; 0.7.1)
     "overlay": "off",             # off | active (while dictating) | always
     "overlay_pos": None,          # [x, y] of the overlay's top-left; None = bottom centre
@@ -75,7 +76,14 @@ DEFAULTS = {
     "quiet_hours": False,         # no beeps or voice between quiet_from and quiet_to (may cross midnight)
     "quiet_from": "22:00",
     "quiet_to": "07:00",
-    "audio_device": "",           # "" = system default; else a sounddevice name
+    "audio_device": "",           # "" = system default; audio.PREFERRED = the first connected mic in
+                                  # mic_order; else a sounddevice name
+    # Microphones (R-2026-10-25-2): every input the app has seen, by audio.Mic key (bus, vendor and
+    # product id, serial on Linux; the device name elsewhere), each {"label", "alias", "type",
+    # "vendor_id", "product_id", "serial", "bus", "device", "first_seen", "last_seen"}; and the
+    # order to use them in when audio_device is audio.PREFERRED.
+    "mics": {},
+    "mic_order": [],
     # Transcription Mode (the Transcription tab's recorder, longform.py; R-2026-10-24-5)
     "tm_audio_device": "",        # its own mic: "" = system default, independent of Dictate's
     "tm_gain_db": 0,              # digital gain, longform.GAIN_MIN_DB..GAIN_MAX_DB
@@ -227,6 +235,10 @@ def upgrade(stored: dict) -> dict:
     # keep the preset it was on, once. Custom values stay.
     if stored.get("live_insert_s") in (5, 7, 10) and "stream_release" not in stored:
         stored["live_insert_s"] = {5: 3, 7: 5, 10: 8}[stored["live_insert_s"]]
+    # R-2026-10-25-3 (Daniel, 2026-10-25: "the chunks could be ... slightly longer"): Fast 3 -> 4,
+    # Normal 5 -> 6, Relaxed 8 -> 10. A config without `mics` (added with it) predates that.
+    if stored and "mics" not in stored and stored.get("live_insert_s") in (3, 5, 8):
+        stored["live_insert_s"] = {3: 4, 5: 6, 8: 10}[stored["live_insert_s"]]
     return stored
 
 
@@ -278,7 +290,7 @@ class Config(dict):
         old = bool(stored) and ("mode" in stored or "keep_old_versions" in stored
                                 or "feedback" not in stored or "send_chord" not in stored
                                 or "clear_each_take" not in stored or "insert" in stored
-                                or "tm_show_meter" in stored)
+                                or "tm_show_meter" in stored or "mics" not in stored)
         self.update({k: v for k, v in upgrade(stored).items() if k in DEFAULTS})
         if old or not CONFIG_PATH.exists():
             self.save()

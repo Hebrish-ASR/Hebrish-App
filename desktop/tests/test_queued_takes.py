@@ -33,10 +33,11 @@ class Ctl(Controller):
         self.recorder = SimpleNamespace(start=lambda d: None, stop=lambda: np.ones(16000, np.float32),
                                         mute=lambda s: None, paused=False)
         self.engine = SimpleNamespace(loaded_dir="x", streaming=False,
-                                      transcribe_after=lambda s, c, vad: (f"take of {len(s)}", None))
+                                      transcribe_after=lambda s, c, vad, ref=None: (f"take of {len(s)}", None))
         self.win = SimpleNamespace(transcribe=SimpleNamespace(tape=SimpleNamespace(active=False)),
                                    new_take=lambda c: None, status=lambda m: None)
         self.inserter = SimpleNamespace(insert=lambda t, how, chord: self.out.append(t))
+        self._pasted_at = 0.0
         self.sig = SimpleNamespace(take_began=SimpleNamespace(emit=lambda: self.out.append("|")),
                                    piece=SimpleNamespace(emit=lambda t: None),
                                    transcribed=SimpleNamespace(emit=lambda *a: self.done.append(a)))
