@@ -47,6 +47,7 @@
         <activity android:name=".DictionaryActivity" android:exported="false" android:label="@string/title_dictionary" android:parentActivityName=".MainActivity" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".ControlsActivity" android:exported="false" android:label="@string/title_controls" android:parentActivityName=".MainActivity" />
         <activity android:name=".SetupActivity" android:exported="false" android:label="@string/title_setup" android:parentActivityName=".MainActivity" />
+        <activity android:name=".UpdatesActivity" android:exported="false" android:label="@string/title_updates" android:parentActivityName=".MainActivity" />
         <activity android:name=".AboutActivity" android:exported="false" android:label="@string/title_about" android:parentActivityName=".MainActivity" />
         <activity android:name=".ContactActivity" android:exported="false" android:label="@string/title_contact" android:parentActivityName=".MainActivity" />
 

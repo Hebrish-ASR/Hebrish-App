@@ -1,4 +1,4 @@
-"""The About tab: a hero (mark, name, versions, main links), then cards: privacy, models, how
+"""The About tab: a hero (mark, name, versions, main links), then cards: what's new, privacy, models, how
 well Jachnun works, how it was trained, how to help, terms.
 
 Code-switching numbers come from the project hub, github.com/Hebrish-ASR/English-Hebrew-Codeswitching-Parakeet-Finetune
@@ -7,7 +7,10 @@ benchmarked. v1.0 was benchmarked on 2026-10-19 on its own test split (dataset r
 550bfcaa, 387 clips), with stock Parakeet re-scored on the same clips.
 """
 
+import html
+import json
 import platform
+from pathlib import Path
 from urllib.parse import quote, urlencode
 
 from PySide6.QtCore import Qt, QUrl
@@ -32,6 +35,29 @@ AUTHOR_SITE = "https://danielrosehill.com"
 HEBRISH = "https://hebrish.app"
 FEEDBACK = "feedback@hebrish.app"
 TERMS = f"{HEBRISH}/terms"
+CHANGELOG = f"{HEBRISH}/changelog"
+# What's new (2026-10-25): baked from hebrish.app/changelog by scripts/bake_updates.py before each
+# release (a copy of shared/updates.json), so it is offline and fixed at build time.
+UPDATES = Path(__file__).resolve().parent.parent / "data" / "updates.json"
+UPDATES_SHOWN = 5       # the rest behind "Show all"
+
+
+def load_updates() -> dict:
+    """The baked list, or an empty one if the file is missing or broken (never an error)."""
+    try:
+        doc = json.loads(UPDATES.read_text(encoding="utf-8"))
+        return doc if isinstance(doc.get("entries"), list) else {"entries": []}
+    except (OSError, ValueError, AttributeError):
+        return {"entries": []}
+
+
+def updates_html(entries: list) -> str:
+    out = []
+    for e in entries:
+        meta = " · ".join(x for x in (e.get("date", ""), e.get("tag", "")) if x)
+        out.append(f"<p style='margin:0 0 10px 0'><small style='color:gray'>{html.escape(meta)}</small><br>"
+                   f"<b>{html.escape(e.get('title', ''))}</b><br>{html.escape(e.get('summary', ''))}</p>")
+    return "".join(out)
 ACCESS = "access@hebrish.app"
 
 
@@ -98,6 +124,7 @@ class AboutPage(QScrollArea):
         lay.setContentsMargins(16, 14, 16, 16)
         lay.setSpacing(12)
         lay.addWidget(self._hero(icon))
+        lay.addWidget(self._whats_new(card))
 
         box, b = card("Private by design")
         b.addWidget(_rich(
@@ -188,6 +215,33 @@ class AboutPage(QScrollArea):
         lay.addWidget(foot)
         lay.addStretch(1)
         self.setWidget(page)
+
+    def _whats_new(self, card) -> QFrame:
+        """What's new: the latest changes baked into this build, newest first; Show all expands."""
+        doc = load_updates()
+        entries = doc["entries"]
+        box, b = card("What's new")
+        if not entries:
+            b.addWidget(_rich(f"This version has no list of changes. See <a href='{CHANGELOG}'>hebrish.app/changelog</a>."))
+            return box
+        b.addWidget(_rich(f"<small style='color:gray'>The latest changes to Hebrish, up to {doc.get('built', '')} "
+                          f"when this version was built. <a href='{CHANGELOG}'>Full changelog</a></small>"))
+        self.updates_label = _rich(updates_html(entries[:UPDATES_SHOWN]))
+        b.addWidget(self.updates_label)
+        if len(entries) > UPDATES_SHOWN:
+            more = QLabel()
+            more.setTextFormat(Qt.RichText)
+
+            def toggle(_=None):
+                full = more.property("full") is not True
+                more.setProperty("full", full)
+                self.updates_label.setText(updates_html(entries if full else entries[:UPDATES_SHOWN]))
+                more.setText(f"<a href='#'>{'Show fewer' if full else f'Show all ({len(entries)})'}</a>")
+            more.setProperty("full", True)
+            toggle()
+            more.linkActivated.connect(toggle)
+            b.addWidget(more)
+        return box
 
     def _hero(self, icon) -> QFrame:
         hero = QFrame(objectName="aboutHero")

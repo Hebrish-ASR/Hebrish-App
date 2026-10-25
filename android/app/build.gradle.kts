@@ -14,10 +14,12 @@ val sherpaVersion = "1.13.8"
 val onnxRuntimeVersion = "1.28.0"
 
 // The model catalogue (shared/catalogue.json, schema 2 since 0.7.0) is shared with the desktop app. It is copied into the
-// APK's assets at build time, never edited or hand-copied here.
+// APK's assets at build time, never edited or hand-copied here. So is shared/updates.json, the What's new list
+// (UpdatesActivity) baked from hebrish.app/changelog by scripts/bake_updates.py before each release.
 val catalogueDir = layout.buildDirectory.dir("generated/catalogue")
 val copyCatalogue by tasks.registering(Copy::class) {
     from(rootProject.file("../shared/catalogue.json"))
+    from(rootProject.file("../shared/updates.json"))
     into(catalogueDir)
 }
 tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(copyCatalogue) }

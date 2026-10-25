@@ -135,6 +135,7 @@ abstract class Page : Activity() {
         entry(R.string.menu_lexicon) { open(Hebrish.LEXICON) }
         entry(R.string.menu_contribute) { open(Hebrish.CONTRIBUTE) }
         screen(R.string.title_contact, ContactActivity::class.java)
+        screen(R.string.title_updates, UpdatesActivity::class.java)
         screen(R.string.title_about, AboutActivity::class.java)
         panel.addView(ScrollView(this).apply { addView(items) }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         panel.addView(TextView(this).apply {

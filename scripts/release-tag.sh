@@ -15,8 +15,9 @@
 #
 # Refuses when: the version isn't M.NNN, isn't newer than the last tag for that app, the tag
 # already exists, or the release notes (.github/<app>-release-notes.md) don't start with
-# **M.NNN. Commits only the version file and the notes (other sessions may have work in the
-# tree), then makes an annotated tag. --push pushes main and the tag, which starts CI.
+# **M.NNN. Re-bakes the in-app What's new list (scripts/bake_updates.py). Commits only the version
+# file, the notes and the two updates.json copies (other sessions may have work in the tree), then
+# makes an annotated tag. --push pushes main and the tag, which starts CI.
 #
 # Android also gets the F-Droid changelog for the new versionCode
 # (android/app/fastlane/metadata/android/en-US/changelogs/<versionCode>.txt, at most 500
@@ -46,6 +47,17 @@ if [ -n "$LAST" ] && [ "$(printf '%s\n%s\n' "$LAST" "$VER" | sort -V | tail -1)"
 fi
 head -1 "$NOTES" | grep -q "^\*\*$VER" || { echo "$NOTES must start with **$VER: (write the notes first)" >&2; exit 1; }
 
+# What's new (2026-10-25): bake hebrish.app's changelog up to today into shared/updates.json and
+# desktop/hebrish/data/updates.json, so this build shows the updates up to its own date
+# (scripts/bake_updates.py). Write this release's changelog entry on the site first, or the build
+# shows only the ones before it. SKIP_UPDATES_BAKE=1 keeps the committed list (e.g. offline).
+UPDATES=(shared/updates.json desktop/hebrish/data/updates.json)
+if [ "${SKIP_UPDATES_BAKE:-}" != 1 ]; then
+    python3 scripts/bake_updates.py || { echo "bake_updates.py failed (SKIP_UPDATES_BAKE=1 to release with the committed list)" >&2; exit 1; }
+    python3 -c "import json,sys; e=json.load(open('shared/updates.json'))['entries'][0]; sys.exit(0 if '$VER' in e['tag'] + e['title'] else 1)" \
+        || echo "note: the newest changelog entry does not mention $VER; add it on hebrish.app and re-run to include it" >&2
+fi
+
 case $APP in
     desktop)
         sed -i "s/^__version__ = \".*\"/__version__ = \"$VER\"/" "$FILE"
@@ -59,8 +71,8 @@ case $APP in
         [ "$(wc -m < "$CHANGELOG")" -le 500 ] || { echo "$CHANGELOG is over 500 characters" >&2; exit 1; } ;;
 esac
 
-git add "$FILE" "$NOTES" ${CHANGELOG:+"$CHANGELOG"}
-git diff --cached --quiet -- "$FILE" "$NOTES" ${CHANGELOG:+"$CHANGELOG"} || git commit -q -m "${APP^} $VER" -- "$FILE" "$NOTES" ${CHANGELOG:+"$CHANGELOG"}
+git add "$FILE" "$NOTES" "${UPDATES[@]}" ${CHANGELOG:+"$CHANGELOG"}
+git diff --cached --quiet -- "$FILE" "$NOTES" "${UPDATES[@]}" ${CHANGELOG:+"$CHANGELOG"} || git commit -q -m "${APP^} $VER" -- "$FILE" "$NOTES" "${UPDATES[@]}" ${CHANGELOG:+"$CHANGELOG"}
 git tag -a "$TAG" -m "Hebrish for $APP $VER"
 echo "Tagged $TAG at $(git rev-parse --short HEAD) ($FILE: $VER)"
 if [ "$PUSH" = --push ]; then

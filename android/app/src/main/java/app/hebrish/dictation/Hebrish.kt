@@ -20,6 +20,7 @@ object Hebrish {
     const val PRIVACY = "$SITE/privacy"
     const val VERIFY = "$SITE/verify"
     const val LEXICON = "$SITE/lexicon"
+    const val CHANGELOG = "$SITE/changelog"
     /** Ways to help: recordings, words, donations (side menu "Contribute"). */
     const val CONTRIBUTE = "$SITE/support"
     const val SAMPLES = "$SITE/contact?topic=samples"

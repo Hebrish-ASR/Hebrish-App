@@ -24,7 +24,8 @@ app copies Parlance's settings (not its hotkey) and hardlinks its downloaded mod
 Models come in **lines**, named for what they are trained on, and each line has **versions on
 different base models**, from the most accurate to the fastest. Both apps show them that way
 (Android 0.7.0+, desktop 0.6.0+): pick a line, then a version, with a speed and accuracy rating
-(1–5, estimates, the same as [hebrish.app/models/choose](https://hebrish.app/models/choose)), the download size, the hardware it needs and a one-line "who it's for". The
+(1–5, estimates, the same as [hebrish.app/models/choose](https://hebrish.app/models/choose)), the download size, the hardware it needs and a one-line "who it's for", all in plain words ("Base model: Parakeet 0.6B v2 by NVIDIA");
+formats, runtimes and repo ids are under each model's **Technical details**. The
 desktop app also has **Help me choose**: device, graphics card and VRAM (detected where it can
 be), and whether speed or accuracy matters more, and answers with the same rules as the website's chooser. The list is `shared/catalogue.json`.
 
@@ -114,12 +115,16 @@ you talk, and you're returned to HeliBoard with the text inserted. Details:
 | `android/` | Android voice keyboard (Kotlin, sherpa-onnx built from source) |
 | `shared/catalogue.json` | The model catalogue (schema 2: lines and variants) both apps bundle and re-fetch since Android 0.7.0 / desktop 0.6.0; a test fails if either app's copy drifts |
 | `shared/models.json` | The schema-1 catalogue, kept for older builds; a test fails if it disagrees with `catalogue.json` |
+| `shared/updates.json` | The in-app What's new list (Android: What's new screen; desktop: About tab), baked from hebrish.app's changelog by `scripts/bake_updates.py`; copied into the APK at build time, and to `desktop/hebrish/data/` by the script |
 | `shared/update-protocol.md` | How models are listed, downloaded and updated, and the quirks both apps work around |
 | `planning/` | Public project tracking: feature requests, backlog (with ideas for future versions), decision log |
 | `CLAUDE.md` | Agent instructions, public on purpose. The project's skills are in the public [`hebrish` marketplace](https://github.com/Hebrish-ASR/Hebrish-Claude-Plugins), plugin `hebrish-maintainers` |
 
 Versions are `M.NNN` (three digits after the point): 1.000 (2026-10-24) was the first, for both
 apps, and every GitHub release before it was deleted that day (the `*-v0.*` tags remain).
+Before tagging, add the release's entry to hebrish.app's changelog: `scripts/release-tag.sh` runs
+`scripts/bake_updates.py`, which bakes the changelog up to that day into the apps' What's new list
+(`shared/updates.json`, the last 20 entries, offline) and commits it with the version.
 Releases: tag `android-vM.NNN` builds the signed APK in CI. Tag `desktop-vM.NNN` builds the
 Windows zip in CI; the Ubuntu .deb is built with `desktop/build-deb.sh` and added to the same
 release. Then overwrite the one stable file per platform on the Hebrish CDN

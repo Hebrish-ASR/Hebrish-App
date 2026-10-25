@@ -1143,6 +1143,50 @@
         "verified": false
       },
       "notes": "2026-10-24, B-45/B-45a, R-2026-10-24-7. Desktop config tm_levels: docked | shown | floating (default docked); tm_show_meter dropped."
+    },
+    {
+      "id": "plain-model-descriptions",
+      "group": "models",
+      "name": "Models page in plain words (Base model: Parakeet 0.6B v2 by NVIDIA), technical detail behind Technical details",
+      "android": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "android/app/src/main/java/app/hebrish/dictation/ModelsActivity.kt (card, technical)"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/ui/window.py (_model_row, MainWindow._technical)"
+      },
+      "windows": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/ui/window.py (_model_row, MainWindow._technical)",
+        "verified": false
+      },
+      "notes": "Catalogue fields base_label and technical (2026-10-25); tests/test_shared.py test_what_users_see_is_plain_language."
+    },
+    {
+      "id": "whats-new",
+      "group": "app",
+      "name": "What's new: recent changes baked into the build from hebrish.app/changelog, offline",
+      "android": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "android/app/src/main/java/app/hebrish/dictation/UpdatesActivity.kt (assets/updates.json)"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/ui/about.py (AboutPage._whats_new, data/updates.json)"
+      },
+      "windows": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/ui/about.py (AboutPage._whats_new, data/updates.json)",
+        "verified": false
+      },
+      "notes": "shared/updates.json by scripts/bake_updates.py, run by scripts/release-tag.sh (2026-10-25)."
     }
   ],
   "engine_rules": [

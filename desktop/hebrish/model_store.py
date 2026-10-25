@@ -67,7 +67,9 @@ class Model:
     line: str = ""                   # line id (sabich, jachnun, shakshuka, stock)
     engine: str = "sherpa_offline_transducer"
     feature_dim: int = 128           # mel features for sherpa (80 for Sabich-Parakeet-110M)
-    base_model: str = ""
+    base_model: str = ""             # repo id; shown only under Technical details
+    base_label: str = ""             # what the Models tab shows: "Parakeet 0.6B v2 by NVIDIA" (2026-10-25)
+    technical: str = ""              # formats, runtimes, VRAM: Technical details only
     size_label: str = ""
     platforms: list = field(default_factory=lambda: ["android", "linux", "windows"])
     devices: list = field(default_factory=list)       # wearable | phone | desktop

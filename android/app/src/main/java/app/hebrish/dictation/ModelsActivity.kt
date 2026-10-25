@@ -168,8 +168,10 @@ class ModelsActivity : Page() {
             setBackgroundResource(R.drawable.badge_bg)
             setPadding(dp(8), dp(2), dp(8), dp(2))
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(10) })
-        if (m.baseModel.isNotEmpty()) words.addView(TextView(this).apply {
-            text = m.baseModel
+        // Plain words only (Daniel, 2026-10-25: "as friendly as possible for regular people"): the
+        // base as "Parakeet 0.6B v2 by NVIDIA"; repo ids, formats and runtimes are under Technical details.
+        if (m.baseLabel.isNotEmpty()) words.addView(TextView(this).apply {
+            text = getString(R.string.models_base, m.baseLabel)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             alpha = 0.6f
         })
@@ -185,6 +187,7 @@ class ModelsActivity : Page() {
             card.alpha = 0.6f
             text(getString(R.string.models_runs_on, m.runsOn), card)
             m.card?.let { card.addView(link(getString(R.string.models_card), it)) }
+            technical(m, card)
             return
         }
         val list = card
@@ -213,7 +216,7 @@ class ModelsActivity : Page() {
                 progress = (s.done * 1000 / s.total.coerceAtLeast(1)).toInt()
             })
         }
-        if (!m.available) return
+        if (!m.available) { technical(m, card); return }
         val r = row(list)
         when {
             active -> button(R.string.cancel, r) { ModelDownload.cancel() }
@@ -225,6 +228,45 @@ class ModelsActivity : Page() {
             ModelDownload.update(this, m)
         }
         if (ready && !inUse && !active) button(R.string.delete, r) { confirmDelete(m) }
+        technical(m, card)
+    }
+
+    /** Ids of the cards whose Technical details are open; kept across [render]s (downloads redraw often). */
+    private val openDetails = mutableSetOf<String>()
+
+    /**
+     * "Technical details", collapsed by default (2026-10-25): the catalogue's `technical` text
+     * (format, runtime, memory), the base model's repo id and the repo the files come from.
+     */
+    private fun technical(m: Catalogue.Model, card: LinearLayout) {
+        val lines = listOfNotNull(
+            m.technical.ifEmpty { null },
+            m.baseModel.ifEmpty { null }?.let { getString(R.string.models_base, it) },
+            m.repo?.let { getString(R.string.models_technical_files, it) },
+        )
+        if (lines.isEmpty()) return
+        val body = TextView(this).apply {
+            text = lines.joinToString("\n")
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            alpha = 0.75f
+            setTextIsSelectable(true)
+        }
+        val toggle = TextView(this).apply {
+            setTextColor(getColor(R.color.brand_accent))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setPadding(0, dp(6), 0, dp(4))
+        }
+        fun show(open: Boolean) {
+            body.visibility = if (open) View.VISIBLE else View.GONE
+            toggle.setText(if (open) R.string.models_technical_hide else R.string.models_technical_show)
+        }
+        toggle.setOnClickListener {
+            val open = openDetails.add(m.id) || run { openDetails.remove(m.id); false }
+            show(open)
+        }
+        show(m.id in openDetails)
+        card.addView(toggle)
+        card.addView(body)
     }
 
     private fun button(label: String, parent: LinearLayout, onClick: () -> Unit) = Button(this).apply {

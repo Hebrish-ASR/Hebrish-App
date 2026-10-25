@@ -885,8 +885,10 @@ class MainWindow(QMainWindow):
         col.setSpacing(3)
         head = QHBoxLayout()
         grey = "" if m.supported else "color: gray;"
-        name = QLabel(f"<b style='font-size:14px; {grey}'>{m.name}</b>"
-                      f" <small style='color:gray'>{m.base_model}</small>")
+        # Plain words (Daniel, 2026-10-25: "as friendly as possible for regular people"): the base as
+        # "Parakeet 0.6B v2 by NVIDIA"; repo ids, formats and runtimes are under Technical details.
+        base = f" <small style='color:gray'>Base model: {m.base_label}</small>" if m.base_label else ""
+        name = QLabel(f"<b style='font-size:14px; {grey}'>{m.name}</b>{base}")
         head.addWidget(name)
         chip = QLabel(objectName="chip")
         chip.setStyleSheet(f"background: {BRAND_GREEN}; color: white; border-radius: 9px; padding: 1px 8px;"
@@ -922,6 +924,7 @@ class MainWindow(QMainWindow):
         elif not m.available:
             status.setText("<span style='color:gray'>Coming soon</span>")
         col.addWidget(status)
+        self._technical(m, col)
         pbar = QProgressBar(maximum=1000)
         pbar.hide()
         col.addWidget(pbar)
@@ -942,6 +945,32 @@ class MainWindow(QMainWindow):
         self.model_rows_box.addWidget(f)
         return {"frame": f, "chip": chip, "status": status, "pbar": pbar, "dl": dl, "use": use, "rm": rm,
                 "rec": is_rec}
+
+    @staticmethod
+    def _technical(m, col):
+        """'Technical details', collapsed (2026-10-25): the catalogue's `technical` text (format,
+        runtime, memory), the base model's repo id and the repo the files come from."""
+        lines = [t for t in (m.technical, m.base_model and f"Base model: {m.base_model}",
+                             m.repo and f"Files: {m.repo}") if t]
+        if not lines:
+            return
+        body = QLabel("<br>".join(lines))
+        body.setWordWrap(True)
+        body.setTextFormat(Qt.RichText)
+        body.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        body.setStyleSheet("color: gray; font-size: 11px;")
+        body.hide()
+        toggle = QLabel()
+        toggle.setTextFormat(Qt.RichText)
+        toggle.setStyleSheet("font-size: 11px;")
+
+        def show(open_: bool):
+            body.setVisible(open_)
+            toggle.setText(f"<a href='#'>{'Hide technical details' if open_ else 'Technical details'}</a>")
+        toggle.linkActivated.connect(lambda _: show(body.isHidden()))
+        show(False)
+        col.addWidget(toggle)
+        col.addWidget(body)
 
     def _help_choose(self):
         from .choose import ChooseDialog

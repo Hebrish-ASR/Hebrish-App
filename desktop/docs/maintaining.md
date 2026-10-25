@@ -1333,3 +1333,46 @@ for users to make sense and use the right one."
   before). Sabich-Parakeet-110M (80 mels) checked end to end on 2026-10-21 (V): fetched from its
   CDN manifest, downloaded and verified, loaded, transcribed correctly. Its install folder name
   has spaces (`Sabich-Parakeet-110M v1.0-9bc182a9e1b3`, from the manifest's `version`); harmless.
+
+## Plain model descriptions and What's new (unreleased, 2026-10-25)
+
+**Plain model descriptions (unreleased, 2026-10-25).** Daniel: the Models page should be "as
+friendly as possible for regular people", e.g. "base model Parakeet 0.6B v2 by NVIDIA", not
+`Qwen/Qwen3-ASR-1.7B` with BF16/PyTorch/GGUF detail. Each catalogue variant now has `base_label`
+("Parakeet 0.6B v2 by NVIDIA", "Nemotron Speech Streaming 0.6B by NVIDIA", "Qwen3-ASR 1.7B by
+Alibaba", "Canary-Qwen 2.5B by NVIDIA", "Parakeet 110M by NVIDIA", "asr4all M/S by FUTO"), shown as
+"Base model: …" under the name. `hardware`, `recommendation` and `runs_on` were rewritten in plain
+words ("graphics card", "memory", "other speech software … See the model page"). The engineering
+text that was there moved to a new `technical` field, shown with `base_model` (repo id) and `repo`
+only under a collapsed **Technical details** link on each card. `base_model`, `repo`, `engine` and
+the rest are unchanged, so downloads are unaffected. `tests/test_shared.py`
+(`test_what_users_see_is_plain_language`) fails if a repo id, format or runtime name gets back into
+a displayed field. The published catalogue is re-fetched by installed apps, so older builds show the
+plainer `hardware`/`runs_on` text as soon as `main` has it; only builds with this change show
+`base_label` and Technical details.
+
+**What's new, baked at build time (unreleased, 2026-10-25).** Daniel: "integrate the update feed,
+the changelog, into the app itself … bake in the short updates according to the build time."
+`scripts/bake_updates.py` reads hebrish.app's changelog (`changelog.html` in the website checkout
+next to this repo, else `https://hebrish.app/changelog`), keeps the entries dated on or before the
+build date, newest first, the last 20, each as date, tag, title and the first one or two sentences
+of its first bullet (at most 280 characters), and writes `shared/updates.json` plus its
+byte-identical copy `desktop/hebrish/data/updates.json`. Source choice: the changelog is the only
+feed with short dated entries for app releases; the site's `data/releases.json` has just the two
+numbered model releases and `data/updates/` is the voice-note podcast. It is plain HTML, so the
+script depends on its markup (`<article class="log">`, `<time datetime>`, `<span class="tag">`,
+`<h3>`, first `<li>`); `test_bake_reads_the_changelog_markup` pins that, and the script exits with
+an error if it finds no entries. `scripts/release-tag.sh` runs it before every tag and commits both
+copies with the version bump (`SKIP_UPDATES_BAKE=1` to skip, e.g. offline). Write the release's own
+changelog entry on the site before tagging, or the build lists only the entries before it
+(release-tag.sh prints a note when the newest entry doesn't name the version).
+
+Desktop: `Model.base_label` and `.technical` (`model_store.py`); `_model_row` shows "Base model:
+…" and `MainWindow._technical` adds the Technical details link; Help me choose shows `base_label`
+too. What's new is the first card on the About tab (`about.AboutPage._whats_new`): five entries,
+"Show all (N)" for the rest, and a link to the full changelog. `data/updates.json` is in the
+package data (`pyproject.toml`), so the .deb and the Windows zip (`--collect-data hebrish`) carry
+it. Checked: desktop tests pass, and the Models rows and About tab were rendered offscreen with the
+bundled catalogue (V). Note that a cached catalogue (`catalogue-v2.json` in the data dir) wins over
+the bundled one, so a local run shows the new fields only once `main` has them or the cache is
+cleared.

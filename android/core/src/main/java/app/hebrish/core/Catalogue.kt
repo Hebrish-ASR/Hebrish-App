@@ -41,6 +41,10 @@ object Catalogue {
         /** Mel features for sherpa-onnx: 128 for the 0.6B models, 80 for Sabich-Parakeet-110M. */
         val featureDim: Int = 128,
         val baseModel: String = "",
+        /** What the Models screen shows for the base: "Parakeet 0.6B v2 by NVIDIA" (2026-10-25). */
+        val baseLabel: String = "",
+        /** Formats, runtimes, VRAM: only under the card's Technical details. */
+        val technical: String = "",
         val platforms: List<String> = listOf(PLATFORM),
         val hardware: String = "",
         /** Download size in MB from the catalogue; null when not known yet. */
@@ -128,6 +132,8 @@ object Catalogue {
                         engine = m.optString("engine", "sherpa_offline_transducer"),
                         featureDim = m.optInt("feature_dim", 128),
                         baseModel = m.optString("base_model"),
+                        baseLabel = m.optString("base_label"),
+                        technical = m.optString("technical"),
                         platforms = strings(m, "platforms"),
                         hardware = m.optString("hardware"),
                         downloadMb = if (m.isNull("download_mb")) null else m.optInt("download_mb").takeIf { it > 0 },

@@ -101,7 +101,8 @@ class ChooseDialog(QDialog):
         if best is None:
             self.answer.setText("Nothing in the catalogue fits that yet.")
             return
-        html = [f"<b style='font-size:15px'>{best.name}</b> <small style='color:gray'>{best.base_model}</small>"]
+        base = f" <small style='color:gray'>Base model: {best.base_label}</small>" if best.base_label else ""
+        html = [f"<b style='font-size:15px'>{best.name}</b>{base}"]
         if r.get("reason"):
             html.append(f"<br>{r['reason']}")
         html.append(f"<br><small>{best.hardware}</small>")

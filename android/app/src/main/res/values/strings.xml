@@ -202,6 +202,10 @@
     <string name="models_size_mb">%1$d MB</string>
     <string name="models_runs_on">Not in this app yet. Runs on: %1$s</string>
     <string name="models_card">Model card</string>
+    <string name="models_base">Base model: %1$s</string>
+    <string name="models_technical_show">Technical details</string>
+    <string name="models_technical_hide">Hide technical details</string>
+    <string name="models_technical_files">Files: %1$s</string>
     <string name="models_badge_recommended">Recommended</string>
     <string name="models_badge_in_use">In use</string>
     <string name="models_download_all">Download all</string>
@@ -424,6 +428,11 @@
     <!-- 0.6.0: side menu, About, setup checklist, version line. -->
     <string name="title_setup">Setup checklist</string>
     <string name="title_about">About Hebrish</string>
+    <string name="title_updates">What\'s new</string>
+    <string name="nav_updates_summary">Recent changes to Hebrish</string>
+    <string name="updates_intro">The latest changes to Hebrish, newest first, up to %1$s when this version was built. No internet needed.</string>
+    <string name="updates_none">This version has no list of changes.</string>
+    <string name="updates_full">Full changelog</string>
     <string name="nav_about_summary">The lexicon, how to contribute, version</string>
     <string name="menu_lexicon">Explore the lexicon</string>
     <string name="menu_contribute">Contribute</string>

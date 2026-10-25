@@ -131,3 +131,54 @@ def test_numbers_and_rules_match_the_website():
                **({"runner_up": idmap.get(r["runner_up"], r["runner_up"])} if "runner_up" in r else {})}
               for r in site["rules"]]
     assert mapped == v2()["chooser"]["rules"]
+
+
+# -- plain model descriptions (2026-10-25) ------------------------------------------------------
+JARGON = re.compile(r"\b(bf16|f16|fp16|int8|q8_0|q4_k_m|gguf|onnx|pytorch|transformers|llama\.cpp|nemo|sherpa|"
+                    r"cuda|rocm|hip|vulkan|vram|ctc|runtime)\b|/", re.I)
+
+
+def test_what_users_see_is_plain_language():
+    """Daniel, 2026-10-25: the Models screens are for regular people. What they show (base_label,
+    hardware, recommendation, runs_on) has no repo ids, formats or runtimes; those go in
+    `technical` (and base_model, repo), shown only under Technical details."""
+    for v in all_variants():
+        assert v.get("base_label") and " by " in v["base_label"], v["id"]
+        for key in ("base_label", "hardware", "recommendation", "runs_on"):
+            assert not JARGON.search(v.get(key, "")), (v["id"], key, v.get(key))
+
+
+# -- What's new, baked at build time (2026-10-25) -----------------------------------------------
+UPDATES = os.path.join(ROOT, "shared", "updates.json")
+
+
+def test_updates_are_bundled_by_both_apps():
+    from hebrish.ui import about
+    assert open(about.UPDATES).read() == open(UPDATES).read(), \
+        "run scripts/bake_updates.py (it writes both copies)"
+    assert "../shared/updates.json" in open(os.path.join(ANDROID, "build.gradle.kts")).read()
+    assert "data/updates.json" in open(os.path.join(ROOT, "desktop", "pyproject.toml")).read()
+
+
+def test_updates_are_well_formed():
+    doc = json.load(open(UPDATES))
+    entries = doc["entries"]
+    assert doc["schema"] == 1 and 0 < len(entries) <= 20
+    dates = [e["date"] for e in entries]
+    assert dates == sorted(dates, reverse=True) and dates[0] <= doc["built"]
+    for e in entries:
+        assert e["title"] and e["summary"] and len(e["summary"]) <= 281, e
+        assert "<" not in e["title"] + e["summary"], e
+
+
+def test_bake_reads_the_changelog_markup():
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import bake_updates
+    page = """<article class="log"><p class="log-meta"><time datetime="2026-10-26">2026-10-26</time>
+      <span class="tag">Apps 1.004</span></p><h3>Future</h3><ul><li>Not yet.</li></ul></article>
+      <article class="log"><p class="log-meta"><time datetime="2026-10-25">2026-10-25</time>
+      <span class="tag">Models</span> <span class="tag">Site</span></p><h3>A &amp; B</h3>
+      <ul><li>It can leave "word. Capital" now. <a href="/x">Second</a> sentence. Third one.</li><li>Other.</li></ul></article>"""
+    doc = bake_updates.bake(page, "2026-10-25", 20, "test")
+    assert doc["entries"] == [{"date": "2026-10-25", "tag": "Models · Site", "title": "A & B",
+                               "summary": 'It can leave "word. Capital" now. Second sentence.'}]

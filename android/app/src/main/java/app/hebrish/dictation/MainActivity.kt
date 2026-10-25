@@ -67,6 +67,7 @@ class MainActivity : Page() {
         val more = group()
         if (Channel.installScreen) nav(R.string.nav_install, { setText(R.string.nav_install_summary) }, InstallActivity::class.java, more)
         nav(R.string.nav_contact, { setText(R.string.nav_contact_summary) }, ContactActivity::class.java, more)
+        nav(R.string.title_updates, { setText(R.string.nav_updates_summary) }, UpdatesActivity::class.java, more)
         nav(R.string.title_about, { setText(R.string.nav_about_summary) }, AboutActivity::class.java, more)
 
         // The version, at the bottom (Daniel, 2026-10-20); the detailed line is for bug reports.

@@ -1227,3 +1227,46 @@ the manifest's `version`, drop a leading model name (the CDN manifest for Sabich
 are still stored and used for directory names and same-weights checks; the desktop keeps them in
 `Manifest.debug_label` for logs and the CLI. Compiled (`assembleDebug`) and desktop tests pass (V);
 not run on a device (I).
+
+## Plain model descriptions and What's new (unreleased, 2026-10-25)
+
+**Plain model descriptions (unreleased, 2026-10-25).** Daniel: the Models page should be "as
+friendly as possible for regular people", e.g. "base model Parakeet 0.6B v2 by NVIDIA", not
+`Qwen/Qwen3-ASR-1.7B` with BF16/PyTorch/GGUF detail. Each catalogue variant now has `base_label`
+("Parakeet 0.6B v2 by NVIDIA", "Nemotron Speech Streaming 0.6B by NVIDIA", "Qwen3-ASR 1.7B by
+Alibaba", "Canary-Qwen 2.5B by NVIDIA", "Parakeet 110M by NVIDIA", "asr4all M/S by FUTO"), shown as
+"Base model: …" under the name. `hardware`, `recommendation` and `runs_on` were rewritten in plain
+words ("graphics card", "memory", "other speech software … See the model page"). The engineering
+text that was there moved to a new `technical` field, shown with `base_model` (repo id) and `repo`
+only under a collapsed **Technical details** link on each card. `base_model`, `repo`, `engine` and
+the rest are unchanged, so downloads are unaffected. `tests/test_shared.py`
+(`test_what_users_see_is_plain_language`) fails if a repo id, format or runtime name gets back into
+a displayed field. The published catalogue is re-fetched by installed apps, so older builds show the
+plainer `hardware`/`runs_on` text as soon as `main` has it; only builds with this change show
+`base_label` and Technical details.
+
+**What's new, baked at build time (unreleased, 2026-10-25).** Daniel: "integrate the update feed,
+the changelog, into the app itself … bake in the short updates according to the build time."
+`scripts/bake_updates.py` reads hebrish.app's changelog (`changelog.html` in the website checkout
+next to this repo, else `https://hebrish.app/changelog`), keeps the entries dated on or before the
+build date, newest first, the last 20, each as date, tag, title and the first one or two sentences
+of its first bullet (at most 280 characters), and writes `shared/updates.json` plus its
+byte-identical copy `desktop/hebrish/data/updates.json`. Source choice: the changelog is the only
+feed with short dated entries for app releases; the site's `data/releases.json` has just the two
+numbered model releases and `data/updates/` is the voice-note podcast. It is plain HTML, so the
+script depends on its markup (`<article class="log">`, `<time datetime>`, `<span class="tag">`,
+`<h3>`, first `<li>`); `test_bake_reads_the_changelog_markup` pins that, and the script exits with
+an error if it finds no entries. `scripts/release-tag.sh` runs it before every tag and commits both
+copies with the version bump (`SKIP_UPDATES_BAKE=1` to skip, e.g. offline). Write the release's own
+changelog entry on the site before tagging, or the build lists only the entries before it
+(release-tag.sh prints a note when the newest entry doesn't name the version).
+
+Android: `Catalogue.Model.baseLabel` and `.technical`; `ModelsActivity.card()` shows "Base model:
+…" and `technical()` adds the Technical details toggle (open cards are remembered across the
+frequent `render()`s during downloads). What's new is `UpdatesActivity`, reading
+`assets/updates.json` (copied from `shared/updates.json` by the gradle `copyCatalogue` task),
+reached from home (More), the side menu and a button on About; a link at the bottom opens the
+full changelog. Checked: `./gradlew --offline :app:compileFdroidDebugKotlin
+:app:mergeFdroidDebugAssets` passes and the merged assets contain `updates.json` (V); a full
+`assembleDebug` could not run on 2026-10-25 because the native (sherpa-onnx) configure step failed
+on this checkout's submodule state, unrelated to this change; not run on a device (I).

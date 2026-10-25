@@ -11,6 +11,7 @@ class AboutActivity : Page() {
         column.addView(brandHeader(markSize = 56, nameSize = 28f),
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
         text(R.string.about_body, top = 16)
+        button(R.string.title_updates) { startActivity(android.content.Intent(this, UpdatesActivity::class.java)) }
 
         heading(R.string.about_lexicon_title)
         text(R.string.about_lexicon)

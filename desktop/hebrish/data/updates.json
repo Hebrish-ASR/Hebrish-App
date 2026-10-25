@@ -1,0 +1,128 @@
+{
+  "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
+  "schema": 1,
+  "built": "2026-10-25",
+  "source": "https://hebrish.app/changelog",
+  "entries": [
+    {
+      "date": "2026-10-25",
+      "tag": "Desktop 1.003",
+      "title": "Your microphones in your order, and no more lost words",
+      "summary": "Settings has a Microphones list: every mic Hebrish has seen on this computer, with a name you give it and a type (built-in, headset, wireless headset, shotgun, lav, dynamic and more)."
+    },
+    {
+      "date": "2026-10-24",
+      "tag": "Apps 1.002",
+      "title": "Paragraphs in Transcription Mode, your choice of how",
+      "summary": "Transcription Mode, in both apps, has a Paragraphs setting: None (one block of text), Time-based (a new paragraph about every 30 seconds, as before) or Paragraph model."
+    },
+    {
+      "date": "2026-10-24",
+      "tag": "Apps 1.001",
+      "title": "Transcription Mode, the next take any time, and no more \"um\"",
+      "summary": "Transcription Mode, in both apps: record a long take, then transcribe it."
+    },
+    {
+      "date": "2026-10-24",
+      "tag": "Apps: Android 1.000, Desktop 1.000",
+      "title": "Hebrish 1.0: the floating mic gets out of the way, desktop output you can combine, and Paste last",
+      "summary": "Both apps are now version 1.000. From here, versions count 1.001, 1.002, and so on, on Android and desktop alike."
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Android 0.10.0",
+      "title": "A cleaner look, and the floating mic keeps your line breaks",
+      "summary": "The app's screens now use the Hebrish look from this site: the warm paper background, the green accent, the Hebrish logo (it was showing as a plain green square), headings in the Hebrish typeface and grouped settings on the home screen."
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Apps: Android 0.9.0, Desktop 0.8.0",
+      "title": "A personal dictionary: your words, written your way",
+      "summary": "Add the words you want written a certain way: names, brands, Hebrew words in the spelling you use. After each take, Hebrish replaces what the model wrote with your spelling."
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Android 0.8.2",
+      "title": "Android: fewer capitals and full stops in the middle of sentences",
+      "summary": "Long takes are transcribed in pieces at your pauses, and each piece used to be treated as a sentence of its own, so a pause mid-sentence could leave \"word. Capital\"."
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Desktop 0.7.6",
+      "title": "Desktop: fewer capitals and full stops in the middle of sentences",
+      "summary": "With insert as you go, stopping to think in the middle of a sentence no longer ends it. Each piece of text is now transcribed together with the end of the piece before it, so the model hears that the sentence carries on and writes it the way it would mid-sentence."
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Android 0.8.1",
+      "title": "Android: transcription history, exported as CSV",
+      "summary": "Every take is now kept on your phone: the text, its length, the model, and how long it took to transcribe. Under Dictation, Export CSV saves it through the file picker, so you can put it straight into Google Drive."
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Android 0.8.0",
+      "title": "Android: minimise the floating mic with a double-tap",
+      "summary": "When the floating mic is in the way of what you are writing, double-tap it and it shrinks to a small dot in the same place."
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Android 0.7.6",
+      "title": "Android: the floating mic keeps your line breaks",
+      "summary": "With the floating mic, a line break typed before dictating (to start a new paragraph, say) was deleted when the text arrived, and a space put in its place."
+    },
+    {
+      "date": "2026-10-22",
+      "tag": "Terms",
+      "title": "Terms of use 1.2: every model listed",
+      "summary": "The licence table now lists every model line: Jachnun, Sabich and its variants on other bases, Shakshuka, Meorav and the Whisper fine-tunes, each with the licence it was released under."
+    },
+    {
+      "date": "2026-10-22",
+      "tag": "Desktop 0.7.5",
+      "title": "Desktop: change how dictation is inserted from the tray",
+      "summary": "The tray menu has an Output submenu: paste at the cursor, clipboard only, or the app's own text box, and the paste shortcut (Ctrl+V, or Ctrl+Shift+V for terminals)."
+    },
+    {
+      "date": "2026-10-22",
+      "tag": "Desktop 0.7.4",
+      "title": "Desktop: no more flicker when Hebrish pastes on KDE",
+      "summary": "On KDE Plasma 6 (Wayland), the window you were dictating into briefly lost focus every time Hebrish pasted, so its title bar flickered."
+    },
+    {
+      "date": "2026-10-22",
+      "tag": "Apps: desktop 0.7.3, Android 0.7.5",
+      "title": "ALL CAPS, a tidier app, and history you can export",
+      "summary": "ALL CAPS: a setting (Dictation, on both apps) that types everything you dictate in capitals. Just for fun."
+    },
+    {
+      "date": "2026-10-22",
+      "tag": "Desktop 0.7.1",
+      "title": "Desktop: dictation text arrives at a better rhythm, and Sabich is the default again",
+      "summary": "Sabich is the default for dictation again: it did better than Shakshuka for everyday dictation. If 0.7.0 moved you to Shakshuka, you are moved back once; Shakshuka stays downloaded and in Models."
+    },
+    {
+      "date": "2026-10-22",
+      "tag": "Models",
+      "title": "Release v2: Sabich v2.0, Shakshuka v2.0 and Meorav v2.0",
+      "summary": "The first model release: three models retrained together on more recordings (713.9 minutes in the speech-recognition mix, up from 623)."
+    },
+    {
+      "date": "2026-10-22",
+      "tag": "Models · Site · POC",
+      "title": "Meorav, a text-to-speech line, and one page for every model",
+      "summary": "Meorav is the first Hebrish model that goes from text to speech: a Qwen3-TTS fine-tune that reads code-switched English aloud, in Irish-accented English with the Hebrew words pronounced correctly."
+    },
+    {
+      "date": "2026-10-22",
+      "tag": "Desktop 0.7.0",
+      "title": "Desktop: streaming dictation with Shakshuka, and a history of what you dictate",
+      "summary": "Shakshuka is now the default for dictation on Ubuntu and Windows. It streams: words are typed while you are still talking, about a second behind."
+    },
+    {
+      "date": "2026-10-22",
+      "tag": "Android 0.7.4",
+      "title": "Android: move the floating mic without closing it",
+      "summary": "The × next to the floating mic is gone. It sat where your finger lands to grab the mic, so trying to drag the mic closed it."
+    }
+  ]
+}
