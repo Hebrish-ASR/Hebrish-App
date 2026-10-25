@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated 2026-10-24. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
+Last updated 2026-10-25. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
 `released <version>`. Work is queued in **one sprint per platform** (desktop = Ubuntu + Windows,
 which share `desktop/`; Android). A sprint ends with a release, when the release gate below says so. Parity is the aim (decision
 D-2026-10-22-05): an item done on one platform gets a matching item in the other sprint, unless
@@ -36,7 +36,7 @@ tables below hold the detail and status.
 | 1 (now; desktop 0.7.0 released 2026-10-22) | B-8 tray icons, B-23 output mode from tray/shortcut, B-26 retention, I-1 pending indicator, I-3 mid-sentence lowercase, I-8 clipboard guard, B-31 short version labels; plus the unreleased B-1, B-2, B-6, B-7, B-12, B-14, B-15 | B-9 horizontal offset, B-3 interval presets, B-4 stop and send, B-11 voices and cue muting | desktop 0.7.0 released 2026-10-22 with Shakshuka as the dictation default and the done items; desktop 0.7.1 (2026-10-22) shipped B-32 and B-33 instead (Daniel asked for the pacing fix first); the six new desktop items above move to desktop 0.7.2; Android 0.8.0 |
 | 2 | B-22 shortcut presets and rebinding, B-24 "Download models" setup, I-11 VAD toggle decision | B-13 Shakshuka streaming, B-19 history, B-28 retention, B-27 headset button (Yealink), B-10 design pass | desktop 0.8.0, Android 0.9.0 |
 | 3 | B-25 long-form mode, B-16 semantic search, B-17 Drive backup, I-9 long form to Google Docs, B-30 Meorav TTS pane | I-10 long form, B-20 Drive backup, B-30 Meorav TTS pane | desktop 0.9.0, Android 0.10.0 |
-| 4 | B-18 accounts, I-7 sync, I-12 report a word, I-13 personal dictionary | B-21 accounts, the same three | needs a server side on hebrish.app |
+| 4 | B-18 accounts, I-7 sync, I-12 report a word, I-13 personal dictionary, I-16 settings backup (with sync) | B-21 accounts, the same four | needs a server side on hebrish.app |
 | Later | I-4 live streaming with corrections, I-6 fewer models, I-2 Enter guard, I-5 a model per mode | B-26/N1 Google Play submission (Daniel, private tracker): on the back burner (Daniel, 2026-10-24) until the app works really well; gaps are recorded as features land, not closed | |
 
 ## Sprint: desktop (Ubuntu + Windows), toward 0.7.0
@@ -124,3 +124,4 @@ Worth doing, not scheduled. Ordered roughly by value.
 | I-13 | **Personal dictionary.** Use Android's personal dictionary in inference (if the engine can take hints), offer one on desktop, and sync it with accounts (B-18, I-7). R-2026-10-22-32. Built as a correction after decoding, shared rules in `shared/personal-dictionary.md`; decoder hotwords not pursued yet | All platforms | Android 0.9.0, desktop 0.8.0 (2026-10-23); sync still open (I-7) |
 | I-15 | **Transcription Mode in the background on Android.** Became B-42a (Daniel, 2026-10-24) | Android | done as B-42a |
 | I-14 | **Drift detection.** Notice that the user left the window a take started in (or that it has no text field) before pasting, and hold the text with Paste instead. Needs the focused window at take start and at paste; AT-SPI's active-window state works on KDE Wayland only with the accessibility switch on (D-2026-10-24-03). Daniel, 2026-10-24 | Desktop | idea |
+| I-16 | **Settings backup and restore, synced with accounts later.** (1) Without the cloud: Settings → *Export settings…* / *Import settings…* writes one versioned JSON file per device (`hebrish-settings-<device>-<date>.json`: schema version, app version, platform, device name, then every setting: model choices, shortcuts and presets, insert-as-you-go, sounds and voices, mics with aliases and order, Transcription Mode, personal dictionary). Importing on another device or platform applies what makes sense there and skips device-bound entries (mic ids, paths) with a note. No history in it: history already has its own export (B-37). (2) When accounts (B-18) and sync (I-7) exist: the same file is kept per device under the account, so a new install or a replacement device can restore it, alongside history sync. Not to be implemented yet (Daniel, 2026-10-25). R-2026-10-25-4 | All platforms (Android, Ubuntu, Windows; iOS if it ships) | idea |
