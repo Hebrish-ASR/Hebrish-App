@@ -824,11 +824,14 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     /**
      * Puts [text] at the cursor of the field the take started in, or else the focused field.
-     * 1. Clipboard + ACTION_PASTE at the field's own cursor ([insertInto]; SET_TEXT first only
-     *    to replace a placeholder).
-     * 2. If the field refuses PASTE, ACTION_SET_TEXT: the whole field rewritten from its reported
+     * Most fields first, then fallbacks, so it lands in as many apps as possible ([insertInto]):
+     * 1. Android 13+: the service's own input connection ([commitDirect]), typed at the cursor
+     *    like a keyboard would: no clipboard, so no "pasted from your clipboard" notice.
+     * 2. Clipboard + ACTION_PASTE at the field's own cursor (SET_TEXT first only to replace a
+     *    placeholder).
+     * 3. If the field refuses PASTE, ACTION_SET_TEXT: the whole field rewritten from its reported
      *    text and selection, then the cursor moved to the end of the insert.
-     * 3. Otherwise it is held as [pending] (Insert button) and left on the clipboard.
+     * 4. Otherwise it is held as [pending] (Insert button) and left on the clipboard.
      */
     private fun deliver(text: String, to: AccessibilityNodeInfo?, firstPart: Boolean) {
         val node = to?.takeIf { it.refresh() && it.isEditable }
@@ -859,7 +862,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     }
 
     /**
-     * True if [text] went into [node]. Clipboard + PASTE first, SET_TEXT as the fallback (0.9.1).
+     * True if [text] went into [node]. The service's input connection first ([commitDirect],
+     * Android 13+, 2026-10-25), then clipboard + PASTE, then SET_TEXT (0.9.1).
      * SET_TEXT rewrites the whole field from the text the app *reports*: the field jumps on every
      * piece (its scroll position is reset by the rewrite), and anything the app doesn't report is
      * deleted. Seen: the line break before the take was removed (0.7.5, and again in 0.9.0, where
@@ -870,6 +874,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
      * restored; the transcript is left there, which is also the useful fallback.
      */
     private fun insertInto(node: AccessibilityNodeInfo, text: String, firstPart: Boolean): Boolean {
+        if (commitDirect(node, text)) return true
         val reported = node.text?.toString() ?: ""
         val placeholder = isPlaceholder(node, reported, firstPart)
         val current = if (placeholder) "" else reported
@@ -881,23 +886,67 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         if (start > end) start = end.also { end = start }
         if (placeholder) {
             if (setText(node, current, start, end, text)) {
-                Log.i(TAG, "Replaced placeholder text (${reported.length} chars)")
+                Log.i(TAG, "Inserted by SET_TEXT over placeholder text (${reported.length} chars)")
                 return true
             }
             copy(text)
-            return node.performAction(AccessibilityNodeInfo.ACTION_PASTE).also { if (it) clipboardTip() }
+            return node.performAction(AccessibilityNodeInfo.ACTION_PASTE).also {
+                if (it) { Log.i(TAG, "Inserted by paste"); clipboardTip() }
+            }
         }
         // The separator is judged from what is before the cursor; a hidden tail ends in a break.
         val insert = TakeDecoder.join(if (hidden > 0) "\n" else current.substring(0, start), text)
         copy(insert)
-        if (node.performAction(AccessibilityNodeInfo.ACTION_PASTE)) return true.also { clipboardTip() }
+        if (node.performAction(AccessibilityNodeInfo.ACTION_PASTE)) {
+            Log.i(TAG, "Inserted by paste")
+            return true.also { clipboardTip() }
+        }
         Log.i(TAG, "Paste refused: rewriting the field")
         // Restore a hidden tail as line breaks (the case seen) so the rewrite doesn't drop it.
-        if (hidden > 0) {
+        val ok = if (hidden > 0) {
             val full = current + "\n".repeat(hidden)
-            return setText(node, full, full.length, full.length, text)
-        }
-        return setText(node, current, start, end, text)
+            setText(node, full, full.length, full.length, text)
+        } else setText(node, current, start, end, text)
+        Log.i(TAG, if (ok) "Inserted by SET_TEXT" else "SET_TEXT refused: holding the text")
+        return ok
+    }
+
+    /**
+     * Android 13+ (API 33): types [text] through the service's own input connection
+     * (AccessibilityService.InputMethod, enabled by flagInputMethodEditor in floating_mic.xml),
+     * the way Voice Access does. It commits at the field's cursor like a keyboard, so it keeps
+     * line breaks, never rewrites the field, and never touches the clipboard: no "pasted from
+     * your clipboard" notice (2026-10-25, Daniel: work in the most fields first, then fall back).
+     * Used only when it can be checked, because commitText returns nothing:
+     * - an input session is started, in the same app as [node], and [node] is the field with focus
+     *   (the connection always points at the focused editor, which may not be the take's field);
+     * - getSurroundingText answers before the commit. Its text before the cursor is the field's
+     *   real content, so the separator is judged from it, and a placeholder that accessibility
+     *   reports as text (WhatsApp) is simply not there;
+     * - afterwards the text before the cursor ends with the insert. Otherwise false, and the
+     *   caller falls back to paste (a commit that silently landed would then be doubled; not seen,
+     *   since the check reads the same connection right after the commit).
+     * (I, 2026-10-25: built from the API reference and android.jar; not yet tried on a phone.)
+     */
+    private fun commitDirect(node: AccessibilityNodeInfo, text: String): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return false
+        return runCatching {
+            val im = inputMethod ?: return false
+            if (!im.currentInputStarted) return false
+            val ic = im.currentInputConnection ?: return false
+            val editor = im.currentInputEditorInfo ?: return false
+            if (editor.packageName != null && editor.packageName != node.packageName?.toString()) return false
+            if (!node.isFocused && node != focusedField()) return false
+            val around = ic.getSurroundingText(SURROUNDING_CHARS, 0, 0) ?: return false
+            val before = around.text.subSequence(0, around.selectionStart.coerceIn(0, around.text.length))
+            val insert = TakeDecoder.join(before, text)
+            ic.commitText(insert, 1, null)
+            val after = ic.getSurroundingText(insert.length, 0, 0)
+            val landed = after != null &&
+                after.text.subSequence(0, after.selectionStart.coerceIn(0, after.text.length)).endsWith(insert)
+            Log.i(TAG, if (landed) "Inserted by input connection" else "Input connection commit not confirmed: falling back")
+            landed
+        }.getOrElse { Log.w(TAG, "Input connection failed", it); false }
     }
 
     /**
@@ -923,9 +972,10 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
      * Android 12+ shows "<app> pasted from your clipboard" on every paste from another app's clip,
      * so every floating-mic insert triggers it (1.000, Daniel 2026-10-24: "definitely going to get
      * on everyone's nerves"). Apps can't suppress it: the switch is the secure setting
-     * clipboard_show_access_notifications, which needs WRITE_SECURE_SETTINGS; the only way round it
-     * is SET_TEXT, dropped in 0.9.1 for jumping fields and lost line breaks. So, once, a long toast
-     * says where to turn it off; the Floating mic screen has a button to Privacy settings.
+     * clipboard_show_access_notifications, which needs WRITE_SECURE_SETTINGS. Since 2026-10-25 most
+     * inserts on Android 13+ go through [commitDirect] and never paste; this still runs whenever
+     * the paste fallback is used. So, once, a long toast says where to turn it off; the Floating
+     * mic screen has a button to Privacy settings.
      */
     private fun clipboardTip() {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S || Prefs.clipboardTipShown(this)) return
@@ -1057,6 +1107,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         const val BACKDROP_ALPHA = 230
         /** After Android's own clipboard toast, so the tip is not hidden behind it. */
         const val CLIPBOARD_TIP_DELAY_MS = 2500L
+        /** Characters before the cursor [commitDirect] reads to judge the separator. */
+        const val SURROUNDING_CHARS = 64
         /** Most nodes [findFocusedEditable] visits per search. */
         const val MAX_NODES = 1500
     }

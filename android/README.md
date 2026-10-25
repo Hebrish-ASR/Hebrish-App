@@ -133,9 +133,15 @@ all: your regular keyboard stays up and the text goes straight into the field.
   the edge as a narrow column (or across the screen). Drag it by its grip (⠿) to move it off
   what you are writing. Its size (50–100 %), background opacity, and a *clear bar* (buttons
   only, each on its own backdrop) are on the Floating mic screen.
-- **"Pasted from your clipboard":** the floating mic inserts text by pasting, so Android 12+
-  shows this notice every time. Apps can't hide it; turn it off in Settings → Privacy → *Show
-  clipboard access* (the Floating mic screen has a button there; 1.000).
+- **How the text goes in** (2026-10-25): on Android 13+ the floating mic types the text at the
+  cursor through its own input connection, like a keyboard: no clipboard, so no "pasted from
+  your clipboard" notice. Where that isn't available or doesn't take, it falls back to pasting,
+  then to rewriting the field, then to **Insert**, so the text lands in as many apps as possible.
+- **"Pasted from your clipboard":** when the paste fallback is used (Android 12, or a field the
+  input connection can't reach), Android shows this notice. Apps can't hide it; turn it off in
+  Settings → Privacy → *Show clipboard access* (the Floating mic screen has a button there; 1.000).
+  After updating, turn the floating mic off and on in Accessibility settings once if the notice
+  keeps appearing on Android 13+ (I).
 - **Long-press the idle mic** to insert the last transcript again.
 - **Double-tap the idle mic** to shrink it to a small dot when it is in the way; tap the dot to
   bring it back (0.8.0).
@@ -144,9 +150,8 @@ all: your regular keyboard stays up and the text goes straight into the field.
 - **Apps built with Jetpack Compose** (ChatGPT, for example): 0.3.0 often couldn't find the text
   field there. Since 0.4.0 the floating mic searches for the focused field more thoroughly.
   No "display over other apps" permission is needed or used.
-- **Fields that refuse it** (some web pages and custom editors): the text is pasted from the
-  clipboard instead, and if that fails too it is held for **Insert** and left on the
-  clipboard. Password fields are never touched.
+- **Fields that refuse it** (some web pages and custom editors): each fallback above is tried
+  in turn, and if all fail the text is held for **Insert** and left on the clipboard. Password fields are never touched.
 
 It uses the same model and the same process as the voice keyboard; the two can be used side by
 side.

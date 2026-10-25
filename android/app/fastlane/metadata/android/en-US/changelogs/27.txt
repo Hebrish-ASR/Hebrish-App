@@ -1,0 +1,1 @@
+On Android 13+ the floating mic now types text at the cursor like a keyboard instead of pasting, so Android no longer shows "pasted from your clipboard" after every sentence. If a field does not accept that, it falls back to pasting, then rewriting the field, then Insert. If the notice persists after updating, turn the floating mic off and on once in Accessibility settings.

@@ -1,6 +1,6 @@
-**1.002: Paragraphs in Transcription Mode, your choice of how.**
+**1.003 (draft, not released): the floating mic types instead of pasting, so no more "pasted from your clipboard".**
 
-- **Paragraphs setting** in Transcription Mode (*Change*, under the progress bar): *None* (one block of text), *Time-based* (a new paragraph about every 30 seconds, as before) or *Paragraph model*. The setting is remembered.
-- **Paragraph model** is a small English classifier that reads the finished transcript and starts paragraphs where the topic moves on. It only adds line breaks; it never changes your words. It runs on the phone, once, when transcription finishes. Picking it the first time downloads it (34 MB). If it's missing or fails, that transcript gets time-based paragraphs and the status line says so.
-- Switching the setting after a transcript re-flows it, as long as you haven't edited the text. Dictation (keyboard, floating mic) is unchanged.
+- On Android 13+ the floating mic now types the transcript at the cursor through its own input connection, the way a keyboard does. The clipboard isn't used, so Android no longer says the app "pasted from your clipboard" after every sentence.
+- If a field doesn't accept that, it falls back to pasting, then to rewriting the field, then to holding the text for **Insert**, so the text gets in wherever it can. Android 9-12 paste as before.
+- If the notice still appears on Android 13+ after updating, turn the floating mic off and on once in Accessibility settings.
 - Not yet tested on a phone. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).

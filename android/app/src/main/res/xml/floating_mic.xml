@@ -12,11 +12,15 @@
      flagRequestFilterKeyEvents + canRequestFilterKeyEvents (0.6.0): hardware keys reach
      onKeyEvent, so a Bluetooth shutter remote or keyboard key can start and stop takes (Remote).
      Only keys the user bound are consumed. A user who had the service on before 0.6.0 may
-     need to turn it off and on again for Android to grant the new capability (I). -->
+     need to turn it off and on again for Android to grant the new capability (I).
+     flagInputMethodEditor (2026-10-25, API 33+; older Android ignores the bit): gives the service
+     its own input connection to the focused field (AccessibilityService.getInputMethod), so the
+     floating mic types the transcript at the cursor without the clipboard. Same caveat: an
+     existing install may need the service turned off and on to pick it up (I). -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeViewFocused|typeWindowStateChanged|typeWindowsChanged|typeViewTextSelectionChanged|typeViewTextChanged|typeViewClicked"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagIncludeNotImportantViews|flagRequestFilterKeyEvents"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagIncludeNotImportantViews|flagRequestFilterKeyEvents|flagInputMethodEditor"
     android:canRequestFilterKeyEvents="true"
     android:canRetrieveWindowContent="true"
     android:notificationTimeout="100"

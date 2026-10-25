@@ -936,7 +936,7 @@ objective, in his words: "the expansion happens in the least obtrusive part of t
   upward column's mic not jumping on open/close (measured height before layout); the column on a
   right-edge mic; 50 % bar buttons still hittable; clear bar legibility over light and dark apps.
 
-## "Pasted from your clipboard": a tip, not a fix (1.000, 2026-10-24)
+## "Pasted from your clipboard": a tip, not a fix (1.000, 2026-10-24; superseded 2026-10-25, see below)
 
 Daniel, 2026-10-24: every floating-mic insert makes Android say the app "pasted from your
 clipboard"; "definitely going to get on everyone's nerves". Asked to prevent it, or else tell users
@@ -959,6 +959,45 @@ to turn it off.
   phones (Samsung, OnePlus) are not checked (I).
 - Not compiled locally: since the F-Droid source build (pulled 2026-10-24) the laptop needs NDK
   26.3.11579264 to configure the project; CI compiled it.
+
+## Floating mic types through its own input connection first (2026-10-25)
+
+Daniel, 2026-10-25: the clipboard notice on every insert is "really irritating"; the priority is
+that text lands in **any field in any app**, through an ordered fallback chain. This replaces the
+"a tip, not a fix" conclusion above: there *is* a way round the notice that keeps 0.9.1's
+paste behaviour (cursor insert, no rewrite, line breaks kept).
+
+- **New first method:** API 33's `AccessibilityService.InputMethod` (enabled by
+  `flagInputMethodEditor` in `res/xml/floating_mic.xml`; `FloatingMicService.commitDirect`).
+  The service gets its own `AccessibilityInputConnection` to the focused editor and calls
+  `commitText(insert, 1, null)`. That is a keyboard-style insert at the cursor: no clipboard, so no
+  "pasted from your clipboard" toast. Signatures read from `android.jar` (platform 37.0) with
+  `javap`, 2026-10-25 (V): `getInputMethod()`, `InputMethod.getCurrentInputStarted()`,
+  `getCurrentInputConnection()`, `getCurrentInputEditorInfo()`; the connection has `commitText`,
+  `getSurroundingText`, `deleteSurroundingText`, `setSelection`, `sendKeyEvent`, all returning
+  void except `getSurroundingText`.
+- **Checked, because `commitText` returns void:** used only when an input session is started, its
+  `EditorInfo.packageName` is the target node's app, and the node is the focused field (the
+  connection always follows focus; the take's field may have lost it). `getSurroundingText(64, 0, 0)`
+  must answer first: its text before the cursor is the field's real content, so the separator is
+  judged from it (a hidden trailing break and WhatsApp's hint-reported-as-text both stop
+  mattering). After the commit, the text before the cursor must end with the insert; otherwise
+  `commitDirect` returns false and the chain carries on. Risk: a commit that landed but couldn't be
+  confirmed would be pasted again (doubled). Not observed; inferred unlikely because both reads go
+  through the same connection right after the commit (I).
+- **Chain now** (`insertInto`): input connection (API 33+) → clipboard + `ACTION_PASTE` (placeholder:
+  `SET_TEXT` first) → `ACTION_SET_TEXT` (hidden-tail handling unchanged) → hold for **Insert**. Each
+  success logs `Inserted by …` under tag `HebrishFloatingMic` (`adb logcat -s HebrishFloatingMic`),
+  so a field that falls through can be identified from a log. `clipboardTip()` still runs only on
+  the paste path.
+- **Field discovery** was already wide (`focusedField`: findFocus, Compose host search, last
+  editable from events, all app windows); unchanged.
+- **Not verified on a phone** (I): whether Android grants the new flag to an already-enabled service
+  without turning it off and on (the README tells users to toggle it once if the notice persists);
+  how the real keyboard (Gboard, HeliBoard) behaves while the service commits in parallel; and which
+  apps' editors answer `getSurroundingText` (those that don't fall back to paste, as before).
+  Android 9-12 are unchanged (paste first). Compiled locally (`./gradlew :app:compilePlayDebugKotlin`,
+  JDK 17; the shell's `JAVA_HOME` pointed at a missing JDK and had to be overridden).
 
 ## Overlapping takes (1.001, 2026-10-24)
 
