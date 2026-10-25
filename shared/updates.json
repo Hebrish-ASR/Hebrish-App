@@ -6,6 +6,12 @@
   "entries": [
     {
       "date": "2026-10-25",
+      "tag": "Android 1.004",
+      "title": "Switch your remote's buttons off without losing them, and save sets of them",
+      "summary": "Settings, Sound, microphone and buttons has a new Use bound buttons switch. Turn it off and Hebrish takes no keys, so the same Bluetooth remote works in other apps; your bindings are kept for when you turn it back on."
+    },
+    {
+      "date": "2026-10-25",
       "tag": "Android 1.003 · Desktop 1.005",
       "title": "Models in plain words, a What's new list, and the floating mic types instead of pasting",
       "summary": "Each model now says what it's built on, for example \"Base model: Parakeet 0.6B v2 by NVIDIA\"; the technical detail is under Technical details."
@@ -117,12 +123,6 @@
       "tag": "Models",
       "title": "Release v2: Sabich v2.0, Shakshuka v2.0 and Meorav v2.0",
       "summary": "The first model release: three models retrained together on more recordings (713.9 minutes in the speech-recognition mix, up from 623)."
-    },
-    {
-      "date": "2026-10-22",
-      "tag": "Models · Site · POC",
-      "title": "Meorav, a text-to-speech line, and one page for every model",
-      "summary": "Meorav is the first Hebrish model that goes from text to speech: a Qwen3-TTS fine-tune that reads code-switched English aloud, in Irish-accented English with the Hebrew words pronounced correctly."
     }
   ]
 }

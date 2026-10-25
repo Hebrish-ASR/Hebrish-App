@@ -1,0 +1,1 @@
+1.004: a Use bound buttons switch turns your remote's bindings off without losing them, so the remote works in other apps. Clear all removes every binding, and saved sets let you name your bindings and switch between them (e.g. one per remote).
