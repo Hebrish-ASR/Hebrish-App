@@ -1,4 +1,4 @@
-**1.004: plain model descriptions, a What's new list, and no `<unk>` in your text.**
+**1.005: plain model descriptions, a What's new list, and no `<unk>` in your text.**
 
 - **Models in plain words:** each model now says what it is built on ("Base model: Parakeet 0.6B v2 by NVIDIA"), and the hardware and "runs on" notes are plain too. The technical detail is under **Technical details**.
 - **What's new:** the About tab opens with the latest Hebrish updates, built into the app, so it works offline, with a link to the full changelog.

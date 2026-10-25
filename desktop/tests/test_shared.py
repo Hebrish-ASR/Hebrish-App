@@ -153,8 +153,9 @@ UPDATES = os.path.join(ROOT, "shared", "updates.json")
 
 
 def test_updates_are_bundled_by_both_apps():
-    from hebrish.ui import about
-    assert open(about.UPDATES).read() == open(UPDATES).read(), \
+    # The desktop copy's path, without importing the Qt UI (CI's test job has no PySide6).
+    desktop_copy = os.path.join(ROOT, "desktop", "hebrish", "data", "updates.json")
+    assert open(desktop_copy).read() == open(UPDATES).read(), \
         "run scripts/bake_updates.py (it writes both copies)"
     assert "../shared/updates.json" in open(os.path.join(ANDROID, "build.gradle.kts")).read()
     assert "data/updates.json" in open(os.path.join(ROOT, "desktop", "pyproject.toml")).read()
@@ -168,7 +169,10 @@ def test_updates_are_well_formed():
     assert dates == sorted(dates, reverse=True) and dates[0] <= doc["built"]
     for e in entries:
         assert e["title"] and e["summary"] and len(e["summary"]) <= 281, e
-        assert "<" not in e["title"] + e["summary"], e
+        # No leftover markup. A literal "<" is fine: entities are decoded on purpose, so the
+        # 2026-10-25 entry "no more <unk>" is text, not a tag.
+        assert not re.search(r"</?(a|b|i|em|strong|code|span|p|ul|ol|li|br|h[1-6]|time|article|div)\b[^>]*>",
+                             e["title"] + e["summary"]), e
 
 
 def test_bake_reads_the_changelog_markup():
