@@ -82,7 +82,7 @@ VAD_KEEP_S = 0.8
 # on a headset at its default gain (B-46: speech around -41 dBFS), so the last words were dropped
 # and nothing said so. With `ref`, a frame is speech when it clears the usual rule on the take's
 # levels or stands VAD_REL_DB above the take's noise floor, and in any case VAD_DEAD (a dead or
-# muted mic). Not yet measured against the benchmark; the whole-take gate is B-46's.
+# muted mic). Not yet measured against the benchmark. A quiet whole take gets the same rule (B-46).
 VAD_REL_DB = 15
 VAD_DEAD = 10 ** (-70 / 20)
 REF_S = 30                 # how much of the take before a piece serves as its `ref`
@@ -99,12 +99,17 @@ def _speech_frames(x: np.ndarray, ref: np.ndarray | None = None) -> np.ndarray:
         return rms > 1
     levels = rms if ref is None or len(ref) < FRAME else np.concatenate([_frame_rms(ref), rms])
     floor, loud = np.percentile(levels, 10), np.percentile(levels, 95)
-    if loud < VAD_QUIET:
+    # the 5th percentile: a take spoken with few pauses has its noise floor in under 10% of frames
+    rel = np.percentile(levels, 5) * 10 ** (VAD_REL_DB / 20)
+    # B-46 (2026-10-25): a quiet take is speech when it rises VAD_REL_DB over its own floor. Up to
+    # 1.002 any take whose loudest frames stayed under VAD_QUIET was "no speech", which on a headset
+    # at its default gain (speech about -41 dBFS, floor -76) dropped real takes. Quiet and flat
+    # (silence, a muted mic) is still nothing.
+    if loud < VAD_QUIET and loud < rel:
         return np.zeros(len(rms), bool)
     gate = max(VAD_ABS, floor + (loud - floor) / 3)
-    if levels is not rms:
-        # the 5th percentile: a take spoken with few pauses has its noise floor in under 10% of frames
-        gate = max(VAD_DEAD, min(gate, np.percentile(levels, 5) * 10 ** (VAD_REL_DB / 20)))
+    if levels is not rms or loud < VAD_QUIET:
+        gate = max(VAD_DEAD, min(gate, rel))
     return rms > gate
 
 

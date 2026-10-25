@@ -311,8 +311,7 @@ def test_last_piece_is_judged_by_the_take():
     from hebrish.engine import has_speech
     take = np.concatenate([_level(1, -76, 1), _level(6, -30, 2), _level(1, -76, 3)])
     tail = np.concatenate([_level(0.4, -76, 4), _level(1.5, -45, 5), _level(0.3, -76, 6)])
-    assert not has_speech(tail)
-    assert has_speech(tail, ref=take)
+    assert has_speech(tail, ref=take)                               # (and alone too since B-46's gate)
     assert not has_speech(_level(2, -74, 7), ref=take)          # room noise after Stop: still nothing
 
 
@@ -323,3 +322,12 @@ def test_last_piece_keeps_its_soft_speech():
     tail = _level(3, -45, 5)
     assert len(shorten_silences(tail)) < len(tail)
     assert len(shorten_silences(tail, ref=take)) == len(tail)
+
+
+def test_a_quiet_take_is_speech():
+    # B-46: a whole take on a headset at default gain (floor -76, speech -45 dBFS) was "no speech"
+    from hebrish.engine import has_speech
+    take = np.concatenate([_level(0.5, -76, 1), _level(1.5, -45, 2), _level(0.5, -76, 3)])
+    assert has_speech(take)
+    assert not has_speech(_level(3, -60, 4))                        # flat noise, however loud: nothing
+    assert not has_speech(np.zeros(SR * 2, np.float32))

@@ -51,7 +51,11 @@ follows the previous one closely may change the clipboard while Claude Code is s
   `_before`). With `ref`, levels come from the take and the piece together; a frame is speech
   when it clears the old rule on those levels **or** stands `VAD_REL_DB` (15 dB) above the take's
   noise floor (its 5th percentile), and always above `VAD_DEAD` (−70 dBFS). Room noise after the
-  last words still yields nothing. The whole-take gate is unchanged (B-46 owns it).
+  last words still yields nothing.
+- **The whole take too (B-46 (1), same day):** a take whose loudest frames stay under
+  `VAD_QUIET` is no longer "no speech" outright: it is speech when it rises `VAD_REL_DB` over its
+  own floor, and then the same relative gate applies. Quiet and flat (silence, a muted mic) is still
+  nothing. A 2 s take at 12:21:33 the same day had come back "no speech" this way (I).
 - **Pastes are spaced.** `Controller._insert` waits until `PASTE_GAP_S` (0.4 s) has passed since
   the previous paste chord. A mitigation for B, not a proven fix.
 - **Every paste and the last piece are logged** (`pasted N chars`, `last piece: N s of audio, N

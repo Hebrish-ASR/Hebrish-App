@@ -694,6 +694,8 @@ R-2026-10-25-3; full record in `docs/debug-log/2026-10-25-last-words-lost-at-sto
   (`ref`, up to `engine.REF_S` = 30 s, `app._before`): speech is the old rule on the take's levels
   or `VAD_REL_DB` (15 dB) over the take's 5th-percentile floor, never under `VAD_DEAD` (−70 dBFS).
   Alone, a short soft last piece fell under `VAD_QUIET` and was dropped without a word.
+  A whole take under `VAD_QUIET` is likewise speech if it rises `VAD_REL_DB` over its own floor
+  (B-46 (1)); quiet and flat is still "no speech".
   Unmeasured on the benchmark: if stray words appear at the end of takes, raise `VAD_REL_DB`.
 - `PASTE_GAP_S` (0.4 s) between paste chords; each paste is logged (`pasted N chars`), as is the
   last piece (`last piece: N s of audio, N words`).
