@@ -854,6 +854,23 @@ dropped with it. `Transcriber.seamSplit` now steps the split back to the start o
 Evidence, reproduction and the desktop twin (`engine.seam_split`): `desktop/docs/maintaining.md`,
 "Clipped words at the seams".
 
+## Enter guard and Voice Typing (unreleased, B-50a/B-51a, 2026-10-27)
+
+Parity with desktop 1.007 (D-2026-10-27-02, -03). **Enter guard:** the voice keyboard's Enter
+(`VoiceImeService.onEnter`) tapped while stopped takes are still landing (`finishing` not empty)
+is held, status "Enter waits for the last words…", until the last take lands (`land` →
+`releaseEnter`), then sent as before (`sendEnter`). After `ENTER_HOLD_MS` (4 s, desktop
+`ENTER_HOLD_S`) it is sent anyway and the takes still coming are marked `diverted`: their pieces go
+to `Take.late`, not the field, and become the last transcript, so **Insert last** puts them in
+(status `ime_late_words`). History keeps the whole take. Leaving the field drops a held Enter.
+Unlike desktop this is the default with no setting: the Enter is the keyboard's own key, so
+holding it needs no keyboard grab (the reason desktop's `hold` is opt-in). Not covered: the
+floating mic, where Enter is the other app's key and Hebrish cannot see it; an Enter during an
+open take with type-as-you-go (desktop doesn't cover that either).
+**Voice Typing:** the Dictation screen and home row are *Voice Typing*, and the tagline is
+"Voice typing that gets the Hebrew words right." (`strings.xml`), as on desktop.
+Compiled (`compileFdroidDebugKotlin`, V, 2026-10-27, JDK 21); not run on an emulator or phone (I).
+
 ## Personal dictionary (0.9.0, 2026-10-23)
 
 Request R-2026-10-22-32 (I-13). Daniel, 2026-10-23: when you enter a custom word in a keyboard,

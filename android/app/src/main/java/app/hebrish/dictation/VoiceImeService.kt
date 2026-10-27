@@ -27,6 +27,7 @@ import android.widget.TextView
  * falls through several methods. See docs/maintaining.md, "Returning to the keyboard".
  */
 class VoiceImeService : InputMethodService() {
+
     /** LOADING / TRANSCRIBING: no take open, earlier takes still decoding ([finishing]). */
     private enum class State { IDLE, LOADING, RECORDING, PAUSED, TRANSCRIBING }
 
@@ -43,6 +44,9 @@ class VoiceImeService : InputMethodService() {
         var missed = false
         var ended = false
         var error: Throwable? = null
+        /** Enter guard: Enter went through before this take landed; the rest waits for Insert last. */
+        var diverted = false
+        val late = StringBuilder()
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -53,6 +57,9 @@ class VoiceImeService : InputMethodService() {
     /** Stopped takes whose text is still coming, oldest first. */
     private val finishing = ArrayDeque<Take>()
     private val open get() = state == State.RECORDING || state == State.PAUSED
+    /** Enter guard (B-50 on desktop): Enter tapped while takes are still landing waits for them. */
+    private var enterHeld = false
+    private val enterTimeout = Runnable { enterHoldExpired() }
     /** Set when the user asked to leave while a take was being transcribed: insert, then switch. */
     private var switchWhenDone = false
     private var shownSeconds = -1
@@ -84,7 +91,7 @@ class VoiceImeService : InputMethodService() {
         }
         v.findViewById<ImageButton>(R.id.backspace).setOnClickListener { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
         v.findViewById<ImageButton>(R.id.space).setOnClickListener { currentInputConnection?.commitText(" ", 1) }
-        v.findViewById<ImageButton>(R.id.enter).setOnClickListener { sendEnter() }
+        v.findViewById<ImageButton>(R.id.enter).setOnClickListener { onEnter() }
         v.findViewById<Button>(R.id.comma).setOnClickListener { punctuate(",") }
         v.findViewById<Button>(R.id.period).setOnClickListener { punctuate(".") }
         v.findViewById<ImageButton>(R.id.settings).setOnClickListener { openSetup() }
@@ -129,6 +136,8 @@ class VoiceImeService : InputMethodService() {
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        // The field the held Enter was meant for is gone: don't send it into the next one.
+        if (enterHeld) { enterHeld = false; main.removeCallbacks(enterTimeout) }
         if (open) {
             dropTake()
             state = settled()
@@ -293,7 +302,8 @@ class VoiceImeService : InputMethodService() {
         finishing.remove(t)
         val err = t.error
         if (err == null && t.text.isNotEmpty()) {
-            Prefs.setLastTranscript(this, t.text.toString())
+            // A diverted take keeps only its late words for Insert last; History gets the whole take.
+            Prefs.setLastTranscript(this, if (t.late.isNotEmpty()) t.late.toString() else t.text.toString())
             History.record(this, t.decoder.text, t.decoder.stats(), History.KEYBOARD)
         }
         val next = finishing.firstOrNull() ?: take
@@ -302,6 +312,7 @@ class VoiceImeService : InputMethodService() {
             next.waiting.clear()
             if (next !== take && next.ended) return land(next)
         }
+        if (finishing.isEmpty() && enterHeld) releaseEnter()
         if (open || finishing.isNotEmpty()) return renderTake()   // the next take's status line stays
         state = State.IDLE
         val leave = switchWhenDone
@@ -315,6 +326,7 @@ class VoiceImeService : InputMethodService() {
                 show(getString(R.string.ime_nothing_heard), busy = false)
                 if (leave) switchBack()
             }
+            t.late.isNotEmpty() -> show(getString(R.string.ime_late_words), busy = false)
             !t.missed -> {
                 show(getString(R.string.ime_tap_to_speak), busy = false)
                 if (leave || Prefs.autoReturn(this)) switchBack()
@@ -334,7 +346,34 @@ class VoiceImeService : InputMethodService() {
 
     private fun commitNow(t: Take, text: String) {
         t.text.append(TakeDecoder.join(t.text, text))
-        if (!commit(text)) t.missed = true
+        if (t.diverted) t.late.append(TakeDecoder.join(t.late, text))
+        else if (!commit(text)) t.missed = true
+    }
+
+    /**
+     * The keyboard's Enter. With stopped takes still landing it waits for their last words
+     * (at most [ENTER_HOLD_MS]), so a message isn't sent without them; desktop twin: the Enter
+     * guard's `hold`, which here needs no keyboard grab because the Enter is this keyboard's own.
+     */
+    private fun onEnter() {
+        if (enterHeld) return
+        if (finishing.isEmpty()) return sendEnter()
+        enterHeld = true
+        main.postDelayed(enterTimeout, ENTER_HOLD_MS)
+        show(getString(R.string.ime_enter_held), busy = true)
+    }
+
+    private fun releaseEnter() {
+        enterHeld = false
+        main.removeCallbacks(enterTimeout)
+        sendEnter()
+    }
+
+    /** Still not in after [ENTER_HOLD_MS]: send now and keep what is still coming out of this message. */
+    private fun enterHoldExpired() {
+        if (!enterHeld) return
+        for (t in finishing) t.diverted = true
+        releaseEnter()
     }
 
     /**
@@ -476,6 +515,8 @@ class VoiceImeService : InputMethodService() {
     }
 
     companion object {
+        /** Longest wait for a held Enter (desktop `ENTER_HOLD_S`, 4 s). */
+        const val ENTER_HOLD_MS = 4000L
         /** HeliBoard's package (`helium314.keyboard`, plus `.debug` / `.nouserlib` builds). */
         const val HELIBOARD = "helium314.keyboard"
         /** Hebrish Keyboard, the HeliBoard fork (`Hebrish-ASR/Hebrish-Keyboard`). */

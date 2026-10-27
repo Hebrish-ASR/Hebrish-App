@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Hebrish</string>
     <!-- Brand short form (Hebrish-Mgmt/brand/BRAND.md, "Mission line"): under the name on home and in the side menu. -->
-    <string name="tagline">Dictation that gets the Hebrew words right.</string>
+    <string name="tagline">Voice typing that gets the Hebrew words right.</string>
     <string name="ime_name">Hebrish</string>
     <string name="subtype_label">English (voice)</string>
 
@@ -91,6 +91,8 @@
     <string name="ime_listening">Listening… tap to finish</string>
     <string name="ime_loading">Loading model (first use)…</string>
     <string name="ime_transcribing">Transcribing…</string>
+    <string name="ime_enter_held">Enter waits for the last words…</string>
+    <string name="ime_late_words">Sent before the last words were in. They are kept: Insert last puts them in.</string>
     <string name="ime_too_short">Too short. Tap the mic to try again.</string>
     <string name="ime_nothing_heard">Heard nothing. Tap the mic to try again.</string>
     <string name="ime_error">Error: %1$s</string>
@@ -164,7 +166,7 @@
     <string name="bubble_colour">Mic colour</string>
     <string name="bubble_colour_cd">Mic colour %1$d</string>
     <string name="bubble_colour_hint">While you talk the mic is always red.</string>
-    <string name="bubble_options_hint">Long takes, type as you go and ALL CAPS are set on the Dictation screen.</string>
+    <string name="bubble_options_hint">Long takes, type as you go and ALL CAPS are set on the Voice Typing screen.</string>
     <string name="bubble_needs_mic">It also needs the microphone: see the guide.</string>
     <string name="bubble_on_clipboard">This field doesn\'t accept dictation; the text is on the clipboard.</string>
     <!-- Screens (0.4.0): home and the screens it links to -->
@@ -172,7 +174,7 @@
     <string name="title_keyboard">Voice keyboard</string>
     <string name="title_bubble">Floating mic</string>
     <string name="title_guide">Turn on the floating mic</string>
-    <string name="title_dictation">Dictation</string>
+    <string name="title_dictation">Voice Typing</string>
     <string name="title_install">Install and updates</string>
     <string name="title_contact">Help and contact</string>
     <string name="home_setup">Set up</string>
@@ -180,7 +182,7 @@
     <string name="nav_models">Models</string>
     <string name="nav_keyboard">Voice keyboard</string>
     <string name="nav_bubble">Floating mic</string>
-    <string name="nav_dictation">Dictation</string>
+    <string name="nav_dictation">Voice Typing</string>
     <string name="nav_dictation_summary">Long takes, typing as you talk, ALL CAPS, history export</string>
     <string name="nav_install">Install and updates</string>
     <string name="nav_install_summary">Get updates automatically with F-Droid</string>

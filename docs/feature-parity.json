@@ -816,6 +816,29 @@
       "notes": "Added 2026-10-22 (Daniel). Send key configurable (send_chord)."
     },
     {
+      "id": "enter-guard",
+      "group": "insertion",
+      "name": "Enter guard: a send key pressed before a stopped take's last words are in doesn't send without them or carry them into the next message",
+      "android": {
+        "status": "partial",
+        "since": "unreleased (B-50a)",
+        "evidence": "android/app/src/main/java/app/hebrish/dictation/VoiceImeService.kt onEnter/releaseEnter/enterHoldExpired",
+        "missing": "floating mic: the Enter is the other app's key"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "1.007",
+        "evidence": "desktop/hebrish/ui/app.py Controller._send_pressed; hotkey_evdev.py hold"
+      },
+      "windows": {
+        "status": "present",
+        "since": "1.007",
+        "evidence": "desktop/hebrish/hotkey_win.py win32_event_filter",
+        "verified": false
+      },
+      "notes": "R-2026-10-27-1, D-2026-10-27-02. Desktop: late words to clipboard by default, hold opt-in (keyboard grab). Android keyboard: hold by default (own key), late words to Insert last after 4 s."
+    },
+    {
       "id": "floating-overlay",
       "group": "platform-integration",
       "name": "Floating mic / overlay",
@@ -948,24 +971,24 @@
     {
       "id": "tagline",
       "group": "links-about-contact",
-      "name": "Tagline 'Dictation for English speakers in Israel'",
+      "name": "Tagline 'Voice typing that gets the Hebrew words right.'",
       "android": {
-        "status": "partial",
-        "since": "0.6.0",
-        "evidence": "android/app/src/main/res/values/strings.xml:335"
+        "status": "present",
+        "since": "unreleased (B-51a)",
+        "evidence": "android/app/src/main/res/values/strings.xml tagline"
       },
       "ubuntu": {
         "status": "present",
-        "since": "0.5.0",
+        "since": "1.007",
         "evidence": "desktop/hebrish/config.py TAGLINE"
       },
       "windows": {
         "status": "present",
-        "since": "0.5.0",
+        "since": "1.007",
         "evidence": "desktop/hebrish/config.py TAGLINE",
         "verified": false
       },
-      "notes": ""
+      "notes": "D-2026-10-27-03. Brand standard (Hebrish-Mgmt/brand/BRAND.md short form) still says 'Dictation that gets the Hebrew words right.'"
     },
     {
       "id": "feedback-links",
@@ -1058,11 +1081,12 @@
     {
       "id": "disfluency-chop",
       "group": "insertion",
-      "name": "Disfluency chop: um, uh, eh, er, hmm removed after decoding, always on",
+      "name": "Disfluency chop: fillers, repeated words and phrases, seam repeats, ellipses; always on",
       "android": {
         "status": "present",
         "since": "1.001",
-        "evidence": "android/core/src/main/java/app/hebrish/core/Disfluency.kt; TakeDecoder.piece applies it first; scripts/check_disfluency.sh (JVM, 33/33)"
+        "evidence": "android/core/src/main/java/app/hebrish/core/Disfluency.kt; TakeDecoder.piece applies it first; scripts/check_disfluency.sh (JVM, 33/33); rules 5-8 in Disfluency.kt, 55/55 shared cases (2026-10-27)",
+        "notes": "rules 5-8 unreleased on Android"
       },
       "ubuntu": {
         "status": "present",
@@ -1075,7 +1099,7 @@
         "evidence": "desktop/hebrish/disfluency.py; applied first in desktop/hebrish/ui/app.py Controller._worker (both engines) and ui/transcribe.py; tests/test_disfluency.py",
         "verified": false
       },
-      "notes": "R-2026-10-24-1, B-38, D-2026-10-24-04. Rules and test set shared: shared/disfluencies.md, shared/disfluency-cases.json. No setting."
+      "notes": "R-2026-10-24-1, B-38, D-2026-10-24-04. Rules and test set shared: shared/disfluencies.md, shared/disfluency-cases.json. No setting. Rules 5-8 (repeats, ellipses): D-2026-10-27-01, desktop 1.007, Android next release."
     },
     {
       "id": "transcription-mode",
@@ -1258,7 +1282,10 @@
     "android": [
       "Transcriber passes the catalogue feature_dim (0.7.0 passes 80 and relies on the model metadata; no behaviour change)",
       "Disfluency chop (B-38)",
-      "Transcription Mode Paragraphs setting (B-44a)"
+      "Transcription Mode Paragraphs setting (B-44a)",
+      "Enter guard in the voice keyboard (B-50a)",
+      "Voice Typing name and tagline (B-51a)",
+      "Chop rules 5-8: repeated words, ellipses (B-52)"
     ],
     "desktop": [
       "Disfluency chop (B-38)",
