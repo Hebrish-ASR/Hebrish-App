@@ -845,6 +845,15 @@ time overhead tracks these ratios roughly (I). The history export records it: `c
 decoded again as context, before trimming) beside `decode_s`, `wait_s` and `rtf`, so
 Android's real overhead can be read from Daniel's takes.
 
+## Clipped words at the seams (1.005, 2026-10-27)
+
+The first word of a segment decoded with context lost its first pieces ("ividual", "chnically":
+9 of 10 such fragments in Daniel's first history export were in segmented takes). Token times are
+80 ms frames, so the word's first pieces could be timed just before the context's end and were
+dropped with it. `Transcriber.seamSplit` now steps the split back to the start of that word.
+Evidence, reproduction and the desktop twin (`engine.seam_split`): `desktop/docs/maintaining.md`,
+"Clipped words at the seams".
+
 ## Personal dictionary (0.9.0, 2026-10-23)
 
 Request R-2026-10-22-32 (I-13). Daniel, 2026-10-23: when you enter a custom word in a keyboard,

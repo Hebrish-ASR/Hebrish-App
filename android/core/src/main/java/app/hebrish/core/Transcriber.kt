@@ -118,12 +118,27 @@ object Transcriber {
         val r = synchronized(lock) { result(load(ctx), audio) }
         val tokens = r.tokens
         val times = r.timestamps
-        var k = tokens.size
-        for (i in tokens.indices) if (i < times.size && times[i] >= at) { k = i; break }
+        val k = seamSplit(tokens, times, at)
         // Tokens carry their own leading spaces (as on desktop): join, then trim.
         val heard = dropUnk(tokens.copyOfRange(0, k).joinToString("")).trim()
         val text = dropUnk(tokens.copyOfRange(k, tokens.size).joinToString("")).trim()
         return text to if (heard.isEmpty()) null else heard.last() in ".?!"
+    }
+
+    /**
+     * Index of the first token of a piece decoded after context ([transcribeAfter]): the first token
+     * timed at or after [at], moved back to the start of its word. Timestamps are encoder frames
+     * (80 ms), so the first pieces of the piece's first word can be timed just before [at]; split
+     * there, they went with the context and the word came out clipped ("ividual", "chnically":
+     * Android export 2026-10-27, desktop/docs/maintaining.md "Clipped words at the seams"). No
+     * context word reaches [at] (cuts are in a pause), so a token without a leading space at the
+     * split continues the piece's first word. Desktop twin: `engine.seam_split`.
+     */
+    fun seamSplit(tokens: Array<String>, times: FloatArray, at: Float): Int {
+        var k = tokens.size
+        for (i in tokens.indices) if (i < times.size && times[i] >= at) { k = i; break }
+        while (k in 1 until tokens.size && tokens[k].firstOrNull().let { it != null && (it.isLetterOrDigit() || it == '\'' || it == '’') }) k--
+        return k
     }
 
     /**

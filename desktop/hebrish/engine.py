@@ -242,6 +242,20 @@ CONTINUES = frozenset("""and or but so because since which who whom whose that t
     about into onto like plus nor yet although though""".split())
 
 
+def seam_split(tokens: list[str], times: list[float], at: float) -> int:
+    """Index of the first token of a piece decoded after context (transcribe_after): the first
+    token timed at or after `at`, moved back to the start of its word. Timestamps are encoder
+    frames (80 ms), so the first pieces of the piece's first word can be timed just before `at`;
+    split there, they went with the context and the word came out clipped ("ividual",
+    "chnically": Android export 2026-10-27, docs/maintaining.md "Clipped words at the seams").
+    No context word reaches `at` (cuts are in a pause), so a token without a leading space at the
+    split always continues the piece's first word."""
+    k = next((i for i, t in enumerate(times) if t >= at), len(tokens))
+    while 0 < k < len(tokens) and (tokens[k][:1].isalnum() or tokens[k][:1] in "'’"):
+        k -= 1
+    return k
+
+
 def hold_stop(text: str, pause_s: float | None) -> bool:
     """Hold back the full stop at the end of a live piece (pause_s None: the last piece). Since 0.7.6
     every pause length holds it: the next piece is decoded after this one's audio
@@ -485,7 +499,7 @@ class Engine:
             self._rec.decode_stream(s)
             tokens, times = list(s.result.tokens), list(s.result.timestamps)
             took = time.monotonic() - t0
-        k = next((i for i, t in enumerate(times) if t >= at), len(tokens))
+        k = seam_split(tokens, times, at)
         before, text = "".join(tokens[:k]).strip(), "".join(tokens[k:]).strip()
         if record:
             self.stats.append({"at": time.time(), "audio_s": len(samples) / SAMPLE_RATE,

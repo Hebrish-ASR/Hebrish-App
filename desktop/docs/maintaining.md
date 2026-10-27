@@ -610,6 +610,32 @@ History count above is the number to recheck after a day of use.
 Android had no seam handling (segments joined with a space): the same design went to Android
 0.8.2 (`android/docs/maintaining.md`).
 
+## Clipped words at the seams (desktop 1.006, Android 1.005, 2026-10-27)
+
+**Report.** Daniel's first Android history export (2026-10-27; 460 rows, Android 0.8.2 to 1.004,
+Sabich v2.0 and v2.1; private HF dataset `danielrosehill/Daniel-Android-Transcript-Exports`,
+reviewed with the asr-dev skill `android-history-review`) had words missing their first pieces:
+"lude" (include), "chnically", "emically", "ividual", "akes" (makes), "oud" (cloud). 9 of the 10
+were in takes cut into segments, the first word of a piece decoded with context; one-piece takes
+had almost none.
+
+**Cause.** `transcribe_after` (and Android `Transcriber.transcribeAfter`) kept the tokens from the
+first one timed at or after the end of the context. Token timestamps are encoder frames (80 ms),
+and the first BPE pieces of the piece's first word can be timed in the frame before that point;
+they went with the context, and only the word's tail was kept. Reproduced on the desktop engine
+(`Sabich v2.1-b6a5004bfe0d`): 59 test-set clips, each decoded after the previous clip plus 0.8 s
+of silence, gave "'re driving up" for "We're driving up"; the other first-word differences were
+only the context's own mark (". Reminder"), which `after_held_stop` already strips.
+
+**Fix.** `engine.seam_split(tokens, times, at)` (Android `Transcriber.seamSplit`): after finding
+the first token timed at or after `at`, step back while that token continues a word (starts with
+a letter, digit or apostrophe, i.e. no leading space) to the token that starts it. Context words
+cannot reach `at` (cuts are in a pause of 0.6 s+ and trim keeps 0.35 s), so the word stepped into
+always belongs to the piece; punctuation tokens are not word pieces and stay with the context.
+Same 59 seams after the fix: 0 first words lost. Tests: `desktop/tests/test_seam_split.py`.
+Measure it again on the next export with `review_export.py seams` (fragments per 1k words,
+segmented vs one-piece takes).
+
 ## Personal dictionary (0.8.0, 2026-10-23)
 
 Words the user wants written their way (names, brands, Hebrew terms in their romanization), each
