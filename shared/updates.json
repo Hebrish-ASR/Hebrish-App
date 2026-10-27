@@ -5,6 +5,12 @@
   "source": "https://hebrish.app/changelog",
   "entries": [
     {
+      "date": "2026-10-27",
+      "tag": "Android 1.005 · Desktop 1.006",
+      "title": "No more half-words where a long dictation is split",
+      "summary": "Longer dictations are decoded in pieces cut at your pauses. The first word after a pause sometimes lost its start (\"ividual\" for \"individual\", \"chnically\" for \"technically\"); it now comes out whole, on Android and on the desktop."
+    },
+    {
       "date": "2026-10-25",
       "tag": "Android 1.004",
       "title": "Switch your remote's buttons off without losing them, and save sets of them",
@@ -117,12 +123,6 @@
       "tag": "Desktop 0.7.1",
       "title": "Desktop: dictation text arrives at a better rhythm, and Sabich is the default again",
       "summary": "Sabich is the default for dictation again: it did better than Shakshuka for everyday dictation. If 0.7.0 moved you to Shakshuka, you are moved back once; Shakshuka stays downloaded and in Models."
-    },
-    {
-      "date": "2026-10-22",
-      "tag": "Models",
-      "title": "Release v2: Sabich v2.0, Shakshuka v2.0 and Meorav v2.0",
-      "summary": "The first model release: three models retrained together on more recordings (713.9 minutes in the speech-recognition mix, up from 623)."
     }
   ]
 }
