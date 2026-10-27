@@ -1,0 +1,1 @@
+1.007: Clearer controls in the voice keyboard. One row of round, colour-coded buttons (Discard, Retake, the mic, Pause, Insert last), always in the same place, so Retake and Discard never need a scroll and the keyboard keeps one height. The mic is green when ready and red with a stop square while you talk.

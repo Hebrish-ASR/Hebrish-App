@@ -85,15 +85,17 @@ can be switched off in the app. Any keyboard that opens a "voice" input method w
 same way, and you can also switch to Hebrish directly from the system keyboard
 picker.
 
-Voice keyboard (0.6.0): a header with the Hebrish mark and a settings gear, the **mic** at the top,
-and the key row previous keyboard · `,` · `.` · space · delete · enter.
+Voice keyboard (0.6.0; control row 1.007): a header with the Hebrish mark and a settings gear,
+one row of round, colour-coded buttons (Discard, Retake, the **mic** in the middle, Pause,
+Insert last), always in place and dimmed when they don't apply, and the key row previous
+keyboard · `,` · `.` · space · delete · enter.
 
 - **Getting back to your keyboard:** tap the keyboard key or press **Back**. Long-press the
   keyboard key for the system picker. If you leave mid-take, what you said is still
   transcribed and inserted first. Under *Keyboard to return to* you can fix a target keyboard
   in case the automatic choice gets it wrong.
-- **During a take:** **Pause / Resume**, **Restart** (throw it away and start again) and
-  **Discard**.
+- **During a take:** the mic turns red with a stop square; **Pause / Resume** (gold while
+  paused), **Retake** (throw it away and start again) and **Discard**.
 - **Insert last transcript:** if no text field had focus when the transcript came back, it
   is kept, and this button types it in once you tap a field.
 

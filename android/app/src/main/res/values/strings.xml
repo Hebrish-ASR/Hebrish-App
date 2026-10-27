@@ -65,8 +65,6 @@
     <string name="hebrish_samples">Send voice samples</string>
     <string name="hebrish_involved">Get involved</string>
 
-    <string name="ime_listening_time">Listening… %1$d:%2$02d · tap ■ to insert</string>
-    <string name="ime_paused">Paused at %1$d:%2$02d. Resume, or tap ■ to insert.</string>
     <string name="ime_discarded">Take discarded. Tap the mic to speak.</string>
     <string name="ime_switch_after">Inserting, then switching back…</string>
     <string name="ime_not_inserted">No text field to type into. Tap a field, then Insert last.</string>
@@ -77,6 +75,12 @@
     <string name="restart">Retake</string>
     <string name="discard">Discard</string>
     <string name="insert_last">Insert last transcript</string>
+    <!-- Voice keyboard control row (1.007): short labels under the round buttons. -->
+    <string name="ime_lbl_record">Record</string>
+    <string name="ime_lbl_stop">Stop</string>
+    <string name="ime_lbl_insert">Insert last</string>
+    <string name="ime_status_listening">Listening… %1$d:%2$02d</string>
+    <string name="ime_status_paused">Paused at %1$d:%2$02d</string>
     <string name="back_switches">Back returns to my keyboard</string>
     <string name="return_title">Keyboard to return to</string>
     <string name="return_auto">Automatic: the keyboard you came from (now %1$s)</string>
@@ -88,7 +92,6 @@
     <string name="ime_no_model">Model not downloaded. Tap the mic to open setup.</string>
     <string name="ime_no_permission">Microphone not granted. Tap the mic to open setup.</string>
     <string name="ime_tap_to_speak">Tap the mic to speak</string>
-    <string name="ime_listening">Listening… tap to finish</string>
     <string name="ime_loading">Loading model (first use)…</string>
     <string name="ime_transcribing">Transcribing…</string>
     <string name="ime_enter_held">Enter waits for the last words…</string>

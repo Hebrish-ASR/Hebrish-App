@@ -854,6 +854,37 @@ dropped with it. `Transcriber.seamSplit` now steps the split back to the start o
 Evidence, reproduction and the desktop twin (`engine.seam_split`): `desktop/docs/maintaining.md`,
 "Clipped words at the seams".
 
+## Voice keyboard control row (1.007, B-53, 2026-10-27)
+
+Daniel, 2026-10-27, with a screenshot of the keyboard over WhatsApp: Pause, Retake and Discard
+"need to be easier to find and easier to click, like color-coded icons and just a consistent
+row"; the blue mic "looks a bit amateur"; "you shouldn't have to scroll down if you need to do a
+retake or pause or discard". Up to 1.006 (`res/layout/ime_view.xml`) the mic was an 88 dp flat
+blue (`accent` #24527A) circle, and Pause / Retake / Discard were grey text keys in a row
+(`take_controls`) shown under it only while a take was open, with *Insert last transcript* a
+further full-width row when idle. Opening a take made the keyboard taller, which pushed the key
+row under the navigation bar on his phone (seen in the screenshot: the keys sit behind the
+gesture bar).
+
+Now one control row, always the same five round buttons with a short label under each:
+**Discard** (`bubble_discard`, ✕), **Retake** (`bubble_retake`, ↺), the **mic** in the middle
+(72 dp; `ime_mic_idle` brand green #0F6B5C with the mic icon when no take is open,
+`bubble_recording` red with a rounded stop square `ic_stop_round` while one is, label Record /
+Stop), **Pause** (`ime_pause` slate; `ime_paused` gold with ▶ and "Resume" while paused) and
+**Insert last** (`ime_insert`, clipboard icon). `VoiceImeService.renderTake` sets icons, tints,
+labels and which buttons are enabled; buttons that don't apply are disabled at 30 % alpha, never
+hidden, so the keyboard has one height in every state. The buttons are `ime_round` (white oval,
+tinted per button) with the `ime_round_press` ripple as foreground. The retake flash still tints
+the mic amber for a second; `renderTake` leaves the mic tint alone while `flashing` and restores
+it when the flash ends. The status line lost its "tap ■ to insert" hints (the mic's label says
+Stop now): `ime_status_listening` / `ime_status_paused` replace `ime_listening`,
+`ime_listening_time` and `ime_paused`. The order puts Discard furthest from the mic, so a
+mis-tap next to Stop pauses rather than throws a take away. Floating mic and Transcription Mode
+are unchanged.
+Compiled (`compileFdroidDebugKotlin`, `processFdroidDebugResources`, V, 2026-10-27, JDK 21; the
+local `assembleDebug` failed in cmake on locally modified `third_party` submodules, not this
+change); not run on an emulator or phone (I).
+
 ## Enter guard and Voice Typing (1.006, B-50a/B-51a, 2026-10-27)
 
 Parity with desktop 1.007 (D-2026-10-27-02, -03). **Enter guard:** the voice keyboard's Enter

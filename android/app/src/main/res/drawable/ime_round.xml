@@ -1,0 +1,5 @@
+<!-- Voice keyboard control row (1.007): a round button; each button sets its colour with
+     backgroundTint, the press ripple is ime_round_press (foreground). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#FFFFFFFF" />
+</shape>

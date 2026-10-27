@@ -11,4 +11,11 @@
     <color name="bubble_retake">#B26A00</color>
     <!-- Floating mic bar (0.7.2): Discard's own background, so it stands apart from the bar. Retake uses bubble_retake. -->
     <color name="bubble_discard">#7A2E2E</color>
+    <!-- Voice keyboard control row (1.007, Daniel 2026-10-27: colour-coded, one row, nicer than the
+         old blue mic). Mic: green idle, red while a take is open. -->
+    <color name="ime_mic_idle">#0F6B5C</color>
+    <color name="ime_pause">#3E4C59</color>
+    <color name="ime_paused">#C8901C</color>
+    <color name="ime_insert">#2F5D50</color>
+    <color name="ime_label">#AEB4BA</color>
 </resources>

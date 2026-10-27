@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Voice keyboard (0.6.0 layout, Daniel 2026-10-20): header with the Hebrish mark (so it's clear
-     which keyboard this is) and a settings gear, the mic always at the top, take controls under it,
+     which keyboard this is) and a settings gear, one row of round take controls with the mic in the middle (1.007),
      and the key row at the bottom: keyboard, comma, period, space, delete, enter. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -72,76 +72,163 @@
             android:src="@drawable/ic_settings" />
     </LinearLayout>
 
-    <ImageButton
-        android:id="@+id/mic"
-        android:layout_width="88dp"
-        android:layout_height="88dp"
-        android:layout_gravity="center_horizontal"
+    <!-- Control row (1.007, Daniel 2026-10-27: "pause, retake, discard need to be easier to find and
+         easier to click ... a consistent row ... you shouldn't have to scroll down"). Always the
+         same five buttons, so the keyboard never changes height: Discard and Retake on the left,
+         the mic in the middle, Pause and Insert last on the right. Buttons that don't apply are
+         dimmed, not hidden (renderTake). Up to 1.006 the controls were a row of grey text keys
+         that appeared under the mic only while recording, which pushed the key row down. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:background="@drawable/mic_bg"
-        android:contentDescription="@string/cd_mic"
-        android:scaleType="centerInside"
-        android:src="@drawable/ic_mic" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+            <ImageButton
+                android:id="@+id/discard"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/ime_round"
+                android:backgroundTint="@color/bubble_discard"
+                android:contentDescription="@string/action_discard"
+                android:foreground="@drawable/ime_round_press"
+                android:padding="14dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_close" />
+            <TextView
+                android:id="@+id/discard_lbl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:maxLines="1"
+                android:text="@string/discard"
+                android:textColor="@color/ime_label"
+                android:textSize="11sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+            <ImageButton
+                android:id="@+id/restart"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/ime_round"
+                android:backgroundTint="@color/bubble_retake"
+                android:contentDescription="@string/action_restart"
+                android:foreground="@drawable/ime_round_press"
+                android:padding="14dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_retake" />
+            <TextView
+                android:id="@+id/restart_lbl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:maxLines="1"
+                android:text="@string/restart"
+                android:textColor="@color/ime_label"
+                android:textSize="11sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+            <ImageButton
+                android:id="@+id/mic"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:background="@drawable/ime_round"
+                android:backgroundTint="@color/ime_mic_idle"
+                android:contentDescription="@string/cd_mic"
+                android:foreground="@drawable/ime_round_press"
+                android:padding="18dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_mic" />
+            <TextView
+                android:id="@+id/mic_lbl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:maxLines="1"
+                android:text="@string/ime_lbl_record"
+                android:textColor="@color/ime_label"
+                android:textSize="11sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+            <ImageButton
+                android:id="@+id/pause"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/ime_round"
+                android:backgroundTint="@color/ime_pause"
+                android:contentDescription="@string/action_pause"
+                android:foreground="@drawable/ime_round_press"
+                android:padding="14dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_pause" />
+            <TextView
+                android:id="@+id/pause_lbl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:maxLines="1"
+                android:text="@string/pause"
+                android:textColor="@color/ime_label"
+                android:textSize="11sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+            <ImageButton
+                android:id="@+id/insert_last"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/ime_round"
+                android:backgroundTint="@color/ime_insert"
+                android:contentDescription="@string/insert_last"
+                android:foreground="@drawable/ime_round_press"
+                android:padding="15dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_paste" />
+            <TextView
+                android:id="@+id/insert_last_lbl"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:maxLines="1"
+                android:text="@string/ime_lbl_insert"
+                android:textColor="@color/ime_label"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
 
     <View
         android:id="@+id/level"
         android:layout_width="match_parent"
         android:layout_height="4dp"
         android:layout_marginHorizontal="40dp"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="8dp"
         android:background="@drawable/level_bar"
         android:scaleX="0.02" />
-
-    <LinearLayout
-        android:id="@+id/take_controls"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:orientation="horizontal"
-        android:visibility="gone">
-        <Button
-            android:id="@+id/pause"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_margin="4dp"
-            android:layout_weight="1"
-            android:background="@drawable/key_bg"
-            android:text="@string/pause"
-            android:textAllCaps="false"
-            android:textColor="@color/ime_text" />
-        <Button
-            android:id="@+id/restart"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_margin="4dp"
-            android:layout_weight="1"
-            android:background="@drawable/key_bg"
-            android:text="@string/restart"
-            android:textAllCaps="false"
-            android:textColor="@color/ime_text" />
-        <Button
-            android:id="@+id/discard"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_margin="4dp"
-            android:layout_weight="1"
-            android:background="@drawable/key_bg"
-            android:text="@string/discard"
-            android:textAllCaps="false"
-            android:textColor="@color/ime_text" />
-    </LinearLayout>
-
-    <Button
-        android:id="@+id/insert_last"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginHorizontal="4dp"
-        android:layout_marginTop="6dp"
-        android:background="@drawable/key_bg"
-        android:text="@string/insert_last"
-        android:textAllCaps="false"
-        android:textColor="@color/ime_text"
-        android:visibility="gone" />
 
     <LinearLayout
         android:layout_width="match_parent"

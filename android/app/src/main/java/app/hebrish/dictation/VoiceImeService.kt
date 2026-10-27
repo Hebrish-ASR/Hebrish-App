@@ -69,9 +69,12 @@ class VoiceImeService : InputMethodService() {
     private lateinit var mic: ImageButton
     private lateinit var spinner: ProgressBar
     private lateinit var level: View
-    private lateinit var takeControls: View
-    private lateinit var pauseBtn: Button
-    private lateinit var insertLastBtn: Button
+    private lateinit var pauseBtn: ImageButton
+    private lateinit var restartBtn: ImageButton
+    private lateinit var discardBtn: ImageButton
+    private lateinit var insertLastBtn: ImageButton
+    private lateinit var pauseLbl: TextView
+    private lateinit var micLbl: TextView
 
     override fun onCreateInputView(): View {
         val v = layoutInflater.inflate(R.layout.ime_view, null)
@@ -79,9 +82,12 @@ class VoiceImeService : InputMethodService() {
         mic = v.findViewById(R.id.mic)
         spinner = v.findViewById(R.id.spinner)
         level = v.findViewById(R.id.level)
-        takeControls = v.findViewById(R.id.take_controls)
         pauseBtn = v.findViewById(R.id.pause)
+        restartBtn = v.findViewById(R.id.restart)
+        discardBtn = v.findViewById(R.id.discard)
         insertLastBtn = v.findViewById(R.id.insert_last)
+        pauseLbl = v.findViewById(R.id.pause_lbl)
+        micLbl = v.findViewById(R.id.mic_lbl)
         insertLastBtn.setOnClickListener { insertLast() }
         mic.setOnClickListener { onMic() }
         v.findViewById<ImageButton>(R.id.switch_ime).apply {
@@ -96,8 +102,9 @@ class VoiceImeService : InputMethodService() {
         v.findViewById<Button>(R.id.period).setOnClickListener { punctuate(".") }
         v.findViewById<ImageButton>(R.id.settings).setOnClickListener { openSetup() }
         pauseBtn.setOnClickListener { togglePause() }
-        v.findViewById<Button>(R.id.restart).setOnClickListener { restart() }
-        v.findViewById<Button>(R.id.discard).setOnClickListener { discard() }
+        restartBtn.setOnClickListener { restart() }
+        discardBtn.setOnClickListener { discard() }
+        renderTake()
         return v
     }
 
@@ -201,8 +208,7 @@ class VoiceImeService : InputMethodService() {
         shownSeconds = -1
         Feedback.cue(this, cue)
         if (cue == Feedback.Cue.RESTART) flashRetake()
-        mic.setImageResource(R.drawable.ic_stop)
-        show(getString(R.string.ime_listening) + " · " + micName, busy = false)
+        show(getString(R.string.ime_status_listening, 0, 0) + " · " + micName, busy = false)
         renderTake()
     }
 
@@ -213,7 +219,7 @@ class VoiceImeService : InputMethodService() {
                 r.pause()
                 setLevel(0f)
                 state = State.PAUSED
-                show(getString(R.string.ime_paused, r.seconds / 60, r.seconds % 60), busy = false)
+                show(getString(R.string.ime_status_paused, r.seconds / 60, r.seconds % 60), busy = false)
             }
             State.PAUSED -> {
                 try {
@@ -224,7 +230,7 @@ class VoiceImeService : InputMethodService() {
                 }
                 state = State.RECORDING
                 shownSeconds = -1
-                show(getString(R.string.ime_listening) + " · " + micName, busy = false)
+                show(getString(R.string.ime_status_listening, r.seconds / 60, r.seconds % 60) + " · " + micName, busy = false)
             }
             else -> return
         }
@@ -256,7 +262,6 @@ class VoiceImeService : InputMethodService() {
         state = settled()
         Feedback.cue(this, Feedback.Cue.DISCARD)
         setLevel(0f)
-        mic.setImageResource(R.drawable.ic_mic)
         show(getString(R.string.ime_discarded), busy = finishing.isNotEmpty())
         renderTake()
     }
@@ -271,7 +276,6 @@ class VoiceImeService : InputMethodService() {
         Mic.release(this)
         Feedback.cue(this, Feedback.Cue.STOP)
         setLevel(0f)
-        mic.setImageResource(R.drawable.ic_mic)
         if (samples.size < Transcriber.SAMPLE_RATE / 4 && d.segmentsQueued == 0) {
             d.cancel()
             state = settled()
@@ -472,14 +476,34 @@ class VoiceImeService : InputMethodService() {
         // 1.000 it was disabled, so a tap then did nothing.
     }
 
-    /** Pause / Restart / Discard while a take is open; Insert last when idle and there is one. */
+    /**
+     * The control row (1.007): the five buttons are always there, so the keyboard keeps one
+     * height; the ones that don't apply now are dimmed and disabled. Discard / Retake / Pause
+     * while a take is open, Insert last when idle and there is one. The mic is green with a mic
+     * when no take is open and red with a stop square while one is.
+     */
     private fun renderTake() {
-        if (!::takeControls.isInitialized) return
+        if (!::pauseBtn.isInitialized) return
         val open = state == State.RECORDING || state == State.PAUSED
-        takeControls.visibility = if (open) View.VISIBLE else View.GONE
-        insertLastBtn.visibility = if (state == State.IDLE && Prefs.lastTranscript(this) != null) View.VISIBLE else View.GONE
-        pauseBtn.setText(if (state == State.PAUSED) R.string.resume else R.string.pause)
+        enable(discardBtn, open)
+        enable(restartBtn, open)
+        enable(pauseBtn, open)
+        enable(insertLastBtn, state == State.IDLE && Prefs.lastTranscript(this) != null)
+        val paused = state == State.PAUSED
+        pauseBtn.setImageResource(if (paused) R.drawable.ic_play else R.drawable.ic_pause)
+        pauseBtn.backgroundTintList = tint(if (paused) R.color.ime_paused else R.color.ime_pause)
+        pauseLbl.setText(if (paused) R.string.resume else R.string.pause)
+        mic.setImageResource(if (open) R.drawable.ic_stop_round else R.drawable.ic_mic)
+        if (!flashing) mic.backgroundTintList = tint(if (open) R.color.bubble_recording else R.color.ime_mic_idle)
+        micLbl.setText(if (open) R.string.ime_lbl_stop else R.string.ime_lbl_record)
     }
+
+    private fun enable(b: View, on: Boolean) {
+        b.isEnabled = on
+        b.alpha = if (on) 1f else 0.3f
+    }
+
+    private fun tint(color: Int) = android.content.res.ColorStateList.valueOf(getColor(color))
 
     /**
      * Retake is too quick to see otherwise: for a second the mic and the status line turn amber,
@@ -498,7 +522,7 @@ class VoiceImeService : InputMethodService() {
         status.postDelayed({
             flashing = false
             status.background = null
-            mic.backgroundTintList = null
+            renderTake()
             shownSeconds = -1
         }, 1000)
     }
@@ -510,7 +534,7 @@ class VoiceImeService : InputMethodService() {
         val secs = recorder?.seconds ?: return
         if (state == State.RECORDING && secs != shownSeconds && !flashing) {
             shownSeconds = secs
-            status.text = getString(R.string.ime_listening_time, secs / 60, secs % 60) + " · " + micName
+            status.text = getString(R.string.ime_status_listening, secs / 60, secs % 60) + " · " + micName
         }
     }
 
