@@ -6,6 +6,12 @@
   "entries": [
     {
       "date": "2026-10-27",
+      "tag": "Android 1.007",
+      "title": "Clearer controls in the voice keyboard",
+      "summary": "The Hebrish voice keyboard has one row of round, colour-coded buttons: Discard (red), Retake (amber), the mic in the middle, Pause (gold while paused) and Insert last."
+    },
+    {
+      "date": "2026-10-27",
       "tag": "Android 1.006",
       "title": "Enter waits for your last words, fewer repeated words, and Voice Typing",
       "summary": "In the Hebrish voice keyboard, if you tap Enter after you stop and before the last words are in, the Enter now waits for them (up to 4 seconds), then sends."
@@ -117,12 +123,6 @@
       "tag": "Desktop 0.7.5",
       "title": "Desktop: change how dictation is inserted from the tray",
       "summary": "The tray menu has an Output submenu: paste at the cursor, clipboard only, or the app's own text box, and the paste shortcut (Ctrl+V, or Ctrl+Shift+V for terminals)."
-    },
-    {
-      "date": "2026-10-22",
-      "tag": "Desktop 0.7.4",
-      "title": "Desktop: no more flicker when Hebrish pastes on KDE",
-      "summary": "On KDE Plasma 6 (Wayland), the window you were dictating into briefly lost focus every time Hebrish pasted, so its title bar flickered."
     }
   ]
 }
