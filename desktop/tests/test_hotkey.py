@@ -223,3 +223,45 @@ def test_escape_discards_only_while_recording():
     r.m._cfg["escape_discards"] = False
     r.tap(); r.tap("KEY_ESC")
     assert r.events == ["start", "cancel", "start"]
+
+
+def _sender(chord="enter"):
+    m = HotkeyMachine({"hotkey": "KEY_F13", "ptt_hotkey": "", "hold_to_talk": False, "hybrid_hold_ms": 50,
+                       "send_chord": chord}, lambda: None, lambda: None, lambda: None, lambda: False)
+    seen = []
+    m.on_send = seen.append
+
+    def press(name, down=True):
+        swallow = m.send_key(name, down)
+        m.key(name, down)
+        return swallow
+    return m, seen, press
+
+
+def test_send_key_is_reported_not_swallowed():
+    # Enter guard (1.007): every Enter, main or keypad, is reported; nothing is swallowed by default
+    m, seen, press = _sender()
+    assert press("KEY_ENTER") is False and press("KEY_ENTER", False) is False
+    assert press("KEY_KPENTER") is False
+    assert seen == [False, False]
+
+
+def test_send_key_matches_the_chord_modifiers():
+    m, seen, press = _sender("ctrl+enter")
+    press("KEY_ENTER"); press("KEY_ENTER", False)            # a plain Enter: a new line there
+    press("KEY_RIGHTCTRL"); press("KEY_ENTER")                 # either Ctrl counts
+    assert seen == [False]
+    m, seen, press = _sender()
+    press("KEY_LEFTSHIFT"); press("KEY_ENTER")                 # Shift+Enter is not a plain Enter
+    assert seen == []
+
+
+def test_held_send_key_is_swallowed_with_its_release():
+    m, seen, press = _sender()
+    m.hold_send(True)
+    assert press("KEY_ENTER") is True and press("KEY_ENTER") is True   # autorepeat too
+    m.hold_send(False)
+    assert press("KEY_ENTER", False) is True                   # its release, even after the hold ends
+    assert press("KEY_ENTER") is False                         # the next Enter goes through
+    assert seen == [True, False]
+    assert m.send_key("KEY_ENTER", True, can_hold=False) is False   # an ungrabbed keyboard's Enter

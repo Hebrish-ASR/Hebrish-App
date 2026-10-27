@@ -1,7 +1,10 @@
 """Windows key source: a low-level keyboard hook through pynput.
 
 RegisterHotKey would be the polite API, but it reports presses only, and push-to-talk
-needs the release. The hook sees every key without consuming it.
+needs the release. The hook sees every key without consuming it, except the Enter guard's
+send key while holding (hotkey.HotkeyMachine.send_key): win32_event_filter suppresses it.
+Injected keys (ours: the paste chord, Stop and send, the replayed Enter) are never the user's
+send key.
 """
 
 from pynput import keyboard
@@ -28,10 +31,24 @@ def key_name(k) -> str:
     return f"VK_{getattr(k, 'vk', 0)}"
 
 
+VK_RETURN = 0x0D
+LLKHF_INJECTED = 0x10
+LLKHF_EXTENDED = 0x01                       # with VK_RETURN: the keypad Enter
+KEYDOWN = (0x0100, 0x0104)                  # WM_KEYDOWN, WM_SYSKEYDOWN
+
+
 class WindowsHotkeys(HotkeyMachine):
+    def _filter(self, msg, data):
+        if data.vkCode == VK_RETURN and not data.flags & LLKHF_INJECTED:
+            name = "KEY_KPENTER" if data.flags & LLKHF_EXTENDED else "KEY_ENTER"
+            if self.send_key(name, msg in KEYDOWN):
+                self._listener.suppress_event()
+        return True
+
     def start(self):
         self._listener = keyboard.Listener(
             on_press=lambda k: self.key(key_name(k), True),
-            on_release=lambda k: self.key(key_name(k), False))
+            on_release=lambda k: self.key(key_name(k), False),
+            win32_event_filter=self._filter)
         self._listener.daemon = True
         self._listener.start()

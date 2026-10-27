@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QLabel,
 
 from .. import audio, dictionary, disfluency, longform, mics, paragraphs
 from ..inserter import copy_to_clipboard
+from .icons import line_icon
 from .mics import fill_combo
 from .meter import LevelMeter, verdict
 
@@ -122,7 +123,7 @@ class TranscribePage(QWidget):
         head.addWidget(QLabel("Record", objectName="cardTitle"))
         head.addStretch(1)
         self.btn_levels = QToolButton(text="Levels", checkable=True)
-        self.btn_levels.setIcon(QIcon.fromTheme("audio-input-microphone"))
+        self.btn_levels.setIcon(line_icon("mic"))
         self.btn_levels.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.btn_levels.setToolTip("Show or hide the gain and the level meter. Hidden, recording "
                                    "still uses the gain you set.")
@@ -134,11 +135,11 @@ class TranscribePage(QWidget):
         row = QHBoxLayout()
         self.mic = QComboBox()
         self.mic.setMinimumWidth(120)
-        self.mic.setToolTip("The microphone for Transcription Mode (Dictate keeps its own). "
+        self.mic.setToolTip("The microphone for Transcription Mode (Voice Typing keeps its own). "
                             "Changing it while recording switches at once; the recording carries on.")
         row.addWidget(self.mic, 1)
         refresh = QToolButton()
-        refresh.setIcon(QIcon.fromTheme("view-refresh"))
+        refresh.setIcon(line_icon("refresh"))
         refresh.setText("↻")
         refresh.setToolTip("Rescan microphones")
         refresh.clicked.connect(self._fill_mics)
@@ -193,22 +194,22 @@ class TranscribePage(QWidget):
         self._levels_state = state if state in LEVELS else "docked"
 
         row = QHBoxLayout()
-        self.btn_rec = QPushButton(QIcon.fromTheme("media-record"), "Record")
+        self.btn_rec = QPushButton(line_icon("record"), "Record")
         self.btn_rec.setToolTip("Start a recording")
         self.btn_rec.clicked.connect(self._record)
-        self.btn_pause = QPushButton(QIcon.fromTheme("media-playback-pause"), "Pause")
+        self.btn_pause = QPushButton(line_icon("pause"), "Pause")
         self.btn_pause.clicked.connect(self._pause)
-        self.btn_retake = QPushButton(QIcon.fromTheme("edit-undo"), "Retake")
+        self.btn_retake = QPushButton(line_icon("undo"), "Retake")
         self.btn_retake.setToolTip("Throw this recording away and start again")
         self.btn_retake.clicked.connect(self._retake)
-        self.btn_stop = QPushButton(QIcon.fromTheme("media-playback-stop"), "Stop")
+        self.btn_stop = QPushButton(line_icon("stop"), "Stop")
         self.btn_stop.setToolTip("Stop recording and keep the audio, to transcribe when you're ready")
         self.btn_stop.clicked.connect(self._stop)
         self.btn_go = QPushButton("Transcribe", objectName="primary")
         self.btn_go.setToolTip("Stop (if recording) and transcribe")
         self.btn_go.clicked.connect(self._transcribe_tape)
         self.btn_drop_tape = QToolButton()
-        self.btn_drop_tape.setIcon(QIcon.fromTheme("edit-delete"))
+        self.btn_drop_tape.setIcon(line_icon("trash"))
         self.btn_drop_tape.setText("✕")
         self.btn_drop_tape.setToolTip("Discard this recording")
         self.btn_drop_tape.clicked.connect(self._discard)
@@ -348,7 +349,7 @@ class TranscribePage(QWidget):
             self.levels.setVisible(st == "shown")
         self.btn_levels.setChecked(st != "docked")
         self.btn_undock.setText("Dock" if st == "floating" else "Undock")
-        self.btn_undock.setIcon(QIcon.fromTheme("window-restore" if st == "floating" else "window-new"))
+        self.btn_undock.setIcon(line_icon("window" if st == "floating" else "window-out"))
         self.btn_undock.setToolTip("Put the levels back in the Record card" if st == "floating" else
                                    "Pop the levels out into a small window of their own")
         self._tick()                     # fill the readout now, not at the next timer tick
@@ -376,7 +377,7 @@ class TranscribePage(QWidget):
         if t.active:
             return
         if self.ctl.state != "idle":
-            self.ctl.win.status("Dictation is running: stop it first.")
+            self.ctl.win.status("Voice Typing is recording: stop it first.")
             return
         self.ctl.stop_monitor()
         try:
@@ -487,8 +488,7 @@ class TranscribePage(QWidget):
         paused = rec and t.paused
         self.btn_rec.setEnabled(not busy and not held and not rec)
         self.btn_pause.setText("Resume" if paused else "Pause")
-        self.btn_pause.setIcon(QIcon.fromTheme("media-playback-start" if paused else
-                                               "media-playback-pause"))
+        self.btn_pause.setIcon(line_icon("play" if paused else "pause"))
         self.btn_pause.setToolTip("Carry on recording" if paused else
                                   "Pause the recording: the mic goes off until you press Resume")
         self.btn_pause.setEnabled(rec)

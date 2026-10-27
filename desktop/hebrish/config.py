@@ -10,7 +10,9 @@ from pathlib import Path
 APP_ID = "app.hebrish.Dictation"
 APP_NAME = "Hebrish"
 AUTOSTART_KEY = "Hebrish"     # Windows HKCU Run value name
-TAGLINE = "Dictation for English speakers in Israel"
+# Brand short form ("Dictation that gets the Hebrew words right.", Hebrish-Mgmt/brand/BRAND.md) with
+# the app's own name for the mode: Voice Typing, not dictation (Daniel, 2026-10-27).
+TAGLINE = "Voice typing that gets the Hebrew words right."
 
 _env = lambda var, default: Path(os.environ.get(var) or Path.home() / default)  # noqa: E731
 if sys.platform == "win32":
@@ -46,6 +48,11 @@ DEFAULTS = {
     "key_send": "",               # Stop and send: stop, insert, then press send_chord
     "key_paste_last": "",         # paste the last transcription again (1.000)
     "send_chord": "enter",        # e.g. ctrl+enter for apps where Enter is a new line
+    # The send key pressed while a stopped take's last words are still coming (1.007,
+    # R-2026-10-22-2): "late" keeps those words out of the next message (clipboard + Paste in the
+    # overlay); "hold" also holds the Enter until they are in, then sends it (grabs the keyboard
+    # for up to ENTER_HOLD_S); "off" pastes them wherever the cursor is, as before 1.007.
+    "enter_guard": "late",
     "double_tap_retake": True,    # double tap of the toggle key while recording = Retake
     "double_tap_ms": 300,         # how long a stopping tap waits for the second tap
     "escape_discards": True,      # Esc while recording discards the take

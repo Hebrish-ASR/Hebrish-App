@@ -272,7 +272,7 @@ class AboutPage(QScrollArea):
         title = QLabel("Hebrish")
         title.setFont(display_font(30))
         col.addWidget(title)
-        tag = QLabel("Dictation for English speakers in Israel. Gets the Hebrew words right.",
+        tag = QLabel("Voice typing for English speakers in Israel who use Hebrew words. Gets the Hebrew words right.",
                      objectName="heroMuted")
         tag.setWordWrap(True)
         col.addWidget(tag)

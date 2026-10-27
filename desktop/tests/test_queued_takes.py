@@ -29,7 +29,7 @@ class Ctl(Controller):
         self.cfg = {"clear_each_take": False, "audio_device": "", "feedback": "off", "beep_volume": 0,
                     "out_clipboard": False, "out_cursor": True, "detect_no_field": False,
                     "all_caps": False, "keep_history": False, "vad": False, "trailing_space": True,
-                    "out_window": False, "paste_chord": "ctrl+v", "live_insert_s": 0}
+                    "out_window": False, "paste_chord": "ctrl+v", "live_insert_s": 0, "enter_guard": "late"}
         self.recorder = SimpleNamespace(start=lambda d: None, stop=lambda: np.ones(16000, np.float32),
                                         mute=lambda s: None, paused=False)
         self.engine = SimpleNamespace(loaded_dir="x", streaming=False,
@@ -38,6 +38,9 @@ class Ctl(Controller):
                                    new_take=lambda c: None, status=lambda m: None)
         self.inserter = SimpleNamespace(insert=lambda t, how, chord: self.out.append(t))
         self._pasted_at = 0.0
+        self._guard, self._unfinished, self._diverted, self._late = threading.Lock(), set(), set(), {}
+        self._enter_held, self._hold_timer = False, None
+        self.hotkeys = SimpleNamespace(holding=False, hold_send=lambda on: False)
         self.sig = SimpleNamespace(take_began=SimpleNamespace(emit=lambda: self.out.append("|")),
                                    piece=SimpleNamespace(emit=lambda t: None),
                                    transcribed=SimpleNamespace(emit=lambda *a: self.done.append(a)))

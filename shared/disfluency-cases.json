@@ -1,5 +1,5 @@
 {
-  "about": "Shared test set for the disfluency chop rules in disfluencies.md. Each case: the text the model wrote for one piece, and what the app must write.",
+  "about": "Shared test set for the disfluency chop rules in disfluencies.md. Each case: the text the model wrote for one piece, and what the app must write; `before` (optional, 1.007) is the take's text already out, for a repeat across a seam.",
   "cases": [
     {"in": "So um, I think uh we should go.", "out": "So I think we should go."},
     {"in": "Um, I think so.", "out": "I think so."},
@@ -33,6 +33,28 @@
     {"in": "Her emerald hummus.", "out": "Her emerald hummus."},
     {"in": "The UM campus.", "out": "The UM campus."},
     {"in": "Where is he? Um, there.", "out": "Where is he? There."},
+    {"in": "I really wanted, wanted to go home.", "out": "I really wanted to go home."},
+    {"in": "Could we change, change, change? change the dataset.", "out": "Could we change the dataset."},
+    {"in": "I I think the the plan is fine.", "out": "I think the plan is fine."},
+    {"in": "We, um, we should go.", "out": "We should go."},
+    {"in": "I really, really want to go.", "out": "I really, really want to go."},
+    {"in": "I really, really, really want to go.", "out": "I really, really want to go."},
+    {"in": "No no no no.", "out": "No no."},
+    {"in": "She had had enough.", "out": "She had had enough."},
+    {"in": "I knew that that was wrong.", "out": "I knew that that was wrong."},
+    {"in": "Yalla yalla, let's go.", "out": "Yalla yalla, let's go."},
+    {"in": "Call five five five, two.", "out": "Call five five five, two."},
+    {"in": "Dial 0 0 0 1.", "out": "Dial 0 0 0 1."},
+    {"in": "Go. Go now.", "out": "Go. Go now."},
+    {"in": "It was... it was fine.", "out": "It was fine."},
+    {"in": "I want to, I want to go home.", "out": "I want to go home."},
+    {"in": "Is that where we want to go next... That one didn't work.", "out": "Is that where we want to go next. That one didn't work."},
+    {"in": "Is that where we want to go… next?", "out": "Is that where we want to go next?"},
+    {"in": "And then...", "out": "And then."},
+    {"in": "Wait...?", "out": "Wait?"},
+    {"in": "wanted to go home.", "out": "to go home.", "before": "I really wanted"},
+    {"in": "so we went.", "out": "so we went.", "before": "I said so"},
+    {"in": "Wanted to go.", "out": "Wanted to go.", "before": "I said wanted."},
     {"in": "", "out": ""}
   ]
 }

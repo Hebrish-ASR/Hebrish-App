@@ -66,7 +66,7 @@ class MicsCard(QFrame):
                       "connected, and the system default when none is.", objectName="muted")
         note.setWordWrap(True)
         lay.addWidget(note)
-        self.use = QCheckBox("Dictate with the first connected mic in this order",
+        self.use = QCheckBox("Use the first connected mic in this order",
                              checked=cfg["audio_device"] == mics.PREFERRED)
         self.use.toggled.connect(self._on_use)
         lay.addWidget(self.use)

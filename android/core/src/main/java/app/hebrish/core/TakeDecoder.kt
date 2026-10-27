@@ -108,7 +108,10 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
         context = if (!last && (Transcriber.trailingQuietSeconds(samples) ?: 0f) >= PAUSE_CUT_SECONDS)
             samples.copyOfRange((samples.size - Transcriber.SAMPLE_RATE * CONTEXT_SECONDS).coerceAtLeast(0), samples.size)
         else null
-        var text = Disfluency.chop(decoded)      // 1.001: fillers out first (../shared/disfluencies.md)
+        // 1.001: fillers out first, 1.007 repeats too (../shared/disfluencies.md); the take so far
+        // (its held full stop back on) catches a repeat across the seam
+        val before = synchronized(all) { all.toString() } + if (stopHeld) "." else ""
+        var text = Disfluency.chop(decoded, before)
         var lead = ""
         if (text.isNotEmpty() && stopHeld) {
             val seam = afterHeldStop(text, stop)

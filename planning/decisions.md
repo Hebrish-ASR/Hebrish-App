@@ -9,6 +9,57 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-27-03: The dictation mode is Voice Typing; the desktop UI takes the hebrish.app brand
+
+- **Decision:** The desktop's Dictate tab and mode are **Voice Typing** in the UI (config keys and
+  internal names unchanged). The window uses the brand standard (`Hebrish-Mgmt/brand/`): accent
+  green, paper header with the mark and Fraunces, one gold mark, line icons drawn for the app;
+  record red and busy amber stay. Tagline: "Voice typing that gets the Hebrew words right."
+  Diagnostics and About move from the tab bar to the header.
+- **Why:** Daniel, 2026-10-27: "dictation" carries the old boss-and-transcriptionist picture, and
+  the other pole, Silicon Valley hype ("ten times as fast", vibe coding by voice), is just as
+  wrong; the app should look slick and easy, in the website's voice. The tab bar also overflowed.
+- **Alternatives:** Keeping "Dictate"; a hype-led tagline. Bundling Inter (about 2.4 MB): not done,
+  the system sans stays.
+- **By:** Daniel (name and direction); the look by the agent, from the brand standard.
+- R-2026-10-27-2, B-51.
+
+### D-2026-10-27-02: Enter guard: late words are kept for Paste by default; holding the Enter is opt-in
+
+- **Decision:** When the user's send key (`send_chord`, Enter by default) is pressed after Stop
+  and before the take's last words are pasted, those words are not pasted into whatever comes
+  next: they go on the clipboard and the overlay shows "Late words · Paste" (setting
+  `enter_guard` = `late`, default). `hold` (opt-in) also holds that Enter until the words are in,
+  then replays it, for at most 4 s (`ENTER_HOLD_S`); on Linux by grabbing the keyboards with an
+  Enter key and forwarding every other key through a passthrough uinput device, on Windows by
+  suppressing the hook event. `off` is the behaviour before 1.007.
+- **Why:** Daniel, 2026-10-27 (and R-2026-10-22-2): in Claude Code a reflex Enter submits without
+  the last words, and they then land in the next prompt where they don't belong. Keeping them
+  out needs no keyboard grab, so it can be the default; saving the reflex Enter needs one, which
+  Daniel called "maybe risky", so it is opt-in and capped.
+- **Alternatives:** A warning only (I-2 option a): the words still land in the wrong place.
+  Hold as the default: a hung grab would take the keyboard.
+- **By:** Daniel (asked for both); default and cap by the agent.
+- R-2026-10-27-1, B-50 (replaces I-2).
+
+### D-2026-10-27-01: Repeated words and ellipses are cut in the disfluency chop (both apps)
+
+- **Decision:** The chop (`shared/disfluencies.md`) now also cuts a word repeated straight away
+  ("wanted, wanted" → "wanted"; runs of three or more too), a two- or three-word phrase said
+  again ("it was, it was" → "it was"), a repeat across an insert-as-you-go seam, and turns the
+  ellipsis the models write for a trailing-off thought into a space or a full stop. Words said
+  twice on purpose ("really, really", "had had", "yalla yalla") are kept twice, never more;
+  numbers are never cut. Always on, no setting, like the filler rules.
+- **Why:** Daniel, 2026-10-27: stutters and false starts come through ("could we change, change,
+  change? change the dataset") and repetition is more often unintended than deliberate. The
+  models write what was said; the text layer works with them. Part of D-2026-10-24-04 left
+  repeated words to the models; this supersedes that part.
+- **Alternatives:** A repetition penalty at decoding: sherpa-onnx's transducer greedy/beam search
+  has none, and the repeats are faithful to the audio, so the decoder would need to know intent.
+  The lasting fix is training data whose transcripts drop false starts (the disfluency dataset).
+- **By:** Daniel (ask); rules by the agent.
+- R-2026-10-27-3, B-52.
+
 ### D-2026-10-24-09: Transcription Mode offers Paragraphs: None, Time-based or Paragraph model
 
 - **Decision:** Transcription Mode (desktop and Android) gets a Paragraphs setting: *None* (one

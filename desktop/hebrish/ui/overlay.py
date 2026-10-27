@@ -14,9 +14,11 @@ It must never take keyboard focus, because the transcript is pasted into whateve
 "No text field" (state `nofield`, 1.000): after a take that found no text field to paste into
 (hebrish.focus), a label, a Paste button and ×: click into the right field, then Paste. It
 works because the overlay never takes the focus; the mic does the same as Paste.
+"Late words" (state `late`, 1.007): the same layout, for words the Enter guard kept out of the
+next message (the send key was pressed before they came in); Paste sends `paste_late`.
 Parent and child talk JSON lines over the child's stdin/stdout: the parent sends
 {"visible", "state", "seconds", "level", "paused", "opacity", "pos"}, the child sends
-{"action": "toggle|pause|retake|discard|paste_last|dismiss_no_field"} and {"pos": [x, y]} after a drag.
+{"action": "toggle|pause|retake|discard|paste_last|paste_late|dismiss_no_field"} and {"pos": [x, y]} after a drag.
 """
 
 import json
@@ -45,6 +47,9 @@ TIPS = {"mic": {"idle": "Start dictation", "recording": "Stop and transcribe",
         "paste": "Paste the last transcription where the cursor is now",
         "dismiss": "Dismiss"}
 TIPS["mic"]["nofield"] = TIPS["paste"]
+TIPS["mic"]["late"] = TIPS["paste_late"] = ("Paste the words that came in after you pressed Enter "
+                                            "where the cursor is now (they are on the clipboard too)")
+OFFER = ("nofield", "late")       # a label, Paste and ×
 
 
 def mode() -> tuple[str, str]:
@@ -131,7 +136,8 @@ class Overlay(QWidget):
         self.update()
 
     def _text(self) -> str:
-        return {"busy": "Transcribing…", "done": "Inserted", "nofield": "No text field"}.get(self.state, "")
+        return {"busy": "Transcribing…", "done": "Inserted", "nofield": "No text field",
+                "late": "Late words"}.get(self.state, "")
 
     # -- geometry ------------------------------------------------------------------
     def _screen_rect(self) -> QRect:
@@ -143,7 +149,7 @@ class Overlay(QWidget):
         if self.state == "recording":
             parts = [("timer", fm.horizontalAdvance("00:00") + 10), ("bars", BARS * 5 + 6),
                      ("resume" if self.paused else "pause", BTN), ("retake", BTN), ("discard", BTN)]
-        elif self.state == "nofield":
+        elif self.state in OFFER:
             parts = [("label", fm.horizontalAdvance(self._text()) + 14),
                      ("paste", fm.horizontalAdvance("Paste") + 24), ("dismiss", BTN)]
         elif self._text():
@@ -207,10 +213,10 @@ class Overlay(QWidget):
 
     def _paint_mic(self, p: QPainter, r: QRectF):
         st = self.state
-        col = QColor({"idle": BLUE, "recording": RED, "busy": AMBER, "done": GREEN, "nofield": AMBER}[st])
+        col = QColor({"idle": BLUE, "recording": RED, "busy": AMBER, "done": GREEN, "nofield": AMBER, "late": AMBER}[st])
         if st == "recording" and self.paused:
             col = QColor("#6B7785")
-        if self.hover == "mic" and st in ("idle", "recording", "nofield"):
+        if self.hover == "mic" and st in ("idle", "recording", *OFFER):
             col = col.lighter(115)
         c = r.center()
         if st == "recording" and not self.paused:     # a halo that follows the voice
@@ -309,7 +315,8 @@ class Overlay(QWidget):
         hit = self._hit(ev.position().toPoint())
         if hit != self.hover:
             self.hover = hit
-            tip = TIPS["mic"][self.state] if hit == "mic" else TIPS.get(hit, "")
+            tip = (TIPS["mic"][self.state] if hit == "mic" else
+                   TIPS.get("paste_late" if hit == "paste" and self.state == "late" else hit, ""))
             QToolTip.showText(ev.globalPosition().toPoint(), tip, self) if tip else QToolTip.hideText()
             self.setCursor(Qt.PointingHandCursor if hit else Qt.OpenHandCursor)
             self.update()
@@ -323,9 +330,9 @@ class Overlay(QWidget):
             self.moved.emit(self.anchor.x(), self.anchor.y())
             return
         hit = self._hit(ev.position().toPoint())
-        if self.state == "nofield" and hit in ("mic", "paste"):
-            self.action.emit("paste_last")
-        elif self.state == "nofield" and hit == "dismiss":
+        if self.state in OFFER and hit in ("mic", "paste"):
+            self.action.emit("paste_late" if self.state == "late" else "paste_last")
+        elif self.state in OFFER and hit == "dismiss":
             self.action.emit("dismiss_no_field")
         elif hit == "mic" and self.state in ("idle", "recording", "busy", "done"):   # busy: the next take queues
             self.action.emit("toggle")

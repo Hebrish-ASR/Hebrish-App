@@ -19,8 +19,8 @@ import json, sys
 d = json.load(open(sys.argv[1]))
 q = lambda s: json.dumps(s).replace("$", "\\$")
 print("import app.hebrish.core.Disfluency\nfun main() {\n var bad = 0\n val cases = listOf(")
-print(",\n".join(f"  {q(c['in'])} to {q(c['out'])}" for c in d["cases"]))
-print(' )\n for ((i, o) in cases) { val r = Disfluency.chop(i); if (r != o) { bad++; println("FAIL [$i] -> [$r] want [$o]") } }\n println("${cases.size - bad}/${cases.size} pass")\n if (bad > 0) kotlin.system.exitProcess(1)\n}')
+print(",\n".join(f"  Triple({q(c['in'])}, {q(c.get('before', ''))}, {q(c['out'])})" for c in d["cases"]))
+print(' )\n for ((i, b, o) in cases) { val r = Disfluency.chop(i, b); if (r != o) { bad++; println("FAIL [$i] -> [$r] want [$o]") } }\n println("${cases.size - bad}/${cases.size} pass")\n if (bad > 0) kotlin.system.exitProcess(1)\n}')
 PY
 java=${JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-amd64}/bin/java
 "$java" -cp "$cp" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -nowarn -no-stdlib -cp "$aj:$std" -d "$work/out" \

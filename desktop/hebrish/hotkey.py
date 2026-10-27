@@ -20,11 +20,20 @@ Built in (0.5.0, both on by default): Esc while a take is recording discards it
 double tap of the toggle key while recording is Retake (`double_tap_retake`): the tap that
 would stop the take waits `double_tap_ms` for a second press first, so stopping by tap is
 that much later. Holding the key (push-to-talk) is unaffected.
+
+Enter guard (1.007, R-2026-10-22-2): sources pass every key event through send_key() first. A
+press of the send key (`send_chord`, Enter by default, keypad Enter too) calls on_send(held), so
+the controller knows the user submitted before a take's last words were in. While `holding` is
+set (the opt-in "hold" mode, only while text is pending), the source swallows that Enter
+instead of delivering it; the controller replays it after the last paste. Linux needs an
+exclusive grab for that (hotkey_evdev), Windows suppresses the hook event (hotkey_win).
 """
 
 import sys
 import threading
 import time
+
+from .inserter import chord_names
 
 MODIFIERS = {"KEY_LEFTCTRL", "KEY_RIGHTCTRL", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT",
              "KEY_LEFTALT", "KEY_RIGHTALT", "KEY_LEFTMETA", "KEY_RIGHTMETA"}
@@ -80,12 +89,57 @@ class HotkeyMachine:
         self._chorded = False
         self._pending_stop: threading.Timer | None = None   # a tap's stop, waiting for a double tap
         self.problem = ""               # shown in the window when the source can't run
+        self._mods: set[str] = set()     # modifiers down now, for matching send_chord
+        self._swallowed: set[str] = set()   # send keys swallowed while holding: their release too
+        self.holding = False             # swallow the send key (set through hold_send)
+        self.on_send = None              # on_send(held: bool), from the key thread
+
+    def hold_send(self, on: bool) -> bool:
+        """Start or stop swallowing the send key; returns whether holding is now on. Sources
+        that need more than the flag (an evdev grab) override this."""
+        self.holding = on
+        return on
+
+    def is_send(self, name: str) -> bool:
+        """Is this key, with the modifiers down now, the configured send chord?"""
+        try:
+            names = chord_names(self._cfg.get("send_chord") or "enter")
+        except ValueError:
+            return False
+        key, mods = names[-1], {_side_free(n) for n in names[:-1]}
+        keys = {"KEY_ENTER", "KEY_KPENTER"} if key == "KEY_ENTER" else {key}
+        return name in keys and {_side_free(m) for m in self._mods} == mods
+
+    def send_key(self, name: str, down: bool, can_hold: bool = True) -> bool:
+        """Every key event goes here first (key thread). Returns True if the source must swallow
+        it: the send key while holding, and the release of one swallowed earlier. can_hold=False:
+        this event's device isn't held (an evdev keyboard left ungrabbed), so its Enter got through."""
+        if not down:
+            if name in self._swallowed:
+                self._swallowed.discard(name)
+                return True
+            return False
+        if name in self._swallowed:               # autorepeat of a swallowed key
+            return True
+        if not self.is_send(name):
+            return False
+        held = self.holding and can_hold
+        if held:
+            self._swallowed.add(name)
+        if self.on_send:
+            try:
+                self.on_send(held)
+            except Exception:
+                pass
+        return held
 
     def capture_next_key(self, callback):
         """Hand the next key press (any key) to callback(name) instead of acting on it."""
         self._capture = callback
 
     def key(self, name: str, down: bool):
+        if name in MODIFIERS:
+            (self._mods.add if down else self._mods.discard)(name)
         if self._capture and down:
             cb, self._capture = self._capture, None
             cb(name)
@@ -151,6 +205,14 @@ class HotkeyMachine:
             self._pending_stop = None
             if self._is_recording():
                 self._stop()
+
+
+def _side_free(name: str) -> str:
+    """KEY_LEFTCTRL / KEY_RIGHTCTRL / KEY_CTRL -> CTRL: either side matches a chord's modifier."""
+    n = name.removeprefix("KEY_")
+    for side in ("LEFT", "RIGHT"):
+        n = n.removeprefix(side)
+    return {"CONTROL": "CTRL", "SUPER": "META", "WIN": "META", "CMD": "META"}.get(n, n)
 
 
 def make_listener(*args):

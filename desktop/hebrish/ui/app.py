@@ -18,7 +18,7 @@ from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
-from PySide6.QtGui import QActionGroup, QDesktopServices, QIcon
+from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QIcon, QPalette
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
@@ -50,6 +50,9 @@ CLIPBOARD_AFTER_PASTE_MS = 600
 PASTE_GAP_S = 0.4
 # How long the overlay offers "No text field · Paste" before it goes back to normal.
 NO_FIELD_S = 30
+# Enter guard "hold" (1.007): the longest the keyboard is held after Stop. Past it the held Enter
+# goes through, and words still to come are kept for Paste, as in "late".
+ENTER_HOLD_S = 4.0
 BEEPS = {"recording": 880, "transcribing": 620, "discarded": (660, 440), "retake": (523, 880)}
 
 
@@ -71,6 +74,7 @@ class Signals(QObject):
     take_began = Signal()           # the decoder reached a new take: the Dictate tab's box starts a block
     piece = Signal(str)             # each decoded piece of a take, for the Dictate tab's text box
     no_field = Signal()             # focus.text_target() said False after a take (detect_no_field)
+    late = Signal(str)              # words kept out of the next message by the Enter guard
     fetched = Signal(object, object)    # manifest or None, error: download_model()
     moved = Signal(object)          # error or None: move_models()
     loaded = Signal(object)
@@ -115,6 +119,7 @@ class Controller(QObject):
         # text"). In memory; after a restart Paste last falls back to History's newest entry.
         self.last_text = ""
         self._no_field = False           # the overlay shows "No text field" with Paste
+        self._late_text = ""             # the overlay shows "Late words" with Paste (Enter guard)
         # Every transcript (0.7.0): SQLite with a full-text index, hebrish.history. The 0.6.x
         # history.json (last 50) is imported once.
         self.history = History(HISTORY_DB)
@@ -129,6 +134,7 @@ class Controller(QObject):
         self.sig.transcribed.connect(self._done)
         self.sig.take_began.connect(lambda: self.win.new_take(self.cfg["clear_each_take"]))
         self.sig.no_field.connect(self._show_no_field)
+        self.sig.late.connect(self._show_late)
         self.sig.loaded.connect(self._loaded)
         self.sig.checked.connect(self._checked)
         self.sig.downloaded.connect(self._downloaded)
@@ -145,6 +151,7 @@ class Controller(QObject):
         self.hotkeys = make_listener(self.cfg, self.sig.start.emit, self.sig.stop.emit,
                                      self.sig.cancel.emit, lambda: self.state == "recording",
                                      self.sig.action.emit)
+        self.hotkeys.on_send = self._send_pressed
         self.hotkeys.start()
         if self.cfg["detect_no_field"]:
             from .. import focus
@@ -160,6 +167,16 @@ class Controller(QObject):
         self.pending = 0               # stopped takes whose final text hasn't come back yet
         self._stops: deque[float] = deque()   # when each pending take was stopped, oldest first
         self._send_take = 0             # Stop and send: the take whose last text gets send_chord
+        # Enter guard (1.007, R-2026-10-22-2). Takes stopped whose last piece isn't decoded yet;
+        # the user's send key pressed meanwhile moves them to _diverted, whose remaining pieces
+        # are kept in _late (not pasted) and offered with Paste. In "hold" mode the key source
+        # swallows that Enter (_enter_held) and it is replayed after the last paste.
+        self._guard = threading.Lock()
+        self._unfinished: set[int] = set()
+        self._diverted: set[int] = set()
+        self._late: dict[int, list[str]] = {}
+        self._enter_held = False
+        self._hold_timer: threading.Timer | None = None
         self._jobs: queue.Queue = queue.Queue()
         self._pasted_at = 0.0           # time.monotonic() of the last paste chord (PASTE_GAP_S)
         threading.Thread(target=self._worker, daemon=True, name="decode").start()
@@ -309,8 +326,11 @@ class Controller(QObject):
             self.start(cue="retake")
         elif action == "paste_last":
             self.paste_last()
+        elif action == "paste_late":
+            self.paste_last(self._late_text)
         elif action == "dismiss_no_field":
             self._clear_no_field()
+            self._clear_late()
         elif action == "send":
             # While recording: stop, and send once the last text is in. Already stopped and
             # still transcribing (pending): send this take when it lands.
@@ -318,12 +338,13 @@ class Controller(QObject):
                 self._send_take = self._take
                 self.stop()
 
-    def paste_last(self):
-        """Paste the last transcription at the cursor (action key, tray, the overlay's Paste).
-        Not during a take: its own pieces are being pasted."""
+    def paste_last(self, text=""):
+        """Paste the last transcription at the cursor (action key, tray, the overlay's Paste), or
+        `text` (the overlay's Paste for late words). Not during a take: its own pieces are being
+        pasted."""
         if self.state != "idle":
             return
-        text = self.last_text
+        text = text or self.last_text
         if not text and self.cfg["keep_history"]:
             rows = self.history.recent(1)
             text = rows[0]["text"] if rows else ""
@@ -331,6 +352,7 @@ class Controller(QObject):
             self.win.status("No transcription to paste yet.")
             return
         self._clear_no_field()
+        self._clear_late()
         end = " " if self.cfg["trailing_space"] else ""
 
         def go():
@@ -354,7 +376,7 @@ class Controller(QObject):
         threading.Thread(target=ask, daemon=True).start()
 
     def _show_no_field(self):
-        if self.state != "idle" or not self.last_text:
+        if self.state != "idle" or not self.last_text or self._late_text:
             return
         # The whole take on the clipboard too, so Ctrl+V works wherever the user clicks next.
         self._copy_take(self.last_text)
@@ -367,18 +389,104 @@ class Controller(QObject):
             self._no_field = False
             self._overlay_push()
 
+    # -- Enter guard (1.007) ----------------------------------------------------------
+    def _send_pressed(self, held: bool):
+        """The user's send key (key thread). Takes still to finish keep their remaining words
+        out of whatever the Enter just sent; held (hold mode), the Enter waits for them."""
+        if self.cfg["enter_guard"] == "off" or not self.cfg["out_cursor"]:
+            return
+        with self._guard:
+            if held:
+                self._enter_held = True
+                log.info("send key held until the last words are in")
+            elif self._unfinished:
+                self._diverted |= self._unfinished
+                log.info("send key before the last words: keeping take(s) %s", sorted(self._unfinished))
+
+    def _hold_send(self):
+        """After Stop, in hold mode: the key source holds the send key until _finish_take."""
+        if self.cfg["enter_guard"] != "hold" or not self.cfg["out_cursor"]:
+            return
+        if self.hotkeys.hold_send(True) and not self._hold_timer:
+            self._hold_timer = threading.Timer(ENTER_HOLD_S, self._hold_timeout)
+            self._hold_timer.daemon = True
+            self._hold_timer.start()
+
+    def _release_hold(self, replay: bool):
+        """End the hold (call with self._guard held); replay a held Enter now if asked."""
+        if self._hold_timer:
+            self._hold_timer.cancel()
+            self._hold_timer = None
+        self.hotkeys.hold_send(False)
+        held, self._enter_held = self._enter_held, False
+        if held and replay:
+            threading.Thread(target=self._replay_enter, daemon=True).start()
+
+    def _replay_enter(self):
+        time.sleep(0.15)          # let the target app take the paste before the Enter
+        try:
+            self.inserter.press("enter")
+        except Exception:
+            log.exception("replaying the held Enter failed")
+
+    def _hold_timeout(self):
+        """ENTER_HOLD_S passed with words still to come: the held Enter goes now, and those
+        words are kept for Paste."""
+        with self._guard:
+            self._hold_timer = None
+            if self._enter_held:
+                self._diverted |= self._unfinished
+                log.info("Enter hold timed out: sending, keeping take(s) %s", sorted(self._unfinished))
+            self._release_hold(replay=True)
+
+    def _out(self, job, text):
+        """A piece leaving the app (decode thread): kept back if the Enter guard diverted its take."""
+        with self._guard:
+            if job in self._diverted:
+                self._late.setdefault(job, []).append(text)
+                return
+        self._insert(text)
+
+    def _finish_take(self, job):
+        """The decoder is done with a stopped take (decode thread)."""
+        with self._guard:
+            self._unfinished.discard(job)
+            late = "".join(self._late.pop(job, [])).strip() if job in self._diverted else ""
+            self._diverted.discard(job)
+            if not self._unfinished and (self.hotkeys.holding or self._enter_held):
+                self._release_hold(replay=True)
+        if late:
+            self.sig.late.emit(late)
+
+    def _show_late(self, text):
+        log.info("kept %d chars after an early Enter", len(text))
+        self._clear_no_field()
+        self._late_text = text
+        self._copy_take(text)
+        self.win.status("Enter was pressed before the last words were in, so they weren't pasted. "
+                        "They're on the clipboard, and Paste on the overlay puts them where the cursor is.")
+        self._overlay_push()
+        QTimer.singleShot(NO_FIELD_S * 1000, lambda t=text: self._late_text == t and self._clear_late())
+
+    def _clear_late(self):
+        if self._late_text:
+            self._late_text = ""
+            self._overlay_push()
+
     def overlay_changed(self):
         self._overlay_push()
 
     def _overlay_push(self):
         st = "done" if self._overlay_done else ("idle" if self.loading else self.state)
-        if self._no_field and st == "idle":
+        if self._late_text and st == "idle":
+            st = "late"
+        elif self._no_field and st == "idle":
             st = "nofield"
         show = self.cfg["overlay"]
         self.overlay.send({
             # "No text field" shows even with the overlay off: it is the only place for Paste
             # that doesn't take the keyboard focus from the field the user clicks into.
-            "visible": show == "always" or (show != "off" and st != "idle") or st == "nofield",
+            "visible": show == "always" or (show != "off" and st != "idle") or st in ("nofield", "late"),
             "state": st, "paused": self.recorder.paused,
             "seconds": round(self.recorder.seconds, 1), "level": round(self.recorder.level, 3),
             "opacity": self.cfg["overlay_opacity"], "pos": self.cfg["overlay_pos"]})
@@ -393,6 +501,9 @@ class Controller(QObject):
         samples = self.recorder.stop()
         self._stops.append(time.monotonic())
         self.pending += 1
+        with self._guard:
+            self._unfinished.add(self._take)
+        self._hold_send()
         self.cue("transcribing")
         self.set_state("busy")
         self._jobs.put((self._take, samples, True, None))
@@ -449,14 +560,14 @@ class Controller(QObject):
                     text = stream.finish(samples) if final else stream.feed(samples)
                     space = " " if final and self.cfg["trailing_space"] else ""
                     if text:
-                        text = fix(disfluency.chop(text))   # whole words with their own spaces; stream.sent keeps the raw text
+                        text = fix(disfluency.chop(text, "".join(parts[-1:])))   # whole words with their own spaces; stream.sent keeps the raw text
                         parts.append(text)
                         self._show(out(text))
-                        self._insert(out(text + space))
+                        self._out(job, out(text + space))
                     elif space and parts and not stream.sent.endswith(" ") and self.cfg["out_cursor"]:
                         # the last words went out at a pause, without the space after them
-                        self.inserter.insert(out(space), "paste", self.cfg["paste_chord"])
-                    if final and live and parts and job == self._send_take and self.cfg["out_cursor"]:
+                        self._out(job, out(space))
+                    if final and live and parts and job == self._send_take and self._sends(job):
                         self._send()
                     if final:
                         whole = "".join(parts).strip()
@@ -471,7 +582,9 @@ class Controller(QObject):
                 if final:
                     log.info("last piece: %.1f s of audio, %d words", len(samples) / audio.SAMPLE_RATE,
                              len(text.split()))
-                text = disfluency.chop(text)      # 1.001: fillers out first (../shared/disfluencies.md)
+                # 1.001: fillers out first, 1.007 repeats too (../shared/disfluencies.md); the piece
+                # before (its held full stop back on) catches a repeat across the seam
+                text = disfluency.chop(text, parts[-1] + ("." if held else "") if parts else "")
                 ctx = samples if pause else None
                 end = " " if self.cfg["trailing_space"] else ""
                 lead = ""
@@ -485,15 +598,15 @@ class Controller(QObject):
                 elif held and final:
                     lead, parts[-1] = "." + end, parts[-1] + "."
                     self._show(out(lead))
-                    self._insert(out(lead))
+                    self._out(job, out(lead))
                 if text:
                     held = not final and hold_stop(text, pause)
                     text = fix(text[:-1] if held else text)
                     parts.append(text)
                     self._show(out(lead + text))
                     space = "" if held else " " if not final else end
-                    self._insert(out(lead + text + space))
-                if final and live and parts and job == self._send_take and self.cfg["out_cursor"]:
+                    self._out(job, out(lead + text + space))
+                if final and live and parts and job == self._send_take and self._sends(job):
                     self._send()
                 if final:
                     heard = parts or len(samples) < audio.SAMPLE_RATE // 2 or not live
@@ -503,6 +616,9 @@ class Controller(QObject):
                     self.sig.transcribed.emit("".join(parts).strip() if stream else " ".join(parts), e, None)
                 else:
                     log.exception("live piece failed")
+            finally:
+                if final:
+                    self._finish_take(job)
 
     def _show(self, text):
         """A piece for the Dictate tab's text box, when that output is on (decode thread)."""
@@ -528,6 +644,11 @@ class Controller(QObject):
         except Exception:
             log.exception("couldn't copy the take")
 
+    def _sends(self, job) -> bool:
+        """Stop and send presses send_chord after this take: not if the user already sent."""
+        with self._guard:
+            return self.cfg["out_cursor"] and job not in self._diverted and not self._enter_held
+
     def _send(self):
         """Stop and send: press send_chord after the take's last paste (decode thread)."""
         time.sleep(0.15)          # let the target app take the paste before the Enter
@@ -548,7 +669,7 @@ class Controller(QObject):
         self.pending = max(0, self.pending - 1)
         if err == NO_SPEECH:
             self._feedback("no_speech")
-            self.win.status("No speech heard, so nothing was inserted. (Voice detection is on the Dictate tab.)")
+            self.win.status("No speech heard, so nothing was inserted. (Voice detection is on the Voice Typing tab.)")
         elif err:
             self._feedback("failed")
             self.notify("Transcription failed", str(err))
@@ -1100,6 +1221,7 @@ class Controller(QObject):
             self.act_update.setText(f"Install update ({self.latest.version})")
 
     def quit(self):
+        self.hotkeys.hold_send(False)
         self.win.transcribe.tape.stop()      # closed cleanly; offered again on the next start
         self.overlay.close()
         self.win.quitting = True
@@ -1185,6 +1307,10 @@ def main():
     app.setDesktopFileName("hebrish")
     app.setWindowIcon(icon("hebrish"))
     app.setQuitOnLastWindowClosed(False)
+    from .style import colours
+    pal = app.palette()                    # links (About, Models) in the brand accent, not Qt's blue
+    pal.setColor(QPalette.Link, QColor(colours()["accent"]))
+    app.setPalette(pal)
 
     # single instance: a second launch hands its command to the first and exits
     name = f"hebrish-{getpass.getuser()}"

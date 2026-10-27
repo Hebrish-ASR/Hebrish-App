@@ -1,4 +1,4 @@
-"""Main window: header, then Dictate / File / [History] / Dictionary / Models / Settings / About tabs.
+"""Main window: header, then Voice Typing (the "dictate" page) / File / [History] / Dictionary / Models / Settings / About tabs.
 History is there only while "Keep a history" is on (on by default again since 0.7.0, now
 every transcript in a searchable SQLite file: hebrish.history)."""
 
@@ -23,9 +23,10 @@ from . import about
 from .mics import MicsCard, fill_combo, in_use
 from .app import ICONS, icon
 from .meter import LevelMeter, verdict
-from .style import BLUE, BRAND_GREEN
+from .icons import line_icon
+from .style import BLUE, BRAND_GREEN, GOLD, colours, display_font
 
-OVERLAY = [("off", "Off"), ("active", "While dictating"), ("always", "Always (a mic button)")]
+OVERLAY = [("off", "Off"), ("active", "While recording"), ("always", "Always (a mic button)")]
 # Insert-as-you-go presets (R-2026-10-25-3: Fast 4, Normal 6, Relaxed 10 s; 0.7.1 had 3/5/8, 0.7.0
 # 5/7/10). Any other value is Custom; -1 is the Custom entry's own data.
 LIVE = [(0, "Off: everything when you stop"), (4, "Fast: every ~4 seconds"),
@@ -67,7 +68,7 @@ def dots(n: int, colour: str) -> str:
 
 def tiers_html(m) -> str:
     """The speed/accuracy gradient as two five-dot meters (estimates, catalogue `tiers`)."""
-    return (f"Speed {dots(m.speed, '#2e7dd1')} &nbsp; Accuracy {dots(m.accuracy, BRAND_GREEN)}"
+    return (f"Speed {dots(m.speed, GOLD)} &nbsp; Accuracy {dots(m.accuracy, BRAND_GREEN)}"
             " <small style='color:gray'>(estimates)</small>")
 
 
@@ -132,11 +133,16 @@ class MainWindow(QMainWindow):
         from .diagnostics import DiagnosticsPage
         self.pages["diagnostics"] = DiagnosticsPage(ctl, card, muted)
         self.pages["about"] = self._about_page()
-        for key, label in (("dictate", "Dictate"), ("file", "Transcription"), ("history", "History"),
+        for key, label in (("dictate", "Voice Typing"), ("file", "Transcription"), ("history", "History"),
                            ("dictionary", "Dictionary"), ("model", "Models"), ("settings", "Settings"),
                            ("diagnostics", "Diagnostics"), ("about", "About")):
             self.tabs.addTab(self.pages[key], label)
         self.tabs.setTabVisible(self.tabs.indexOf(self.pages["history"]), self.cfg["keep_history"])
+        # Diagnostics and About open from the header's buttons (1.007): eight tabs didn't fit the
+        # window's width, and these two are visited rarely.
+        for key in ("diagnostics", "about"):
+            self.tabs.setTabVisible(self.tabs.indexOf(self.pages[key]), False)
+        self.tabs.currentChanged.connect(self._sync_header_buttons)
         self.ctl.sig.piece.connect(self._append_piece)
         self._meter_timer = QTimer(self, interval=60, timeout=self._update_meter)
         self._meter_timer.start()
@@ -150,7 +156,8 @@ class MainWindow(QMainWindow):
         self.status_label = muted()
         self.status_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         fl.addWidget(self.status_label, 1)
-        self.version_label = QLabel(f'<a href="{CHANGELOG_URL}" style="color:{BLUE}; text-decoration:none">'
+        accent = colours()["accent"]
+        self.version_label = QLabel(f'<a href="{CHANGELOG_URL}" style="color:{accent}; text-decoration:none">'
                                     f'{APP_NAME} {__version__}</a>',
                                     objectName="version")
         self.version_label.setOpenExternalLinks(True)
@@ -181,10 +188,31 @@ class MainWindow(QMainWindow):
         lay.addWidget(logo)
         text = QVBoxLayout()
         text.setSpacing(0)
-        text.addWidget(QLabel(APP_NAME, objectName="title"))
+        title = QLabel(APP_NAME, objectName="title")
+        title.setFont(display_font(24))          # Fraunces, as on hebrish.app
+        text.addWidget(title)
         text.addWidget(QLabel(TAGLINE, objectName="tagline"))
         lay.addLayout(text, 1)
+        self.header_buttons = {}
+        for key, name, label in (("diagnostics", "pulse", "Diagnostics"), ("about", "info", "About")):
+            b = QToolButton(objectName="headerButton", text=label, checkable=True)
+            b.setIcon(line_icon(name))
+            b.setIconSize(QSize(16, 16))
+            b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+            b.setCursor(Qt.PointingHandCursor)
+            b.clicked.connect(lambda _=False, k=key: self._header_tab(k))
+            self.header_buttons[key] = b
+            lay.addWidget(b, 0, Qt.AlignVCenter)
         return h
+
+    def _header_tab(self, key):
+        """A header button: open its page, or go back to Voice Typing if it is already open."""
+        self.tabs.setCurrentWidget(self.pages["dictate"] if self.tabs.currentWidget() is self.pages[key]
+                                   else self.pages[key])
+
+    def _sync_header_buttons(self, _i=None):
+        for key, b in self.header_buttons.items():
+            b.setChecked(self.tabs.currentWidget() is self.pages[key])
 
     def _app_update_bar(self):
         """A new Hebrish app (0.6.2, app_update): a strip under the header with one action and
@@ -282,6 +310,7 @@ class MainWindow(QMainWindow):
         col.setSpacing(4)
         self.rec = QPushButton("Talk", objectName="record")
         self.rec.setFixedSize(104, 104)
+        self.rec.setIconSize(QSize(18, 18))
         self.rec.setCursor(Qt.PointingHandCursor)
         self.rec.clicked.connect(self.ctl.toggle)
         col.addWidget(self.rec, 0, Qt.AlignHCenter)
@@ -306,7 +335,7 @@ class MainWindow(QMainWindow):
         self.mic.setToolTip("The microphone in use. Changing it applies from the next take.")
         row.addWidget(self.mic, 1)
         refresh = QToolButton()
-        refresh.setIcon(QIcon.fromTheme("view-refresh"))
+        refresh.setIcon(line_icon("refresh"))
         refresh.setText("↻")
         refresh.setToolTip("Rescan microphones")
         refresh.clicked.connect(self._fill_mics)
@@ -350,12 +379,12 @@ class MainWindow(QMainWindow):
         self.text.setStyleSheet("font-size: 16px;")
         b.addWidget(self.text, 1)
         row = QHBoxLayout()
-        self.btn_copy_text = QPushButton(QIcon.fromTheme("edit-copy"), "Copy")
+        self.btn_copy_text = QPushButton(line_icon("copy"), "Copy")
         self.btn_copy_text.clicked.connect(lambda: (copy_to_clipboard(self.text.toPlainText()),
                                                     self.status("Text copied.")))
-        self.btn_save_text = QPushButton(QIcon.fromTheme("document-save"), "Save…")
+        self.btn_save_text = QPushButton(line_icon("save"), "Save…")
         self.btn_save_text.clicked.connect(self._save_text)
-        self.btn_clear_text = QPushButton(QIcon.fromTheme("edit-clear"), "Clear")
+        self.btn_clear_text = QPushButton(line_icon("clear"), "Clear")
         self.btn_clear_text.clicked.connect(self.text.clear)
         for w in (self.btn_copy_text, self.btn_save_text, self.btn_clear_text):
             row.addWidget(w)
@@ -363,10 +392,8 @@ class MainWindow(QMainWindow):
         row.addWidget(QLabel("Output"))
         self.output_buttons = {}
         for key, label in OUTPUT:
-            btn = QPushButton(label, checkable=True, checked=bool(self.cfg[key]))
+            btn = QPushButton(label, checkable=True, checked=bool(self.cfg[key]), objectName="outputToggle")
             btn.setToolTip(OUTPUT_TIPS[key])
-            btn.setStyleSheet(f"QPushButton:checked {{ background: {BRAND_GREEN}; color: white; "
-                              f"border-color: {BRAND_GREEN}; }}")
             btn.toggled.connect(lambda on, k=key: self._on_output(k, on))
             self.output_buttons[key] = btn
             row.addWidget(btn)
@@ -503,7 +530,7 @@ class MainWindow(QMainWindow):
         self._search_timer = QTimer(self, singleShot=True, interval=250, timeout=self.show_history)
         self.hist_search.textChanged.connect(lambda _t: self._search_timer.start())
         head.addWidget(self.hist_search, 1)
-        self.btn_clear = QPushButton(QIcon.fromTheme("edit-clear-history"), "Clear history")
+        self.btn_clear = QPushButton(line_icon("trash"), "Clear history")
         self.btn_clear.clicked.connect(self._confirm_clear)
         head.addWidget(self.btn_clear)
         blay.addLayout(head)
@@ -524,10 +551,10 @@ class MainWindow(QMainWindow):
         self.hist_where.setWordWrap(True)
         b.addWidget(self.hist_where)
         row = QHBoxLayout()
-        opn = QPushButton(QIcon.fromTheme("folder-open"), "Open folder")
+        opn = QPushButton(line_icon("folder"), "Open folder")
         opn.clicked.connect(lambda: QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(self.ctl.history.path.parent))))
-        exp = QPushButton(QIcon.fromTheme("document-export"), "Export…")
+        exp = QPushButton(line_icon("export"), "Export…")
         exp.setToolTip("Every transcript as JSON Lines, oldest first")
         exp.clicked.connect(self._export_history)
         row.addWidget(opn)
@@ -557,7 +584,7 @@ class MainWindow(QMainWindow):
         self.dict_word.setPlaceholderText("Word, e.g. Hebrish")
         self.dict_heard = QLineEdit()
         self.dict_heard.setPlaceholderText("Heard as, e.g. hebrew ish")
-        add = QPushButton(QIcon.fromTheme("list-add"), "Add")
+        add = QPushButton(line_icon("plus"), "Add")
         add.clicked.connect(self._dict_add)
         for e in (self.dict_word, self.dict_heard):
             e.returnPressed.connect(self._dict_add)
@@ -578,7 +605,7 @@ class MainWindow(QMainWindow):
         row = QHBoxLayout()
         self.dict_count = muted()
         row.addWidget(self.dict_count, 1)
-        rm = QPushButton(QIcon.fromTheme("list-remove"), "Remove")
+        rm = QPushButton(line_icon("minus"), "Remove")
         rm.clicked.connect(self._dict_remove)
         row.addWidget(rm)
         b.addLayout(row)
@@ -709,7 +736,7 @@ class MainWindow(QMainWindow):
             t = QLabel(objectName="transcript")
             if h.get("snippet"):
                 esc = shown.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                t.setText(esc.replace("[", f"<b style='color:{BLUE}'>").replace("]", "</b>"))
+                t.setText(esc.replace("[", f"<b style='color:{colours()['accent']}'>").replace("]", "</b>"))
             else:
                 t.setTextFormat(Qt.PlainText)
                 t.setText(shown)
@@ -727,15 +754,14 @@ class MainWindow(QMainWindow):
                 bits.append("audio kept")
             col.addWidget(muted(" · ".join(bits)))
             rl.addLayout(col, 1)
-            for name, label, fn in (("edit-copy", "Copy", lambda _=False, s=h["text"]: copy_to_clipboard(s)),
-                                    ("document-edit", "Correct", lambda _=False, e=h: self._edit_entry(e)),
-                                    ("edit-delete", "Delete", lambda _=False, e=h: self._delete_entry(e))):
+            for name, label, fn in (("copy", "Copy", lambda _=False, s=h["text"]: copy_to_clipboard(s)),
+                                    ("edit", "Correct", lambda _=False, e=h: self._edit_entry(e)),
+                                    ("trash", "Delete", lambda _=False, e=h: self._delete_entry(e))):
                 b = QToolButton()
-                b.setIcon(QIcon.fromTheme(name))
+                b.setIcon(line_icon(name))
                 b.setText(label)
                 b.setToolTip(label)
-                b.setToolButtonStyle(Qt.ToolButtonIconOnly if QIcon.hasThemeIcon(name)
-                                     else Qt.ToolButtonTextOnly)
+                b.setToolButtonStyle(Qt.ToolButtonIconOnly)
                 b.setIconSize(QSize(16, 16))
                 b.clicked.connect(fn)
                 rl.addWidget(b, 0, Qt.AlignTop)
@@ -761,6 +787,9 @@ class MainWindow(QMainWindow):
         self.rec.setProperty("pulse", False)
         queued = st == "busy" and self.ctl.queued_ok       # earlier takes transcribing: Talk still works
         self.rec.setText({"idle": "Talk", "recording": "Stop", "busy": "Talk" if queued else "…"}[st])
+        self.rec.setIcon(line_icon("stop" if st == "recording" else "mic",
+                                   "white" if st == "recording" else colours()["on_accent"])
+                         if st == "recording" or st == "idle" or queued else QIcon())
         self.rec.setEnabled(st != "busy" or queued)
         rec = st == "recording"
         self.btn_pause.setEnabled(rec)
@@ -797,7 +826,7 @@ class MainWindow(QMainWindow):
         self.models_intro = muted()
         self.models_intro.setTextFormat(Qt.RichText)
         top.addWidget(self.models_intro, 1)
-        helper = QPushButton(QIcon.fromTheme("help-contents"), "Help me choose…")
+        helper = QPushButton(line_icon("help"), "Help me choose…")
         helper.clicked.connect(self._help_choose)
         top.addWidget(helper, 0, Qt.AlignTop)
         b.addLayout(top)
@@ -833,7 +862,7 @@ class MainWindow(QMainWindow):
         self.store_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         b.addWidget(self.store_label)
         row = QHBoxLayout()
-        change = QPushButton(QIcon.fromTheme("folder-open"), "Change folder…")
+        change = QPushButton(line_icon("folder"), "Change folder…")
         change.clicked.connect(self._change_store)
         self.btn_store_default = QPushButton("Use the default folder")
         self.btn_store_default.clicked.connect(lambda: self._set_store(""))
@@ -931,7 +960,7 @@ class MainWindow(QMainWindow):
         outer.addLayout(col, 1)
         btns = QVBoxLayout()
         btns.setSpacing(4)
-        dl = QPushButton(QIcon.fromTheme("download"), "Download", objectName="primary")
+        dl = QPushButton(line_icon("download", "white"), "Download", objectName="primary")
         dl.clicked.connect(lambda _=False, mid=m.id: self._download_model(mid))
         use = QPushButton(f"Switch to {m.name}")
         use.clicked.connect(lambda _=False, mid=m.id: self.ctl.use_model(mid))
@@ -1051,7 +1080,7 @@ class MainWindow(QMainWindow):
         self.models_intro.setText(
             "Each line is what a model is trained for; under it are its versions, from most accurate "
             "to fastest. " + (f"<b>{rec.name}</b> is the recommended one. " if rec else "")
-            + "A model downloads once and then works offline; the one you dictate with is outlined "
+            + "A model downloads once and then works offline; the one in use is outlined "
             "in green. Speed and accuracy tiers are estimates.")
         for m in cat:
             r, inst = self.model_rows[m.id], model_store.active(m.id)
@@ -1096,7 +1125,7 @@ class MainWindow(QMainWindow):
             if ctl.engine.loaded_dir != cur[0]:
                 text += " <i>(loading…)</i>"
         if ctl.update_available():
-            text += f"<br>New version available: <b style='color:{BLUE}'>{ctl.latest.label}</b>"
+            text += f"<br>New version available: <b style='color:{colours()['accent']}'>{ctl.latest.label}</b>"
         last = load_json(STATE_PATH).get("last_check")
         if last:
             text += f"<br><small>Last checked {time.strftime('%Y-%m-%d %H:%M', time.localtime(last))}</small>"
@@ -1131,7 +1160,7 @@ class MainWindow(QMainWindow):
         lay = QVBoxLayout(page)
         lay.setContentsMargins(16, 14, 16, 14)
 
-        box, b = card("Dictation")
+        box, b = card("Voice Typing")
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignRight)
         self.hk_labels, self.hk_btns = {}, {}
@@ -1140,14 +1169,14 @@ class MainWindow(QMainWindow):
             if slot == "hotkey":
                 form.addRow("", self._check("hold_to_talk", "Holding it is push-to-talk too",
                                             self.update_state))
-        form.addRow("", self._check("double_tap_retake", "Double-tap it while dictating to start "
+        form.addRow("", self._check("double_tap_retake", "Double-tap it while recording to start "
                                                          "again (Retake)", self.update_state))
         form.addRow("", muted("Tap the toggle key to start, tap again to stop. Hold the "
                               "push-to-talk key while you talk. Any key on any keyboard or foot "
                               "pedal: pick ones nothing else uses (F13–F24 are ideal). With "
                               "double-tap on, a single tap stops ~0.3 s later, while it waits "
                               "for a second tap."))
-        esc = self._check("escape_discards", "Esc discards the take while dictating", self.update_state)
+        esc = self._check("escape_discards", "Esc discards the take while recording", self.update_state)
         esc.setToolTip("Esc also reaches the app you're in.")
         form.addRow("", esc)
         self.chord_entry = chord = QLineEdit(self.cfg["paste_chord"])
@@ -1156,7 +1185,7 @@ class MainWindow(QMainWindow):
         form.addRow("Paste shortcut", chord)
         b.addLayout(form)
         b.addWidget(muted("Output (at the cursor, clipboard, this window: any combination) and the "
-                          "microphone are on the Dictate tab."))
+                          "microphone are on the Voice Typing tab."))
         b.addWidget(self._check("trailing_space", "Add a space after each transcript"))
         nf = self._check("detect_no_field", "Experimental: when a take finds no text field, offer "
                                             "Paste in the overlay", self._on_detect_no_field)
@@ -1165,13 +1194,13 @@ class MainWindow(QMainWindow):
                       "for every app. Some apps report no field when there is one. The Paste last "
                       "transcription key (Action keys) works either way.")
         b.addWidget(nf)
-        caps = self._check("all_caps", "Dictate in ALL CAPS (from the next take)")
-        caps.setToolTip("Just for fun: everything you dictate is pasted in capitals. History and the "
+        caps = self._check("all_caps", "Type in ALL CAPS (from the next take)")
+        caps.setToolTip("Just for fun: everything you say is pasted in capitals. History and the "
                         "Transcription tab keep the normal case.")
         b.addWidget(caps)
-        b.addWidget(self._check("clear_each_take", "Start the Dictate tab's text box empty for each "
-                                                   "take (otherwise takes collect, a blank line "
-                                                   "between them; all are in History)"))
+        each = self._check("clear_each_take", "Empty the Voice Typing text box for each take")
+        each.setToolTip("Otherwise takes collect, a blank line between them. Every take is in History either way.")
+        b.addWidget(each)
         b.addWidget(self._check("keep_history", "Keep a history of every transcript (History tab)", self._on_history_setting))
         lay.addWidget(box)
 
@@ -1191,10 +1220,22 @@ class MainWindow(QMainWindow):
                         "starts a new line")
         send.textChanged.connect(lambda t: self._on_chord(send, t, "send_chord"))
         form.addRow("Send key", send)
+        guard = self._combo("enter_guard", [
+            ("late", "Keep the late words for Paste"),
+            ("hold", "Hold the send key until they're in"),
+            ("off", "Paste them anyway")])
+        guard.setToolTip("Keep: words still to come are not pasted into the next message. They go on "
+                         "the clipboard, and the overlay offers Paste.\nHold: the send key waits "
+                         "(up to 4 seconds) for the last words, then goes through. The keyboard is "
+                         "briefly taken over to do this; everything else you type passes straight "
+                         "through.")
+        form.addRow("Send pressed early", guard)
         b.addLayout(form)
-        b.addWidget(muted("Stop and send stops dictation, waits for the last words to be "
+        b.addWidget(muted("Stop and send stops recording, waits for the last words to be "
                           "inserted, then presses the send key, so nothing is cut off when you "
-                          "submit (a chat box, Claude Code, a terminal). Paste output only."))
+                          "submit (a chat box, Claude Code, a terminal). Paste output only. If you "
+                          "press the send key yourself before the last words are in, Send pressed "
+                          "early decides what happens to them."))
         lay.addWidget(box)
 
         box, b = card("Speed")

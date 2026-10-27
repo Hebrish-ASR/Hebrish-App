@@ -36,6 +36,7 @@ def _ctl(last="", history=(), state="idle", keep_history=True):
         inserter=SimpleNamespace(insert=lambda t, how, chord: (pasted.append((t, how)), done.set())),
         win=SimpleNamespace(status=lambda m: (pasted.append(("STATUS", m)), done.set())))
     ctl._clear_no_field = lambda: None
+    ctl._clear_late = lambda: None
     Controller.paste_last(ctl)
     done.wait(2)
     return pasted

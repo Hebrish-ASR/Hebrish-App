@@ -712,6 +712,49 @@ R-2026-10-25-2. `hebrish/mics.py` holds the logic, `hebrish/ui/mics.py` the UI.
 - Measured 2026-10-25 on the maintainer's laptop: both inputs (internal mic, Jabra EVOLVE 30 II)
   found with ids and opened by their stored device name.
 
+## Enter guard (B-50, 1.007, 2026-10-27)
+
+R-2026-10-27-1 (and R-2026-10-22-2), D-2026-10-27-02. In Claude Code a reflex Enter after Stop
+submitted without the last words, which then landed in the next prompt.
+
+- **Detection:** both key sources pass every key event through `HotkeyMachine.send_key()` before
+  `key()`. A press matching `send_chord` (its modifiers must be the ones down: Shift+Enter is not
+  a plain Enter; with `enter`, keypad Enter counts) calls `Controller._send_pressed(held)` on the
+  key thread. Our own keys never count: on Linux our uinput devices are in `IGNORED_DEVICES`, on
+  Windows the filter skips `LLKHF_INJECTED`.
+- **`late` (default):** `stop()` adds the take to `_unfinished`; `_finish_take` (the worker's
+  `finally` for a final job) removes it. A send key in between moves the unfinished takes to
+  `_diverted`; the worker's `_out()` keeps their remaining pieces in `_late` instead of pasting,
+  and at the end `sig.late` → `_show_late`: clipboard, a status line and the overlay's `late` state
+  ("Late words", Paste → action `paste_late`, ×). History still gets the whole take. Stop and send
+  does not press its Enter for a diverted take (`_sends`).
+- **`hold` (opt-in):** `stop()` calls `hotkeys.hold_send(True)`. Linux (`hotkey_evdev`): every
+  keyboard with an Enter key and no key down is grabbed (EVIOCGRAB); all its events except the
+  send key go straight out through `hebrish-passthrough` (uinput), keys still down there are
+  released before the ungrab, and the source caps a grab at `GRAB_MAX_S` 5 s. Windows
+  (`hotkey_win`): `win32_event_filter` suppresses the send key's down and up. The swallowed Enter
+  is replayed (`inserter.press("enter")`) after the last take's last paste, or at `ENTER_HOLD_S`
+  4 s, when the words still to come are diverted as in `late`. A keyboard left ungrabbed passes
+  `can_hold=False`, so its Enter (which got through) is treated as `late`, not replayed twice.
+- **Lock order:** the evdev loop calls `send_key` outside its own lock, because the controller may
+  call `hold_send` from inside `_guard`.
+- **Verified:** unit tests (`test_hotkey.py` send key cases; `test_live.py` worker cases: late
+  words kept, off, held Enter replayed, Stop and send cancelled). **Not verified:** the evdev grab
+  and passthrough on a live session, the Windows suppression, on any machine (agents don't run
+  live key tests on Daniel's desktop). Try `hold` by hand before recommending it.
+- Only takes already stopped are covered: an Enter during a recording with insert-as-you-go is
+  not caught.
+
+## Voice Typing and the brand (B-51, 1.007, 2026-10-27)
+
+D-2026-10-27-03. The Dictate tab is **Voice Typing** in the UI; `pages["dictate"]`, config keys and
+`source="dictate"` in History are unchanged. `ui/style.py` builds the stylesheet from the brand
+tokens at first use (`qss()`, `colours()`), so it follows a light or dark system theme; `BLUE` is
+kept as an alias of the accent for `overlay.py`. Line icons: `data/icons/line-*.svg`, tinted by
+`ui/icons.py` `line_icon()` (replaces `QIcon.fromTheme`, which showed nothing on Windows).
+Diagnostics and About are header buttons over hidden tabs (`present_tab` still works). Links use
+the accent through the application palette (`app.main`).
+
 ## Last words after Stop; the finishing state (B-48, 2026-10-25)
 
 R-2026-10-25-3; full record in `docs/debug-log/2026-10-25-last-words-lost-at-stop.md`.

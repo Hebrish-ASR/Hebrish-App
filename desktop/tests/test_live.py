@@ -227,9 +227,12 @@ def test_finish_releases_the_rest():
     assert s._release("Hello there friend.", True, now=0.2) == "Hello there friend."
 
 
-def _run_worker(texts, jobs, cfg=None):
+def _run_worker(texts, jobs, cfg=None, enter_at=None, hold=False, late=None, sent=None, send_take=0):
     """Drive Controller._worker with a scripted Parakeet engine; return (pastes, transcript).
-    Skipped where PySide6 isn't installed (Linux CI), as in test_overlay."""
+    Skipped where PySide6 isn't installed (Linux CI), as in test_overlay.
+    enter_at: the user's send key is pressed while the decode call with that index runs (Enter
+    guard), held by the key source if `hold`; words it keeps back go to `late`, presses of a
+    chord (Stop and send, a replayed Enter) to `sent`."""
     import pytest
     pytest.importorskip("PySide6")
     import queue
@@ -239,22 +242,74 @@ def _run_worker(texts, jobs, cfg=None):
     # a text, or (text, stop) for a piece decoded with context (engine.transcribe_after)
     _say = lambda t: t if isinstance(t, tuple) else (t, None)
     pastes, done = [], threading.Event()
+    late = late if late is not None else []
+    sent = sent if sent is not None else []
     sig = SimpleNamespace(piece=SimpleNamespace(emit=lambda t: None), take_began=SimpleNamespace(emit=lambda: None),
+                          late=SimpleNamespace(emit=late.append),
                           transcribed=SimpleNamespace(emit=lambda t, e, a: (pastes.append(("DONE", t)), done.set())))
     it = iter(texts)
+    calls = iter(range(10_000))
+
+    def decode(s, c, vad=False, ref=None):
+        if next(calls) == enter_at:
+            ctl.hotkeys.holding = hold
+            Controller._send_pressed(ctl, hold)
+        return _say(next(it))
+
     ctl = SimpleNamespace(
-        engine=SimpleNamespace(streaming=False, transcribe_after=lambda s, c, vad=False, ref=None: _say(next(it))),
+        engine=SimpleNamespace(streaming=False, transcribe_after=decode),
         cfg={"vad": False, "trailing_space": True, "all_caps": False, "out_cursor": True, "out_clipboard": False,
-             "out_window": False, "paste_chord": "ctrl+v", **(cfg or {})},
-        sig=sig, inserter=SimpleNamespace(insert=lambda t, how, chord: pastes.append(t)),
-        _take=1, _dropped=set(), _send_take=0, _jobs=queue.Queue(), _pasted_at=0.0)
-    ctl._show = lambda t: Controller._show(ctl, t)
-    ctl._insert = lambda t: Controller._insert(ctl, t)
+             "out_window": False, "paste_chord": "ctrl+v", "send_chord": "enter", "enter_guard": "late",
+             **(cfg or {})},
+        sig=sig, inserter=SimpleNamespace(insert=lambda t, how, chord: pastes.append(t), press=sent.append),
+        hotkeys=SimpleNamespace(holding=False, hold_send=lambda on: False),
+        _take=1, _dropped=set(), _send_take=send_take, _jobs=queue.Queue(), _pasted_at=0.0,
+        _guard=threading.Lock(), _unfinished={1}, _diverted=set(), _late={}, _enter_held=False, _hold_timer=None)
+    for name in ("_show", "_insert", "_out", "_finish_take", "_sends", "_send", "_release_hold", "_replay_enter"):
+        setattr(ctl, name, getattr(Controller, name).__get__(ctl))
     for pause, final in jobs:
         ctl._jobs.put((1, np.zeros(SR, np.float32), final, pause))
     threading.Thread(target=Controller._worker, args=(ctl,), daemon=True).start()
     assert done.wait(5)
+    time.sleep(0.3)               # _finish_take runs after the transcript; a replayed Enter after 0.15 s
     return pastes[:-1], pastes[-1][1]
+
+
+def test_enter_before_the_last_words_keeps_them_back():
+    # R-2026-10-22-2: Enter pressed while the last piece decodes; the earlier piece was already
+    # pasted (and sent), the rest is kept for Paste, and History still gets the whole take
+    late = []
+    pastes, text = _run_worker(["Send the arnona form.", "And the receipt."],
+                               [(0.7, False), (None, True)], enter_at=1, late=late)
+    assert pastes == ["Send the arnona form"]
+    assert late == ["and the receipt."]       # joined at the seam: no held stop
+    assert text == "Send the arnona form and the receipt."
+
+
+def test_enter_guard_off_pastes_as_before():
+    late = []
+    pastes, _ = _run_worker(["Send the arnona form.", "And the receipt."],
+                            [(0.7, False), (None, True)], {"enter_guard": "off"}, enter_at=1, late=late)
+    assert pastes == ["Send the arnona form", " and the receipt. "] and late == []
+
+
+def test_held_enter_is_replayed_after_the_last_paste():
+    late, sent = [], []
+    pastes, _ = _run_worker(["Send the arnona form.", "And the receipt."],
+                            [(0.7, False), (None, True)], {"enter_guard": "hold"}, enter_at=1, hold=True,
+                            late=late, sent=sent)
+    assert pastes == ["Send the arnona form", " and the receipt. "] and late == []
+    assert sent == ["enter"]
+
+
+def test_early_enter_cancels_stop_and_send():
+    # the user already sent: Stop and send must not press a second Enter into the next message
+    sent = []
+    _run_worker(["Done.", ""], [(0.7, False), (None, True)], send_take=1, sent=sent)
+    assert sent == ["enter"]                       # without an early Enter, it sends
+    sent.clear()
+    _run_worker(["Done.", ""], [(0.7, False), (None, True)], enter_at=1, send_take=1, sent=sent)
+    assert sent == []
 
 
 def test_worker_joins_a_sentence_cut_at_a_short_pause():

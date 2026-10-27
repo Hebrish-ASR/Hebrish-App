@@ -12,7 +12,7 @@ CASES = json.loads((Path(__file__).resolve().parents[2] / "shared" / "disfluency
 
 @pytest.mark.parametrize("case", CASES["cases"], ids=lambda c: c["in"] or "empty")
 def test_shared_cases(case):
-    assert disfluency.chop(case["in"]) == case["out"]
+    assert disfluency.chop(case["in"], case.get("before", "")) == case["out"]
 
 
 def test_untouched_text_is_returned_as_is():
