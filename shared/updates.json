@@ -1,7 +1,7 @@
 {
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
-  "built": "2026-10-25",
+  "built": "2026-10-27",
   "source": "https://hebrish.app/changelog",
   "entries": [
     {

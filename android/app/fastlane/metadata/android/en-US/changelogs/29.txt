@@ -1,0 +1,1 @@
+1.005: no more half-words where a long dictation is split.
