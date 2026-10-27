@@ -821,7 +821,7 @@
       "name": "Enter guard: a send key pressed before a stopped take's last words are in doesn't send without them or carry them into the next message",
       "android": {
         "status": "partial",
-        "since": "unreleased (B-50a)",
+        "since": "1.006",
         "evidence": "android/app/src/main/java/app/hebrish/dictation/VoiceImeService.kt onEnter/releaseEnter/enterHoldExpired",
         "missing": "floating mic: the Enter is the other app's key"
       },
@@ -974,7 +974,7 @@
       "name": "Tagline 'Voice typing that gets the Hebrew words right.'",
       "android": {
         "status": "present",
-        "since": "unreleased (B-51a)",
+        "since": "1.006",
         "evidence": "android/app/src/main/res/values/strings.xml tagline"
       },
       "ubuntu": {
@@ -1085,8 +1085,7 @@
       "android": {
         "status": "present",
         "since": "1.001",
-        "evidence": "android/core/src/main/java/app/hebrish/core/Disfluency.kt; TakeDecoder.piece applies it first; scripts/check_disfluency.sh (JVM, 33/33); rules 5-8 in Disfluency.kt, 55/55 shared cases (2026-10-27)",
-        "notes": "rules 5-8 unreleased on Android"
+        "evidence": "android/core/src/main/java/app/hebrish/core/Disfluency.kt; TakeDecoder.piece applies it first; scripts/check_disfluency.sh (JVM, 33/33); rules 5-8 in Disfluency.kt, 55/55 shared cases (2026-10-27)"
       },
       "ubuntu": {
         "status": "present",
@@ -1282,10 +1281,7 @@
     "android": [
       "Transcriber passes the catalogue feature_dim (0.7.0 passes 80 and relies on the model metadata; no behaviour change)",
       "Disfluency chop (B-38)",
-      "Transcription Mode Paragraphs setting (B-44a)",
-      "Enter guard in the voice keyboard (B-50a)",
-      "Voice Typing name and tagline (B-51a)",
-      "Chop rules 5-8: repeated words, ellipses (B-52)"
+      "Transcription Mode Paragraphs setting (B-44a)"
     ],
     "desktop": [
       "Disfluency chop (B-38)",

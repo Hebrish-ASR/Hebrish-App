@@ -854,7 +854,7 @@ dropped with it. `Transcriber.seamSplit` now steps the split back to the start o
 Evidence, reproduction and the desktop twin (`engine.seam_split`): `desktop/docs/maintaining.md`,
 "Clipped words at the seams".
 
-## Enter guard and Voice Typing (unreleased, B-50a/B-51a, 2026-10-27)
+## Enter guard and Voice Typing (1.006, B-50a/B-51a, 2026-10-27)
 
 Parity with desktop 1.007 (D-2026-10-27-02, -03). **Enter guard:** the voice keyboard's Enter
 (`VoiceImeService.onEnter`) tapped while stopped takes are still landing (`finishing` not empty)
