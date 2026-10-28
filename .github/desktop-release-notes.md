@@ -1,7 +1,5 @@
-**1.007: Voice Typing, late words kept out of your next message, fewer repeated words.**
+**1.008: a softer beep, now the default.**
 
-- **Late words stay out of the next message:** if you press Enter after you stop and before the last words are in, those words no longer land in whatever you type next (the next prompt in a chat box or Claude Code). They go on the clipboard, and the overlay shows "Late words" with Paste. Settings, Action keys, *Send pressed early*.
-- **Optional: hold the Enter until the words are in.** With *Hold the send key until they're in*, an Enter pressed too early waits (up to 4 seconds) for the last words, then goes through. Off by default: it briefly takes over the keyboard to do it, and everything else you type passes straight through.
-- **Repeated words and false starts are cut:** "I really wanted, wanted to go home" comes out as "I really wanted to go home", and "it was... it was fine" as "it was fine". Words you double on purpose stay doubled ("really, really", "had had", "yalla yalla"), never more than twice, and numbers are never touched. The "..." the model writes for a trailing-off thought becomes a space or a full stop.
-- **Voice Typing:** the Dictate tab is now called Voice Typing, and the window has the hebrish.app look: the green, the paper header, the Fraunces wordmark and a set of line icons. It follows a light or dark system theme. Diagnostics and About moved to the header, so every tab fits.
-- Holding the Enter has not yet been tried on a live desktop or on Windows. Ubuntu 26.04 .deb and a portable Windows zip. Not yet tested on Windows hardware. Downloads: [hebrish.app/download](https://hebrish.app/download).
+- **Soft beeps:** the start and stop beeps are now lower, rounder and quieter, easier on the ears and on the people around you. The old beep is still there as *Loud*: Settings, Sounds, *Beep*. Choosing one plays it.
+- **Quiet hours can keep a sound:** between the hours you set, play *soft beeps only* instead of nothing (Settings, Sounds, Quiet hours). With voice prompts on, quiet hours switch to soft beeps too.
+- Ubuntu 26.04 .deb and a portable Windows zip. Not yet tested on Windows hardware. Downloads: [hebrish.app/download](https://hebrish.app/download).

@@ -1,9 +1,21 @@
 {
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
-  "built": "2026-10-27",
+  "built": "2026-10-28",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-10-28",
+      "tag": "Desktop 1.008",
+      "title": "A softer beep, now the default",
+      "summary": "The start and stop beeps are lower, rounder and quieter: easier on the ears, and on the people around you. The old beep is still there as Loud (Settings, Sounds, Beep); choosing one plays it."
+    },
+    {
+      "date": "2026-10-28",
+      "tag": "Models",
+      "title": "Sabich v2.2: more recordings, speed perturbation, and a better score on every measure",
+      "summary": "Sabich v2.2 replaces v2.1 as the recommended model in the apps. It is a Sabich-only update to Release v2; Shakshuka, Jachnun and Meorav are unchanged."
+    },
     {
       "date": "2026-10-27",
       "tag": "Android 1.007",
@@ -111,18 +123,6 @@
       "tag": "Android 0.7.6",
       "title": "Android: the floating mic keeps your line breaks",
       "summary": "With the floating mic, a line break typed before dictating (to start a new paragraph, say) was deleted when the text arrived, and a space put in its place."
-    },
-    {
-      "date": "2026-10-22",
-      "tag": "Terms",
-      "title": "Terms of use 1.2: every model listed",
-      "summary": "The licence table now lists every model line: Jachnun, Sabich and its variants on other bases, Shakshuka, Meorav and the Whisper fine-tunes, each with the licence it was released under."
-    },
-    {
-      "date": "2026-10-22",
-      "tag": "Desktop 0.7.5",
-      "title": "Desktop: change how dictation is inserted from the tray",
-      "summary": "The tray menu has an Output submenu: paste at the cursor, clipboard only, or the app's own text box, and the paste shortcut (Ctrl+V, or Ctrl+Shift+V for terminals)."
     }
   ]
 }
