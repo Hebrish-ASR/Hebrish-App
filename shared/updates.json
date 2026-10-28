@@ -1,9 +1,15 @@
 {
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
-  "built": "2026-10-28",
+  "built": "2026-10-29",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-10-29",
+      "tag": "Desktop 1.009",
+      "title": "Your history at a glance, and a history that stays lean",
+      "summary": "Diagnostics has a History card: how much you have transcribed all told (rounded: 12K words, 1.2M words), hours of audio, days active and how much space the history takes."
+    },
     {
       "date": "2026-10-28",
       "tag": "Desktop 1.008",
@@ -117,12 +123,6 @@
       "tag": "Android 0.8.0",
       "title": "Android: minimise the floating mic with a double-tap",
       "summary": "When the floating mic is in the way of what you are writing, double-tap it and it shrinks to a small dot in the same place."
-    },
-    {
-      "date": "2026-10-23",
-      "tag": "Android 0.7.6",
-      "title": "Android: the floating mic keeps your line breaks",
-      "summary": "With the floating mic, a line break typed before dictating (to start a new paragraph, say) was deleted when the text arrived, and a space put in its place."
     }
   ]
 }

@@ -1,5 +1,6 @@
-**1.008: a softer beep, now the default.**
+**1.009: your history at a glance, and a history that stays lean.**
 
-- **Soft beeps:** the start and stop beeps are now lower, rounder and quieter, easier on the ears and on the people around you. The old beep is still there as *Loud*: Settings, Sounds, *Beep*. Choosing one plays it.
-- **Quiet hours can keep a sound:** between the hours you set, play *soft beeps only* instead of nothing (Settings, Sounds, Quiet hours). With voice prompts on, quiet hours switch to soft beeps too.
+- **History in Diagnostics:** how much you have transcribed all told, rounded (12K words, 1.2M words), hours of audio, days active and the history's size on disk. *Show last 7 days* draws a bar for each day's words.
+- **Self-tidying history:** about once a day, while you're not dictating, the history compacts its search index and gives space from deleted transcripts back to the disk. *Tidy now* in Diagnostics runs it on demand.
+- History tab counts are rounded the same way (thousands in K, millions in M), with the exact figures in the tooltip.
 - Ubuntu 26.04 .deb and a portable Windows zip. Not yet tested on Windows hardware. Downloads: [hebrish.app/download](https://hebrish.app/download).
