@@ -76,37 +76,33 @@ def default_input_name() -> str:
         return ""
 
 
-# Beep styles (config `beep_style`, 1.008, Daniel 2026-10-28: a less conspicuous beep for the
-# evening, still audible but not jarring for people nearby). Each is
-# (pitch factor, length ms, attack ms, release ms, octave level, volume factor, decay):
-# - classic: the 0.5.0 pip, sine plus a quiet octave.
+# Beep styles (config `beep_style`, 1.008, Daniel 2026-10-28: a less conspicuous beep, still
+# audible but not jarring for people nearby; Soft is the default, the old beep stays as Loud).
+# Each is (pitch factor, length ms, attack ms, release ms, octave level, volume factor):
 # - soft: a fifth lower (x0.67, 880 Hz -> 587 Hz), a pure sine, slow fades, about half as loud.
 #   Low pure tones carry less across a room and have no edge for the ear to catch.
-# - chime: a short struck tone that decays (x0.75, a faint inharmonic partial for the "ting").
-BEEP_STYLES = {"classic": (1.0, 110, 12, 45, 0.2, 1.0, 0.0),
-               "soft": (0.67, 150, 35, 90, 0.0, 0.5, 0.0),
-               "chime": (0.75, 320, 4, 60, 0.0, 0.7, 9.0)}
-BEEP_STYLE_NAMES = [("classic", "Classic"), ("soft", "Soft (lower and quieter)"), ("chime", "Chime")]
+# - loud: the 0.5.0 to 1.007 pip, sine plus a quiet octave (config value "classic").
+# Freedesktop/KDE/Yaru theme sounds were auditioned the same day and not wanted.
+BEEP_STYLES = {"soft": (0.67, 150, 35, 90, 0.0, 0.5),
+               "classic": (1.0, 110, 12, 45, 0.2, 1.0)}
+BEEP_STYLE_NAMES = [("soft", "Soft"), ("classic", "Loud")]
 
 
 def _pip(freq: float, style: str, volume: float, sr: int) -> np.ndarray:
-    k, ms, att, rel, octave, gain, decay = BEEP_STYLES.get(style, BEEP_STYLES["classic"])
+    k, ms, att, rel, octave, gain = BEEP_STYLES.get(style, BEEP_STYLES["soft"])
     f = freq * k
     t = np.arange(int(sr * ms / 1000)) / sr
-    tone = np.sin(2 * np.pi * f * t) + octave * np.sin(4 * np.pi * f * t)
-    if decay:
-        tone = (tone + 0.12 * np.sin(2 * np.pi * 2.76 * f * t)) * np.exp(-decay * t)
-    tone *= volume * gain / (1 + octave)
+    tone = (np.sin(2 * np.pi * f * t) + octave * np.sin(4 * np.pi * f * t)) * volume * gain / (1 + octave)
     a, r = int(sr * att / 1000), int(sr * rel / 1000)
     tone[:a] *= 0.5 - 0.5 * np.cos(np.linspace(0, np.pi, a))
     tone[-r:] *= 0.5 + 0.5 * np.cos(np.linspace(0, np.pi, r))
     return tone
 
 
-def beep(freq: float | tuple, volume: float = 0.25, style: str = "classic") -> float:
+def beep(freq: float | tuple, volume: float = 0.25, style: str = "soft") -> float:
     """A pip in one of BEEP_STYLES. A tuple of frequencies plays them in turn, 40 ms apart
     (discard's falling "doo-doo"). Up to 0.4.0 it was a 70 ms bare sine with 10 ms linear fades;
-    0.5.0 to 1.007 only "classic"."""
+    0.5.0 to 1.007 only the Loud pip."""
     sr = 48000
     gap = np.zeros(int(sr * 0.04))
     parts = []

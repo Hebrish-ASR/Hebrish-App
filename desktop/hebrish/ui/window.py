@@ -1269,7 +1269,7 @@ class MainWindow(QMainWindow):
             style.setEnabled(self.cfg["feedback"] == "beeps"), self.ctl.cue("recording"))))
         style = self._combo("beep_style", audio.BEEP_STYLE_NAMES, lambda: self.ctl.cue("recording"))
         style.setEnabled(self.cfg["feedback"] == "beeps")
-        style.setToolTip("Soft is lower, quieter and gentler: for the evening, or a shared room")
+        style.setToolTip("Soft is lower and gentler, for the evening or a shared room; Loud is the beep up to 1.007")
         form.addRow("Beep", style)
         voice = self._combo("voice", audio.VOICES, lambda: self.ctl.cue("recording"))
         voice.setEnabled(self.cfg["feedback"] == "voice")

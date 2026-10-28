@@ -400,7 +400,7 @@ def test_unk_never_reaches_the_text():
 def test_beep_styles_are_well_formed():
     from hebrish.audio import BEEP_STYLE_NAMES, BEEP_STYLES, _pip
     import numpy as np
-    assert DEFAULTS["beep_style"] in BEEP_STYLES and {k for k, _ in BEEP_STYLE_NAMES} == set(BEEP_STYLES)
+    assert DEFAULTS["beep_style"] == "soft" and {k for k, _ in BEEP_STYLE_NAMES} == set(BEEP_STYLES)
     peak = {k: float(np.abs(_pip(880, k, 0.25, 48000)).max()) for k in BEEP_STYLES}
     assert all(0 < v <= 0.25 for v in peak.values())
     assert peak["soft"] < 0.6 * peak["classic"]           # soft is clearly quieter

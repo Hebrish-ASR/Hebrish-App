@@ -72,7 +72,7 @@
         "evidence": "desktop/hebrish/audio.py beep; ui/app.py cue",
         "verified": false
       },
-      "notes": "Android default off; desktop default on. Desktop 0.5.0 softened the tone. Desktop 1.008 (unreleased): beep styles Classic / Soft / Chime and soft beeps in quiet hours (B-65); Android B-65a planned."
+      "notes": "Android default off; desktop default on. Desktop 0.5.0 softened the tone. Desktop 1.008 (unreleased): beep styles Soft (default) and Loud and soft beeps in quiet hours (B-65); Android B-65a planned."
     },
     {
       "id": "voice-status-prompts",

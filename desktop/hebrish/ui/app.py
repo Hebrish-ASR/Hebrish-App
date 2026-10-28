@@ -270,7 +270,7 @@ class Controller(QObject):
         spoken prompt for each event (audio.VOICE_PROMPTS) in the chosen `voice`. In quiet hours,
         nothing, or soft beeps with `quiet_sound` "soft". Nothing when the text
         arrives: it is visible. Returns how long it plays (seconds), for Recorder.mute."""
-        mode, vol, style = self.cfg["feedback"], self.cfg["beep_volume"] / 100, self.cfg.get("beep_style", "classic")
+        mode, vol, style = self.cfg["feedback"], self.cfg["beep_volume"] / 100, self.cfg.get("beep_style", "soft")
         if mode == "off" or not vol:
             return 0.0
         if in_quiet_hours(self.cfg):
