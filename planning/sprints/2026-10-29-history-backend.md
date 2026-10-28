@@ -4,7 +4,7 @@ title: History backend, statistics and viewer
 created: 2026-10-29
 platforms: [desktop, android]     # desktop = Ubuntu + Windows (shared desktop/); desktop first
 status: in progress               # planned | in progress | done | released <versions>
-release: desktop 1.009 ships the first part (B-66, B-69, B-70); the rest per the release gate in ../backlog.md
+release: desktop 1.009 (2026-10-29) shipped the first part (B-66, B-69, B-70); the rest per the release gate in ../backlog.md
 requests: [R-2026-10-28-4, R-2026-10-28-5, R-2026-10-28-6, R-2026-10-28-7, R-2026-10-29-1]
 ---
 
@@ -44,9 +44,9 @@ Goals, not results. Measured on the 200,000-row synthetic database unless stated
 
 | Id | Item | Check | Status |
 | --- | --- | --- | --- |
-| B-66 | History counts in K; WAL journaling | `tests/test_history_counts.py` | done (unreleased) |
-| B-69 | Storage upkeep: incremental auto-vacuum, FTS5 optimize, `PRAGMA optimize`, WAL checkpoint and size limit; about daily while idle, and Diagnostics → Tidy now | T1 | done (unreleased) |
-| B-70 | Diagnostics → History card: words and dictations all told (K, fifths of a million in M), audio hours, days active, database size, last tidied; *Show last 7 days* bar chart | off-screen render | done (unreleased) |
+| B-66 | History counts in K; WAL journaling | `tests/test_history_counts.py` | released desktop 1.009 |
+| B-69 | Storage upkeep: incremental auto-vacuum, FTS5 optimize, `PRAGMA optimize`, WAL checkpoint and size limit; about daily while idle, and Diagnostics → Tidy now | T1 | released desktop 1.009 |
+| B-70 | Diagnostics → History card: words and dictations all told (K, fifths of a million in M), audio hours, days active, database size, last tidied; *Show last 7 days* bar chart | off-screen render | released desktop 1.009 |
 | B-68 | History viewer in its own window (tray entry), fuzzy keyword search, filters (date presets, source, model) | T2 | planned (next) |
 | B-16 | Semantic search with sqlite-vec and a downloadable embedding model | T3 | planned |
 | B-67 | Export to Parquet | an exported file read back with pyarrow | planned |
