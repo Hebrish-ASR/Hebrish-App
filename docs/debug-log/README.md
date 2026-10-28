@@ -53,6 +53,7 @@ Newest first.
 
 | Date | Platform | Symptom | Status | Entry |
 | --- | --- | --- | --- | --- |
+| 2026-10-28 | desktop-linux, android | Sentence breaks and capitals mid-sentence after a thinking pause, a filler or a stop and restart (what 0.7.6/0.8.2 left) | unfixed; options and base-model research logged | [2026-10-28-false-sentence-breaks-remain.md](2026-10-28-false-sentence-breaks-remain.md) |
 | 2026-10-25 | desktop-linux, android | `<unk>` appears in dictated text at clause breaks (Sabich v2.0) | fixed (unreleased); training fix for next retrain | [2026-10-25-unk-in-dictation.md](2026-10-25-unk-in-dictation.md) |
 | 2026-10-25 | desktop-linux | The last words of a take never arrive after Stop | fixed (gate); paste half mitigated, logged | [2026-10-25-last-words-lost-at-stop.md](2026-10-25-last-words-lost-at-stop.md) |
 | 2026-10-24 | desktop-linux | Thinks it's recording when it isn't (record pressed while the last take was transcribing was ignored) | fixed in 1.001 | [2026-10-24-record-ignored-while-transcribing.md](2026-10-24-record-ignored-while-transcribing.md) |
