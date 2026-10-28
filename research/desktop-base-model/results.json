@@ -1,0 +1,683 @@
+{
+ "_meta": {
+  "date": "2026-10-28",
+  "machine": "laptop CPU, 16 threads, 13 GB RAM, no CUDA; shared with other jobs (load average 10-19 during the runs)",
+  "material": "27 seam_bench takes (19.3 min, benchmark test split, one 0.7-2.0 s pause inside every sentence); first 30 Hebrish/Disfluent-Read-Sentences recordings (6.9 min); stop/restart on the first 14 takes",
+  "runtimes": {
+   "sabich": "Sabich v2.2 (Parakeet TDT 0.6B v2 fine-tune), sherpa-onnx 2.0.1 transducer, int8; raw = one decode of the whole take, app = desktop Engine.transcribe(vad=True): voice-detection edits, ~10 s pieces cut at pauses",
+   "qwen3": "Qwen/Qwen3-ASR-0.6B, sherpa-onnx 2.0.1 from_qwen3_asr, int8 export sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25; prompt = stream option hotwords (system turn)",
+   "whisper": "openai/whisper-large-v3-turbo, faster-whisper (CTranslate2) int8, mobiuslabsgmbh/faster-whisper-large-v3-turbo, language en, beam 1, no VAD filter; prompt = initial_prompt",
+   "canary": "nvidia/canary-1b-v2, onnx-asr int8 export istupakov/canary-1b-v2-onnx, language en, pnc on; no text prompt"
+  },
+  "modal_spend_usd": 0.0
+ },
+ "canary": {
+  "takes": {
+   "mid_caps": 46,
+   "false_stops": 19,
+   "lost_stops": 2,
+   "lost_caps": 8,
+   "false_breaks": 11,
+   "false_breaks_per100w": 0.43,
+   "false_breaks_examples": [
+    "with the contract. Did legal",
+    "after school today. So please",
+    "return clean JSON. Nothing fancy.",
+    "kids this winter. And also",
+    "instead of bash. And the",
+    "the model path? Tell me"
+   ],
+   "mid_caps_per100w": 1.79,
+   "false_stops_per100w": 0.74,
+   "lost_stops_per100w": 0.08,
+   "lost_caps_per100w": 0.31,
+   "wer": 0.1385,
+   "ref_words": 2571,
+   "items": 27,
+   "mid_caps_examples": [
+    "for a potluck. We'll supply",
+    "place in Kiryatono. So can",
+    "with the contract. Did legal",
+    "on installing a Kaspomat in",
+    "my share with Chova last",
+    "will arrive on Erev Haag."
+   ],
+   "audio_min": 19.3,
+   "decode_s": 474.8
+  },
+  "dis": {
+   "mid_caps": 9,
+   "false_stops": 9,
+   "lost_stops": 0,
+   "lost_caps": 1,
+   "false_breaks": 7,
+   "false_breaks_per100w": 0.97,
+   "false_breaks_examples": [
+    "ask the optician. Because I",
+    "happy with that. Please go",
+    "up this morning. Three days",
+    "after they promised. So you",
+    "up on Tuesday. So could",
+    "Sounds great. Thanks for"
+   ],
+   "mid_caps_per100w": 1.25,
+   "false_stops_per100w": 1.25,
+   "lost_stops_per100w": 0.0,
+   "lost_caps_per100w": 0.14,
+   "wer": 0.0279,
+   "ref_words": 718,
+   "items": 30,
+   "mid_caps_examples": [
+    "ask the optician. Because I",
+    "happy with that. Please go",
+    "up this morning. Three days",
+    "after they promised. So you",
+    "on our site. So could",
+    "up on Tuesday. So could"
+   ],
+   "audio_min": 6.9,
+   "decode_s": 89.3
+  },
+  "restart": {
+   "alone": {
+    "first_false_stop": {
+     "n": 14,
+     "count": 14,
+     "rate": 1.0
+    },
+    "second_wrong_cap": {
+     "n": 14,
+     "count": 10,
+     "rate": 0.714
+    },
+    "joined": {
+     "mid_caps": 29,
+     "false_stops": 23,
+     "lost_stops": 4,
+     "lost_caps": 3,
+     "false_breaks": 16,
+     "false_breaks_per100w": 1.12,
+     "mid_caps_per100w": 2.04,
+     "false_stops_per100w": 1.61,
+     "lost_stops_per100w": 0.28,
+     "lost_caps_per100w": 0.21,
+     "wer": 0.0905,
+     "ref_words": 1425,
+     "items": 14
+    }
+   }
+  },
+  "speed": {
+   "speed10": {
+    "audio_s": 10.0,
+    "decode_s": [
+     1.886,
+     1.94,
+     1.839
+    ],
+    "rtf": 0.1886
+   },
+   "speed30": {
+    "audio_s": 30.0,
+    "decode_s": [
+     9.334,
+     9.253,
+     9.232
+    ],
+    "rtf": 0.3084
+   }
+  },
+  "load_s": 3.9
+ },
+ "qwen3": {
+  "takes": {
+   "mid_caps": 50,
+   "false_stops": 35,
+   "lost_stops": 1,
+   "lost_caps": 9,
+   "false_breaks": 30,
+   "false_breaks_per100w": 1.17,
+   "false_breaks_examples": [
+    "with the contract. Did legal",
+    "before the standup. Okay. Hi",
+    "the most memory. Then summarize",
+    "GitHub this morning. So can",
+    "after school today. So please",
+    "shamash first tonight. And tomorrow,"
+   ],
+   "mid_caps_per100w": 1.94,
+   "false_stops_per100w": 1.36,
+   "lost_stops_per100w": 0.04,
+   "lost_caps_per100w": 0.35,
+   "wer": 0.1159,
+   "ref_words": 2571,
+   "items": 27,
+   "mid_caps_examples": [
+    "people for potluck. We'll supply",
+    "place in Curiatono. So can",
+    "appointment through the Health Fund",
+    "through the Health Fund for",
+    "family for the Shloshim on",
+    "with the contract. Did legal"
+   ],
+   "audio_min": 19.3,
+   "decode_s": 762.8
+  },
+  "dis": {
+   "mid_caps": 13,
+   "false_stops": 12,
+   "lost_stops": 0,
+   "lost_caps": 0,
+   "false_breaks": 11,
+   "false_breaks_per100w": 1.53,
+   "false_breaks_examples": [
+    "at the optician. Because I",
+    "my last email. Since I",
+    "happy with that. Please go",
+    "up this morning. Three days",
+    "after they promised. So you",
+    "up on Tuesday. So, could"
+   ],
+   "mid_caps_per100w": 1.81,
+   "false_stops_per100w": 1.67,
+   "lost_stops_per100w": 0.0,
+   "lost_caps_per100w": 0.0,
+   "wer": 0.0292,
+   "ref_words": 718,
+   "items": 30,
+   "mid_caps_examples": [
+    "at the optician. Because I",
+    "my last email. Since I",
+    "happy with that. Please go",
+    "up this morning. Three days",
+    "after they promised. So you",
+    "in our site. So, could"
+   ],
+   "audio_min": 6.9,
+   "decode_s": 130.3
+  },
+  "restart": {
+   "alone": {
+    "first_false_stop": {
+     "n": 14,
+     "count": 14,
+     "rate": 1.0
+    },
+    "second_wrong_cap": {
+     "n": 14,
+     "count": 12,
+     "rate": 0.857
+    },
+    "joined": {
+     "mid_caps": 37,
+     "false_stops": 30,
+     "lost_stops": 3,
+     "lost_caps": 1,
+     "false_breaks": 25,
+     "false_breaks_per100w": 1.75,
+     "mid_caps_per100w": 2.6,
+     "false_stops_per100w": 2.11,
+     "lost_stops_per100w": 0.21,
+     "lost_caps_per100w": 0.07,
+     "wer": 0.1179,
+     "ref_words": 1425,
+     "items": 14
+    }
+   },
+   "prompt": {
+    "first_false_stop": {
+     "n": 14,
+     "count": 14,
+     "rate": 1.0
+    },
+    "second_wrong_cap": {
+     "n": 14,
+     "count": 12,
+     "rate": 0.857
+    },
+    "joined": {
+     "mid_caps": 34,
+     "false_stops": 28,
+     "lost_stops": 1,
+     "lost_caps": 3,
+     "false_breaks": 24,
+     "false_breaks_per100w": 1.68,
+     "mid_caps_per100w": 2.39,
+     "false_stops_per100w": 1.96,
+     "lost_stops_per100w": 0.07,
+     "lost_caps_per100w": 0.21,
+     "wer": 0.1432,
+     "ref_words": 1425,
+     "items": 14
+    }
+   },
+   "prompt_nostop": {
+    "first_false_stop": {
+     "n": 14,
+     "count": 14,
+     "rate": 1.0
+    },
+    "second_wrong_cap": {
+     "n": 14,
+     "count": 12,
+     "rate": 0.857
+    },
+    "joined": {
+     "mid_caps": 35,
+     "false_stops": 30,
+     "lost_stops": 3,
+     "lost_caps": 2,
+     "false_breaks": 26,
+     "false_breaks_per100w": 1.82,
+     "mid_caps_per100w": 2.46,
+     "false_stops_per100w": 2.11,
+     "lost_stops_per100w": 0.21,
+     "lost_caps_per100w": 0.14,
+     "wer": 0.1158,
+     "ref_words": 1425,
+     "items": 14
+    }
+   }
+  },
+  "speed": {
+   "speed10": {
+    "audio_s": 10.0,
+    "decode_s": [
+     3.872,
+     3.691,
+     3.766
+    ],
+    "rtf": 0.3766
+   },
+   "speed30": {
+    "audio_s": 30.0,
+    "decode_s": [
+     20.085,
+     20.738,
+     19.657
+    ],
+    "rtf": 0.6695
+   }
+  },
+  "load_s": 4.8
+ },
+ "sabich": {
+  "takes": {
+   "mid_caps": 14,
+   "false_stops": 3,
+   "lost_stops": 3,
+   "lost_caps": 10,
+   "false_breaks": 1,
+   "false_breaks_per100w": 0.04,
+   "false_breaks_examples": [
+    "answer is yes. We can"
+   ],
+   "mid_caps_per100w": 0.54,
+   "false_stops_per100w": 0.12,
+   "lost_stops_per100w": 0.12,
+   "lost_caps_per100w": 0.39,
+   "wer": 0.0774,
+   "ref_words": 2571,
+   "items": 27,
+   "mid_caps_examples": [
+    "people for potluck. We'll supply",
+    "will arrive on Erev Chag,",
+    "arrive on Erev Chag, so",
+    "Can you run FFmpeg on",
+    "Ubuntu box before Erev Chag,",
+    "box before Erev Chag, so"
+   ],
+   "audio_min": 19.3,
+   "decode_s": 139.9
+  },
+  "takes_app": {
+   "mid_caps": 42,
+   "false_stops": 20,
+   "lost_stops": 6,
+   "lost_caps": 13,
+   "false_breaks": 14,
+   "false_breaks_per100w": 0.54,
+   "false_breaks_examples": [
+    "some unique talents. Myself, your",
+    "the equipment delivery. Please SSH",
+    "on Erev Chag. So please",
+    "shrink them before. Before I",
+    "in the car. And traffic",
+    "near Machane Yehuda. And it"
+   ],
+   "mid_caps_per100w": 1.63,
+   "false_stops_per100w": 0.78,
+   "lost_stops_per100w": 0.23,
+   "lost_caps_per100w": 0.51,
+   "wer": 0.1163,
+   "ref_words": 2571,
+   "items": 27,
+   "mid_caps_examples": [
+    "people for potluck. We'll supply",
+    "some unique talents. Myself, your",
+    "total fryer for For forgetting",
+    "of water meant That our",
+    "but I still Still get",
+    "will arrive on Erev Chag."
+   ]
+  },
+  "dis": {
+   "mid_caps": 1,
+   "false_stops": 1,
+   "lost_stops": 0,
+   "lost_caps": 0,
+   "false_breaks": 1,
+   "false_breaks_per100w": 0.14,
+   "false_breaks_examples": [
+    "happy with that. Please go"
+   ],
+   "mid_caps_per100w": 0.14,
+   "false_stops_per100w": 0.14,
+   "lost_stops_per100w": 0.0,
+   "lost_caps_per100w": 0.0,
+   "wer": 0.0014,
+   "ref_words": 718,
+   "items": 30,
+   "mid_caps_examples": [
+    "happy with that. Please go"
+   ],
+   "audio_min": 6.9,
+   "decode_s": 41.2
+  },
+  "dis_app": {
+   "mid_caps": 2,
+   "false_stops": 3,
+   "lost_stops": 0,
+   "lost_caps": 0,
+   "false_breaks": 2,
+   "false_breaks_per100w": 0.28,
+   "false_breaks_examples": [
+    "happy with that. Please go",
+    "clean the flat? Because the"
+   ],
+   "mid_caps_per100w": 0.28,
+   "false_stops_per100w": 0.42,
+   "lost_stops_per100w": 0.0,
+   "lost_caps_per100w": 0.0,
+   "wer": 0.0042,
+   "ref_words": 718,
+   "items": 30,
+   "mid_caps_examples": [
+    "happy with that. Please go",
+    "clean the flat? Because the"
+   ]
+  },
+  "restart": {
+   "alone": {
+    "first_false_stop": {
+     "n": 14,
+     "count": 8,
+     "rate": 0.571
+    },
+    "second_wrong_cap": {
+     "n": 14,
+     "count": 10,
+     "rate": 0.714
+    },
+    "joined": {
+     "mid_caps": 20,
+     "false_stops": 5,
+     "lost_stops": 3,
+     "lost_caps": 6,
+     "false_breaks": 2,
+     "false_breaks_per100w": 0.14,
+     "mid_caps_per100w": 1.4,
+     "false_stops_per100w": 0.35,
+     "lost_stops_per100w": 0.21,
+     "lost_caps_per100w": 0.42,
+     "wer": 0.0688,
+     "ref_words": 1425,
+     "items": 14
+    }
+   },
+   "app_alone": {
+    "first_false_stop": {
+     "n": 14,
+     "count": 7,
+     "rate": 0.5
+    },
+    "second_wrong_cap": {
+     "n": 14,
+     "count": 7,
+     "rate": 0.5
+    },
+    "joined": {
+     "mid_caps": 21,
+     "false_stops": 9,
+     "lost_stops": 2,
+     "lost_caps": 3,
+     "false_breaks": 6,
+     "false_breaks_per100w": 0.42,
+     "mid_caps_per100w": 1.47,
+     "false_stops_per100w": 0.63,
+     "lost_stops_per100w": 0.14,
+     "lost_caps_per100w": 0.21,
+     "wer": 0.0856,
+     "ref_words": 1425,
+     "items": 14
+    }
+   },
+   "audio_ctx": {
+    "seam_false_stop": {
+     "n": 14,
+     "count": 1,
+     "rate": 0.071
+    },
+    "second_wrong_cap": {
+     "n": 14,
+     "count": 0,
+     "rate": 0.0
+    }
+   }
+  },
+  "speed": {
+   "speed10": {
+    "audio_s": 10.0,
+    "decode_s": [
+     0.966,
+     1.024,
+     0.921
+    ],
+    "rtf": 0.0966,
+    "decode_s_app": [
+     0.847,
+     0.834,
+     0.817
+    ],
+    "rtf_app": 0.0834
+   },
+   "speed30": {
+    "audio_s": 30.0,
+    "decode_s": [
+     2.768,
+     3.016,
+     2.73
+    ],
+    "rtf": 0.0923,
+    "decode_s_app": [
+     3.362,
+     3.275,
+     3.304
+    ],
+    "rtf_app": 0.1101
+   }
+  },
+  "load_s": 3.4
+ },
+ "whisper": {
+  "takes": {
+   "mid_caps": 38,
+   "false_stops": 7,
+   "lost_stops": 3,
+   "lost_caps": 7,
+   "false_breaks": 5,
+   "false_breaks_per100w": 0.19,
+   "false_breaks_examples": [
+    "with the contract. Did legal",
+    "kids this winter. And also",
+    "onboarding new developers. So could",
+    "answer is yes. We can",
+    "with the hub. Yaffee! Can"
+   ],
+   "mid_caps_per100w": 1.48,
+   "false_stops_per100w": 0.27,
+   "lost_stops_per100w": 0.12,
+   "lost_caps_per100w": 0.27,
+   "wer": 0.1311,
+   "ref_words": 2571,
+   "items": 27,
+   "mid_caps_examples": [
+    "people for potluck. We'll supply",
+    "with the contract. Did legal",
+    "will arrive on Erev Chag,",
+    "arrive on Erev Chag, so",
+    "front gate. My Machshev died",
+    "Can you run FFMPEG on"
+   ],
+   "audio_min": 19.3,
+   "decode_s": 1056.9
+  },
+  "dis": {
+   "mid_caps": 10,
+   "false_stops": 8,
+   "lost_stops": 1,
+   "lost_caps": 0,
+   "false_breaks": 6,
+   "false_breaks_per100w": 0.84,
+   "false_breaks_examples": [
+    "at the optician. Because I",
+    "happy with that. Please go",
+    "after they promised. So you",
+    "up on Tuesday. So could",
+    "with that plan. So please",
+    "it this time. So please"
+   ],
+   "mid_caps_per100w": 1.39,
+   "false_stops_per100w": 1.11,
+   "lost_stops_per100w": 0.14,
+   "lost_caps_per100w": 0.0,
+   "wer": 0.0153,
+   "ref_words": 718,
+   "items": 30,
+   "mid_caps_examples": [
+    "at the optician. Because I",
+    "happy with that. Please go",
+    "after they promised. So you",
+    "the way home And honestly",
+    "on our site. So could",
+    "up on Tuesday. So could"
+   ],
+   "audio_min": 6.9,
+   "decode_s": 435.8
+  },
+  "restart": {
+   "alone": {
+    "first_false_stop": {
+     "n": 14,
+     "count": 13,
+     "rate": 0.929
+    },
+    "second_wrong_cap": {
+     "n": 14,
+     "count": 6,
+     "rate": 0.429
+    },
+    "joined": {
+     "mid_caps": 29,
+     "false_stops": 12,
+     "lost_stops": 7,
+     "lost_caps": 8,
+     "false_breaks": 8,
+     "false_breaks_per100w": 0.56,
+     "mid_caps_per100w": 2.04,
+     "false_stops_per100w": 0.84,
+     "lost_stops_per100w": 0.49,
+     "lost_caps_per100w": 0.56,
+     "wer": 0.1011,
+     "ref_words": 1425,
+     "items": 14
+    }
+   },
+   "prompt": {
+    "first_false_stop": {
+     "n": 14,
+     "count": 13,
+     "rate": 0.929
+    },
+    "second_wrong_cap": {
+     "n": 14,
+     "count": 9,
+     "rate": 0.643
+    },
+    "joined": {
+     "mid_caps": 33,
+     "false_stops": 11,
+     "lost_stops": 4,
+     "lost_caps": 7,
+     "false_breaks": 8,
+     "false_breaks_per100w": 0.56,
+     "mid_caps_per100w": 2.32,
+     "false_stops_per100w": 0.77,
+     "lost_stops_per100w": 0.28,
+     "lost_caps_per100w": 0.49,
+     "wer": 0.1025,
+     "ref_words": 1425,
+     "items": 14
+    }
+   },
+   "prompt_nostop": {
+    "first_false_stop": {
+     "n": 14,
+     "count": 13,
+     "rate": 0.929
+    },
+    "second_wrong_cap": {
+     "n": 14,
+     "count": 3,
+     "rate": 0.214
+    },
+    "joined": {
+     "mid_caps": 25,
+     "false_stops": 10,
+     "lost_stops": 5,
+     "lost_caps": 7,
+     "false_breaks": 3,
+     "false_breaks_per100w": 0.21,
+     "mid_caps_per100w": 1.75,
+     "false_stops_per100w": 0.7,
+     "lost_stops_per100w": 0.35,
+     "lost_caps_per100w": 0.49,
+     "wer": 0.0961,
+     "ref_words": 1425,
+     "items": 14
+    }
+   }
+  },
+  "speed": {
+   "speed10": {
+    "audio_s": 10.0,
+    "decode_s": [
+     8.711,
+     8.73,
+     8.711
+    ],
+    "rtf": 0.8711
+   },
+   "speed30": {
+    "audio_s": 30.0,
+    "decode_s": [
+     18.333,
+     18.268,
+     18.312
+    ],
+    "rtf": 0.6104
+   }
+  },
+  "load_s": 4.5
+ }
+}
