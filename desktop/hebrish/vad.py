@@ -1,30 +1,28 @@
-"""Silero VAD: an optional add-on for voice detection (Daniel, 2026-10-29: "can't hurt to have it as
-an option"; reverses the 2026-10-21 "not added", docs/maintaining.md, "VAD").
+"""Silero VAD for voice detection (Daniel, 2026-10-29: "can't hurt to have it as an option", then
+"VAD should be enabled by default"; reverses the 2026-10-21 "not added", docs/maintaining.md, "VAD").
 
-With the add-on downloaded and `vad_silero` on, `engine._speech_frames` asks Silero which 20 ms
-frames are speech instead of the energy rule, for the two jobs of Voice detection: skipping takes
-with no speech and shortening long silences. Live cuts (`live_cut`, `stretch_pauses`) stay on the
-energy rule: those cut points are measured (1% WER, 2026-10-21).
+Bundled with the app (data/vad/, 643,854 bytes, MIT, licence beside it), so it is on wherever
+Voice detection is on, unless `vad_silero` is turned off on Models > Add-ons. Then
+`engine._speech_frames` asks Silero which 20 ms frames are speech instead of the energy rule, for
+the two jobs of Voice detection: skipping takes with no speech and shortening long silences. Live
+cuts (`live_cut`, `stretch_pauses`) stay on the energy rule: those cut points are measured (1% WER,
+2026-10-21).
 
-The model is sherpa-onnx's copy of Silero VAD (MIT), pinned by size and SHA-256, run through
-`sherpa_onnx.VoiceActivityDetector` (no new dependency). It lives in <models>/silero-vad/. Android
-can use the same file through the same sherpa-onnx API (1.13.8 there too).
+The file is sherpa-onnx's copy of Silero VAD (`asr-models` release, SHA-256 below), run through
+`sherpa_onnx.VoiceActivityDetector` (no new dependency). Android can use the same file through the
+same sherpa-onnx API (1.13.8 there too).
 """
 
-import shutil
 import threading
 from pathlib import Path
 
 import numpy as np
 
-from . import model_store
 from .audio import SAMPLE_RATE
 
 MODEL_ID = "silero-vad"
-FILE = "silero_vad.onnx"
-URL = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx"
-FILES = {FILE: {"size": 643854,
-                "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6"}}
+BUNDLED = Path(__file__).resolve().parent / "data" / "vad" / "silero_vad.onnx"
+SHA256 = "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6"
 WINDOW = 512                  # samples per Silero step at 16 kHz
 THRESHOLD = 0.5
 MIN_SPEECH_S = 0.1
@@ -33,22 +31,8 @@ DEAD = 10 ** (-70 / 20)       # as engine.VAD_DEAD: a muted mic is no speech, wh
 PEAK = 0.5                    # loudness Silero is fed at (the take's 99.9th-percentile sample)
 
 
-def root() -> Path:
-    return model_store.ROOT / MODEL_ID
-
-
 def installed() -> Path | None:
-    p = root() / FILE
-    return p if p.is_file() and p.stat().st_size == FILES[FILE]["size"] else None
-
-
-def download(on_progress=None, cancel: threading.Event | None = None) -> Path:
-    model_store.fetch_files(root(), FILES, lambda _n: URL, on_progress, cancel)
-    return root() / FILE
-
-
-def remove():
-    shutil.rmtree(root(), ignore_errors=True)
+    return BUNDLED if BUNDLED.is_file() else None
 
 
 class Silero:

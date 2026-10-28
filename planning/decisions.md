@@ -9,6 +9,21 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-29-02: Silero VAD is bundled and on by default; TEN VAD not offered
+
+- **Decision:** Silero VAD ships inside the app (0.6 MB) and is used whenever Voice detection is
+  on, which is the default; "Use it for voice detection" on Models > Add-ons turns it off. TEN VAD
+  is not offered.
+- **Why:** Daniel: "VAD should be enabled by default ... I can pause as long as I want." It costs
+  about 9 ms per second of audio on the desktop CPU, small next to decoding, and long pauses and
+  silent takes are then reliably not decoded even in a noisy room. TEN VAD measured about the same
+  speed, cleaner on silence but much worse with background noise (docs/maintaining.md, "Silero
+  VAD"), and its licence adds a no-competing-with-Agora condition, a risk for a speech-to-text
+  app that may be licensed commercially.
+- **Alternatives:** Silero as a download (D-2026-10-29-01, same day: an extra step for a 0.6 MB
+  file); both VADs as a choice (TEN's licence and the noise result).
+- **By:** Daniel (on by default); agent (TEN not offered, open to Daniel's review). R-2026-10-29-2.
+
 ### D-2026-10-29-01: Silero VAD is an optional add-on for voice detection (supersedes the 2026-10-21 "not added")
 
 - **Decision:** Silero VAD (sherpa-onnx's `silero_vad.onnx`, 643,854 bytes, MIT) is offered as a

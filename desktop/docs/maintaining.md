@@ -132,21 +132,28 @@ through `sherpa_onnx.VoiceActivityDetector` (~2 MB model) would be sturdier in s
 1% WER. Revisit if cuts misfire in noisy rooms. Trimming silence to save decode time isn't
 worth it: dictation is mostly speech, and the pauses have to stay (see "Short pauses").
 
-**Silero VAD add-on (unreleased, 2026-10-29; D-2026-10-29-01, reverses the above).** Daniel: "Can't
-hurt to have it as an option." `hebrish/vad.py`: Models > Add-ons downloads sherpa-onnx's
-`silero_vad.onnx` (643,854 bytes, SHA-256 `9e2449e1…1fd6`, from the `asr-models` GitHub release; no
-CDN copy yet) into `<models>/silero-vad/` through `model_store.fetch_files`. `Controller.apply_vad`
-sets `engine.silero` when it is downloaded and `vad_silero` is on (default on); then
-`engine._speech_frames` returns Silero's segments as 20 ms frames (threshold 0.5, min speech 0.1 s,
-min silence 0.25 s), so `has_speech`, `shorten_silences` and the live break check use it. Any
-exception falls back to the energy rule (logged). The take is scaled so its 99.9th-percentile
+**Silero VAD, on by default (unreleased, 2026-10-29; D-2026-10-29-01, D-2026-10-29-02, reverses
+the above).** Daniel: "Can't hurt to have it as an option", then "VAD should be enabled by default".
+`hebrish/vad.py`: sherpa-onnx's `silero_vad.onnx` (643,854 bytes, SHA-256 `9e2449e1…1fd6`, from
+the `asr-models` GitHub release; MIT, licence in `data/vad/`) is bundled as package data, so the
+.deb and Windows zip carry it and nothing is downloaded. `Controller.apply_vad` sets
+`engine.silero` unless `vad_silero` is off (Models > Add-ons, "Use it for voice detection"; default
+on); then `engine._speech_frames` returns Silero's segments as 20 ms frames (threshold 0.5, min
+speech 0.1 s, min silence 0.25 s), so `has_speech`, `shorten_silences` and the live break check use
+it. Any exception falls back to the energy rule (logged). The take is scaled so its 99.9th-percentile
 sample is 0.5 before Silero sees it (a quiet headset still counts, B-46), and under -70 dBFS is no
 speech. `live_cut` and `stretch_pauses` stay on energy: those cut points are the measured ones.
-History's `decode` records `vad_model` (`silero` | `energy`). Measured 2026-10-29 (V): five
-benchmark test clips padded with 3 s of silence, no speech found in the padding, 108-201 ms per
-12-18 s clip; Gaussian noise for 5 s at 0, -54 and -34 dBFS: 0 speech frames (energy: 0, 0, 145); a
-clip at -30 dB: 85% of frames speech (energy 14%). Not measured: WER on the benchmark with Silero
-on. Tests: `tests/test_vad.py` (set `HEBRISH_SILERO` to the file for the model test).
+History's `decode` records `vad_model` (`silero` | `energy`). The .deb bundles sherpa-onnx 2.0.1 (the
+venv has 1.13.8); `VoiceActivityDetector` was checked in the installed package (V).
+
+Measured 2026-10-29 (V, this laptop's CPU, one thread), 20 benchmark test clips each padded with 3 s
+of silence, then again with Gaussian noise at -40 dBFS: Silero 8.5 ms per second of audio, 41 of
+5,600 padding frames called speech when clean, 68 with noise, 85% of the speech part covered both
+times. **TEN VAD** (`ten-vad.onnx`, 332,211 bytes, also in sherpa-onnx, window 256) for comparison:
+9.4 ms/s, 0 padding frames clean but 653 with noise, and coverage fell from 91% to 59% with noise.
+Also, its licence is Apache 2.0 with added terms (no deployment that competes with Agora's
+offerings), so it is not offered (D-2026-10-29-02). Gaussian noise is a stand-in, not a recorded
+room. Not measured: WER on the benchmark with Silero on; Android timing. Tests: `tests/test_vad.py`.
 
 ## Floating overlay (0.3.0, 2026-10-20)
 

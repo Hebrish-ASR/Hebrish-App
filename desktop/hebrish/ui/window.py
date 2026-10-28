@@ -976,11 +976,12 @@ class MainWindow(QMainWindow):
     # Add-ons (Daniel, 2026-10-29: "a tab called accessories ... the accessory models that we
     # currently offer as additions"): small models that help the speech model, each optional.
     ADDONS = (
-        (vad.MODEL_ID, "Silero VAD", "Better voice detection: tells speech from fans, traffic and café "
-         "noise, so silent takes are skipped and long pauses trimmed more reliably. Used when Voice "
-         "detection is on (Voice Typing tab).", "0.6 MB",
-         "Silero VAD by the Silero team (MIT licence), the copy published with sherpa-onnx. Runs on "
-         "the processor, about 10 ms per second of audio. Without it, voice detection goes by loudness."),
+        (vad.MODEL_ID, "Silero VAD", "Voice detection that tells speech from fans, traffic and café "
+         "noise, so silent takes are skipped and long pauses aren't transcribed. Used when Voice "
+         "detection is on (Voice Typing tab).", "",
+         "Silero VAD by the Silero team (MIT licence), the copy published with sherpa-onnx; included "
+         "with the app (0.6 MB). Runs on the processor, about 10 ms per second of audio. Turned off, "
+         "voice detection goes by loudness."),
         (paragraphs.MODEL_ID, "Paragraph model", "Splits long transcripts into paragraphs where the "
          "topic moves on. Used in Transcription Mode when Paragraphs is set to Paragraph model.",
          "34 MB", "A small MiniLM text model (ONNX, int8). Without it, paragraphs are time-based."),
@@ -991,8 +992,7 @@ class MainWindow(QMainWindow):
         lay = QVBoxLayout(page)
         lay.setContentsMargins(0, 10, 0, 0)
         lay.setSpacing(0)
-        lay.addWidget(muted("Optional small models that work alongside the speech model. Each "
-                            "downloads once and works offline."))
+        lay.addWidget(muted("Small models that work alongside the speech model, offline."))
         self.addon_rows = {}
         for aid, name, words, size, tech in self.ADDONS:
             f = QFrame(objectName="modelRow")
@@ -1044,7 +1044,15 @@ class MainWindow(QMainWindow):
 
     def _update_addons(self):
         for aid, r in getattr(self, "addon_rows", {}).items():
-            have = (vad.installed() if aid == vad.MODEL_ID else paragraphs.installed()) is not None
+            if aid == vad.MODEL_ID:                      # bundled: no download, nothing to delete
+                ok = vad.installed() is not None
+                r["status"].setText("<span style='color:#2e9e5b'>✓ Included with the app</span>" if ok else
+                                    "<span style='color:gray'>Missing from this build</span>")
+                r["dl"].hide()
+                r["rm"].hide()
+                r["use"].setEnabled(ok)
+                continue
+            have = paragraphs.installed() is not None
             busy = aid in self.ctl.addon_busy
             r["status"].setText("<b>Downloading…</b>" if busy else
                                 "<span style='color:#2e9e5b'>✓ Downloaded</span>" if have else
@@ -1053,19 +1061,13 @@ class MainWindow(QMainWindow):
             r["dl"].setEnabled(not busy)
             r["dl"].setText("Downloading…" if busy else "Download")
             r["rm"].setVisible(have)
-            if r["use"] is not None:
-                r["use"].setEnabled(have)
 
     def _delete_addon(self, aid, name):
         if QMessageBox.question(self, "Delete add-on", f"Delete {name}? You can download it "
                                 "again later.") != QMessageBox.Yes:
             return
-        if aid == vad.MODEL_ID:
-            vad.remove()
-            self.ctl.apply_vad()
-        else:
-            import shutil
-            shutil.rmtree(paragraphs.root(), ignore_errors=True)
+        import shutil
+        shutil.rmtree(paragraphs.root(), ignore_errors=True)
         self.update_model()
 
     @staticmethod

@@ -1050,7 +1050,7 @@ class Controller(QObject):
 
     # -- add-ons (Models > Add-ons, 2026-10-29) --------------------------------------
     def apply_vad(self):
-        """Voice detection uses Silero when it is downloaded and `vad_silero` is on (vad.py)."""
+        """Voice detection uses Silero (bundled) unless `vad_silero` is off (vad.py)."""
         path = vad.installed() if self.cfg["vad_silero"] else None
         if path is None:
             engine.silero = None
@@ -1059,11 +1059,11 @@ class Controller(QObject):
         log.info("voice detection: %s", "silero" if engine.silero else "energy")
 
     def download_addon(self, aid: str):
-        """Fetch an add-on (`vad.MODEL_ID` or `paragraphs.MODEL_ID`) off the GUI thread."""
+        """Fetch an add-on (the paragraph model; Silero VAD is bundled) off the GUI thread."""
         from .. import paragraphs
         if aid in self.addon_busy:
             return
-        fetch = vad.download if aid == vad.MODEL_ID else paragraphs.download
+        fetch = paragraphs.download
         cancel = self.addon_busy[aid] = threading.Event()
 
         def work():
@@ -1077,8 +1077,6 @@ class Controller(QObject):
 
     def _addon_done(self, aid: str, err):
         cancelled = self.addon_busy.pop(aid, threading.Event()).is_set()
-        if aid == vad.MODEL_ID:
-            self.apply_vad()
         if err and not cancelled:
             self.win.banner(f"Couldn't download the add-on: {err}")
         elif not err:
