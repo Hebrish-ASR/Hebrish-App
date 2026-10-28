@@ -67,12 +67,6 @@ def dots(n: int, colour: str) -> str:
     return f"<span style='color:{colour}'>{'●' * n}</span><span style='color:#bbb'>{'●' * (5 - n)}</span>"
 
 
-def tiers_html(m) -> str:
-    """The speed/accuracy gradient as two five-dot meters (estimates, catalogue `tiers`)."""
-    return (f"Speed {dots(m.speed, GOLD)} &nbsp; Accuracy {dots(m.accuracy, BRAND_GREEN)}"
-            " <small style='color:gray'>(estimates)</small>")
-
-
 def ago(ts: float) -> str:
     d = time.time() - ts
     if d < 60:
@@ -834,10 +828,11 @@ class MainWindow(QMainWindow):
 
     # -- models --------------------------------------------------------------------
     def _model_page(self):
-        """One row per catalogue model, each with its own Download / Use / Delete, so a model can
-        be downloaded without switching to it (0.5.0; before, a combo box picked the model and
-        the one Download button acted on it). Then updates and the storage folder. One version per
-        model since 0.5.1: an update replaces the old version, so there is no versions list."""
+        """One tab per line (Sabich, Jachnun, Shakshuka, stock), each listing the versions this app
+        runs, each with its own Download / Use / Delete (Daniel, 2026-10-29: "a very long list ...
+        easier if we had tabs so you could browse by model family"; before, every line and variant
+        was one long list). Versions this app can't run fold into one link under them. Then updates
+        and the storage folder."""
         page = QWidget()
         lay = QVBoxLayout(page)
         lay.setContentsMargins(16, 14, 16, 14)
@@ -851,12 +846,12 @@ class MainWindow(QMainWindow):
         helper.clicked.connect(self._help_choose)
         top.addWidget(helper, 0, Qt.AlignTop)
         b.addLayout(top)
-        self.model_rows_box = QVBoxLayout()
-        self.model_rows_box.setSpacing(0)
-        b.addLayout(self.model_rows_box)
+        self.family_tabs = QTabWidget()
+        self.family_tabs.setDocumentMode(True)
+        self.family_tabs.setIconSize(QSize(20, 20))
+        b.addWidget(self.family_tabs)
         self.model_rows: dict[str, dict] = {}
         lay.addWidget(box)
-
         box, b = card("Updates")
         self.model_label = QLabel()
         self.model_label.setWordWrap(True)
@@ -897,49 +892,40 @@ class MainWindow(QMainWindow):
         lay.addStretch(1)
         return page
 
-    def _line_header(self, ln) -> QFrame:
-        """A line (Sabich, Jachnun, Shakshuka, stock): its mark, name, what it is trained for."""
-        f = QFrame(objectName="lineHead")
-        outer = QHBoxLayout(f)
-        outer.setContentsMargins(4, 14, 4, 2)
-        outer.setSpacing(10)
-        pic = QLabel()
-        name = f"model-{ln.variants[0].id}" if ln.variants else ""
-        pic.setPixmap(icon(name if name and (ICONS / f"{name}.svg").exists() else "hebrish").pixmap(40, 40))
-        pic.setFixedSize(42, 42)
-        outer.addWidget(pic, 0, Qt.AlignTop)
+    def _family_page(self, ln) -> QWidget:
+        """A line's tab: what it is for, its versions this app runs, then the rest folded away."""
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(0, 10, 0, 0)
+        lay.setSpacing(0)
         text = QLabel()
         text.setWordWrap(True)
         text.setTextFormat(Qt.RichText)
         text.setOpenExternalLinks(True)
         link = f" <a href='{ln.card}'>About {ln.name}</a>" if ln.card else ""
-        terms = (f" · <small>Free for personal and non-commercial use: <a href='{about.TERMS}'>terms</a></small>"
-                 if ln.id != "stock" else "")
-        text.setText(f"<b style='font-size:16px'>{ln.name}</b><br>"
-                     f"<span style='color:gray'>{ln.summary}</span>{link}{terms}")
-        outer.addWidget(text, 1)
-        self.model_rows_box.addWidget(f)
-        return f
+        text.setText(f"<span style='color:gray'>{ln.summary}</span>{link}")
+        text.setContentsMargins(4, 0, 4, 8)
+        lay.addWidget(text)
+        for v in ln.variants:
+            if v.available:
+                self.model_rows[v.id] = self._model_row(v, lay)
+        others = [v for v in ln.variants if not v.available]
+        if others:
+            self._other_versions(others, lay)
+        lay.addStretch(1)
+        return page
 
-    def _model_row(self, m) -> dict:
-        """One variant of a line: name, who it is for, the speed/accuracy tiers, size and hardware,
-        its state and Download / Use / Delete. A variant this build can't run (another engine, or
-        planned) is shown greyed with where it runs instead, and has no buttons (0.6.0)."""
+    def _model_row(self, m, lay) -> dict:
+        """One version: name, one line on who it is for, speed/accuracy, its state, and
+        Download / Use / Delete. Hardware, base model, licence and files sit under Details."""
         f = QFrame(objectName="modelRow")
         outer = QHBoxLayout(f)
-        outer.setContentsMargins(52, 8, 10, 8)
+        outer.setContentsMargins(10, 8, 10, 8)
         outer.setSpacing(12)
-        f.setStyleSheet("#modelRow { border: none; border-bottom: 1px solid palette(midlight); }"
-                        " #modelRow QLabel { border: none; background: transparent; }")
         col = QVBoxLayout()
         col.setSpacing(3)
         head = QHBoxLayout()
-        grey = "" if m.supported else "color: gray;"
-        # Plain words (Daniel, 2026-10-25: "as friendly as possible for regular people"): the base as
-        # "Parakeet 0.6B v2 by NVIDIA"; repo ids, formats and runtimes are under Technical details.
-        base = f" <small style='color:gray'>Base model: {m.base_label}</small>" if m.base_label else ""
-        name = QLabel(f"<b style='font-size:14px; {grey}'>{m.name}</b>{base}")
-        head.addWidget(name)
+        head.addWidget(QLabel(f"<b style='font-size:14px'>{m.name}</b>"))
         chip = QLabel(objectName="chip")
         chip.setStyleSheet(f"background: {BRAND_GREEN}; color: white; border-radius: 9px; padding: 1px 8px;"
                            " font-size: 11px; font-weight: 600;")
@@ -956,23 +942,15 @@ class MainWindow(QMainWindow):
         if m.recommendation:
             words = QLabel(m.recommendation)
             words.setWordWrap(True)
-            words.setStyleSheet(grey)
             col.addWidget(words)
         facts = muted()
         facts.setTextFormat(Qt.RichText)
-        facts.setOpenExternalLinks(True)
-        size = f"{m.download_mb} MB" if m.download_mb else "size: see the card"
-        facts.setText(f"{tiers_html(m)}<br><small>{size} · {m.hardware}"
-                      + (f" · <a href='{m.card}'>Model card</a>" if m.card else "") + "</small>")
+        facts.setText(f"Speed {dots(m.speed, GOLD)} &nbsp; Accuracy {dots(m.accuracy, BRAND_GREEN)}")
         col.addWidget(facts)
         status = QLabel()
         status.setStyleSheet("font-size: 12px;")
         status.setWordWrap(True)
         status.setTextFormat(Qt.RichText)
-        if not m.supported:
-            status.setText(f"<span style='color:gray'><b>Not in this app yet.</b> Runs on: {m.runs_on}</span>")
-        elif not m.available:
-            status.setText("<span style='color:gray'>Coming soon</span>")
         col.addWidget(status)
         self._technical(m, col)
         pbar = QProgressBar(maximum=1000)
@@ -983,31 +961,66 @@ class MainWindow(QMainWindow):
         btns.setSpacing(4)
         dl = QPushButton(line_icon("download", "white"), "Download", objectName="primary")
         dl.clicked.connect(lambda _=False, mid=m.id: self._download_model(mid))
-        use = QPushButton(f"Switch to {m.name}")
+        use = QPushButton("Use this one")
         use.clicked.connect(lambda _=False, mid=m.id: self.ctl.use_model(mid))
         rm = QPushButton("Delete")
         rm.clicked.connect(lambda _=False, mid=m.id: self._delete_model(mid))
         for w in (dl, use, rm):
-            w.setVisible(m.available)
             btns.addWidget(w)
         btns.addStretch(1)
         outer.addLayout(btns)
-        self.model_rows_box.addWidget(f)
+        lay.addWidget(f)
         return {"frame": f, "chip": chip, "status": status, "pbar": pbar, "dl": dl, "use": use, "rm": rm,
                 "rec": is_rec}
 
     @staticmethod
+    def _other_versions(others, lay):
+        """Versions this app can't run (another engine or platform), folded behind one link."""
+        body = QLabel("<br><br>".join(
+            f"<b>{v.name}</b>: {v.recommendation or v.summary}"
+            + (f"<br><small>Runs on: {v.runs_on}</small>" if v.runs_on else "")
+            + (f" <small><a href='{v.card}'>Model card</a></small>" if v.card else "")
+            for v in others))
+        body.setWordWrap(True)
+        body.setTextFormat(Qt.RichText)
+        body.setOpenExternalLinks(True)
+        body.setStyleSheet("color: gray; font-size: 12px;")
+        body.setContentsMargins(10, 4, 10, 4)
+        body.hide()
+        toggle = QLabel()
+        toggle.setTextFormat(Qt.RichText)
+        toggle.setStyleSheet("font-size: 12px;")
+        toggle.setContentsMargins(10, 10, 10, 2)
+        n = len(others)
+        label = f"{n} more version{'s' if n > 1 else ''}, not in this app yet"
+
+        def show(open_: bool):
+            body.setVisible(open_)
+            toggle.setText(f"<a href='#'>{'Hide' if open_ else label}</a>")
+        toggle.linkActivated.connect(lambda _: show(body.isHidden()))
+        show(False)
+        lay.addWidget(toggle)
+        lay.addWidget(body)
+
+    @staticmethod
     def _technical(m, col):
-        """'Technical details', collapsed (2026-10-25): the catalogue's `technical` text (format,
-        runtime, memory), the base model's repo id and the repo the files come from."""
-        lines = [t for t in (m.technical, m.base_model and f"Base model: {m.base_model}",
+        """'Details', collapsed: size and hardware, the base model, the licence, the card, and the
+        catalogue's `technical` text (format, runtime, memory) with the repo ids (2026-10-25)."""
+        size = f"{m.download_mb} MB download" if m.download_mb else ""
+        card_link = f"<a href='{m.card}'>Model card</a>" if m.card else ""
+        terms = (f"Free for personal and non-commercial use: <a href='{about.TERMS}'>terms</a>"
+                 if m.line != "stock" else "")
+        lines = [t for t in (" · ".join(x for x in (size, m.hardware) if x),
+                             m.base_label and f"Base model: {m.base_label}", terms, card_link,
+                             m.technical, m.base_model and f"Base model id: {m.base_model}",
                              m.repo and f"Files: {m.repo}") if t]
         if not lines:
             return
-        body = QLabel("<br>".join(lines))
+        body = QLabel("<br>".join(lines) + "<br><i>Speed and accuracy are estimates.</i>")
         body.setWordWrap(True)
         body.setTextFormat(Qt.RichText)
-        body.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        body.setOpenExternalLinks(True)
+        body.setTextInteractionFlags(Qt.TextBrowserInteraction)
         body.setStyleSheet("color: gray; font-size: 11px;")
         body.hide()
         toggle = QLabel()
@@ -1016,7 +1029,7 @@ class MainWindow(QMainWindow):
 
         def show(open_: bool):
             body.setVisible(open_)
-            toggle.setText(f"<a href='#'>{'Hide technical details' if open_ else 'Technical details'}</a>")
+            toggle.setText(f"<a href='#'>{'Hide details' if open_ else 'Details'}</a>")
         toggle.linkActivated.connect(lambda _: show(body.isHidden()))
         show(False)
         col.addWidget(toggle)
@@ -1084,25 +1097,27 @@ class MainWindow(QMainWindow):
         lines = model_store.lines()
         shape = [(v.id, v.available, v.supported) for ln in lines for v in ln.variants]
         if getattr(self, "_model_shape", None) != shape:          # catalogue changed: rebuild
-            for w in getattr(self, "_model_widgets", []):
+            tabs = self.family_tabs
+            shown = tabs.tabBar().tabData(tabs.currentIndex()) if tabs.count() else sel.line
+            while tabs.count():
+                w = tabs.widget(0)
+                tabs.removeTab(0)
                 w.deleteLater()
-            self._model_widgets, self.model_rows = [], {}
+            self.model_rows = {}
             for ln in lines:
-                self._model_widgets.append(self._line_header(ln))
-                for v in ln.variants:
-                    r = self._model_row(v)
-                    self._model_widgets.append(r["frame"])
-                    if v.available:
-                        self.model_rows[v.id] = r
+                name = f"model-{ln.variants[0].id}" if ln.variants else ""
+                ic = icon(name if name and (ICONS / f"{name}.svg").exists() else "hebrish")
+                i = tabs.addTab(self._family_page(ln), ic, ln.name)
+                tabs.tabBar().setTabData(i, ln.id)
+                if ln.id == shown:
+                    tabs.setCurrentIndex(i)
             self._model_shape = shape
         cat = [m for m in model_store.models() if m.available]
         busy = bool(ctl.downloading or ctl.downloading_id)
         rec = model_store.get_model(model_store.recommended_id())
         self.models_intro.setText(
-            "Each line is what a model is trained for; under it are its versions, from most accurate "
-            "to fastest. " + (f"<b>{rec.name}</b> is the recommended one. " if rec else "")
-            + "A model downloads once and then works offline; the one in use is outlined "
-            "in green. Speed and accuracy tiers are estimates.")
+            "Pick a family, then a version. " + (f"<b>{rec.name}</b> is the recommended one. " if rec else "")
+            + "A model downloads once and then works offline.")
         for m in cat:
             r, inst = self.model_rows[m.id], model_store.active(m.id)
             in_use = m.id == sel.id
@@ -1140,7 +1155,7 @@ class MainWindow(QMainWindow):
 
         if cur is None:
             text = (f"<b>{sel.name} isn't downloaded yet.</b> Download it above, or download "
-                    "another model and click Switch to.")
+                    "another model and click Use this one.")
         else:
             text = f"In use: <b>{sel.name}</b> {cur[1].label}"
             if ctl.engine.loaded_dir != cur[0]:

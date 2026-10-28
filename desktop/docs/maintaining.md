@@ -1341,8 +1341,8 @@ from his Voice Notepad app (`AI-Transcription-Notepad`: `tts_announcer.py`, `mic
   the GUI thread, then the usual `download`); `downloading_id` says which row shows progress.
   Use → `use_model` (only for a downloaded model). The row in use has no buttons, so it is
   tinted and outlined in brand green with a "✓ In use" chip (2026-10-21: as a plain row it read
-  as greyed out next to rows with buttons); the recommended model's "Switch to …" button is
-  `primary`, and the card's intro line names the catalogue's `recommended` model. Icons: `data/icons/model-<id>.svg`;
+  as greyed out next to rows with buttons); the recommended model's "Use this one" button (was "Switch to …"
+  until 2026-10-29) is `primary`, and the card's intro line names the catalogue's `recommended` model. Icons: `data/icons/model-<id>.svg`;
   Jachnun's and Sabich's are copies of `Hebrish-Mgmt/brand/logo/{jachnun,sabich}.svg`, stock's
   is a plain hand-drawn wave (not a brand mark).
 - **Model folder** (`models_dir`, "" = `config.MODELS_DIR`): `model_store.ROOT` replaces the
@@ -1421,12 +1421,16 @@ for users to make sense and use the right one."
   windows). Every download, select, update and folder path still goes through `models()` /
   `get_model()`, so a Qwen3-ASR or asr4all variant can never be selected or fetched (test
   `test_unsupported_engines_are_listed_but_not_models`).
-- Models tab (`ui/window.py` `_line_header`, `_model_row`): per line a header (mark, name,
-  summary, link, terms), then one row per variant: name and base model, Recommended / In use
-  chips, the recommendation sentence, speed and accuracy as five-dot meters marked
-  "(estimates)", size, hardware and card link, state, buttons. A variant the app can't run is
-  greyed with "Not in this app yet. Runs on: …" and no buttons; a planned one says "Coming soon".
-  Rows are rebuilt when the catalogue's (id, available, supported) list changes.
+- Models tab (`ui/window.py` `_family_page`, `_model_row`, `_other_versions`): one tab per line
+  (`family_tabs`, tab data = line id; opens on the line in use, keeps the shown tab across
+  rebuilds). Each tab: the line summary and its card link, then one row per version this app runs:
+  name, Recommended / In use chips, the recommendation sentence, speed and accuracy as five-dot
+  meters, state, buttons (Download / Use this one / Delete). Size, hardware, base model, terms,
+  card link and the technical text are under a collapsed **Details** link (with "Speed and
+  accuracy are estimates"). Versions the app can't run fold behind one "N more versions, not in
+  this app yet" link (name, recommendation, Runs on, card). Unreleased, 2026-10-29: Daniel found
+  the single list of every line and variant (0.6.0 to 1.009) "a bit too heavy" for regular users.
+  Tabs are rebuilt when the catalogue's (id, available, supported) list changes.
 - `current_id()` without a pick: the first downloaded supported model, recommended first, else
   `recommended`. Before 0.6.0 it was schema 1's `default` (`stock`); a user who never picked keeps
   the stock download they have.
