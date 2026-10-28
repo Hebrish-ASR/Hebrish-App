@@ -80,6 +80,11 @@ class History:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(self.path)
         self.db.row_factory = sqlite3.Row
+        # WAL (1.009): a write appends to history.db-wal instead of rewriting pages under a rollback
+        # journal, so the many small writes of a day of dictation cost one fsync at checkpoint, and
+        # a reader (export, the dataset tools) never blocks the app. Still crash-safe.
+        self.db.execute("PRAGMA journal_mode=WAL")
+        self.db.execute("PRAGMA synchronous=NORMAL")
         self.db.executescript(_DDL)
         self._migrate()
         if self.audio_dir.is_dir():

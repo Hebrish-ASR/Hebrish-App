@@ -926,6 +926,17 @@ clipboard silently dropping a piece.
 
 ## Dictation history: SQLite, search, word counts (0.7.0, 2026-10-22)
 
+**Counts in K, WAL (1.009, Daniel 2026-10-28, B-66):** the History tab's tiles round words and
+dictations from 1,000 up to the nearest thousand (`window.kilo`: 12,345 -> `12K`), with the exact
+figures in each tile's tooltip. `History.__init__` sets `journal_mode=WAL` and `synchronous=NORMAL`,
+so the database is `history.db` plus `history.db-wal`/`-shm` (`size_bytes` already counts
+`history.db*`). Scale check on 2026-10-28, a synthetic 200,000 rows (46.2 M characters, 170 MB on
+disk, laptop): `search` 219 ms, `recent(100)` under 1 ms, `stats` 126 ms, `add` 0.2 ms. That
+answers the earlier "query speed on tens of thousands of rows" gap. Daniel asked whether a document
+database (MongoDB) would be better: no. It would need a server, and the history is a single user's
+rows with a fixed schema; SQLite gives transactions, FTS5 and a place to store B-16 vectors.
+Tests: `tests/test_history_counts.py`.
+
 **Text only, CSV export (0.7.3, 2026-10-22, D-2026-10-22-20, B-37):** `keep_audio` and its
 Settings checkbox are gone (`config.upgrade` drops the key); `History.__init__` deletes any
 `history-audio/` left by 0.7.0-0.7.2 and sets those rows' `audio` to NULL (`drop_audio`). The

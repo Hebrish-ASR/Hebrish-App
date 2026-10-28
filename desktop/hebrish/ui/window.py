@@ -91,6 +91,12 @@ def human_size(n: float) -> str:
         n /= 1024
 
 
+def kilo(n: int) -> str:
+    """History counts from 1,000 up, to the nearest thousand: 12,345 -> "12K" (Daniel,
+    2026-10-28). The exact figure goes in the tile's tooltip."""
+    return f"{round(n / 1000):,}K" if n >= 1000 else f"{n:,}"
+
+
 def stat_tile(title: str) -> tuple[QFrame, QLabel, QLabel]:
     """A small card: a big number (words) and a muted line under it (dictations, time)."""
     box, b = card(title)
@@ -692,13 +698,17 @@ class MainWindow(QMainWindow):
         st = self.ctl.history.stats()
         for key, (big, small) in self.stat_tiles.items():
             a = st[key]
-            big.setText(f"{a['words']:,} words")
+            big.setText(f"{kilo(a['words'])} words")
             mins = a["seconds"] / 60
             spoken = f" · {mins / 60:.1f} h" if mins >= 90 else f" · {mins:.0f} min" if mins >= 1 else ""
-            small.setText(f"{a['dictations']:,} dictation{'s' if a['dictations'] != 1 else ''}{spoken}")
+            small.setText(f"{kilo(a['dictations'])} dictation{'s' if a['dictations'] != 1 else ''}{spoken}")
+            exact = f"{a['words']:,} words, {a['dictations']:,} dictations"
+            big.setToolTip(exact)
+            small.setToolTip(exact)
         if st["since"]:
             self.stat_tiles["all"][1].setToolTip(
-                f"Since {time.strftime('%d %b %Y', time.localtime(st['since']))}, "
+                f"{st['all']['words']:,} words, {st['all']['dictations']:,} dictations "
+                f"since {time.strftime('%d %b %Y', time.localtime(st['since']))}, "
                 f"on {st['days_active']} day{'s' if st['days_active'] != 1 else ''}")
 
     def show_history(self, keep_limit=False):
