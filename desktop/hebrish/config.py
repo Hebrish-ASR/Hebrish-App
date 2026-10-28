@@ -101,6 +101,8 @@ DEFAULTS = {
     "tm_paragraphs": "",          # none | time | model (paragraphs.MODES, B-44); "" = not chosen: model
                                   # when the paragraph model is installed, else time
     "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad)
+    "vad_silero": True,           # with Voice detection on, use Silero VAD when the add-on is
+                                  # downloaded (vad.py, 2026-10-29); off = the energy rule
     "num_threads": 0,             # decoder threads; 0 = auto (physical cores, at most 8)
     "keep_history": True,         # keep every transcript in history.db (History tab); 0.7.0: on
     "clear_each_take": False,     # the Dictate tab's text box starts empty for each take (0.7.0; off

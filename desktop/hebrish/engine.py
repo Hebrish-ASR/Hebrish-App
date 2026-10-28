@@ -104,7 +104,17 @@ def _frame_rms(x: np.ndarray) -> np.ndarray:
     return np.sqrt((x[: n * FRAME].reshape(n, FRAME) ** 2).mean(axis=1))
 
 
+# Silero VAD (vad.Silero), when the add-on is downloaded and `vad_silero` is on: set by
+# Controller.apply_vad. It replaces the energy rule below for has_speech and shorten_silences only.
+silero = None
+
+
 def _speech_frames(x: np.ndarray, ref: np.ndarray | None = None) -> np.ndarray:
+    if silero is not None:
+        try:
+            return silero.speech_frames(x, FRAME)
+        except Exception:
+            log.exception("Silero VAD failed; using the energy rule")
     rms = _frame_rms(x)
     if not len(rms):
         return rms > 1

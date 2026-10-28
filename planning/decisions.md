@@ -9,6 +9,22 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-29-01: Silero VAD is an optional add-on for voice detection (supersedes the 2026-10-21 "not added")
+
+- **Decision:** Silero VAD (sherpa-onnx's `silero_vad.onnx`, 643,854 bytes, MIT) is offered as a
+  download on a new Models > Add-ons tab, next to the paragraph model. Downloaded and with "Use it
+  for voice detection" on (`vad_silero`, default on), it decides which frames are speech for
+  Voice detection: skipping silent takes and shortening long silences. Live cut points stay on the
+  energy rule. Android gets the same model through the same sherpa-onnx API (B-71a).
+- **Why:** Daniel: "Can't hurt to have it as an option that users can use." The energy rule
+  treats steady noise (fans, cafés) as speech; Silero does not (measured 2026-10-29: 5 s of
+  noise at -34 dBFS, 0 speech frames with Silero, 145 with energy). About 10 ms per second of
+  audio on the CPU.
+- **Alternatives:** Keep energy only (the 2026-10-21 call: one more download, cut points already
+  at 1% WER; answered by making it optional and leaving the cut points alone). TEN VAD (also in
+  sherpa-onnx; not chosen: Silero is the one Daniel asked for, and its MIT licence is plain).
+- **By:** Daniel. Request R-2026-10-29-2, backlog B-71, B-71a.
+
 ### D-2026-10-28-01: History stays on SQLite; semantic search adds sqlite-vec to the same file
 
 - **Decision:** `history.db` stays SQLite (FTS5 keyword search, WAL journaling from 1.009, B-66) on

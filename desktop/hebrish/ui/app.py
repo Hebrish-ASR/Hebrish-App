@@ -22,7 +22,7 @@ from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QIcon, QPalett
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from .. import __version__, app_update, audio, autostart, dictionary, disfluency, mics, model_store
+from .. import __version__, app_update, audio, autostart, dictionary, disfluency, engine, mics, model_store, vad
 from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
 from ..engine import REF_S, Engine, after_held_stop, hold_stop, live_split
@@ -84,6 +84,7 @@ class Signals(QObject):
     app_checked = Signal(object, object, bool)  # app_update.Release or None, error, manual
     app_updated = Signal(bool, str)             # ok, message: the pkexec apt upgrade
     maintained = Signal(object, object)         # history upkeep: result dict or None, error
+    addon = Signal(str, object)                 # an add-on download finished: add-on id, error or None
 
 
 def _before(pieces: list, n: int):
@@ -104,6 +105,8 @@ class Controller(QObject):
         self.cfg = Config()
         model_store.set_root(models_root(self.cfg))
         self.engine = Engine()
+        self.addon_busy: dict[str, threading.Event] = {}     # add-on id -> cancel, while downloading
+        self.apply_vad()
         self.recorder = audio.Recorder()                       # every take: hotkey or Dictate tab
         self.monitor = audio.Recorder(max_s=0)                 # Test mic: level only, keeps nothing
         self.state = "idle"             # idle | recording | busy
@@ -144,6 +147,7 @@ class Controller(QObject):
         self.sig.app_checked.connect(self._app_checked)
         self.sig.app_updated.connect(self._app_updated)
         self.sig.maintained.connect(self._history_maintained)
+        self.sig.addon.connect(self._addon_done)
         self.maintaining = False
         self.app_release: app_update.Release | None = None    # newer than this app, else None
         self.app_method = app_update.install_method()         # apt | deb-manual | windows | source
@@ -710,6 +714,8 @@ class Controller(QObject):
         m = model_store.current()
         d = {"app": __version__, "engine": m.engine if m else "", "device": getattr(self.engine, "device", "CPU"),
              "threads": self.engine.threads, "vad": self.cfg["vad"], "all_caps": self.cfg["all_caps"]}
+        if self.cfg["vad"]:
+            d["vad_model"] = "silero" if engine.silero else "energy"
         if source == "dictate":
             d["live_insert_s"] = self.cfg["live_insert_s"]
             if self.engine.streaming:
@@ -1028,6 +1034,7 @@ class Controller(QObject):
             return
         self.cfg.set("models_dir", path)
         model_store.set_root(new)
+        self.apply_vad()
         self.latest = None
         self.load_model()
         self.win.update_model()
@@ -1040,6 +1047,43 @@ class Controller(QObject):
             return
         self.set_models_dir(self._moving_to, move=False)
         self.win.status(f"Models moved to {model_store.ROOT}.")
+
+    # -- add-ons (Models > Add-ons, 2026-10-29) --------------------------------------
+    def apply_vad(self):
+        """Voice detection uses Silero when it is downloaded and `vad_silero` is on (vad.py)."""
+        path = vad.installed() if self.cfg["vad_silero"] else None
+        if path is None:
+            engine.silero = None
+        elif engine.silero is None or engine.silero.path != path:
+            engine.silero = vad.Silero(path)
+        log.info("voice detection: %s", "silero" if engine.silero else "energy")
+
+    def download_addon(self, aid: str):
+        """Fetch an add-on (`vad.MODEL_ID` or `paragraphs.MODEL_ID`) off the GUI thread."""
+        from .. import paragraphs
+        if aid in self.addon_busy:
+            return
+        fetch = vad.download if aid == vad.MODEL_ID else paragraphs.download
+        cancel = self.addon_busy[aid] = threading.Event()
+
+        def work():
+            try:
+                fetch(cancel=cancel)
+                self.sig.addon.emit(aid, None)
+            except Exception as e:
+                self.sig.addon.emit(aid, e)
+        threading.Thread(target=work, daemon=True).start()
+        self.win.update_model()
+
+    def _addon_done(self, aid: str, err):
+        cancelled = self.addon_busy.pop(aid, threading.Event()).is_set()
+        if aid == vad.MODEL_ID:
+            self.apply_vad()
+        if err and not cancelled:
+            self.win.banner(f"Couldn't download the add-on: {err}")
+        elif not err:
+            self.win.status("Add-on downloaded.")
+        self.win.update_model()
 
     # -- app updates (0.6.2, app_update) ---------------------------------------------
     def check_app_update(self, manual=False):

@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, Q
                                QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QTimeEdit,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import __version__, audio, autostart, dictionary, model_store
+from .. import __version__, audio, autostart, dictionary, model_store, paragraphs, vad
 from ..config import APP_NAME, CONFIG_PATH, MODELS_DIR, STATE_PATH, TAGLINE, load_json, threads
 from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
@@ -973,6 +973,101 @@ class MainWindow(QMainWindow):
         return {"frame": f, "chip": chip, "status": status, "pbar": pbar, "dl": dl, "use": use, "rm": rm,
                 "rec": is_rec}
 
+    # Add-ons (Daniel, 2026-10-29: "a tab called accessories ... the accessory models that we
+    # currently offer as additions"): small models that help the speech model, each optional.
+    ADDONS = (
+        (vad.MODEL_ID, "Silero VAD", "Better voice detection: tells speech from fans, traffic and café "
+         "noise, so silent takes are skipped and long pauses trimmed more reliably. Used when Voice "
+         "detection is on (Voice Typing tab).", "0.6 MB",
+         "Silero VAD by the Silero team (MIT licence), the copy published with sherpa-onnx. Runs on "
+         "the processor, about 10 ms per second of audio. Without it, voice detection goes by loudness."),
+        (paragraphs.MODEL_ID, "Paragraph model", "Splits long transcripts into paragraphs where the "
+         "topic moves on. Used in Transcription Mode when Paragraphs is set to Paragraph model.",
+         "34 MB", "A small MiniLM text model (ONNX, int8). Without it, paragraphs are time-based."),
+    )
+
+    def _addons_page(self) -> QWidget:
+        page = QWidget()
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(0, 10, 0, 0)
+        lay.setSpacing(0)
+        lay.addWidget(muted("Optional small models that work alongside the speech model. Each "
+                            "downloads once and works offline."))
+        self.addon_rows = {}
+        for aid, name, words, size, tech in self.ADDONS:
+            f = QFrame(objectName="modelRow")
+            f.setStyleSheet("#modelRow { border: none; border-bottom: 1px solid palette(midlight); }"
+                            " #modelRow QLabel { border: none; background: transparent; }")
+            outer = QHBoxLayout(f)
+            outer.setContentsMargins(10, 8, 10, 8)
+            outer.setSpacing(12)
+            col = QVBoxLayout()
+            col.setSpacing(3)
+            col.addWidget(QLabel(f"<b style='font-size:14px'>{name}</b>"))
+            text = QLabel(words)
+            text.setWordWrap(True)
+            col.addWidget(text)
+            status = QLabel()
+            status.setStyleSheet("font-size: 12px;")
+            status.setTextFormat(Qt.RichText)
+            col.addWidget(status)
+            use = None
+            if aid == vad.MODEL_ID:
+                use = self._check("vad_silero", "Use it for voice detection", self.ctl.apply_vad)
+                col.addWidget(use)
+            body = QLabel(tech)
+            body.setWordWrap(True)
+            body.setStyleSheet("color: gray; font-size: 11px;")
+            body.hide()
+            toggle = QLabel("<a href='#'>Details</a>")
+            toggle.setStyleSheet("font-size: 11px;")
+            toggle.linkActivated.connect(lambda _, b=body, t=toggle: (
+                b.setVisible(b.isHidden()),
+                t.setText(f"<a href='#'>{'Details' if b.isHidden() else 'Hide details'}</a>")))
+            col.addWidget(toggle)
+            col.addWidget(body)
+            outer.addLayout(col, 1)
+            btns = QVBoxLayout()
+            btns.setSpacing(4)
+            dl = QPushButton(line_icon("download", "white"), "Download", objectName="primary")
+            dl.clicked.connect(lambda _=False, a=aid: self.ctl.download_addon(a))
+            rm = QPushButton("Delete")
+            rm.clicked.connect(lambda _=False, a=aid, n=name: self._delete_addon(a, n))
+            btns.addWidget(dl)
+            btns.addWidget(rm)
+            btns.addStretch(1)
+            outer.addLayout(btns)
+            lay.addWidget(f)
+            self.addon_rows[aid] = {"status": status, "dl": dl, "rm": rm, "use": use, "size": size}
+        lay.addStretch(1)
+        return page
+
+    def _update_addons(self):
+        for aid, r in getattr(self, "addon_rows", {}).items():
+            have = (vad.installed() if aid == vad.MODEL_ID else paragraphs.installed()) is not None
+            busy = aid in self.ctl.addon_busy
+            r["status"].setText("<b>Downloading…</b>" if busy else
+                                "<span style='color:#2e9e5b'>✓ Downloaded</span>" if have else
+                                f"<span style='color:gray'>Not downloaded · {r['size']}</span>")
+            r["dl"].setVisible(not have)
+            r["dl"].setEnabled(not busy)
+            r["dl"].setText("Downloading…" if busy else "Download")
+            r["rm"].setVisible(have)
+            if r["use"] is not None:
+                r["use"].setEnabled(have)
+
+    def _delete_addon(self, aid, name):
+        if QMessageBox.question(self, "Delete add-on", f"Delete {name}? You can download it "
+                                "again later.") != QMessageBox.Yes:
+            return
+        if aid == vad.MODEL_ID:
+            vad.remove()
+            self.ctl.apply_vad()
+        else:
+            import shutil
+            shutil.rmtree(paragraphs.root(), ignore_errors=True)
+        self.update_model()
+
     @staticmethod
     def _other_versions(others, lay):
         """Versions this app can't run (another engine or platform), folded behind one link."""
@@ -1111,7 +1206,12 @@ class MainWindow(QMainWindow):
                 tabs.tabBar().setTabData(i, ln.id)
                 if ln.id == shown:
                     tabs.setCurrentIndex(i)
+            i = tabs.addTab(self._addons_page(), line_icon("plus"), "Add-ons")
+            tabs.tabBar().setTabData(i, "addons")
+            if shown == "addons":
+                tabs.setCurrentIndex(i)
             self._model_shape = shape
+        self._update_addons()
         cat = [m for m in model_store.models() if m.available]
         busy = bool(ctl.downloading or ctl.downloading_id)
         rec = model_store.get_model(model_store.recommended_id())

@@ -132,6 +132,22 @@ through `sherpa_onnx.VoiceActivityDetector` (~2 MB model) would be sturdier in s
 1% WER. Revisit if cuts misfire in noisy rooms. Trimming silence to save decode time isn't
 worth it: dictation is mostly speech, and the pauses have to stay (see "Short pauses").
 
+**Silero VAD add-on (unreleased, 2026-10-29; D-2026-10-29-01, reverses the above).** Daniel: "Can't
+hurt to have it as an option." `hebrish/vad.py`: Models > Add-ons downloads sherpa-onnx's
+`silero_vad.onnx` (643,854 bytes, SHA-256 `9e2449e1…1fd6`, from the `asr-models` GitHub release; no
+CDN copy yet) into `<models>/silero-vad/` through `model_store.fetch_files`. `Controller.apply_vad`
+sets `engine.silero` when it is downloaded and `vad_silero` is on (default on); then
+`engine._speech_frames` returns Silero's segments as 20 ms frames (threshold 0.5, min speech 0.1 s,
+min silence 0.25 s), so `has_speech`, `shorten_silences` and the live break check use it. Any
+exception falls back to the energy rule (logged). The take is scaled so its 99.9th-percentile
+sample is 0.5 before Silero sees it (a quiet headset still counts, B-46), and under -70 dBFS is no
+speech. `live_cut` and `stretch_pauses` stay on energy: those cut points are the measured ones.
+History's `decode` records `vad_model` (`silero` | `energy`). Measured 2026-10-29 (V): five
+benchmark test clips padded with 3 s of silence, no speech found in the padding, 108-201 ms per
+12-18 s clip; Gaussian noise for 5 s at 0, -54 and -34 dBFS: 0 speech frames (energy: 0, 0, 145); a
+clip at -30 dB: 85% of frames speech (energy 14%). Not measured: WER on the benchmark with Silero
+on. Tests: `tests/test_vad.py` (set `HEBRISH_SILERO` to the file for the model test).
+
 ## Floating overlay (0.3.0, 2026-10-20)
 
 Daniel: "an optional overlay to match the android app". `ui/overlay.py`. Config `overlay`
