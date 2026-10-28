@@ -11,7 +11,7 @@ a significant improvement **for this failure** on the desktop app. Diagnosis:
 ## Status
 
 answered (2026-10-28). Comparison approved by Daniel and run on 2026-10-28 on the laptop CPU; no
-Modal use (spend US$0). Raw numbers: [`results.json`](results.json); method below, scripts in
+GPU or cloud use. Raw numbers: [`results.json`](results.json); method below, scripts in
 [`scripts/`](scripts/).
 
 ## Findings
@@ -154,7 +154,7 @@ scored (the stock models are not trained on the romanized terms).
    as prompt where the model takes one.
 3. **CPU speed:** each candidate timed on the laptop's CPU (real-time factor) against a live-dictation
    budget.
-4. GPU runs on Modal; budget under US$1.
+4. GPU runs, if any were needed, on Modal (none were).
 
 ## Recommendation
 

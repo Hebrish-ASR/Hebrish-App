@@ -102,7 +102,6 @@ META = dict(
         whisper="openai/whisper-large-v3-turbo, faster-whisper (CTranslate2) int8, mobiuslabsgmbh/faster-whisper-large-v3-turbo, "
                 "language en, beam 1, no VAD filter; prompt = initial_prompt",
         canary="nvidia/canary-1b-v2, onnx-asr int8 export istupakov/canary-1b-v2-onnx, language en, pnc on; no text prompt"),
-    modal_spend_usd=0.0,
 )
 
 

@@ -8,8 +8,7 @@
    "qwen3": "Qwen/Qwen3-ASR-0.6B, sherpa-onnx 2.0.1 from_qwen3_asr, int8 export sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25; prompt = stream option hotwords (system turn)",
    "whisper": "openai/whisper-large-v3-turbo, faster-whisper (CTranslate2) int8, mobiuslabsgmbh/faster-whisper-large-v3-turbo, language en, beam 1, no VAD filter; prompt = initial_prompt",
    "canary": "nvidia/canary-1b-v2, onnx-asr int8 export istupakov/canary-1b-v2-onnx, language en, pnc on; no text prompt"
-  },
-  "modal_spend_usd": 0.0
+  }
  },
  "canary": {
   "takes": {
