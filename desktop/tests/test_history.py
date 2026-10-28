@@ -125,3 +125,52 @@ def test_schema_1_database_gains_the_columns_once(tmp_path):
     rows = [dict(r) for r in h.db.execute("SELECT text, model_rev FROM dictations ORDER BY id")]
     assert rows == [{"text": "old take", "model_rev": None}, {"text": "new take", "model_rev": "r" * 40}]
     History(p)                           # opening again changes nothing
+
+
+def test_daily_counts_last_7_days_with_empty_days(tmp_path):
+    h = make(tmp_path)
+    now = time.time()
+    h.add("one two three", at=now)
+    h.add("four five", at=now)
+    h.add("six", at=now - 2 * 86400)
+    h.add("too old to show", at=now - 9 * 86400)
+    days = h.daily(7, now)
+    assert len(days) == 7
+    assert days[-1]["words"] == 5 and days[-1]["dictations"] == 2
+    assert days[-3]["words"] == 1
+    assert sum(d["words"] for d in days) == 6
+    assert days[0]["day"] < days[-1]["day"]
+
+
+def test_maintain_compacts_and_converts_an_older_file_once(tmp_path):
+    import sqlite3
+    from hebrish.history import maintain
+    path = tmp_path / "history.db"
+    # A file from before 1.009: no auto_vacuum.
+    old = sqlite3.connect(path)
+    old.execute("CREATE TABLE x (y)")
+    old.commit()
+    old.close()
+    h = History(path)
+    assert h.storage()["auto_vacuum"] == 0
+    for i in range(2000):
+        h.add(f"dictation number {i} about shakshuka and the meeting " * 5)
+    assert h.due()
+    for r in h.recent(1500):
+        h.delete(r["id"])
+    first = maintain(path)
+    assert first["vacuumed"] and first["after"] < first["before"]
+    assert h.storage()["auto_vacuum"] == 2
+    assert not h.due()
+    assert h.storage()["maintained"]["at"] == first["at"]
+    assert not (tmp_path / "history.db-wal").exists() or (tmp_path / "history.db-wal").stat().st_size == 0
+    for r in h.recent(400):
+        h.delete(r["id"])
+    second = maintain(path)
+    assert not second["vacuumed"]
+    assert h.storage()["free_bytes"] == 0
+    assert h.count() == 100 and len(h.search("shakshuka")) == 100   # the index survives
+
+
+def test_new_file_uses_incremental_vacuum(tmp_path):
+    assert make(tmp_path).storage()["auto_vacuum"] == 2

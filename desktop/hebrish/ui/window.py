@@ -92,9 +92,13 @@ def human_size(n: float) -> str:
 
 
 def kilo(n: int) -> str:
-    """History counts from 1,000 up, to the nearest thousand: 12,345 -> "12K" (Daniel,
-    2026-10-28). The exact figure goes in the tile's tooltip."""
-    return f"{round(n / 1000):,}K" if n >= 1000 else f"{n:,}"
+    """History counts from 1,000 up, to the nearest thousand: 12,345 -> "12K"; from a million,
+    to the nearest fifth of a million: 1,234,567 -> "1.2M", 1,300,000 -> "1.4M" (Daniel,
+    2026-10-28). Halves round up. The exact figure goes in the tile's tooltip."""
+    if n >= 999_500:                       # would round to 1,000K
+        fifths = int(n / 200_000 + 0.5)
+        return f"{fifths / 5:g}M"
+    return f"{int(n / 1000 + 0.5):,}K" if n >= 1000 else f"{n:,}"
 
 
 def stat_tile(title: str) -> tuple[QFrame, QLabel, QLabel]:
@@ -786,6 +790,12 @@ class MainWindow(QMainWindow):
         self._show_stats()
         self.hist_where.setText(f"{hist.path} ({human_size(hist.size_bytes())}). Text only, no audio. "
                                 "Nothing leaves this computer.")
+
+    def history_maintained(self, out, err):
+        """History upkeep finished (Controller.maintain_history): new size in both places."""
+        self.pages["diagnostics"].show_history_card(out, err)
+        if self.cfg["keep_history"]:
+            self.show_history(keep_limit=True)
 
     def _do_pulse(self):
         self.rec.setProperty("pulse", not self.rec.property("pulse"))

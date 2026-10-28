@@ -926,6 +926,37 @@ clipboard silently dropping a piece.
 
 ## Dictation history: SQLite, search, word counts (0.7.0, 2026-10-22)
 
+**Upkeep, size and volume in Diagnostics (1.009, Daniel 2026-10-29, B-69, B-70;
+[sprint](../../planning/sprints/2026-10-29-history-backend.md)):** before 1.009 nothing gave space
+back: deleted rows left free pages, the FTS5 index grew by one small segment per insert, and
+`history.db-wal` was only ever checkpointed, never truncated. Now:
+
+- New files are created with `auto_vacuum=INCREMENTAL` (set in `History.__init__` before the DDL;
+  it only takes on an empty file) and `journal_size_limit` 4 MB (`WAL_LIMIT`).
+- `hebrish.history.maintain(path)` opens **its own connection** (autocommit, 30 s busy timeout)
+  so it can run in a background thread: FTS5 `'optimize'`, then either a one-off
+  `auto_vacuum=INCREMENTAL` + `VACUUM` (a file from before 1.009: `PRAGMA auto_vacuum` is 0) or
+  `incremental_vacuum`, then `PRAGMA optimize` and `wal_checkpoint(TRUNCATE)`. Its result
+  (`at`, `before`, `after` bytes, `seconds`, `vacuumed`) goes in `meta` key `maintained`.
+  **Trap:** `PRAGMA incremental_vacuum` frees one page per step, and Python's `execute()` steps
+  once; without `.fetchall()` it freed a single page (found by the test, 2026-10-29).
+- The app's connection now has a 10 s busy timeout, so a transcript saved during upkeep waits
+  instead of failing. `Controller.maintain_history` runs it from the 10-minute `_periodic_check`
+  when `History.due()` (24 h since the last run) and only while idle with nothing pending, since
+  the first conversion is a full VACUUM; Diagnostics → *Tidy now* runs it regardless.
+- Diagnostics has a **History** card (`DiagnosticsPage.show_history_card`, refreshed on show and
+  after upkeep, not on the 1 s tick because `stats()` is ~0.1 s at 200,000 rows): words and
+  dictations all told through `window.kilo` (now also fifths of a million from 1M: `1.2M`; Daniel
+  asked for no exact figures there), audio hours, days active, database size (free space in the
+  tooltip) and when it was last tidied. *Show last 7 days* draws words per local day
+  (`History.daily`) as a painted bar chart (`DayBars`), no charting dependency.
+
+Tests: `tests/test_history.py::test_maintain_compacts_and_converts_an_older_file_once`,
+`::test_new_file_uses_incremental_vacuum`, `::test_daily_counts_last_7_days_with_empty_days`,
+`tests/test_history_counts.py`. Verified 2026-10-29 by an off-screen render of the Diagnostics page
+on ~1,000 synthetic rows. **Not yet verified:** the one-off VACUUM on a large real database (it
+holds the write lock for its duration; the 200,000-row file is 170 MB).
+
 **Counts in K, WAL (1.009, Daniel 2026-10-28, B-66):** the History tab's tiles round words and
 dictations from 1,000 up to the nearest thousand (`window.kilo`: 12,345 -> `12K`), with the exact
 figures in each tile's tooltip. `History.__init__` sets `journal_mode=WAL` and `synchronous=NORMAL`,

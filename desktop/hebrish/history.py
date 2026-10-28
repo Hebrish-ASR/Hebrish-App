@@ -12,7 +12,8 @@ Each row has a random `uid` and the database a random `device` id (in `meta`), s
 later be merged across devices or backed up without colliding (Drive backup and accounts are
 planned: planning/backlog.md). Schema changes bump SCHEMA and migrate in _migrate().
 
-Only the GUI thread uses a History object.
+Only the GUI thread uses a History object. Upkeep (`maintain`, 1.009) runs on its own
+connection in a background thread.
 """
 
 import json
@@ -24,6 +25,8 @@ from pathlib import Path
 
 
 SCHEMA = 2      # 2 (0.7.3): model_rev and decode, so mistakes can be traced to exact weights
+MAINTAIN_EVERY_S = 24 * 3600    # upkeep at most about daily (1.009, B-69)
+WAL_LIMIT = 4 * 2**20           # history.db-wal is truncated back to this after a checkpoint
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS dictations (
@@ -78,13 +81,17 @@ class History:
         self.path = Path(path)
         self.audio_dir = self.path.with_name("history-audio")
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(self.path)
+        self.db = sqlite3.connect(self.path, timeout=10)    # waits out upkeep's write lock
         self.db.row_factory = sqlite3.Row
+        # Incremental auto-vacuum (1.009, B-69): pages freed by deletes are returned to the disk by
+        # maintain(). Only takes effect on a new, empty file; maintain() converts older ones once.
+        self.db.execute("PRAGMA auto_vacuum=INCREMENTAL")
         # WAL (1.009): a write appends to history.db-wal instead of rewriting pages under a rollback
         # journal, so the many small writes of a day of dictation cost one fsync at checkpoint, and
         # a reader (export, the dataset tools) never blocks the app. Still crash-safe.
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=NORMAL")
+        self.db.execute(f"PRAGMA journal_size_limit={WAL_LIMIT}")
         self.db.executescript(_DDL)
         self._migrate()
         if self.audio_dir.is_dir():
@@ -265,11 +272,82 @@ class History:
                 n += 1
         return n
 
+    def daily(self, days: int = 7, now: float | None = None) -> list[dict]:
+        """Words and dictations per local day, oldest first, today last, days with none as 0
+        (the Diagnostics chart, 1.009)."""
+        now = now or time.time()
+        out = []
+        for i in range(days - 1, -1, -1):
+            start = _day_start(now - i * 86400)
+            out.append({"day": start, "date": time.strftime("%Y-%m-%d", time.localtime(start)),
+                        "words": 0, "dictations": 0})
+        by_date = {d["date"]: d for d in out}
+        for r in self.db.execute(
+                "SELECT date(at, 'unixepoch', 'localtime'), COUNT(*), SUM(words) FROM dictations "
+                "WHERE at >= ? GROUP BY 1", (out[0]["day"],)):
+            if r[0] in by_date:
+                by_date[r[0]].update(dictations=r[1], words=r[2])
+        return out
+
     def size_bytes(self) -> int:
         n = sum(p.stat().st_size for p in self.path.parent.glob(self.path.name + "*") if p.is_file())
         if self.audio_dir.is_dir():
             n += sum(p.stat().st_size for p in self.audio_dir.glob("*.wav"))
         return n
 
+    def storage(self) -> dict:
+        """What the file holds: bytes on disk (with -wal/-shm), free pages waiting to be
+        reclaimed, and when maintain() last ran (its result)."""
+        page = self.db.execute("PRAGMA page_size").fetchone()[0]
+        last = self.meta("maintained")
+        return {"bytes": self.size_bytes(),
+                "free_bytes": self.db.execute("PRAGMA freelist_count").fetchone()[0] * page,
+                "auto_vacuum": self.db.execute("PRAGMA auto_vacuum").fetchone()[0],
+                "maintained": json.loads(last) if last else None}
+
+    def due(self, now: float | None = None) -> bool:
+        last = self.meta("maintained")
+        return not last or (now or time.time()) - json.loads(last).get("at", 0) >= MAINTAIN_EVERY_S
+
     def close(self):
         self.db.close()
+
+
+def maintain(path: Path) -> dict:
+    """Keep history.db from bloating (1.009, B-69). On its own connection, so it can run in a
+    background thread while the app writes (WAL; the app's connection waits up to 10 s for the
+    lock). Steps, all safe to repeat:
+      1. FTS5 'optimize': many single-row inserts leave the full-text index as many small
+         segments; this merges them into one (smaller, faster to search).
+      2. Free space back to the disk: a file made before 1.009 is switched to incremental
+         auto-vacuum with one VACUUM; after that 'incremental_vacuum' returns freed pages.
+      3. 'PRAGMA optimize': refresh the query planner's statistics.
+      4. Checkpoint the WAL and truncate history.db-wal.
+    Returns {"at", "before", "after", "seconds", "vacuumed"} and stores it in meta 'maintained'."""
+    t0 = time.time()
+
+    def size():
+        return sum(p.stat().st_size for p in Path(path).parent.glob(Path(path).name + "*") if p.is_file())
+
+    before = size()
+    db = sqlite3.connect(path, timeout=30, isolation_level=None)
+    try:
+        db.execute("PRAGMA journal_mode=WAL")
+        db.execute("INSERT INTO dictations_fts(dictations_fts) VALUES ('optimize')")
+        vacuumed = False
+        if db.execute("PRAGMA auto_vacuum").fetchone()[0] != 2:
+            db.execute("PRAGMA auto_vacuum=INCREMENTAL")
+            db.execute("VACUUM")
+            vacuumed = True
+        else:
+            # Each step of this pragma frees one page: without fetchall() only one would be.
+            db.execute("PRAGMA incremental_vacuum").fetchall()
+        db.execute("PRAGMA optimize")
+        db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        out = {"at": t0, "before": before, "after": size(), "seconds": round(time.time() - t0, 2),
+               "vacuumed": vacuumed}
+        db.execute("INSERT OR REPLACE INTO meta(key, value) VALUES ('maintained', ?)", (json.dumps(out),))
+        db.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        return out
+    finally:
+        db.close()

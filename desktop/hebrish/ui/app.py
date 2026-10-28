@@ -26,7 +26,7 @@ from .. import __version__, app_update, audio, autostart, dictionary, disfluency
 from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
 from ..engine import REF_S, Engine, after_held_stop, hold_stop, live_split
-from ..history import History
+from ..history import History, maintain
 from ..hotkey import make_listener
 from ..inserter import copy_to_clipboard, make_inserter
 from . import about
@@ -83,6 +83,7 @@ class Signals(QObject):
     downloaded = Signal(object, object)
     app_checked = Signal(object, object, bool)  # app_update.Release or None, error, manual
     app_updated = Signal(bool, str)             # ok, message: the pkexec apt upgrade
+    maintained = Signal(object, object)         # history upkeep: result dict or None, error
 
 
 def _before(pieces: list, n: int):
@@ -142,6 +143,8 @@ class Controller(QObject):
         self.sig.moved.connect(self._moved)
         self.sig.app_checked.connect(self._app_checked)
         self.sig.app_updated.connect(self._app_updated)
+        self.sig.maintained.connect(self._history_maintained)
+        self.maintaining = False
         self.app_release: app_update.Release | None = None    # newer than this app, else None
         self.app_method = app_update.install_method()         # apt | deb-manual | windows | source
         self.app_updating = False
@@ -747,6 +750,29 @@ class Controller(QObject):
         self.history.clear()
         self.win.show_history()
 
+    def maintain_history(self, manual=False):
+        """History upkeep (1.009, B-69: hebrish.history.maintain) in a background thread, about
+        daily from the 10-minute check, or from Diagnostics → Tidy now. Only while idle: the first
+        run on an older file is a full VACUUM, and a transcript saved meanwhile waits for it."""
+        if self.maintaining or (self.state != "idle" or self.pending) and not manual:
+            return
+        self.maintaining = True
+
+        def go():
+            try:
+                self.sig.maintained.emit(maintain(self.history.path), None)
+            except Exception as e:
+                log.exception("history upkeep failed")
+                self.sig.maintained.emit(None, e)
+        threading.Thread(target=go, daemon=True, name="history-upkeep").start()
+
+    def _history_maintained(self, out, err):
+        self.maintaining = False
+        if out:
+            log.info("history upkeep: %d -> %d bytes in %.2f s%s", out["before"], out["after"],
+                     out["seconds"], " (converted to incremental vacuum)" if out["vacuumed"] else "")
+        self.win.history_maintained(out, err)
+
     def set_state(self, state):
         log.info("state %s -> %s", self.state, state)
         self.state = state
@@ -899,6 +925,8 @@ class Controller(QObject):
         last_app = load_json(STATE_PATH).get("app_last_check", 0)
         if self.cfg["app_update_check"] and time.time() - last_app >= APP_CHECK_S:
             self.check_app_update()
+        if self.history.due():
+            self.maintain_history()
 
     def download(self, manifest):
         if self.downloading:

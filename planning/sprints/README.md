@@ -24,3 +24,4 @@ Contributors without them: copy the newest file and follow the format above.
 | Sprint | Platforms | Status | Defined |
 | --- | --- | --- | --- |
 | [Sentence boundaries at pauses and stop/restart](2026-10-28-sentence-boundaries.md) | desktop, Android | planned | 2026-10-28 |
+| [History backend, statistics and viewer](2026-10-29-history-backend.md) | desktop, Android | in progress | 2026-10-29 |

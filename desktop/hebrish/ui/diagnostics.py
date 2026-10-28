@@ -6,6 +6,10 @@ Numbers come from Engine.stats (one record per decoded piece: audio seconds, dec
 output tokens) and Controller.latencies (stop -> text inserted), averaged over the last N.
 Run benchmark decodes the bundled voice prompts (~10 s: 6 s of speech, 0.5 s gaps) three times, so there
 are numbers before anyone has dictated.
+
+The History card (1.009, Daniel 2026-10-28) shows the transcription volume all told (rounded: K, then
+fifths of a million in M), the database's size and upkeep (B-69), and, on request, words per day
+over the last 7 days.
 """
 
 import json
@@ -17,7 +21,8 @@ import time
 import wave
 
 import numpy as np
-from PySide6.QtCore import QObject, Qt, QTimer, Signal
+from PySide6.QtCore import QObject, QRectF, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (QComboBox, QGridLayout, QHBoxLayout, QHeaderView, QLabel,
                                QPushButton, QScrollArea, QFrame, QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
@@ -103,6 +108,52 @@ def verdict(x_rt: float | None) -> tuple[str, str]:
             "a smaller model or quantization, is needed."), "#D62828"
 
 
+class DayBars(QWidget):
+    """Words per day as bars, oldest left, today right, each labelled with its rounded count and
+    weekday. Painted directly: one small chart doesn't justify a charting dependency."""
+
+    def __init__(self):
+        super().__init__()
+        self.days: list[dict] = []
+        self.setMinimumHeight(150)
+
+    def set_days(self, days):
+        self.days = days
+        self.update()
+
+    def paintEvent(self, _e):
+        from .style import colours
+        from .window import kilo
+        if not self.days:
+            return
+        c = colours()
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        fm = p.fontMetrics()
+        lh = fm.height()
+        top, bottom = lh + 4, self.height() - lh - 6       # room for value above, day below
+        slot = self.width() / len(self.days)
+        peak = max(d["words"] for d in self.days) or 1
+        for i, d in enumerate(self.days):
+            x = i * slot
+            w = min(slot * 0.6, 48)
+            bx = x + (slot - w) / 2
+            h = (bottom - top) * d["words"] / peak
+            if d["words"]:
+                h = max(h, 2)
+                p.setPen(Qt.NoPen)
+                p.setBrush(QColor(c["accent"]))
+                p.drawRoundedRect(QRectF(bx, bottom - h, w, h), 3, 3)
+            p.setPen(QColor(c["ink"] if d["words"] else c["muted"]))
+            p.drawText(QRectF(x, bottom - h - lh - 2, slot, lh), Qt.AlignCenter, kilo(d["words"]))
+            p.setPen(QColor(c["muted"]))
+            label = "Today" if i == len(self.days) - 1 else time.strftime("%a", time.localtime(d["day"]))
+            p.drawText(QRectF(x, bottom + 4, slot, lh), Qt.AlignCenter, label)
+        p.setPen(QColor(c["line"]))
+        p.drawLine(0, int(bottom), self.width(), int(bottom))
+        p.end()
+
+
 class _Sig(QObject):
     bench_done = Signal(object)
 
@@ -168,6 +219,38 @@ class DiagnosticsPage(QScrollArea):
         b.addWidget(self.system)
         lay.addWidget(box)
 
+        box, b = card("History")
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(18)
+        grid.setVerticalSpacing(6)
+        self.hist_vals = {}
+        for i, (key, label) in enumerate([("words", "Words transcribed"), ("dictations", "Dictations"),
+                                          ("audio", "Audio transcribed"), ("days", "Days active"),
+                                          ("size", "Database size"), ("upkeep", "Last tidied")]):
+            val = QLabel("–")
+            val.setStyleSheet("font-size: 15px; font-weight: 700;")
+            val.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            grid.addWidget(QLabel(label), i // 2, (i % 2) * 2)
+            grid.addWidget(val, i // 2, (i % 2) * 2 + 1)
+            self.hist_vals[key] = val
+        b.addLayout(grid)
+        self.chart = DayBars()
+        self.chart.hide()
+        b.addWidget(self.chart)
+        row = QHBoxLayout()
+        self.btn_chart = QPushButton("Show last 7 days")
+        self.btn_chart.setCheckable(True)
+        self.btn_chart.toggled.connect(self._toggle_chart)
+        self.btn_tidy = QPushButton("Tidy now")
+        self.btn_tidy.setToolTip("Compact the search index and give freed space back to the disk. "
+                                 "Runs by itself about once a day.")
+        self.btn_tidy.clicked.connect(self._tidy)
+        row.addWidget(self.btn_chart)
+        row.addWidget(self.btn_tidy)
+        row.addStretch(1)
+        b.addLayout(row)
+        lay.addWidget(box)
+
         box, b = card("Recent decodes")
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(["Time", "Audio s", "Decode s", "Tokens", "Tok/s", "× real time"])
@@ -196,6 +279,52 @@ class DiagnosticsPage(QScrollArea):
         self._timer = QTimer(self, interval=1000, timeout=self._tick)
         self._timer.start()
         self._shown = -1
+
+    def showEvent(self, e):
+        super().showEvent(e)
+        self.show_history_card()
+
+    def show_history_card(self, out=None, err=None):
+        """Totals all told (rounded, no exact figures: Daniel, 2026-10-28), size and upkeep.
+        Not on the 1 s tick: stats() is ~0.1 s at 200,000 rows."""
+        from .window import human_size, kilo
+        hist = self.ctl.history
+        if err:
+            self.ctl.win.status(f"Tidying history failed: {err}")
+        elif out:
+            freed = out["before"] - out["after"]
+            self.ctl.win.status(f"History tidied: {human_size(out['after'])}"
+                                + (f", {human_size(freed)} freed." if freed > 0 else "."))
+        self.btn_tidy.setEnabled(not self.ctl.maintaining)
+        self.btn_tidy.setText("Tidying…" if self.ctl.maintaining else "Tidy now")
+        if not self.isVisible():
+            return
+        stats = hist.stats()
+        a, days = stats["all"], stats["days_active"]
+        st = hist.storage()
+        hours = a["seconds"] / 3600
+        last = st["maintained"]
+        self.hist_vals["words"].setText(kilo(a["words"]))
+        self.hist_vals["dictations"].setText(kilo(a["dictations"]))
+        self.hist_vals["audio"].setText(f"{hours:.1f} h" if hours >= 1.5 else f"{a['seconds'] / 60:.0f} min")
+        self.hist_vals["days"].setText(f"{days:,}")
+        self.hist_vals["size"].setText(human_size(st["bytes"]))
+        self.hist_vals["size"].setToolTip(f"{hist.path}\n{human_size(st['free_bytes'])} free inside the file, "
+                                          "reclaimed at the next tidy")
+        self.hist_vals["upkeep"].setText(time.strftime("%d %b, %H:%M", time.localtime(last["at"]))
+                                         if last else "not yet")
+        if self.chart.isVisible():
+            self.chart.set_days(hist.daily(7))
+
+    def _toggle_chart(self, on):
+        self.chart.setVisible(on)
+        self.btn_chart.setText("Hide last 7 days" if on else "Show last 7 days")
+        if on:
+            self.chart.set_days(self.ctl.history.daily(7))
+
+    def _tidy(self):
+        self.ctl.maintain_history(manual=True)
+        self.show_history_card()
 
     def _tick(self):
         if self.isVisible() and len(self.ctl.engine.stats) != self._shown:
