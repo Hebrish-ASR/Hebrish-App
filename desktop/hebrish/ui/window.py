@@ -41,6 +41,7 @@ OUTPUT_TIPS = {"out_cursor": "Paste each piece where your cursor is, as you talk
 PASTE_CHORDS = [("ctrl+v", "Paste with Ctrl+V"), ("ctrl+shift+v", "Paste with Ctrl+Shift+V (terminals)")]
 FEEDBACK = [("beeps", "Beeps (start and stop)"), ("voice", "Voice (“Recording”, “Paused”, “Transcribing”…)"),
             ("off", "Off")]
+QUIET_SOUND = [("off", "no sounds"), ("soft", "soft beeps only")]
 # Saved silently, so no toast: moving the overlay
 NO_TOAST = {"overlay_pos", "tm_gain_db", "tm_levels", "tm_audio_device", "mics"}
 
@@ -1264,7 +1265,12 @@ class MainWindow(QMainWindow):
         form = QFormLayout()
         form.setLabelAlignment(Qt.AlignRight)
         form.addRow("Feedback", self._combo("feedback", FEEDBACK, lambda: (
-            voice.setEnabled(self.cfg["feedback"] == "voice"), self.ctl.cue("recording"))))
+            voice.setEnabled(self.cfg["feedback"] == "voice"),
+            style.setEnabled(self.cfg["feedback"] == "beeps"), self.ctl.cue("recording"))))
+        style = self._combo("beep_style", audio.BEEP_STYLE_NAMES, lambda: self.ctl.cue("recording"))
+        style.setEnabled(self.cfg["feedback"] == "beeps")
+        style.setToolTip("Soft is lower, quieter and gentler: for the evening, or a shared room")
+        form.addRow("Beep", style)
         voice = self._combo("voice", audio.VOICES, lambda: self.ctl.cue("recording"))
         voice.setEnabled(self.cfg["feedback"] == "voice")
         voice.setToolTip("Herman, Corn and Hilbert are the voices of the My Weird Prompts podcast")
@@ -1285,8 +1291,10 @@ class MainWindow(QMainWindow):
                           "Corn's or Hilbert's voice. Nothing is said when the text arrives: you "
                           "can see it. The microphone ignores the prompt while it plays, so it "
                           "never ends up in your text."))
-        b.addWidget(self._check("quiet_hours", "Quiet hours: no sounds between"))
         row = QHBoxLayout()
+        row.addWidget(self._check("quiet_hours", "Quiet hours:"))
+        row.addWidget(self._combo("quiet_sound", QUIET_SOUND))
+        row.addWidget(QLabel("between"))
         for key in ("quiet_from", "quiet_to"):
             te = QTimeEdit(QTime.fromString(self.cfg[key], "HH:mm"), displayFormat="HH:mm")
             te.timeChanged.connect(lambda t, k=key: self.cfg.set(k, t.toString("HH:mm")))

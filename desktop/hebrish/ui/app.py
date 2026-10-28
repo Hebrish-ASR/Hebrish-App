@@ -266,16 +266,21 @@ class Controller(QObject):
         return self.state == "idle" or (self.state == "busy" and self.pending > 0 and not self.loading)
 
     def cue(self, event: str) -> float:
-        """Audible feedback (config `feedback`): beeps for start and stop, or a spoken prompt
-        for each event (audio.VOICE_PROMPTS) in the chosen `voice`. Nothing when the text
+        """Audible feedback (config `feedback`): beeps (in `beep_style`) for start and stop, or a
+        spoken prompt for each event (audio.VOICE_PROMPTS) in the chosen `voice`. In quiet hours,
+        nothing, or soft beeps with `quiet_sound` "soft". Nothing when the text
         arrives: it is visible. Returns how long it plays (seconds), for Recorder.mute."""
-        mode, vol = self.cfg["feedback"], self.cfg["beep_volume"] / 100
-        if mode == "off" or not vol or in_quiet_hours(self.cfg):
+        mode, vol, style = self.cfg["feedback"], self.cfg["beep_volume"] / 100, self.cfg.get("beep_style", "classic")
+        if mode == "off" or not vol:
             return 0.0
+        if in_quiet_hours(self.cfg):
+            if self.cfg.get("quiet_sound") != "soft":
+                return 0.0
+            mode, style = "beeps", "soft"
         if mode == "voice":
             return audio.say(event, self.cfg["voice"], volume=0.5 * vol)
         if event in BEEPS:
-            return audio.beep(BEEPS[event], volume=0.5 * vol)
+            return audio.beep(BEEPS[event], volume=0.5 * vol, style=style)
         return 0.0
 
     def cancel(self, quiet=False):

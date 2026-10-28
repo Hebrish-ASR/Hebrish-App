@@ -79,8 +79,10 @@ DEFAULTS = {
     "all_caps": False,            # type everything in capitals, just for fun (0.7.2)
     "feedback": "beeps",          # beeps | voice (spoken status: data/voice/<voice>/) | off
     "voice": "herman",            # herman | corn | hilbert (audio.VOICES; 0.7.0)
+    "beep_style": "classic",      # classic | soft | chime (audio.BEEP_STYLES; 1.008)
     "beep_volume": 50,            # %; 50 = the 0.3.x level; also the voice volume
-    "quiet_hours": False,         # no beeps or voice between quiet_from and quiet_to (may cross midnight)
+    "quiet_hours": False,         # between quiet_from and quiet_to (may cross midnight): quiet_sound
+    "quiet_sound": "off",         # off (no beeps or voice) | soft (soft beeps, in voice mode too; 1.008)
     "quiet_from": "22:00",
     "quiet_to": "07:00",
     "audio_device": "",           # "" = system default; audio.PREFERRED = the first connected mic in

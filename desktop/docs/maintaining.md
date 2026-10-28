@@ -89,6 +89,12 @@ saved.
 - **Beeps:** `beep_volume` % (50 = the old amplitude 0.25), `quiet_hours` with `quiet_from` /
   `quiet_to` "HH:MM", which may cross midnight (`config.in_quiet_hours`). Only
   `Controller.cue` plays dictation sounds (0.4.0: `_beep`; see 0.5.0 below). The volume slider plays a test beep on release.
+- **Beep styles (1.008, Daniel 2026-10-28):** `beep_style` classic | soft | chime
+  (`audio.BEEP_STYLES`: pitch factor, length, fades, octave, gain, decay per style; the event
+  pitches in `ui/app.py` `BEEPS` are shared). Soft is a fifth lower, a pure sine with slow fades
+  at half the level, for the evening or a shared room. `quiet_sound` decides quiet hours: "off"
+  (silent, the behaviour up to 1.007) or "soft" (soft beeps, even when `feedback` is voice).
+  Changing the Beep combo plays a test beep.
 - **Toast:** `Config.on_set` is called after every `Config.set`. The window shows "Settings
   saved" for 1.6 s, only while it is visible, and not for `overlay_pos` (dragging the overlay).
 

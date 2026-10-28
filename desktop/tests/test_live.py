@@ -395,3 +395,13 @@ def test_unk_never_reaches_the_text():
     assert drop_unk("manually<unk> we can") == "manually we can"
     assert drop_unk("helpful <unk> checking") == "helpful checking"
     assert drop_unk("no marks here") == "no marks here"
+
+
+def test_beep_styles_are_well_formed():
+    from hebrish.audio import BEEP_STYLE_NAMES, BEEP_STYLES, _pip
+    import numpy as np
+    assert DEFAULTS["beep_style"] in BEEP_STYLES and {k for k, _ in BEEP_STYLE_NAMES} == set(BEEP_STYLES)
+    peak = {k: float(np.abs(_pip(880, k, 0.25, 48000)).max()) for k in BEEP_STYLES}
+    assert all(0 < v <= 0.25 for v in peak.values())
+    assert peak["soft"] < 0.6 * peak["classic"]           # soft is clearly quieter
+    assert DEFAULTS["quiet_sound"] == "off"               # quiet hours stay silent unless chosen
