@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated 2026-10-25. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
+Last updated 2026-10-28. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
 `released <version>`. Work is queued in **one sprint per platform** (desktop = Ubuntu + Windows,
 which share `desktop/`; Android). A sprint ends with a release, when the release gate below says so. Parity is the aim (decision
 D-2026-10-22-05): an item done on one platform gets a matching item in the other sprint, unless
@@ -24,6 +24,14 @@ Contributors: this is why a merged change may wait for the next release.
 | Sprint items | B-39 / B-39a numbers to digits; B-40 S1-mini by Superwhisper finishing step (desktop); the Transcription Mode follow-ups still open (B-25 tidy-and-save view); B-45 / B-45a Transcription Mode Pause button and levels docked by default |
 | Waiting to ship | Plain model descriptions on the Models page with Technical details, and the What's new list baked from hebrish.app/changelog (both apps, 2026-10-25; `shared/updates.json`, `scripts/bake_updates.py`) |
 | Hotfix rule | Only a release that is broken for users (won't install, crashes on start, loses data) ships early, and Daniel is told |
+
+## Cross-platform sprints
+
+One goal across platforms, with measurable targets: one file each in [sprints/](sprints/README.md). Their items use `B-<n>` ids from this file's sequence.
+
+| Sprint | Platforms | Items | Status |
+| --- | --- | --- | --- |
+| [Sentence boundaries at pauses and stop/restart](sprints/2026-10-28-sentence-boundaries.md) | desktop, Android | B-54 to B-64 | planned (2026-10-28) |
 
 ## Sprint plan (2026-10-22)
 

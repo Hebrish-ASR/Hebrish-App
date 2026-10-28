@@ -72,7 +72,7 @@ problem.
 
 ## Fix
 
-Unfixed. Options, in the order proposed on 2026-10-28:
+Unfixed. Planned as [Sprint: sentence boundaries](../../planning/sprints/2026-10-28-sentence-boundaries.md) (B-54 to B-64, 2026-10-28). Options, in the order proposed on 2026-10-28:
 
 1. Context across takes: when a take starts within ~20 s of the last one, decode it after the last
    3 s of that take (as `transcribe_after` does for pieces). If the model continues the sentence,

@@ -6,6 +6,7 @@ credited), or an issue link. Outcome links the backlog item, or says why not.
 
 | Id | Date | From | Platforms | Request | Outcome |
 | --- | --- | --- | --- | --- | --- |
+| R-2026-10-28-1 | 2026-10-28 | Daniel | All | Thinking pauses, fillers and stopping and restarting a take put full stops and capitals in the middle of sentences (Ubuntu most used, Android reported worse); tune whatever can be tuned, on both platforms, as one sprint | [Sprint: sentence boundaries](sprints/2026-10-28-sentence-boundaries.md) (B-54 to B-64); [debug log](../docs/debug-log/2026-10-28-false-sentence-breaks-remain.md) |
 | R-2026-10-27-3 | 2026-10-27 | Daniel | All | Repeated words and false starts come through ("I really wanted, wanted to go home", "could we change, change, change? change the dataset") and ellipses for trailing-off thoughts; stop a word repeating more than twice, keeping deliberate doubles like "really, really" | [B-52](backlog.md#sprint-desktop-ubuntu--windows-toward-070); D-2026-10-27-01 |
 | R-2026-10-27-2 | 2026-10-27 | Daniel | Desktop | Rename the dictation mode (Voice Typing), and make the app look like hebrish.app (colour, type, icons) without old-school "dictation" or Silicon Valley hype in the messaging | [B-51](backlog.md#sprint-desktop-ubuntu--windows-toward-070); D-2026-10-27-03 |
 | R-2026-10-27-1 | 2026-10-27 | Daniel | Desktop | In Claude Code: Enter pressed before the last words are in sends without them, and they then land in the next prompt. Stop both | [B-50](backlog.md#sprint-desktop-ubuntu--windows-toward-070); D-2026-10-27-02 |
