@@ -9,6 +9,28 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-28-01: History stays on SQLite; semantic search adds sqlite-vec to the same file
+
+- **Decision:** `history.db` stays SQLite (FTS5 keyword search, WAL journaling from 1.009, B-66) on
+  desktop and Android. Semantic search (B-16, B-16a) stores its vectors in the same database through
+  the sqlite-vec extension, with embeddings computed on the device by a downloadable model. Parquet
+  is an export format (B-67), not storage.
+- **Why:** Daniel asked (2026-10-28) whether a document database such as MongoDB, or another
+  document-native store with semantic search, would be more robust. The history is one user's
+  rows with a fixed schema on one device; SQLite is transactional, needs no server, already holds
+  the FTS index, stores JSON columns (`decode`), and is what Android uses, so parity holds. Scale
+  check (2026-10-28, synthetic 200,000 rows, 46 M characters, 170 MB): search 219 ms, stats 126 ms,
+  insert 0.2 ms.
+- **Alternatives:** MongoDB (needs a server); PoloDB, TinyDB, UnQLite (document stores, no vector
+  search); LanceDB and Milvus Lite (embedded vector stores, not document stores, no Android, pyarrow
+  weight for LanceDB; Milvus Lite allows one process per data directory); DuckDB with its vector
+  extension (experimental; better as an export and analysis tool); Couchbase Lite (document store
+  with vector search, but no official Python SDK for the desktop app; vector search edition terms
+  unverified). Comparison done 2026-10-28 from web sources; sqlite-vec's current release status
+  was not confirmed and is to be checked when B-16 starts.
+- **By:** Daniel, on the agent's recommendation. Links: R-2026-10-28-5, R-2026-10-28-6, B-16, B-16a,
+  B-66, B-67.
+
 ### D-2026-10-27-03: The dictation mode is Voice Typing; the desktop UI takes the hebrish.app brand
 
 - **Decision:** The desktop's Dictate tab and mode are **Voice Typing** in the UI (config keys and
