@@ -2,6 +2,7 @@
 energy rule if it fails; the bundled model is the pinned file and ignores steady noise."""
 
 import numpy as np
+import pytest
 from hebrish import engine, vad
 
 
@@ -34,6 +35,7 @@ def test_bundled_model_is_the_pinned_file():
 
 
 def test_silero_ignores_steady_noise_and_silence():
+    pytest.importorskip("sherpa_onnx")                     # Linux CI has no sherpa-onnx (Windows CI runs it)
     s = vad.Silero(vad.BUNDLED)
     rng = np.random.default_rng(0)
     for level in (0.0, 0.002, 0.02):
