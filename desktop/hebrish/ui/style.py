@@ -23,6 +23,9 @@ ACCENT_HOVER = BLUE_HOVER = BRAND_GREEN_HOVER
 RED = "#D62828"
 RED_PULSE = "#ef4b4b"
 AMBER = "#E8A317"
+# Transcription recorder's round buttons (1.012): one colour per action, white icon on each.
+TAPE_COLOURS = {"record": RED, "pause": AMBER, "stop": "#3f4b57", "retake": "#2f6fb5",
+                "discard": "#7b8794", "transcribe": BRAND_GREEN}
 _display_family = None
 
 
@@ -61,7 +64,13 @@ def colours() -> dict:
 
 
 def qss() -> str:
+    from PySide6.QtGui import QColor
     c = colours()
+    tape = "\n".join(f'#tapeButton[kind="{k}"] {{ background: {v}; }}\n'
+                     f'#tapeButton[kind="{k}"]:hover {{ background: {QColor(v).darker(115).name()}; }}\n'
+                     f'#tapeButton[kind="{k}"]:disabled {{ background: rgba({QColor(v).red()}, '
+                     f'{QColor(v).green()}, {QColor(v).blue()}, 0.3); }}'
+                     for k, v in TAPE_COLOURS.items())
     return f"""
 #header {{ background: {c['head']}; border-bottom: 1px solid {c['line']}; }}
 #header QLabel {{ color: {c['ink']}; }}
@@ -91,6 +100,9 @@ QTabBar::tab:hover:!selected {{ border-bottom: 3px solid {c['line']}; }}
 #record[state="recording"][pulse="true"] {{ background: {RED_PULSE}; }}
 #record[state="busy"] {{ background: {AMBER}; color: {INK}; }}
 #record:disabled {{ background: palette(mid); }}
+
+#tapeButton {{ border: none; border-radius: 20px; }}
+{tape}
 
 #primary {{ background: {c['accent']}; color: {c['on_accent']}; border: none; border-radius: 6px;
            padding: 6px 14px; font-weight: 600; }}

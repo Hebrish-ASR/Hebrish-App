@@ -842,6 +842,20 @@ the tab still works), the transcript below.
   leftover: *Transcribe it* / *Delete*.
 - **Dictation vs Transcription Mode:** `ctl.start` refuses (notification) while the tape
   records; Record refuses while a dictation take is running. Test mic is stopped on Record.
+- **The transcript box is Transcription Mode's alone (1.012, 2026-10-29, Daniel):** with "At the
+  cursor" on, a Voice Typing take pasted into whatever had focus, and that could be this box, so
+  dictation text mixed into a transcript. `TranscribePage.box_focused` (a bool kept by
+  `QApplication.focusChanged`, so the decode thread can read it) is checked by `Controller._insert`,
+  `_sends` and `paste_last`: while the box has focus nothing is pasted or sent; at the end of the take
+  `_done` copies it to the clipboard (if that output is off) and says so in the status bar. History
+  gets it as usual. (Checked first, V: the 109-word transcript in Daniel's 2026-10-29 screenshot was
+  his own 15:40 Transcription recording, History `source = "record"`, left in the box; the box has
+  never been fed by `sig.piece`, which goes only to Voice Typing's text box.)
+- **Controls (1.012, Daniel):** round 40 px icon buttons (`_tape_button`, QSS `#tapeButton[kind=…]`),
+  white line icons on one colour per action (`style.TAPE_COLOURS`): Record red, Pause/Resume amber,
+  Stop slate, Retake blue, Discard grey, Transcribe brand green with a send arrow (`line-send.svg`).
+  Disabled = the same colour at 30 %. Order: Record, Pause, Stop, Retake, Discard, Transcribe. The
+  label stays as the button's text (tooltip, accessible name, tests) but isn't drawn.
 - **History fix that came with it:** a File/recording transcript used to be stored as the whole
   text box, so a second file in the same session duplicated the first in History. Now only the
   text this transcription added is stored (`_from`).

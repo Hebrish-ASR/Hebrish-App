@@ -56,6 +56,11 @@ ENTER_HOLD_S = 4.0
 BEEPS = {"recording": 880, "transcribing": 620, "discarded": (660, 440), "retake": (523, 880)}
 
 
+def _in_tm_box(win) -> bool:
+    """The Transcription tab's text box has focus (a bool, safe from the decode thread)."""
+    return getattr(getattr(win, "transcribe", None), "box_focused", False) is True
+
+
 def icon(name: str) -> QIcon:
     return QIcon(str(ICONS / f"{name}.svg"))
 
@@ -99,6 +104,8 @@ def _before(pieces: list, n: int):
 
 
 class Controller(QObject):
+    _kept_out_of_tm = False    # a take wasn't pasted: the Transcription box had focus (1.012)
+
     def __init__(self, hidden: bool, splash=None):
         super().__init__()
         from .window import MainWindow
@@ -362,6 +369,9 @@ class Controller(QObject):
             text = rows[0]["text"] if rows else ""
         if not text:
             self.win.status("No transcription to paste yet.")
+            return
+        if _in_tm_box(getattr(self, "win", None)):
+            self.win.status("Paste last doesn't paste into the Transcription box.")
             return
         self._clear_no_field()
         self._clear_late()
@@ -640,7 +650,12 @@ class Controller(QObject):
     def _insert(self, text):
         """A piece out of the app (decode thread): pasted at the cursor, or, with only the
         clipboard on, copied. The window is [_show]'s; the whole take's copy is [_done]'s."""
-        if self.cfg["out_cursor"]:
+        if self.cfg["out_cursor"] and _in_tm_box(getattr(self, "win", None)):
+            # Voice Typing never types into the Transcription box (1.012, Daniel): that box is
+            # Transcription Mode's alone. The take goes to History and the clipboard instead.
+            self._kept_out_of_tm = True
+            log.info("not pasted: the Transcription box has focus")
+        elif self.cfg["out_cursor"]:
             wait = PASTE_GAP_S - (time.monotonic() - self._pasted_at)
             if wait > 0:
                 time.sleep(wait)
@@ -659,7 +674,8 @@ class Controller(QObject):
     def _sends(self, job) -> bool:
         """Stop and send presses send_chord after this take: not if the user already sent."""
         with self._guard:
-            return self.cfg["out_cursor"] and job not in self._diverted and not self._enter_held
+            return (self.cfg["out_cursor"] and job not in self._diverted and not self._enter_held
+                    and not _in_tm_box(getattr(self, "win", None)))
 
     def _send(self):
         """Stop and send: press send_chord after the take's last paste (decode thread)."""
@@ -691,6 +707,12 @@ class Controller(QObject):
             if self.state != "recording":          # "Inserted" for a moment, unless the next take is on
                 self._overlay_done = True
                 QTimer.singleShot(1100, self._overlay_clear_done)
+            if self._kept_out_of_tm:
+                self._kept_out_of_tm = False
+                if not self.cfg["out_clipboard"]:
+                    self._copy_take(text.upper() if self.cfg["all_caps"] else text)
+                self.win.status("Voice Typing doesn't type into the Transcription box. "
+                                "The take is on the clipboard and in History.")
             if self.cfg["out_clipboard"]:
                 # The whole take, not just its last piece (1.000). After a paste, wait for the
                 # target app to read the clipboard first, or it would paste the whole take.

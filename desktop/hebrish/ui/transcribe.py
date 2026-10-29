@@ -22,9 +22,9 @@ import threading
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QObject, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QObject, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QIcon, QTextCursor
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel,
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel,
                                QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider,
                                QToolButton, QVBoxLayout, QWidget)
 
@@ -72,6 +72,25 @@ class _LevelsWindow(QWidget):
     def closeEvent(self, ev):
         super().closeEvent(ev)
         self.closed.emit()
+
+
+# Transcription recorder buttons: kind -> line icon. Colours are in style.TAPE_COLOURS.
+TAPE_KINDS = {"record": "record", "pause": "pause", "stop": "stop", "retake": "undo",
+              "discard": "trash", "transcribe": "send"}
+
+
+def _tape_button(kind: str, label: str, tip: str) -> QToolButton:
+    b = QToolButton(objectName="tapeButton", text=label)
+    b.setProperty("kind", kind)
+    b.setIcon(line_icon(TAPE_KINDS[kind], "white"))
+    b.setIconSize(QSize(20, 20))
+    b.setToolButtonStyle(Qt.ToolButtonIconOnly)
+    b.setFixedSize(40, 40)
+    b.setCursor(Qt.PointingHandCursor)
+    b.setAccessibleName(label)
+    if tip:
+        b.setToolTip(f"{label}: {tip[0].lower()}{tip[1:]}")
+    return b
 
 
 def _clock(s: float) -> str:
@@ -200,26 +219,22 @@ class TranscribePage(QWidget):
         self._levels_state = state if state in LEVELS else "docked"
 
         row = QHBoxLayout()
-        self.btn_rec = QPushButton(line_icon("record"), "Record")
-        self.btn_rec.setToolTip("Start a recording")
+        # Round icon buttons (1.012, Daniel): the overlay's and Android's record controls, one
+        # colour per action (TAPE_KINDS), white line icons; the label is the tooltip and the
+        # accessible name. Transcribe is a send arrow in the brand green.
+        self.btn_rec = _tape_button("record", "Record", "Start a recording")
         self.btn_rec.clicked.connect(self._record)
-        self.btn_pause = QPushButton(line_icon("pause"), "Pause")
+        self.btn_pause = _tape_button("pause", "Pause", "")
         self.btn_pause.clicked.connect(self._pause)
-        self.btn_retake = QPushButton(line_icon("undo"), "Retake")
-        self.btn_retake.setToolTip("Throw this recording away and start again")
+        self.btn_retake = _tape_button("retake", "Retake", "Throw this recording away and start again")
         self.btn_retake.clicked.connect(self._retake)
-        self.btn_stop = QPushButton(line_icon("stop"), "Stop")
-        self.btn_stop.setToolTip("Stop recording and keep the audio, to transcribe when you're ready")
+        self.btn_stop = _tape_button("stop", "Stop", "Stop recording and keep the audio, to transcribe when you're ready")
         self.btn_stop.clicked.connect(self._stop)
-        self.btn_go = QPushButton("Transcribe", objectName="primary")
-        self.btn_go.setToolTip("Stop (if recording) and transcribe")
+        self.btn_go = _tape_button("transcribe", "Transcribe", "Stop (if recording) and transcribe")
         self.btn_go.clicked.connect(self._transcribe_tape)
-        self.btn_drop_tape = QToolButton()
-        self.btn_drop_tape.setIcon(line_icon("trash"))
-        self.btn_drop_tape.setText("✕")
-        self.btn_drop_tape.setToolTip("Discard this recording")
+        self.btn_drop_tape = _tape_button("discard", "Discard", "Discard this recording")
         self.btn_drop_tape.clicked.connect(self._discard)
-        for w in (self.btn_rec, self.btn_pause, self.btn_retake, self.btn_stop, self.btn_go, self.btn_drop_tape):
+        for w in (self.btn_rec, self.btn_pause, self.btn_stop, self.btn_retake, self.btn_drop_tape, self.btn_go):
             row.addWidget(w)
         row.addStretch(1)
         # Light and elapsed time: small, at the end of the controls, so they are there when you
@@ -293,6 +308,11 @@ class TranscribePage(QWidget):
                                      "follow the Paragraphs setting above.")
         self.text.setStyleSheet("font-size: 14px;")
         b.addWidget(self.text, 1)
+        # Voice Typing's paste at the cursor stays out of this box (1.012): read from the decode
+        # thread, so a plain bool kept by focusChanged (focus goes to None when the window loses it).
+        self.box_focused = False
+        QApplication.instance().focusChanged.connect(
+            lambda _old, new: setattr(self, "box_focused", new is self.text))
         row = QHBoxLayout()
         self.pbar = QProgressBar(maximum=1000)
         self.pbar.setFormat("Transcribing… %p%")
@@ -568,7 +588,8 @@ class TranscribePage(QWidget):
         paused = rec and t.paused
         self.btn_rec.setEnabled(not busy and not held and not rec)
         self.btn_pause.setText("Resume" if paused else "Pause")
-        self.btn_pause.setIcon(line_icon("play" if paused else "pause"))
+        self.btn_pause.setIcon(line_icon("play" if paused else "pause", "white"))
+        self.btn_pause.setAccessibleName(self.btn_pause.text())
         self.btn_pause.setToolTip("Carry on recording" if paused else
                                   "Pause the recording: the mic goes off until you press Resume")
         self.btn_pause.setEnabled(rec)
