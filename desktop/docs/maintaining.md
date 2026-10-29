@@ -132,7 +132,7 @@ through `sherpa_onnx.VoiceActivityDetector` (~2 MB model) would be sturdier in s
 1% WER. Revisit if cuts misfire in noisy rooms. Trimming silence to save decode time isn't
 worth it: dictation is mostly speech, and the pauses have to stay (see "Short pauses").
 
-**Silero VAD, on by default (unreleased, 2026-10-29; D-2026-10-29-01, D-2026-10-29-02, reverses
+**Silero VAD, on by default (1.010, 2026-10-29; D-2026-10-29-01, D-2026-10-29-02, reverses
 the above).** Daniel: "Can't hurt to have it as an option", then "VAD should be enabled by default".
 `hebrish/vad.py`: sherpa-onnx's `silero_vad.onnx` (643,854 bytes, SHA-256 `9e2449e1…1fd6`, from
 the `asr-models` GitHub release; MIT, licence in `data/vad/`) is bundled as package data, so the
@@ -287,7 +287,8 @@ each part works there:
    (Tags need `-a`: plain `git tag` fails here with "no tag message?" because of the git
    config, seen 2026-10-21.) CI (`.github/workflows/desktop.yml`) then runs the tests on
    Linux and Windows (Linux CI has no PySide6: a test importing `hebrish.ui` must
-   `pytest.importorskip("PySide6")`, or the tag fails, as 0.7.1's first tag did on 2026-10-22;
+   `pytest.importorskip("PySide6")`, or the tag fails, as 0.7.1's first tag did on 2026-10-22, and likewise `importorskip("sherpa_onnx")` for a test that runs a
+   sherpa-onnx model: Linux CI installs neither, 1.010's first tag failed on `test_vad.py`, 2026-10-29;
    that tag was deleted and re-made, since nothing had been released from it), builds the
    Windows zip with PyInstaller, runs the frozen exe's
    `--selftest`, and creates the release with the zip attached.
@@ -1444,7 +1445,7 @@ for users to make sense and use the right one."
   windows). Every download, select, update and folder path still goes through `models()` /
   `get_model()`, so a Qwen3-ASR or asr4all variant can never be selected or fetched (test
   `test_unsupported_engines_are_listed_but_not_models`).
-- Models tab (`ui/window.py` `_family_page`, `_model_row`, `_other_versions`): one tab per line
+- Models tab (1.010; `ui/window.py` `_family_page`, `_model_row`, `_other_versions`): one tab per line
   (`family_tabs`, tab data = line id; opens on the line in use, keeps the shown tab across
   rebuilds). Each tab: the line summary and its card link, then one row per version this app runs:
   name, Recommended / In use chips, the recommendation sentence, speed and accuracy as five-dot
