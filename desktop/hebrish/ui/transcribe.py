@@ -11,7 +11,12 @@ tab's; up to 1.000 this tab was "File" and only opened files (up to 0.4.0 it als
 Paragraphs (B-44, ../shared/paragraphs.md): None, Time-based (a paragraph about every PARAGRAPH_S of
 audio) or Paragraph model (paragraphs.Breaker, run once when the transcript is done). The last
 transcript's pieces are kept (paragraphs.Pieces), so changing the setting lays it out again as long
-as the box still holds exactly what the app wrote."""
+as the box still holds exactly what the app wrote.
+
+Long sessions (2026-10-29): a small Recording light and timer by the controls, Voice detection for
+this tab (`tm_vad`, on by default, also in the tray menu), Save audio (`tm_save_audio`: the recording
+is moved to a folder instead of deleted), and the recorder's disk and stalled-stream checks in
+`_tick` (longform.py)."""
 
 import threading
 import time
@@ -19,7 +24,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QEvent, QObject, Qt, QTimer, Signal
 from PySide6.QtGui import QIcon, QTextCursor
-from PySide6.QtWidgets import (QComboBox, QFileDialog, QHBoxLayout, QLabel,
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel,
                                QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider,
                                QToolButton, QVBoxLayout, QWidget)
 
@@ -32,6 +37,7 @@ from .meter import LevelMeter, verdict
 PARAGRAPH_S = 30
 CONFIRM_DROP_S = 60      # Retake / Discard ask first when the recording is longer than this
 LEVELS = ("docked", "shown", "floating")     # cfg tm_levels (B-45)
+LIGHT = {"rec": ("● Recording", "#c0392b"), "paused": ("❚❚ Paused", "#b7791f")}
 
 
 class _Sig(QObject):
@@ -216,12 +222,35 @@ class TranscribePage(QWidget):
         for w in (self.btn_rec, self.btn_pause, self.btn_retake, self.btn_stop, self.btn_go, self.btn_drop_tape):
             row.addWidget(w)
         row.addStretch(1)
-        # Elapsed time: small and grey, at the end of the controls, so it is there when you look
-        # but doesn't pull the eye while you talk.
+        # Light and elapsed time: small, at the end of the controls, so they are there when you
+        # look but don't pull the eye while you talk. The light is a steady colour, not a blink.
+        self.light = QLabel()
+        self.light.setStyleSheet("font-size: 12px;")
+        row.addWidget(self.light)
         self.elapsed = muted()
-        self.elapsed.setToolTip("Recorded so far")
+        self.elapsed.setToolTip("Recorded so far. A recording can run up to "
+                                f"{longform.MAX_S // 3600} hours; {longform.RECOMMENDED_S // 60}-minute "
+                                "sessions are what it is tested for.")
         row.addWidget(self.elapsed)
         b.addLayout(row)
+
+        row = QHBoxLayout()
+        self.chk_vad = QCheckBox("Voice detection")
+        self.chk_vad.setToolTip("Skip the silent stretches and trim long pauses before transcribing. "
+                                "On by default here; Voice Typing has its own switch. Also in the tray menu.")
+        self.chk_vad.setChecked(bool(self.cfg["tm_vad"]))
+        self.chk_vad.toggled.connect(self.set_vad)
+        row.addWidget(self.chk_vad)
+        self.chk_keep = QCheckBox("Save audio")
+        self.chk_keep.setChecked(bool(self.cfg["tm_save_audio"]))
+        self.chk_keep.toggled.connect(lambda on: (self.cfg.set("tm_save_audio", on), self._keep_tip()))
+        row.addWidget(self.chk_keep)
+        self.btn_keep_dir = QToolButton(text="Folder…")
+        self.btn_keep_dir.clicked.connect(self._pick_keep_dir)
+        row.addWidget(self.btn_keep_dir)
+        row.addStretch(1)
+        b.addLayout(row)
+        self._keep_tip()
 
         row = QHBoxLayout()
         self.drop = QPushButton("Open an audio file…")
@@ -313,6 +342,29 @@ class TranscribePage(QWidget):
             return
         self.cfg.set("tm_gain_db", v)
 
+    def set_vad(self, on: bool):
+        """The checkbox and the tray menu both land here."""
+        self.cfg.set("tm_vad", bool(on))
+        if self.chk_vad.isChecked() != bool(on):
+            self.chk_vad.setChecked(bool(on))
+        self.ctl.sync_tray_vad()
+
+    def _keep_dir(self) -> Path:
+        return Path(self.cfg["tm_audio_dir"]) if self.cfg["tm_audio_dir"] else longform.default_keep_dir()
+
+    def _keep_tip(self):
+        tip = (f"Keep each recording once it is transcribed, in {self._keep_dir()}. It is saved as "
+               "the model hears it: 16 kHz mono WAV with your gain applied (about 170 MB for 90 "
+               "minutes). Off: the audio is deleted once the transcript is in History.")
+        self.chk_keep.setToolTip(tip)
+        self.btn_keep_dir.setToolTip(f"Where saved audio goes: {self._keep_dir()}")
+
+    def _pick_keep_dir(self):
+        d = QFileDialog.getExistingDirectory(self, "Save recordings in", str(self._keep_dir()))
+        if d:
+            self.cfg.set("tm_audio_dir", d)
+            self._keep_tip()
+
     # -- levels panel (B-45) ----------------------------------------------------------
     def _set_levels(self, state: str):
         """docked: hidden (the gain still applies); shown: in the card; floating: its own
@@ -380,6 +432,14 @@ class TranscribePage(QWidget):
             self.ctl.win.status("Voice Typing is recording: stop it first.")
             return
         self.ctl.stop_monitor()
+        try:
+            room = longform.free_seconds()
+        except OSError:
+            room = None
+        if room is not None and room < longform.RECOMMENDED_S and QMessageBox.question(
+                self, "Low disk space", f"The disk has room for about {_clock(room)} of recording. "
+                "Record anyway?") != QMessageBox.Yes:
+            return
         try:
             t.start(mics.resolve(self.cfg, "tm_audio_device")[0])
         except Exception as e:
@@ -465,8 +525,15 @@ class TranscribePage(QWidget):
             self._stop()
             self.ctl.notify("Transcription Mode", "The recording reached its limit and stopped.")
             return
+        if t.active and t.error:
+            self._stop()
+            self.ctl.notify("Transcription Mode", f"Couldn't write the recording ({t.error.strerror or t.error}). "
+                            f"It stopped at {_clock(self._held_seconds())}; what was recorded is kept.")
+            return
+        if t.stalled:
+            self._restart_stream()
         if t.active:
-            self.elapsed.setText(("❚❚ " if t.paused else "● ") + _clock(t.seconds))
+            self.elapsed.setText(_clock(t.seconds))
         if not self.meter_box.isVisible():
             return
         self.meter.set_source(t if t.active else None)
@@ -479,6 +546,19 @@ class TranscribePage(QWidget):
             self.meter_label.setText(f"<b style='color:{col}'>{text}</b> &nbsp;"
                                      f"<span style='color:gray'>{self.meter.rms_db:.0f} dB · peak "
                                      f"{self.meter.peak_db:.0f} dB</span>")
+
+    def _restart_stream(self):
+        """The mic stopped sending audio (unplugged, sound server restarted, back from suspend):
+        reopen it. If it can't be opened, pause, so the file is kept and Resume tries again."""
+        t = self.tape
+        try:
+            t.reopen()
+            self.ctl.win.status("The microphone dropped out and was reconnected; the recording carries on.")
+        except Exception as e:
+            t.pause()
+            self._sync()
+            self.ctl.notify("Transcription Mode", f"The microphone dropped out ({e}). The recording is "
+                            "paused: pick a mic and press Resume.")
 
     def _sync(self):
         """Buttons and the timer for the recorder's state: idle, recording, paused, stopped
@@ -502,7 +582,13 @@ class TranscribePage(QWidget):
         else:
             self._timer.stop()
             self.elapsed.setText(f"■ {_clock(self._held_seconds())}" if held else "")
+        light = LIGHT.get("paused" if paused else "rec" if rec else "")
+        self.light.setVisible(light is not None)
+        if light:
+            self.light.setText(light[0])
+            self.light.setStyleSheet(f"font-size: 12px; color: {light[1]};")
         self._tick()
+        self.ctl.sync_tray_tape()
 
     def _show_leftover(self):
         """A recording from an earlier run (the app quit or crashed, or its transcription failed
@@ -582,6 +668,9 @@ class TranscribePage(QWidget):
         self._live, self._edited = self.text.toPlainText(), False
         self._from = len(self._live)     # History gets this transcript, not the whole box
         self._busy(True)
+        if self.cfg["tm_vad"] and len(samples) > 10 * 60 * audio.SAMPLE_RATE:
+            self.ctl.win.status(f"Finding the speech in {_clock(len(samples) / audio.SAMPLE_RATE)} of "
+                                "audio (about a minute for 90 minutes)…")
         started = time.monotonic()
         mode = self._asked = self._para_mode()
         note = ""
@@ -596,7 +685,7 @@ class TranscribePage(QWidget):
                 # pieces are ~10-25 s; Time-based starts a paragraph every ~30 s of audio. With
                 # the Paragraph model they are joined with spaces until the end.
                 pieces = paragraphs.Pieces(PARAGRAPH_S * audio.SAMPLE_RATE)
-                for text in self.ctl.engine.transcribe_chunks(samples, cancel, vad=self.cfg["vad"]):
+                for text in self.ctl.engine.transcribe_chunks(samples, cancel, vad=self.cfg["tm_vad"]):
                     done, total = self.ctl.engine.last_progress
                     text = fix(disfluency.chop(text))
                     sep = pieces.add(text, done, mode)
@@ -656,13 +745,24 @@ class TranscribePage(QWidget):
             if self._last:
                 self._last["rid"] = rid
             if source is not None:
-                source.unlink(missing_ok=True)
+                note += self._dispose(source)
         self._show_leftover()
         msg = f"Transcribed {_clock(audio_s)} of audio in {took:.1f} s"
         self.ctl.win.status(msg + (" (cancelled part-way)." if cancelled else ".") + note)
         if self._last and (self._para_mode() != self._asked or (     # changed while transcribing,
                 mode != self._asked and err is None and paragraphs.installed() is not None)):
             self._reflow()                   # or the model finished downloading meanwhile
+
+    def _dispose(self, source: Path) -> str:
+        """A transcribed recording: moved to the Save audio folder when that is on, else deleted.
+        Returns a note for the status line."""
+        if not self.cfg["tm_save_audio"]:
+            source.unlink(missing_ok=True)
+            return ""
+        try:
+            return f" Audio saved: {longform.keep(source, self.cfg['tm_audio_dir'])}"
+        except OSError as e:                 # left where it is: offered again as a leftover
+            return f" Couldn't save the audio ({e}); it is still in {source.parent}."
 
     # -- paragraphs (B-44) -----------------------------------------------------------
     def _para_mode(self) -> str:

@@ -74,3 +74,53 @@ def test_empty_recording_leaves_nothing(monkeypatch, tmp_path):
     t = _tape(monkeypatch, tmp_path)
     assert t.stop() is None
     assert longform.leftovers() == []
+
+
+def test_disk_error_ends_the_file_without_raising(monkeypatch, tmp_path):
+    """Disk full inside the audio callback used to raise there, which kills the stream."""
+    t = _tape(monkeypatch, tmp_path)
+    _feed(t, np.full(1600, 0.1, np.float32))
+
+    class Full:
+        def __init__(self, f):
+            self.f = f
+
+        def write(self, b):
+            raise OSError(122, "Disk quota exceeded")
+
+        def __getattr__(self, k):
+            return getattr(self.f, k)
+    t._f = Full(t._f)
+    _feed(t, np.full(1600, 0.1, np.float32))      # must not raise
+    assert t.error is not None and t.seconds == 0.1
+    _feed(t, np.full(1600, 0.1, np.float32))      # nothing more is written
+    assert t.seconds == 0.1
+
+
+def test_stalled_stream_is_noticed_and_reopened(monkeypatch, tmp_path):
+    t = _tape(monkeypatch, tmp_path)
+    opened = []
+    monkeypatch.setattr(longform.TapeRecorder, "_open",
+                        lambda self, dev: (opened.append(dev), setattr(self, "_last_block", longform.time.monotonic())))
+    t._stream = object()
+    _feed(t, np.full(1600, 0.1, np.float32))
+    assert not t.stalled
+    t._last_block -= longform.STALL_S + 1
+    assert t.stalled
+    t.reopen()
+    assert opened == [""] and not t.stalled
+    t.paused = True
+    t._last_block -= longform.STALL_S + 1
+    assert not t.stalled                            # a paused tape gets no blocks by design
+
+
+def test_keep_moves_without_overwriting(monkeypatch, tmp_path):
+    t = _tape(monkeypatch, tmp_path / "rec")
+    _feed(t, np.full(1600, 0.1, np.float32))
+    path = t.stop()
+    dest = tmp_path / "kept"
+    (dest).mkdir()
+    (dest / path.name).write_bytes(b"older")
+    got = longform.keep(path, str(dest))
+    assert not path.exists() and got.parent == dest and got.name != path.name
+    assert len(longform.load(got)) == 1600

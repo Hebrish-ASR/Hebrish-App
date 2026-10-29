@@ -839,6 +839,48 @@ the tab still works), the transcript below.
   engine (record → pause → stop → transcribe → file deleted, History row `source=record`; leftover
   offered on a new page). Not yet tried on a real mic for a long take.
 
+### Long recordings (1.011, 2026-10-29)
+
+Daniel: sessions of "at least 90 minutes", "make sure … recording doesn't crash"; a Voice detection
+switch in the tab and the tray, on by default in this mode; a recording light and a non-distracting
+timer; an option to save the audio "in the optimized version for ASR, not the original".
+
+- **What 90 minutes costs (V, 2026-10-29, this laptop, synthetic take: the app's voice prompts with
+  0.3–4 s gaps and -54 dBFS noise, run through `TapeRecorder._cb` in 0.1 s blocks):** 164 MB on disk,
+  callbacks 2.4 s in total, `load` 0.3 s, Silero `has_speech` + `shorten_silences` + `normalize` +
+  `stretch_pauses` 57 s (5,400 s → 3,642 s), `split_points` 0.1 s, 529 pieces, peak RSS 1.55 GB
+  (the float32 take, its prepared copy and Silero's whole-take buffer). Decoding was not part of
+  the run (no model loaded); it is per piece, as for any file. Not tried: a real 90-minute session
+  on a real mic.
+- **One Silero pass, not two:** `transcribe_chunks` computes the speech frames once and passes them
+  to `has_speech` and `shorten_silences` (`sp`). Each pass is about 25 s at 90 minutes. The tab says
+  "Finding the speech in …" while it runs on takes over 10 minutes, since the progress bar sits at 0.
+- **Disk errors:** the same run first failed on a full disk (`OSError: [Errno 122] Disk quota
+  exceeded`) raised *inside the PortAudio callback*, which kills the stream. Now `_cb` catches it,
+  sets `tape.error` and writes nothing more; the tab's `_tick` stops the tape and notifies, and the
+  file up to that point stays (header fixed by `recover()` if its last rewrite failed too). Record
+  asks first when `longform.free_seconds()` is under `RECOMMENDED_S` (90 min, ~170 MB).
+- **Stalled stream:** `_cb` stamps `_last_block`; `tape.stalled` is true when recording, not paused,
+  and no block came for `STALL_S` (3 s): mic unplugged, PipeWire restarted, back from suspend. The
+  tab reopens the stream on the same mic (`reopen()`, the file carries on); if that fails it pauses
+  and notifies, so Resume tries again. `_close_stream` swallows errors from a dead stream.
+- **Voice detection here is `tm_vad`** (default on), separate from Voice Typing's `vad`: checkbox
+  under the controls and *Voice detection (Transcription)* in the tray menu, both through
+  `TranscribePage.set_vad`. It applies to recordings and opened files.
+- **Light and timer:** a small steady "● Recording" (red) / "❚❚ Paused" (amber) label and the grey
+  elapsed time at the end of the controls row; no blinking. While the tape records with Voice
+  Typing idle, the tray shows the listening icon (paused: idle) and the tooltip says "Transcription
+  Mode recording/paused, voice detection on/off" (`Controller.sync_tray_tape`).
+- **Save audio** (`tm_save_audio`, off; folder `tm_audio_dir`, "" = `~/Documents/Hebrish
+  recordings`): after a successful transcription the recording is moved there (`longform.keep`,
+  never overwrites: `-2`, `-3` …) instead of deleted. It is the file the model was fed before
+  voice detection: 16 kHz mono 16-bit WAV with the gain applied, not the mic's native rate. If the
+  move fails the file stays in `recordings/` and is offered as a leftover.
+- `MAX_S` stays 4 h; `RECOMMENDED_S` is what the timer's tooltip promises.
+- Tests: `test_longform.py` (disk error, stall + reopen, keep), `test_transcribe_controls.py`
+  (light, tray sync, `tm_vad` default and tray path, stall and disk error in `_tick`, Save audio),
+  `test_vad.py` (one Silero pass per `transcribe_chunks`).
+
 ## Paragraphs: None, Time-based, Paragraph model (B-44, 2026-10-24)
 
 D-2026-10-24-09; the spec both apps follow is `../shared/paragraphs.md`, the parity cases

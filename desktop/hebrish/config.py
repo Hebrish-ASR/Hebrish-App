@@ -100,6 +100,10 @@ DEFAULTS = {
                                   # floating (its own small window). Up to 1.002 `tm_show_meter`
     "tm_paragraphs": "",          # none | time | model (paragraphs.MODES, B-44); "" = not chosen: model
                                   # when the paragraph model is installed, else time
+    "tm_vad": True,               # Voice detection for this tab (2026-10-29: on by default here,
+                                  # independent of Voice Typing's `vad`; also in the tray menu)
+    "tm_save_audio": False,       # keep each transcribed recording (16 kHz mono WAV) in tm_audio_dir
+    "tm_audio_dir": "",           # "" = ~/Documents/Hebrish recordings (longform.default_keep_dir)
     "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad)
     "vad_silero": True,           # with Voice detection on, use Silero VAD (bundled, vad.py,
                                   # 2026-10-29); off = the energy rule

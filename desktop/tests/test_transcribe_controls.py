@@ -35,6 +35,13 @@ class FakeTape:
         self.seconds = 0.0
         self.path = None
         self.started = 0
+        self.error = None
+        self.stalled = False
+        self.reopened = 0
+
+    def reopen(self):
+        self.reopened += 1
+        self.stalled = False
 
     def start(self, device=""):
         self.active, self.paused = True, False
@@ -76,10 +83,17 @@ class FakeCtl:
     def notify(self, *_a):
         pass
 
+    def sync_tray_tape(self):
+        self.tray_syncs = getattr(self, "tray_syncs", 0) + 1
+
+    def sync_tray_vad(self):
+        pass
+
 
 @pytest.fixture
 def make(monkeypatch):
     monkeypatch.setattr(audio, "input_devices", lambda: [])
+    monkeypatch.setattr(transcribe.longform, "free_seconds", lambda: 10 ** 6)
     made = []
 
     def _make(stored=None):
@@ -253,3 +267,47 @@ def test_meter_polls_only_while_visible(make):
     page._set_levels("shown")
     page._tick()
     assert calls and calls[-1] is page.tape
+
+
+def test_recording_light_and_tray_follow_the_tape(make):
+    _, page, _ = make()
+    assert page.light.isHidden()
+    page.btn_rec.click()
+    assert not page.light.isHidden() and "Recording" in page.light.text()
+    page.btn_pause.click()
+    assert "Paused" in page.light.text()
+    page.btn_stop.click()
+    assert page.light.isHidden()
+    assert page.ctl.tray_syncs >= 3
+
+
+def test_voice_detection_on_by_default_and_shared_with_tray(make):
+    _, page, _ = make()
+    assert page.chk_vad.isChecked() and page.cfg["tm_vad"]
+    page.set_vad(False)                          # what the tray action calls
+    assert not page.chk_vad.isChecked() and not page.cfg["tm_vad"]
+    page.chk_vad.click()
+    assert page.cfg["tm_vad"]
+
+
+def test_stalled_stream_is_reopened_and_disk_error_stops(make):
+    _, page, _ = make()
+    page.btn_rec.click()
+    page.tape.stalled = True
+    page._tick()
+    assert page.tape.reopened == 1 and page.tape.active
+    page.tape.error = OSError(28, "No space left on device")
+    page._tick()
+    assert not page.tape.active
+
+
+def test_save_audio_moves_the_recording(make, tmp_path):
+    _, page, _ = make()
+    rec = tmp_path / "recording-x.wav"
+    rec.write_bytes(b"RIFF")
+    assert page._dispose(rec) == "" and not rec.exists()       # off: deleted, as before
+    rec.write_bytes(b"RIFF")
+    page.cfg.set("tm_save_audio", True)
+    page.cfg.set("tm_audio_dir", str(tmp_path / "kept"))
+    assert "Audio saved" in page._dispose(rec)
+    assert (tmp_path / "kept" / "recording-x.wav").exists() and not rec.exists()

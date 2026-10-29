@@ -1195,6 +1195,10 @@ class Controller(QObject):
         self.act_overlay.triggered.connect(self._tray_overlay)
         m.addAction("Show window", self.win.present_tab)
         self._build_output_menu(m.addMenu("Output"))
+        self.act_tm_vad = m.addAction("Voice detection (Transcription)")
+        self.act_tm_vad.setCheckable(True)
+        self.act_tm_vad.setToolTip("Transcription Mode's voice detection: skip silence and trim long pauses")
+        self.act_tm_vad.triggered.connect(lambda on: self.win.transcribe.set_vad(on))
         self.act_autostart = m.addAction("Start at login")
         self.act_autostart.setCheckable(True)
         self.act_autostart.triggered.connect(self.set_autostart)
@@ -1256,6 +1260,16 @@ class Controller(QObject):
         self.cfg.set("paste_chord", value)
         self.win.sync_output()
 
+    def sync_tray_vad(self):
+        if hasattr(self, "act_tm_vad"):
+            self.act_tm_vad.setChecked(bool(self.cfg["tm_vad"]))
+
+    def sync_tray_tape(self):
+        """The Transcription recorder started, paused or stopped: the tray shows it too, so a long
+        session is visible with the window hidden."""
+        if hasattr(self, "tray"):
+            self._update_tray()
+
     def _tray_overlay(self, on):
         self.cfg.set("overlay", "always" if on else "off")
         self._overlay_push()
@@ -1283,13 +1297,21 @@ class Controller(QObject):
         # decoded and pasted. Amber with three dots, so it doesn't read as done.
         state = "finishing" if self.state == "busy" and self.pending and not self.loading else self.state
         name = "nomodel" if model_store.active() is None else state
+        tip = dict(idle="ready", recording="listening", busy="working",
+                   finishing="finishing, the last words are on the way")[state]
+        tape = getattr(getattr(self.win, "transcribe", None), "tape", None)
+        if tape is not None and tape.active and state == "idle":
+            # Transcription Mode recording (2026-10-29): the listening icon, unless paused
+            name = name if tape.paused or name == "nomodel" else "recording"
+            tip = "Transcription Mode " + ("paused" if tape.paused else "recording") + \
+                  (", voice detection on" if self.cfg["tm_vad"] else ", voice detection off")
         self.tray.setIcon(icon(f"tray-{name}"))
-        self.tray.setToolTip(f"{APP_NAME}: " + dict(idle="ready", recording="listening", busy="working",
-                                                    finishing="finishing, the last words are on the way")[state])
+        self.tray.setToolTip(f"{APP_NAME}: {tip}")
         self.act_toggle.setText("Stop dictation" if self.state == "recording" else "Start dictation")
         self.act_toggle.setEnabled(self.state != "busy" or self.queued_ok)
         self.act_overlay.setVisible(self.overlay.available)
         self.act_overlay.setChecked(self.cfg["overlay"] != "off")
+        self.act_tm_vad.setChecked(bool(self.cfg["tm_vad"]))
         self.act_update.setVisible(self.update_available() and not self.downloading)
         self.act_restart.setVisible(bool(self.app_installed))
         if self.latest:

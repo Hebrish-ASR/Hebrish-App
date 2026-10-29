@@ -5,13 +5,22 @@ Each recording is one 16 kHz mono 16-bit WAV in RECORDINGS_DIR. The header's siz
 every HEADER_EVERY_S, and `recover()` repairs a file whose header lags (the app died
 mid-recording). The file is deleted once its transcript is in History; one that never got that
 far stays, and the Transcription tab offers it again (`leftovers()`). Audio is otherwise not
-kept (D-2026-10-22-20).
+kept (D-2026-10-22-20), unless *Save audio* is on (`tm_save_audio`, 2026-10-29): then `keep()`
+moves the file to the chosen folder instead of deleting it.
+
+Long sessions (Daniel, 2026-10-29: "at least 90 minutes", "recording doesn't crash"): a disk
+error ends the file cleanly instead of killing the stream (`error`), and a stream that stops
+delivering blocks (mic unplugged, sound server restarted, resume from suspend) is noticed by the
+tab after STALL_S and reopened (`stalled`, `reopen()`). Measured 2026-10-29 on a synthetic 90-minute
+recording: written in 2.4 s of callbacks, read back in 0.3 s, Silero VAD and splitting in under a
+minute, peak memory 1.55 GB (docs/maintaining.md, "Long recordings").
 
 Gain is digital, applied before the meter and the file, so the meter shows what is recorded:
 GAIN_MIN_DB..GAIN_MAX_DB. The clip lamp lights for clipping at the input (before gain, which no
 gain setting can undo) and for clipping that the gain causes.
 """
 
+import shutil
 import struct
 import threading
 import time
@@ -26,6 +35,9 @@ from .config import DATA_DIR
 
 RECORDINGS_DIR = DATA_DIR / "recordings"
 MAX_S = 4 * 60 * 60          # stops itself after 4 hours (about 460 MB)
+RECOMMENDED_S = 90 * 60      # what the tab tells you it is good for (measured, see above)
+BYTES_PER_S = 2 * 16000
+STALL_S = 3.0                # no block for this long while recording: the stream is reopened
 HEADER_EVERY_S = 2.0
 GAIN_MIN_DB, GAIN_MAX_DB = -12, 24
 _HEADER = 44
@@ -57,6 +69,8 @@ class TapeRecorder:
         self._lock = threading.Lock()
         self._header_at = 0.0
         self._device = ""
+        self.error: OSError | None = None    # writing failed (disk full); the file stops there
+        self._last_block = 0.0
 
     @property
     def active(self) -> bool:
@@ -75,7 +89,7 @@ class TapeRecorder:
         self.path = RECORDINGS_DIR / time.strftime("recording-%Y-%m-%d-%H%M%S.wav")
         self._f = open(self.path, "wb")
         self._f.write(_header(0))
-        self._n, self.paused, self.clipped_at = 0, False, 0.0
+        self._n, self.paused, self.clipped_at, self.error = 0, False, 0.0, None
         try:
             self._open(device)
         except Exception:
@@ -90,13 +104,17 @@ class TapeRecorder:
         self._stream = sd.InputStream(samplerate=audio.SAMPLE_RATE, channels=1, dtype="float32",
                                       device=device or None, callback=self._cb)
         self._stream.start()
+        self._last_block = time.monotonic()
         mics.OPEN.add(self)
 
     def _close_stream(self):
         if self._stream is not None:
-            self._stream.stop()
-            self._stream.close()
-            self._stream = None
+            s, self._stream = self._stream, None
+            try:
+                s.stop()
+                s.close()
+            except Exception:            # a dead stream (device gone) may fail to stop; drop it
+                pass
         mics.OPEN.discard(self)
         self.rms = self.peak = self.level = 0.0
 
@@ -107,6 +125,17 @@ class TapeRecorder:
             self._open(device)
         else:
             self._device = device
+
+    @property
+    def stalled(self) -> bool:
+        """Recording, but no audio block for STALL_S: the stream died without telling us."""
+        return (self.active and not self.paused and self._stream is not None
+                and time.monotonic() - self._last_block > STALL_S)
+
+    def reopen(self):
+        """Close and reopen the stream on the same mic; the file carries on."""
+        self._close_stream()
+        self._open(self._device)
 
     def pause(self):
         """Closes the stream, so the mic (and the privacy indicator) goes off."""
@@ -121,6 +150,7 @@ class TapeRecorder:
             self.paused = False
 
     def _cb(self, indata, frames, time_info, status):
+        self._last_block = time.monotonic()
         raw = indata[:, 0]
         input_clip = len(raw) and float(np.max(np.abs(raw))) >= audio.CLIP_PEAK
         block = apply_gain(raw, self.gain_db)
@@ -130,12 +160,15 @@ class TapeRecorder:
             self.clipped_at = time.monotonic()
         self.level = min(1.0, self.rms * 4)
         with self._lock:
-            if self._f is None or self.full:
+            if self._f is None or self.full or self.error:
                 return
-            self._f.write((np.clip(block, -1, 1) * 32767).astype("<i2").tobytes())
-            self._n += len(block)
-            if time.monotonic() - self._header_at > HEADER_EVERY_S:
-                self._flush_header()
+            try:
+                self._f.write((np.clip(block, -1, 1) * 32767).astype("<i2").tobytes())
+                self._n += len(block)
+                if time.monotonic() - self._header_at > HEADER_EVERY_S:
+                    self._flush_header()
+            except OSError as e:         # disk full: an exception here would kill the stream
+                self.error = e
 
     def _flush_header(self):
         """Rewrite the sizes and flush, so the file on disk is a valid WAV up to now."""
@@ -154,8 +187,11 @@ class TapeRecorder:
         self._close_stream()
         with self._lock:
             if self._f is not None:
-                self._flush_header()
-                self._f.close()
+                try:
+                    self._flush_header()
+                    self._f.close()
+                except OSError as e:     # disk full: recover() sizes the file from its length
+                    self.error = self.error or e
                 self._f = None
         path, self.path, self.paused = self.path, None, False
         if path and self._n == 0:
@@ -167,6 +203,30 @@ class TapeRecorder:
         path = self.stop()
         if path:
             path.unlink(missing_ok=True)
+
+
+def free_seconds() -> float:
+    """How much recording the disk under RECORDINGS_DIR has room for."""
+    RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
+    return shutil.disk_usage(RECORDINGS_DIR).free / BYTES_PER_S
+
+
+def default_keep_dir() -> Path:
+    docs = Path.home() / "Documents"
+    return (docs if docs.is_dir() else Path.home()) / "Hebrish recordings"
+
+
+def keep(path: Path, folder: str) -> Path:
+    """Move a transcribed recording into `folder` (the tm_save_audio option), as it was
+    recorded: 16 kHz mono 16-bit, gain applied, which is what the model is fed."""
+    dest_dir = Path(folder) if folder else default_keep_dir()
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / path.name
+    i = 2
+    while dest.exists():
+        dest = dest_dir / f"{path.stem}-{i}{path.suffix}"
+        i += 1
+    return Path(shutil.move(str(path), dest))
 
 
 def recover(path: Path) -> float:

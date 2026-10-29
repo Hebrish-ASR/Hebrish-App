@@ -41,3 +41,18 @@ def test_silero_ignores_steady_noise_and_silence():
     for level in (0.0, 0.002, 0.02):
         noise = (rng.standard_normal(engine.SAMPLE_RATE * 5) * level).astype(np.float32)
         assert not s.speech_frames(noise, engine.FRAME).any()
+
+
+def test_transcribe_chunks_runs_voice_detection_once(monkeypatch):
+    """One pass over the take, shared by has_speech and shorten_silences (2026-10-29)."""
+    calls = []
+
+    class Count(Fake):
+        def speech_frames(self, x, frame):
+            calls.append(len(x))
+            return super().speech_frames(x, frame)
+    monkeypatch.setattr(engine, "silero", Count())
+    e = engine.Engine()
+    with pytest.raises(RuntimeError):                      # no model: fails at the first piece
+        list(e.transcribe_chunks(np.full(5 * engine.SAMPLE_RATE, 0.1, np.float32), vad=True))
+    assert len(calls) == 1

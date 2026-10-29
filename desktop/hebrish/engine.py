@@ -134,13 +134,16 @@ def _speech_frames(x: np.ndarray, ref: np.ndarray | None = None) -> np.ndarray:
     return rms > gate
 
 
-def has_speech(x: np.ndarray, ref: np.ndarray | None = None) -> bool:
-    return int(_speech_frames(x, ref).sum()) * FRAME >= VAD_MIN_SPEECH_S * SAMPLE_RATE
+def has_speech(x: np.ndarray, ref: np.ndarray | None = None, sp: np.ndarray | None = None) -> bool:
+    sp = _speech_frames(x, ref) if sp is None else sp
+    return int(sp.sum()) * FRAME >= VAD_MIN_SPEECH_S * SAMPLE_RATE
 
 
-def shorten_silences(x: np.ndarray, ref: np.ndarray | None = None) -> np.ndarray:
-    """Cut every non-speech run longer than VAD_LONG_S down to VAD_KEEP_S (keeping its two ends)."""
-    sp = _speech_frames(x, ref)
+def shorten_silences(x: np.ndarray, ref: np.ndarray | None = None, sp: np.ndarray | None = None) -> np.ndarray:
+    """Cut every non-speech run longer than VAD_LONG_S down to VAD_KEEP_S (keeping its two ends).
+    `sp`: the speech frames when the caller has them already (one Silero pass, not two: on a
+    90-minute recording each pass is about 25 s)."""
+    sp = _speech_frames(x, ref) if sp is None else sp
     n, keep = len(sp), int(VAD_KEEP_S * SAMPLE_RATE / FRAME)
     out, last, i = [], 0, 0
     while i < n:
@@ -473,9 +476,10 @@ class Engine:
                    ref: np.ndarray | None = None) -> str:
         return " ".join(self.transcribe_chunks(samples, vad=vad, record=record, ref=ref))
 
-    def _prepare(self, x: np.ndarray, vad: bool, ref: np.ndarray | None = None) -> np.ndarray:
+    def _prepare(self, x: np.ndarray, vad: bool, ref: np.ndarray | None = None,
+                 sp: np.ndarray | None = None) -> np.ndarray:
         if vad:
-            x = shorten_silences(x, ref)
+            x = shorten_silences(x, ref, sp)
         x = normalize(x)
         if not self.streaming:
             # Parakeet only. On Shakshuka it hurt 3 of 6 code-switched clips (a doubled
@@ -528,10 +532,11 @@ class Engine:
         `ref`'s levels too, when the samples are the end of a longer take)."""
         if len(samples) < MIN_TAKE_S * SAMPLE_RATE:
             return
-        if vad and not has_speech(samples, ref):
+        sp = _speech_frames(samples, ref) if vad else None
+        if vad and not has_speech(samples, ref, sp):
             self.last_progress = (1, 1)
             return
-        samples = self._prepare(samples, vad, ref)
+        samples = self._prepare(samples, vad, ref, sp)
         pad = np.zeros(int(TAIL_PAD_S * SAMPLE_RATE), np.float32)
         for a, b in split_points(samples):
             if cancel is not None and cancel.is_set():
