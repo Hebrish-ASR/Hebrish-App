@@ -6,6 +6,12 @@
   "entries": [
     {
       "date": "2026-10-29",
+      "tag": "Desktop 1.012",
+      "title": "New recording controls in Transcription",
+      "summary": "The Transcription tab's controls are round icon buttons with one colour for each action: Record red, Pause amber, Stop slate, Retake blue, Discard grey, and Transcribe a green send arrow."
+    },
+    {
+      "date": "2026-10-29",
       "tag": "Desktop 1.011",
       "title": "Transcription Mode for long sessions",
       "summary": "Built for sessions of 90 minutes and more (a recording can run up to 4 hours)."
@@ -117,12 +123,6 @@
       "tag": "Android 0.8.2",
       "title": "Android: fewer capitals and full stops in the middle of sentences",
       "summary": "Long takes are transcribed in pieces at your pauses, and each piece used to be treated as a sentence of its own, so a pause mid-sentence could leave \"word. Capital\"."
-    },
-    {
-      "date": "2026-10-23",
-      "tag": "Desktop 0.7.6",
-      "title": "Desktop: fewer capitals and full stops in the middle of sentences",
-      "summary": "With insert as you go, stopping to think in the middle of a sentence no longer ends it. Each piece of text is now transcribed together with the end of the piece before it, so the model hears that the sentence carries on and writes it the way it would mid-sentence."
     }
   ]
 }
