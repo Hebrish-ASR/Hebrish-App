@@ -1048,7 +1048,7 @@ class Controller(QObject):
         self.set_models_dir(self._moving_to, move=False)
         self.win.status(f"Models moved to {model_store.ROOT}.")
 
-    # -- add-ons (Models > Add-ons, 2026-10-29) --------------------------------------
+    # -- add-ons (Models > Utilities, 2026-10-29) --------------------------------------
     def apply_vad(self):
         """Voice detection uses Silero (bundled) unless `vad_silero` is off (vad.py)."""
         path = vad.installed() if self.cfg["vad_silero"] else None
@@ -1078,9 +1078,9 @@ class Controller(QObject):
     def _addon_done(self, aid: str, err):
         cancelled = self.addon_busy.pop(aid, threading.Event()).is_set()
         if err and not cancelled:
-            self.win.banner(f"Couldn't download the add-on: {err}")
+            self.win.banner(f"Couldn't download the utility: {err}")
         elif not err:
-            self.win.status("Add-on downloaded.")
+            self.win.status("Utility downloaded.")
         self.win.update_model()
 
     # -- app updates (0.6.2, app_update) ---------------------------------------------

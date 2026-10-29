@@ -132,7 +132,14 @@ class MainWindow(QMainWindow):
         self.transcribe = self.pages["file"] = TranscribePage(ctl, card, muted)
         self.pages["history"] = self._history_page()
         self.pages["dictionary"] = self._dictionary_page()
-        self.pages["model"] = self._scroll(self._model_page())
+        # Models has two sub-tabs (Daniel, 2026-10-29): the speech models by family, and Utilities
+        # (Silero VAD, the paragraph model), which were an "Add-ons" tab at the end of the family
+        # tabs, easy to miss to the right of the list.
+        self.model_subtabs = QTabWidget()
+        self.model_subtabs.setDocumentMode(True)
+        self.model_subtabs.addTab(self._scroll(self._model_page()), "Models")
+        self.model_subtabs.addTab(self._scroll(self._utilities_page()), "Utilities")
+        self.pages["model"] = self.model_subtabs
         self.pages["settings"] = self._scroll(self._settings_page())
         self.pages["settings"].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)   # labels wrap, never scroll sideways
         from .diagnostics import DiagnosticsPage
@@ -973,74 +980,81 @@ class MainWindow(QMainWindow):
         return {"frame": f, "chip": chip, "status": status, "pbar": pbar, "dl": dl, "use": use, "rm": rm,
                 "rec": is_rec}
 
-    # Add-ons (Daniel, 2026-10-29: "a tab called accessories ... the accessory models that we
-    # currently offer as additions"): small models that help the speech model, each optional.
-    ADDONS = (
-        (vad.MODEL_ID, "Silero VAD", "Voice detection that tells speech from fans, traffic and café "
+    # Utilities (Daniel, 2026-10-29; first an "Add-ons" tab among the families): small models that
+    # help the speech model, each optional, grouped under a heading: (heading, ((id, name, words,
+    # size, technical text), ...)).
+    UTILITIES = (
+        ("Audio components", ((vad.MODEL_ID, "Silero VAD", "Voice detection that tells speech from fans, traffic and café "
          "noise, so silent takes are skipped and long pauses aren't transcribed. Used when Voice "
          "detection is on (Voice Typing tab).", "",
          "Silero VAD by the Silero team (MIT licence), the copy published with sherpa-onnx; included "
          "with the app (0.6 MB). Runs on the processor, about 10 ms per second of audio. Turned off, "
-         "voice detection goes by loudness."),
-        (paragraphs.MODEL_ID, "Paragraph model", "Splits long transcripts into paragraphs where the "
+         "voice detection goes by loudness."),)),
+        ("Post-processing", ((paragraphs.MODEL_ID, "Paragraph model", "Splits long transcripts into paragraphs where the "
          "topic moves on. Used in Transcription Mode when Paragraphs is set to Paragraph model.",
-         "34 MB", "A small MiniLM text model (ONNX, int8). Without it, paragraphs are time-based."),
+         "34 MB", "A small MiniLM text model (ONNX, int8). Without it, paragraphs are time-based."),)),
     )
 
-    def _addons_page(self) -> QWidget:
+    def _utilities_page(self) -> QWidget:
         page = QWidget()
         lay = QVBoxLayout(page)
-        lay.setContentsMargins(0, 10, 0, 0)
-        lay.setSpacing(0)
+        lay.setContentsMargins(16, 14, 16, 14)
+        lay.setSpacing(12)
         lay.addWidget(muted("Small models that work alongside the speech model, offline."))
         self.addon_rows = {}
-        for aid, name, words, size, tech in self.ADDONS:
-            f = QFrame(objectName="modelRow")
-            f.setStyleSheet("#modelRow { border: none; border-bottom: 1px solid palette(midlight); }"
-                            " #modelRow QLabel { border: none; background: transparent; }")
-            outer = QHBoxLayout(f)
-            outer.setContentsMargins(10, 8, 10, 8)
-            outer.setSpacing(12)
-            col = QVBoxLayout()
-            col.setSpacing(3)
-            col.addWidget(QLabel(f"<b style='font-size:14px'>{name}</b>"))
-            text = QLabel(words)
-            text.setWordWrap(True)
-            col.addWidget(text)
-            status = QLabel()
-            status.setStyleSheet("font-size: 12px;")
-            status.setTextFormat(Qt.RichText)
-            col.addWidget(status)
-            use = None
-            if aid == vad.MODEL_ID:
-                use = self._check("vad_silero", "Use it for voice detection", self.ctl.apply_vad)
-                col.addWidget(use)
-            body = QLabel(tech)
-            body.setWordWrap(True)
-            body.setStyleSheet("color: gray; font-size: 11px;")
-            body.hide()
-            toggle = QLabel("<a href='#'>Details</a>")
-            toggle.setStyleSheet("font-size: 11px;")
-            toggle.linkActivated.connect(lambda _, b=body, t=toggle: (
-                b.setVisible(b.isHidden()),
-                t.setText(f"<a href='#'>{'Details' if b.isHidden() else 'Hide details'}</a>")))
-            col.addWidget(toggle)
-            col.addWidget(body)
-            outer.addLayout(col, 1)
-            btns = QVBoxLayout()
-            btns.setSpacing(4)
-            dl = QPushButton(line_icon("download", "white"), "Download", objectName="primary")
-            dl.clicked.connect(lambda _=False, a=aid: self.ctl.download_addon(a))
-            rm = QPushButton("Delete")
-            rm.clicked.connect(lambda _=False, a=aid, n=name: self._delete_addon(a, n))
-            btns.addWidget(dl)
-            btns.addWidget(rm)
-            btns.addStretch(1)
-            outer.addLayout(btns)
-            lay.addWidget(f)
-            self.addon_rows[aid] = {"status": status, "dl": dl, "rm": rm, "use": use, "size": size}
+        for heading, items in self.UTILITIES:
+            box, b = card(heading)
+            for item in items:
+                b.addWidget(self._utility_row(*item))
+            lay.addWidget(box)
         lay.addStretch(1)
         return page
+
+    def _utility_row(self, aid, name, words, size, tech) -> QFrame:
+        f = QFrame(objectName="modelRow")
+        f.setStyleSheet("#modelRow { border: none; border-bottom: 1px solid palette(midlight); }"
+                        " #modelRow QLabel { border: none; background: transparent; }")
+        outer = QHBoxLayout(f)
+        outer.setContentsMargins(10, 8, 10, 8)
+        outer.setSpacing(12)
+        col = QVBoxLayout()
+        col.setSpacing(3)
+        col.addWidget(QLabel(f"<b style='font-size:14px'>{name}</b>"))
+        text = QLabel(words)
+        text.setWordWrap(True)
+        col.addWidget(text)
+        status = QLabel()
+        status.setStyleSheet("font-size: 12px;")
+        status.setTextFormat(Qt.RichText)
+        col.addWidget(status)
+        use = None
+        if aid == vad.MODEL_ID:
+            use = self._check("vad_silero", "Use it for voice detection", self.ctl.apply_vad)
+            col.addWidget(use)
+        body = QLabel(tech)
+        body.setWordWrap(True)
+        body.setStyleSheet("color: gray; font-size: 11px;")
+        body.hide()
+        toggle = QLabel("<a href='#'>Details</a>")
+        toggle.setStyleSheet("font-size: 11px;")
+        toggle.linkActivated.connect(lambda _, b=body, t=toggle: (
+            b.setVisible(b.isHidden()),
+            t.setText(f"<a href='#'>{'Details' if b.isHidden() else 'Hide details'}</a>")))
+        col.addWidget(toggle)
+        col.addWidget(body)
+        outer.addLayout(col, 1)
+        btns = QVBoxLayout()
+        btns.setSpacing(4)
+        dl = QPushButton(line_icon("download", "white"), "Download", objectName="primary")
+        dl.clicked.connect(lambda _=False, a=aid: self.ctl.download_addon(a))
+        rm = QPushButton("Delete")
+        rm.clicked.connect(lambda _=False, a=aid, n=name: self._delete_addon(a, n))
+        btns.addWidget(dl)
+        btns.addWidget(rm)
+        btns.addStretch(1)
+        outer.addLayout(btns)
+        self.addon_rows[aid] = {"status": status, "dl": dl, "rm": rm, "use": use, "size": size}
+        return f
 
     def _update_addons(self):
         for aid, r in getattr(self, "addon_rows", {}).items():
@@ -1063,7 +1077,7 @@ class MainWindow(QMainWindow):
             r["rm"].setVisible(have)
 
     def _delete_addon(self, aid, name):
-        if QMessageBox.question(self, "Delete add-on", f"Delete {name}? You can download it "
+        if QMessageBox.question(self, "Delete utility", f"Delete {name}? You can download it "
                                 "again later.") != QMessageBox.Yes:
             return
         import shutil
@@ -1208,10 +1222,6 @@ class MainWindow(QMainWindow):
                 tabs.tabBar().setTabData(i, ln.id)
                 if ln.id == shown:
                     tabs.setCurrentIndex(i)
-            i = tabs.addTab(self._addons_page(), line_icon("plus"), "Add-ons")
-            tabs.tabBar().setTabData(i, "addons")
-            if shown == "addons":
-                tabs.setCurrentIndex(i)
             self._model_shape = shape
         self._update_addons()
         cat = [m for m in model_store.models() if m.available]

@@ -2,7 +2,7 @@
 "VAD should be enabled by default"; reverses the 2026-10-21 "not added", docs/maintaining.md, "VAD").
 
 Bundled with the app (data/vad/, 643,854 bytes, MIT, licence beside it), so it is on wherever
-Voice detection is on, unless `vad_silero` is turned off on Models > Add-ons. Then
+Voice detection is on, unless `vad_silero` is turned off on Models > Utilities. Then
 `engine._speech_frames` asks Silero which 20 ms frames are speech instead of the energy rule, for
 the two jobs of Voice detection: skipping takes with no speech and shortening long silences. Live
 cuts (`live_cut`, `stretch_pauses`) stay on the energy rule: those cut points are measured (1% WER,

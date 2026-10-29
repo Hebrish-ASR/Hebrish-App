@@ -137,7 +137,7 @@ the above).** Daniel: "Can't hurt to have it as an option", then "VAD should be 
 `hebrish/vad.py`: sherpa-onnx's `silero_vad.onnx` (643,854 bytes, SHA-256 `9e2449e1…1fd6`, from
 the `asr-models` GitHub release; MIT, licence in `data/vad/`) is bundled as package data, so the
 .deb and Windows zip carry it and nothing is downloaded. `Controller.apply_vad` sets
-`engine.silero` unless `vad_silero` is off (Models > Add-ons, "Use it for voice detection"; default
+`engine.silero` unless `vad_silero` is off (Models > Utilities > Audio components, "Use it for voice detection"; default
 on); then `engine._speech_frames` returns Silero's segments as 20 ms frames (threshold 0.5, min
 speech 0.1 s, min silence 0.25 s), so `has_speech`, `shorten_silences` and the live break check use
 it. Any exception falls back to the energy rule (logged). The take is scaled so its 99.9th-percentile
@@ -1454,6 +1454,14 @@ for users to make sense and use the right one."
   this app yet" link (name, recommendation, Runs on, card). Unreleased, 2026-10-29: Daniel found
   the single list of every line and variant (0.6.0 to 1.009) "a bit too heavy" for regular users.
   Tabs are rebuilt when the catalogue's (id, available, supported) list changes.
+- Models page sub-tabs (`model_subtabs`, Daniel 2026-10-29, same day, before release): **Models**
+  (the family tabs above, then Updates and the storage folder) and **Utilities**
+  (`_utilities_page`, `UTILITIES`, `_utility_row`): optional small models in cards by heading,
+  **Audio components** (Silero VAD, bundled, "Use it for voice detection") and
+  **Post-processing** (the paragraph model, Download / Delete). First built as an "Add-ons" tab
+  after the family tabs; Daniel: utilities is a better name than accessory models, and as a last
+  family tab they were "buried to the right of the model list". Code names (`addon_rows`,
+  `download_addon`, `sig.addon`) were kept.
 - `current_id()` without a pick: the first downloaded supported model, recommended first, else
   `recommended`. Before 0.6.0 it was schema 1's `default` (`stock`); a user who never picked keeps
   the stock download they have.
