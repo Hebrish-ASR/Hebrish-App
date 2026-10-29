@@ -50,20 +50,28 @@
   </keywords>
   <screenshots>
     <screenshot type="default">
-      <caption>Dictate with a hotkey; the text goes to the app you are typing in</caption>
-      <image type="source" width="1200" height="1440">https://cdn.hebrish.app/apps/screenshots/desktop-dictate.png</image>
+      <caption>Voice Typing: a hotkey or Talk, and the text goes to the app you are typing in</caption>
+      <image type="source" width="697" height="749">https://cdn.hebrish.app/apps/screenshots/desktop-dictate.png</image>
     </screenshot>
     <screenshot>
-      <caption>Transcribe an audio file</caption>
-      <image type="source" width="1200" height="1440">https://cdn.hebrish.app/apps/screenshots/desktop-file.png</image>
+      <caption>Transcription: record a long session or open an audio file, split into paragraphs</caption>
+      <image type="source" width="697" height="752">https://cdn.hebrish.app/apps/screenshots/desktop-file.png</image>
     </screenshot>
     <screenshot>
-      <caption>Pick a model: speed and accuracy for each version</caption>
-      <image type="source" width="1200" height="1440">https://cdn.hebrish.app/apps/screenshots/desktop-model.png</image>
+      <caption>Models: pick a model by speed and accuracy</caption>
+      <image type="source" width="697" height="749">https://cdn.hebrish.app/apps/screenshots/desktop-model.png</image>
     </screenshot>
     <screenshot>
-      <caption>Hotkeys, output and sounds</caption>
-      <image type="source" width="1200" height="1440">https://cdn.hebrish.app/apps/screenshots/desktop-settings.png</image>
+      <caption>History: every transcript, searchable, stored on this computer</caption>
+      <image type="source" width="699" height="748">https://cdn.hebrish.app/apps/screenshots/desktop-history.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Dictionary: names, brands and Hebrew terms written your way</caption>
+      <image type="source" width="699" height="748">https://cdn.hebrish.app/apps/screenshots/desktop-dictionary.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Settings: toggle and push-to-talk keys, output and history</caption>
+      <image type="source" width="699" height="748">https://cdn.hebrish.app/apps/screenshots/desktop-settings.png</image>
     </screenshot>
   </screenshots>
   <content_rating type="oars-1.1"/>

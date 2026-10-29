@@ -350,6 +350,14 @@ old app then sees no model and downloads 660 MB again into its own folder. Quit 
   `https://cdn.hebrish.app/apps/screenshots/desktop-{dictate,file,model,settings}.png`: upload
   each release's files there (R2 key `apps/screenshots/`, `--cache-control "public,
   max-age=3600"`, `image/png`). `appstreamcli validate --no-net` passes (one pedantic note).
+- **1.011 set (2026-10-29)**: Daniel's own captures of 1.011 on Ubuntu (1x, about 697x749,
+  `magick -strip`), not `screenshots.py` renders, which still use the pre-1.0 tab names. The four
+  AppStream names were kept and now hold the renamed tabs: `desktop-dictate` = Voice Typing,
+  `desktop-file` = Transcription, `desktop-model` = Models, `desktop-settings` = Settings (top).
+  New: `desktop-{utilities,history,dictionary}` and `desktop-settings-{microphones,action-keys,sounds,updates}`.
+  `desktop-about` and `desktop-choose` are still the 0.6.3 renders. All eleven are on the CDN under
+  `apps/screenshots/`; hebrish.app `/download#ubuntu` and the `Hebrish/Sabich` and `Hebrish/Jachnun`
+  cards use them.
   Not done: DEP-11 metadata in the APT repo, which software centres would need to show the
   listing **before** install; today it appears once the package is installed.
 

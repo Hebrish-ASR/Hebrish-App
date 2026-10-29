@@ -3,7 +3,7 @@
 **On-device dictation with NVIDIA Parakeet, for Android, Linux and Windows.** Made for the
 English-Hebrew code-switching model; stock Parakeet is there too.
 
-![Hebrish on Linux: the Models tab, the Sabich line with its versions under it, each with speed and accuracy dots, size, hardware and a one-line recommendation](docs/screenshots/desktop-model.png)
+![Hebrish 1.011 on Linux: the Models tab, Sabich in use and recommended, Sabich-Parakeet-110M below it, each with speed and accuracy dots and size](docs/screenshots/desktop-model.png)
 
 Everything runs **on your device**. The only network traffic is downloading the model you
 pick (about 660 MB for the main models, once) and a periodic check for a newer version.

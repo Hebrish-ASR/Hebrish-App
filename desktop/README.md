@@ -5,7 +5,7 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
 
 **Website for the English-Hebrew code-switching model: [hebrish.app](https://hebrish.app)**: get the Hebrish keyboard for Android and the desktop apps, see the results, and find every model, dataset and demo in one place.
 
-![The Dictate tab: the Talk button, microphone and level meter, and the version in the footer](../docs/screenshots/desktop-dictate.png)
+![The Voice Typing tab (Hebrish 1.011): the Talk button, microphone and level meter, voice detection, the output choices, and the version in the footer](../docs/screenshots/desktop-dictate.png)
 
 ## Two ways to work
 
