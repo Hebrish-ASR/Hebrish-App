@@ -1,6 +1,5 @@
-**1.009: your history at a glance, and a history that stays lean.**
+**1.010: better voice detection, and a tidier Models tab.**
 
-- **History in Diagnostics:** how much you have transcribed all told, rounded (12K words, 1.2M words), hours of audio, days active and the history's size on disk. *Show last 7 days* draws a bar for each day's words.
-- **Self-tidying history:** about once a day, while you're not dictating, the history compacts its search index and gives space from deleted transcripts back to the disk. *Tidy now* in Diagnostics runs it on demand.
-- History tab counts are rounded the same way (thousands in K, millions in M), with the exact figures in the tooltip.
+- **Silero VAD, on by default:** voice detection uses a small voice-activity model included with the app. It tells speech from fans, traffic and café noise, so silent takes are skipped and long pauses aren't transcribed. Turn it off under *Models > Utilities* and detection goes by loudness as before.
+- **Models tab in two parts:** *Models* has a tab per family (Sabich, Jachnun, Shakshuka, Parakeet stock) with short rows; size, hardware and the technical notes are under *Details*, and versions this app can't run fold behind one link. *Utilities* holds the helper models: Silero VAD under *Audio components*, the paragraph model under *Post-processing*.
 - Ubuntu 26.04 .deb and a portable Windows zip. Not yet tested on Windows hardware. Downloads: [hebrish.app/download](https://hebrish.app/download).
