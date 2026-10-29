@@ -627,4 +627,51 @@
       }
     ]
   }
+,
+  "addons": [
+    {
+      "_doc": "Optional add-ons that are not speech models (B-40). Read by desktop 1.013+; Android and older desktop builds ignore this key. kind text_cleanup: a GGUF text model run on a finished transcript by `runtime` (a pinned llama.cpp CPU build of llama-server, per OS, downloaded with the model). Licence: S1-ASR-Cleanup is a fine-tune of S1-mini by Superwhisper (Apache 2.0 plus a naming term): wherever an app names or describes it, it is identified as \"S1-mini\" by \"Superwhisper\". desktop/hebrish/cleanup.py",
+      "id": "s1-asr-cleanup",
+      "kind": "text_cleanup",
+      "name": "S1-ASR-Cleanup (fine-tune of S1-mini by Superwhisper)",
+      "base_model": "superwhisper/s1-mini",
+      "base_label": "S1-mini by Superwhisper",
+      "licence": "Apache 2.0 with the S1-mini naming term",
+      "version": "v1.0",
+      "repo": "danielrosehill/S1-ASR-Cleanup",
+      "revision": "v1.0",
+      "card": "https://huggingface.co/danielrosehill/S1-ASR-Cleanup",
+      "file": "s1-asr-cleanup-v1.0-Q8_0.gguf",
+      "size": 639446560,
+      "sha256": "d7b73071fec1ad0c647564863f03ca24fef075272f63fb407a9abefc27328ce1",
+      "download_mb": 662,
+      "platforms": [
+        "linux",
+        "windows"
+      ],
+      "devices": [
+        "desktop"
+      ],
+      "requirements": {
+        "ram_mb": 1200,
+        "gpu": null
+      },
+      "hardware": "A computer, no graphics card needed; about 1.2 GB of memory while it runs",
+      "technical": "Qwen3-0.6B architecture, GGUF Q8_0 (639 MB), run on the processor by llama.cpp's llama-server (CPU build, 22 to 24 MB download). Greedy decoding with S1-mini's prompt and [Layers: 1,2].",
+      "runtime": {
+        "engine": "llama_server",
+        "build": "b11982",
+        "linux": {
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11982/llama-b11982-bin-ubuntu-x64.tar.gz",
+          "size": 22692196,
+          "sha256": "a7e6cc16d423fc88c204a8d8e646c1d11b1d0de9ec4a56942f6c02936e9bf09c"
+        },
+        "windows": {
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11982/llama-b11982-bin-win-cpu-x64.zip",
+          "size": 24408458,
+          "sha256": "20cd898fafc269657df8de946b06ef37dcf6b783dfa43d28ac6d187bb6ebfe1e"
+        }
+      }
+    }
+  ]
 }

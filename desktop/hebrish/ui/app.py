@@ -90,6 +90,7 @@ class Signals(QObject):
     app_updated = Signal(bool, str)             # ok, message: the pkexec apt upgrade
     maintained = Signal(object, object)         # history upkeep: result dict or None, error
     addon = Signal(str, object)                 # an add-on download finished: add-on id, error or None
+    addon_progress = Signal(str, object, object)  # add-on id, bytes done, total
 
 
 def _before(pieces: list, n: int):
@@ -113,6 +114,7 @@ class Controller(QObject):
         model_store.set_root(models_root(self.cfg))
         self.engine = Engine()
         self.addon_busy: dict[str, threading.Event] = {}     # add-on id -> cancel, while downloading
+        self.addon_done: dict[str, float] = {}               # add-on id -> fraction downloaded
         self.apply_vad()
         self.recorder = audio.Recorder()                       # every take: hotkey or Dictate tab
         self.monitor = audio.Recorder(max_s=0)                 # Test mic: level only, keeps nothing
@@ -155,6 +157,7 @@ class Controller(QObject):
         self.sig.app_updated.connect(self._app_updated)
         self.sig.maintained.connect(self._history_maintained)
         self.sig.addon.connect(self._addon_done)
+        self.sig.addon_progress.connect(self._addon_progress)
         self.maintaining = False
         self.app_release: app_update.Release | None = None    # newer than this app, else None
         self.app_method = app_update.install_method()         # apt | deb-manual | windows | source
@@ -744,10 +747,11 @@ class Controller(QObject):
                 d["stream_release"] = self.cfg["stream_release"]
         return d
 
-    def remember(self, text, samples=None, source="dictate", seconds=None):
+    def remember(self, text, samples=None, source="dictate", seconds=None, extra=None):
         """Add a transcript to the history (when `keep_history`): text only, never audio (0.7.3,
         D-2026-10-22-20); samples only give the take's length. The Transcription tab calls this too, with
-        source="file" or "record" (Transcription Mode) and no samples. Returns the row id, or None."""
+        source="file" or "record" (Transcription Mode) and no samples; `extra` is added to the row's
+        decode info (the clean-up model, B-40). Returns the row id, or None."""
         if not self.cfg["keep_history"] or not text.strip():
             return None
         cur = model_store.active()
@@ -757,7 +761,7 @@ class Controller(QObject):
         try:
             rid = self.history.add(text, seconds=seconds, model=model, source=source,
                                    model_rev=cur[1].revision if cur else None,
-                                   decode=self._decode_info(source))
+                                   decode={**self._decode_info(source), **(extra or {})})
         except Exception:
             log.exception("couldn't save the transcript to history")
             return None
@@ -1080,29 +1084,42 @@ class Controller(QObject):
             engine.silero = vad.Silero(path)
         log.info("voice detection: %s", "silero" if engine.silero else "energy")
 
+    @staticmethod
+    def addon_fetchers() -> dict:
+        """Add-on id -> download(on_progress, cancel). Silero VAD is bundled, so it has none."""
+        from .. import cleanup, paragraphs
+        return {paragraphs.MODEL_ID: paragraphs.download, cleanup.MODEL_ID: cleanup.download}
+
     def download_addon(self, aid: str):
-        """Fetch an add-on (the paragraph model; Silero VAD is bundled) off the GUI thread."""
-        from .. import paragraphs
+        """Fetch an add-on (the paragraph model, the clean-up model) off the GUI thread."""
         if aid in self.addon_busy:
             return
-        fetch = paragraphs.download
+        fetch = self.addon_fetchers()[aid]
         cancel = self.addon_busy[aid] = threading.Event()
+        self.addon_done[aid] = 0.0
 
         def work():
             try:
-                fetch(cancel=cancel)
+                fetch(lambda d, t, _n: self.sig.addon_progress.emit(aid, d, t), cancel)
                 self.sig.addon.emit(aid, None)
             except Exception as e:
                 self.sig.addon.emit(aid, e)
         threading.Thread(target=work, daemon=True).start()
         self.win.update_model()
 
+    def _addon_progress(self, aid: str, done, total):
+        if aid in self.addon_busy:
+            self.addon_done[aid] = done / max(1, total)
+            self.win.addon_progress(aid)
+
     def _addon_done(self, aid: str, err):
         cancelled = self.addon_busy.pop(aid, threading.Event()).is_set()
+        self.addon_done.pop(aid, None)
         if err and not cancelled:
             self.win.banner(f"Couldn't download the utility: {err}")
         elif not err:
             self.win.status("Utility downloaded.")
+        self.win.transcribe.sync_cleanup()
         self.win.update_model()
 
     # -- app updates (0.6.2, app_update) ---------------------------------------------
@@ -1340,6 +1357,8 @@ class Controller(QObject):
             self.act_update.setText(f"Install update ({self.latest.version})")
 
     def quit(self):
+        from .. import cleanup
+        cleanup.stop()                       # the clean-up model's llama-server, if it runs
         self.hotkeys.hold_send(False)
         self.win.transcribe.tape.stop()      # closed cleanly; offered again on the next start
         self.overlay.close()

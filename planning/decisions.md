@@ -9,6 +9,30 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-29-03: The clean-up model (S1-mini by Superwhisper fine-tune) runs on a downloaded llama-server, in Transcription Mode, and replaces Paragraphs while on
+
+- **Decision:** S1-ASR-Cleanup (a fine-tune of S1-mini by Superwhisper) is an optional desktop
+  add-on in Models > Utilities, off by default. It runs on a pinned llama.cpp CPU build of
+  `llama-server` that is downloaded with the model and started as a local child process. It
+  cleans each finished Transcription Mode transcript; while it is on, its own paragraphs replace
+  the Paragraphs setting (greyed out), which applies again only when clean-up fails. Any failure
+  keeps the text as transcribed.
+- **Why:** Daniel asked for it as a downloadable accessory model, desktop only (2026-10-29). The
+  .deb (`uv pip install --target`) and the Windows PyInstaller zip would have to compile
+  llama-cpp-python into every build (no PyPI wheels) for a feature most users never download; the
+  stock llama.cpp release binaries are about 23 MB, checked by SHA-256, and add nothing to an
+  install that doesn't use them. The model inserts paragraph breaks itself and the paragraph model
+  re-flows all whitespace, so running both would undo one or the other.
+- **Alternatives:** llama-cpp-python bundled or optional (build cost, size); running the paragraph
+  model after clean-up (undoes the model's breaks); applying clean-up to Voice Typing takes
+  inserted in one go and Paste last as the research plan lists (left for Daniel: seconds of delay
+  before every paste).
+- **By:** Daniel (add-on, desktop only, mobile later: B-40a); agent (runtime, order, Transcription
+  Mode only, open to Daniel's review). B-40; [research](../research/post-processing/README.md);
+  `desktop/docs/maintaining.md`, "Clean-up model".
+
+---
+
 ### D-2026-10-29-02: Silero VAD is bundled and on by default; TEN VAD not offered
 
 - **Decision:** Silero VAD ships inside the app (0.6 MB) and is used whenever Voice detection is

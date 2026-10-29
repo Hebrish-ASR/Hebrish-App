@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, Q
                                QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QTimeEdit,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import __version__, audio, autostart, dictionary, model_store, paragraphs, vad
+from .. import __version__, audio, autostart, cleanup, dictionary, model_store, paragraphs, vad
 from ..config import APP_NAME, CONFIG_PATH, MODELS_DIR, STATE_PATH, TAGLINE, load_json, threads
 from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
@@ -992,7 +992,15 @@ class MainWindow(QMainWindow):
          "voice detection goes by loudness."),)),
         ("Post-processing", ((paragraphs.MODEL_ID, "Paragraph model", "Splits long transcripts into paragraphs where the "
          "topic moves on. Used in Transcription Mode when Paragraphs is set to Paragraph model.",
-         "34 MB", "A small MiniLM text model (ONNX, int8). Without it, paragraphs are time-based."),)),
+         "34 MB", "A small MiniLM text model (ONNX, int8). Without it, paragraphs are time-based."),
+         (cleanup.MODEL_ID, cleanup.DISPLAY_NAME, "Cleans up finished transcripts in Transcription Mode: "
+          "punctuation and capitals, filler and repeated words, numbers and currency, and paragraphs. "
+          "Off until you turn it on. If it fails, the transcript is kept as transcribed.",
+          "660 MB", "S1-ASR-Cleanup is a fine-tune of S1-mini by Superwhisper (Apache 2.0, with the "
+          "licence's naming term), trained for dictation clean-up: "
+          f"<a href='{cleanup.CARD}'>model card</a>. A 0.6B model (GGUF, Q8_0) run on the processor by "
+          "llama.cpp, downloaded with it (about 23 MB); about 1.2 GB of memory while it runs, and a few "
+          "seconds per paragraph. Its paragraphs replace the Paragraphs setting. Desktop only."),)),
     )
 
     def _utilities_page(self) -> QWidget:
@@ -1031,8 +1039,13 @@ class MainWindow(QMainWindow):
         if aid == vad.MODEL_ID:
             use = self._check("vad_silero", "Use it for voice detection", self.ctl.apply_vad)
             col.addWidget(use)
+        elif aid == cleanup.MODEL_ID:
+            use = self._check("tm_cleanup", "Clean up Transcription Mode transcripts",
+                              lambda: self.transcribe.sync_cleanup())
+            col.addWidget(use)
         body = QLabel(tech)
         body.setWordWrap(True)
+        body.setOpenExternalLinks(True)
         body.setStyleSheet("color: gray; font-size: 11px;")
         body.hide()
         toggle = QLabel("<a href='#'>Details</a>")
@@ -1066,9 +1079,17 @@ class MainWindow(QMainWindow):
                 r["rm"].hide()
                 r["use"].setEnabled(ok)
                 continue
-            have = paragraphs.installed() is not None
+            have = (cleanup.installed() if aid == cleanup.MODEL_ID else paragraphs.installed()) is not None
             busy = aid in self.ctl.addon_busy
-            r["status"].setText("<b>Downloading…</b>" if busy else
+            if aid == cleanup.MODEL_ID:
+                r["use"].setVisible(have)
+                if not cleanup.supported():
+                    r["status"].setText("<span style='color:gray'>Not available on this computer</span>")
+                    r["dl"].hide()
+                    r["rm"].hide()
+                    continue
+            pct = self.ctl.addon_done.get(aid)
+            r["status"].setText((f"<b>Downloading… {int(pct * 100)}%</b>" if pct else "<b>Downloading…</b>") if busy else
                                 "<span style='color:#2e9e5b'>✓ Downloaded</span>" if have else
                                 f"<span style='color:gray'>Not downloaded · {r['size']}</span>")
             r["dl"].setVisible(not have)
@@ -1080,9 +1101,20 @@ class MainWindow(QMainWindow):
         if QMessageBox.question(self, "Delete utility", f"Delete {name}? You can download it "
                                 "again later.") != QMessageBox.Yes:
             return
-        import shutil
-        shutil.rmtree(paragraphs.root(), ignore_errors=True)
+        if aid == cleanup.MODEL_ID:
+            cleanup.remove()                  # stops its llama-server first
+            self.transcribe.sync_cleanup()
+        else:
+            import shutil
+            shutil.rmtree(paragraphs.root(), ignore_errors=True)
         self.update_model()
+
+    def addon_progress(self, aid):
+        """A download's percentage on its Utilities row."""
+        r = getattr(self, "addon_rows", {}).get(aid)
+        pct = self.ctl.addon_done.get(aid)
+        if r is not None and pct is not None:
+            r["status"].setText(f"<b>Downloading… {int(pct * 100)}%</b>")
 
     @staticmethod
     def _other_versions(others, lay):

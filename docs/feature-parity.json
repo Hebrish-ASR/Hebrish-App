@@ -1147,6 +1147,28 @@
       "notes": "2026-10-24, B-44/B-44a, D-2026-10-24-09. Spec and parity cases shared: shared/paragraphs.md, shared/paragraph-cases.json. Dictation unchanged."
     },
     {
+      "id": "transcription-cleanup",
+      "group": "history-and-files",
+      "name": "Clean-up model for Transcription Mode transcripts (S1-ASR-Cleanup, a fine-tune of S1-mini by Superwhisper), optional download",
+      "android": {
+        "status": "missing",
+        "evidence": "none",
+        "notes": "planning/backlog.md B-40a: 0.6B Q8 too heavy for phones for now"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/cleanup.py (catalogue addons, llama-server runtime, prompt, guard); setting in desktop/hebrish/ui/transcribe.py (Transcript card header) and Models > Utilities; tests/test_cleanup.py"
+      },
+      "windows": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/cleanup.py (catalogue addons, llama-server runtime, prompt, guard); setting in desktop/hebrish/ui/transcribe.py (Transcript card header) and Models > Utilities; tests/test_cleanup.py",
+        "verified": false
+      },
+      "notes": "2026-10-29, B-40. Off by default; replaces the Paragraphs setting while on; any failure keeps the transcript as transcribed. Dictation (Voice Typing) unchanged."
+    },
+    {
       "id": "transcription-pause-levels",
       "group": "history-and-files",
       "name": "Transcription Mode: dedicated Pause/Resume button; gain and level meter docked (hidden) by default, shown in the card or floating in their own window",
@@ -1286,7 +1308,8 @@
     "desktop": [
       "Disfluency chop (B-38)",
       "Transcription Mode Paragraphs setting (B-44)",
-      "Transcription Mode Pause button and levels docked by default (B-45)"
+      "Transcription Mode Pause button and levels docked by default (B-45)",
+      "Clean-up model add-on for Transcription Mode (B-40)"
     ]
   },
   "twin_lag": {

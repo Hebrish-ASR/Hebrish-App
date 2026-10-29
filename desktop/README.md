@@ -78,6 +78,14 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
   *Time-based* (about one paragraph per 30 s, split at a pause) or *Paragraph model* (a small
   model, downloaded once, 34 MB, that starts paragraphs where the topic moves on once the
   transcript is done). Changing it re-flows the last transcript unless you've edited it.
+- **Clean up** (optional, off by default): download *S1-ASR-Cleanup (fine-tune of S1-mini by
+  Superwhisper)* from Models → Utilities → Post-processing (about 660 MB with the llama.cpp
+  runtime it runs on; Ubuntu and Windows only), then tick *Clean up*. Each finished transcript is
+  tidied on this computer: punctuation and capitals, filler and repeated words, numbers and
+  currency, and paragraphs (which replace the Paragraphs setting while it is on). It takes a few
+  seconds; if it fails, the transcript stays as transcribed. The model is a fine-tune of
+  [S1-mini by Superwhisper](https://huggingface.co/superwhisper/s1-mini) (Apache 2.0 with a naming
+  term): [model card](https://huggingface.co/danielrosehill/S1-ASR-Cleanup).
 - New transcripts are added at the end of the text. Copy it, or save it as .txt or .md.
 - Long recordings: dictate with the Talk button (a take can run an hour), or record elsewhere and drop the file here.
 

@@ -11,6 +11,7 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | `app_update.py` | newer-app check against `latest.json`, how this copy updates (apt / deb-manual / windows / source), the pkexec apt upgrade, relaunch (0.6.2; "App updates in the app") |
 | `engine.py` | sherpa-onnx `OfflineRecognizer` (nemo_transducer) or, for Shakshuka, `OnlineRecognizer` (0.7.0): normalise, cut at pauses (`live_cut`, `split_points`), pad, `transcribe_chunks` generator; `LiveStream` for streaming takes |
 | `paragraphs.py` | Transcription Mode's Paragraphs setting (B-44): `Pieces` layout, the paragraph model (`Breaker`: pure-Python WordPiece + onnxruntime), its CDN download. See "Paragraphs" |
+| `cleanup.py` | the clean-up add-on (B-40): S1-ASR-Cleanup (a fine-tune of S1-mini by Superwhisper) on a downloaded `llama-server`, prompt, chunks, guard and fallback, download. See "Clean-up model" |
 | `audio.py` | sounddevice capture (pause/resume, level meter, `peek`/`consume` for live insertion), file decoding (ffmpeg, else soundfile), WAV save, beeps |
 | `hotkey.py` | the shared state machine for the two keys (toggle, push-to-talk) and the action keys, on evdev-style key names |
 | `hotkey_evdev.py` / `hotkey_win.py` | per-OS key sources: `/dev/input` on Linux, a pynput low-level hook on Windows |
@@ -980,6 +981,86 @@ D-2026-10-24-09; the spec both apps follow is `../shared/paragraphs.md`, the par
   Time-based, and choosing Paragraph model with nothing installed (download from the CDN with
   progress, then re-flow). Not yet tried in the running app on a real recording.
 
+## Clean-up model (B-40, unreleased, 2026-10-29)
+
+S1-ASR-Cleanup v1.0 (`danielrosehill/S1-ASR-Cleanup`, tag `v1.0`, `s1-asr-cleanup-v1.0-Q8_0.gguf`,
+639,446,560 bytes, SHA-256 `d7b73071…328ce1`) is a LoRA fine-tune of S1-mini by Superwhisper
+(Qwen3-0.6B). Licence: Apache 2.0 plus a naming term, so the app always calls it
+"S1-ASR-Cleanup (fine-tune of S1-mini by Superwhisper)" (`cleanup.DISPLAY_NAME`, the catalogue
+`name`); keep that wording in any new text. Training code and prompt: the
+ASR-Post-Processor-Model repo (`training/s1mini_lora.py`, `docs/fine-tuning.md`).
+
+- **Catalogue.** A top-level `addons` list in `shared/catalogue.json` (`kind: text_cleanup`), not a
+  line or variant: it is not a speech model, never appears in the model picker, and Android and
+  older desktops ignore the key (Android's `JSONObject` reads only the keys it knows). The entry
+  pins the GGUF's size and SHA-256 and, under `runtime`, one llama.cpp release asset per OS
+  (URL, size, SHA-256 from the GitHub release `digest`). `cleanup.entry()` falls back to the
+  bundled copy when the cached catalogue predates `addons`. With `size`/`sha256` absent,
+  `model_files()` reads them from Hugging Face's tree at the tag (LFS oid), as `model_store` does.
+- **Runtime: a downloaded `llama-server`, not llama-cpp-python** (decided 2026-10-29). The .deb
+  installs its Python packages with `uv pip install --target` and the Windows zip is PyInstaller;
+  llama-cpp-python has no prebuilt wheels on PyPI, so it would be compiled into every build
+  (cmake + a compiler in CI, tens of MB more) for a feature most users never download. The stock
+  CPU builds from ggml-org/llama.cpp releases (build `b11982`: `llama-b11982-bin-ubuntu-x64.tar.gz`,
+  22.7 MB; `llama-b11982-bin-win-cpu-x64.zip`, 24.4 MB) are downloaded with the model, and only
+  `llama-server` and its `.so`/`.dll` files are kept, flattened (44 MB on Linux; the .so symlinks
+  recreated, or copied where the file system has none). The Linux build needs only libssl3 beyond
+  glibc (checked with `ldd`, 2026-10-29). The builds are pre-releases on GitHub; the tag is pinned
+  and the archive checked by SHA-256, so a newer build is a catalogue edit (new `build`, URLs,
+  sizes, digests), no app release.
+- **On disk:** `<models>/s1-asr-cleanup/v1.0/` (the GGUF, `manifest.json` written last) and
+  `<models>/s1-asr-cleanup/runtime/b11982/` (`.complete` written last). `installed()` needs both.
+  A new model version keeps the runtime; Delete (`cleanup.remove()`) stops the server and removes
+  the whole folder.
+- **Process:** `cleanup.server()` starts one `llama-server -m <gguf> --host 127.0.0.1 --port
+  <free> -c 4096 -np 1 -t <cores/2> --no-webui` on first use and waits for `/health` (90 s cap).
+  It is stopped after 10 minutes without a request (`IDLE_S`, the `cleanup-idle` thread), on a
+  timed-out request, on Delete, and in `Controller.quit`. Requests: `/tokenize` for token counts,
+  `/completion` with the raw prompt, `temperature 0`, `top_k 1`, `stop ["<|im_end|>"]`.
+- **Prompt:** `render_prompt()` is byte-identical to `s1mini_lora.render_prompt(text, "1,2")`
+  (`tests/test_cleanup.py` checks it against the training script when that repo is checked out
+  beside this one): S1-mini's system prompt verbatim, `[Styling: semi-formal] [Structure: prose]
+  [Context: general] [Layers: 1,2]`, a newline, the transcript, then `<think>\n\n</think>\n\n`
+  (without the empty think block S1-mini returns nothing). `n_predict` = 1.3 × input tokens + 32.
+  The card says to keep inputs under about 1,000 tokens, so a longer transcript is cut at sentence
+  ends into chunks of at most 900 tokens (a single longer sentence is kept whole), each cleaned
+  on its own and joined with a paragraph break.
+- **Never loses text:** a chunk keeps its raw text when the request fails or times out
+  (30 s + n_predict / 10 tokens per second), the reply is empty, it stopped at the token limit
+  (`stop_type` `limit`, so cut off), or a personal-dictionary word in the input is missing from
+  the reply (the research plan's guard; exact case for a word with a capital). The status line
+  says how many parts were kept and why. The Hebrish lexicon part of that guard is not done: the
+  app has no lexicon list yet.
+- **Where it applies:** Transcription Mode only (recordings and files), where the paragraph model
+  applies: once, on the worker thread, on the finished transcript laid out as one block (after the
+  disfluency chop and the dictionary). Not on Voice Typing takes or Paste last yet: the research
+  plan lists them, but cleaning before the paste adds seconds to every take, which is Daniel's
+  call. A cancelled transcription is not cleaned, and the clean-up step itself can't be cancelled.
+- **Paragraphs: clean-up wins, the two are exclusive in effect.** The model was trained to insert
+  paragraph breaks (`L1.paragraph-boundaries`), and the paragraph model's `apply()` re-flows all
+  whitespace, so running it after would undo the model's breaks and running it before would be
+  overwritten. While clean-up is on, the Paragraphs box is greyed out and the transcript goes to
+  the model with no breaks; if clean-up fails entirely, the Paragraphs setting is applied as if
+  clean-up were off. A cleaned transcript is never re-flowed (`_last` is cleared).
+- **History** keeps the cleaned text (what the tab shows), with `cleanup` (`s1-asr-cleanup v1.0`)
+  and `cleanup_kept_raw` in the row's `decode` JSON. The raw text is not kept.
+- **Settings:** `tm_cleanup` (default off), one value behind two checkboxes (Utilities row and the
+  Transcript header, kept in step; the header one is shown only once the add-on is installed).
+  Not on systems without a pinned build (`supported()`): the row says "Not available".
+- **Verified (2026-10-29, Ubuntu, this laptop's CPU):** `cleanup.download()` fetched and verified
+  the runtime and the real GGUF into a temp models folder (15 s), and `cleanup.run()` on
+  *"so um I was thinking that we should uh we should meet on tuesday to go over the arnona bill it
+  came to like two hundred and fifty shekels …"* returned *"I was thinking that we should meet on
+  Tuesday to go over the Arnona bill. It came to 250 NIS, which is more than last time.\n\nAlso, I
+  need to call the bank about the mortgage. I'll email them instead."* in 2.7 s including the model
+  load (0.5 s for a one-line message once loaded). Seen there: the model writes *shekels* as
+  *NIS* and capitalises *Arnona*; "scratch that" is not handled (out of the v1.0 scope).
+  The Utilities row and the two checkboxes were driven off-screen with the real install.
+  Not tried: Windows (the zip may need the MSVC runtime, which most machines have), a real
+  Transcription Mode recording in the running app, transcripts long enough to need chunks.
+- Tests: `tests/test_cleanup.py` (fake runtime and fake downloads; the tab driven off-screen with a
+  fake engine).
+
 ## Disfluency chop (1.001, 2026-10-24)
 
 Request R-2026-10-24-1, B-38, decision D-2026-10-24-04: *um, uh, eh, ehm, er, erm, hmm* are
@@ -1526,7 +1607,8 @@ for users to make sense and use the right one."
   (the family tabs above, then Updates and the storage folder) and **Utilities**
   (`_utilities_page`, `UTILITIES`, `_utility_row`): optional small models in cards by heading,
   **Audio components** (Silero VAD, bundled, "Use it for voice detection") and
-  **Post-processing** (the paragraph model, Download / Delete). First built as an "Add-ons" tab
+  **Post-processing** (the paragraph model, Download / Delete; the clean-up model, B-40, with
+  *Clean up Transcription Mode transcripts*). First built as an "Add-ons" tab
   after the family tabs; Daniel: utilities is a better name than accessory models, and as a last
   family tab they were "buried to the right of the model list". Code names (`addon_rows`,
   `download_addon`, `sig.addon`) were kept.

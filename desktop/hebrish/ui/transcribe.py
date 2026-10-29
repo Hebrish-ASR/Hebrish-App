@@ -13,6 +13,13 @@ audio) or Paragraph model (paragraphs.Breaker, run once when the transcript is d
 transcript's pieces are kept (paragraphs.Pieces), so changing the setting lays it out again as long
 as the box still holds exactly what the app wrote.
 
+Clean-up (B-40, cleanup.py): with S1-ASR-Cleanup (a fine-tune of S1-mini by Superwhisper) downloaded
+and *Clean up* on (`tm_cleanup`, off by default), the finished transcript (after the disfluency chop
+and the personal dictionary, laid out as one block) is cleaned once, on the worker thread. The model
+writes its own paragraphs, so while clean-up is on the Paragraphs setting is greyed out and applies
+only when clean-up fails; a cleaned transcript is not re-flowed. Any failure keeps the text as
+transcribed (cleanup.clean), and the status line says so.
+
 Long sessions (2026-10-29): a small Recording light and timer by the controls, Voice detection for
 this tab (`tm_vad`, on by default, also in the tray menu), Save audio (`tm_save_audio`: the recording
 is moved to a folder instead of deleted), and the recorder's disk and stalled-stream checks in
@@ -28,7 +35,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, 
                                QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import audio, dictionary, disfluency, longform, mics, paragraphs
+from .. import audio, cleanup, dictionary, disfluency, longform, mics, paragraphs
 from ..inserter import copy_to_clipboard
 from .icons import line_icon
 from .mics import fill_combo
@@ -49,6 +56,7 @@ class _Sig(QObject):
     flowed = Signal(int, object)       # re-flow generation, transcript text or exception
     dl_progress = Signal(object, object)   # bytes done, total
     dl_done = Signal(object)           # None or exception
+    stage = Signal(str)                # a status line from the worker ("Cleaning up…")
 
 
 PARAGRAPH_MODES = (("None", paragraphs.NONE), ("Time-based", paragraphs.TIME),
@@ -112,6 +120,7 @@ class TranscribePage(QWidget):
         self.sig.flowed.connect(self._flowed)
         self.sig.dl_progress.connect(self._dl_progress)
         self.sig.dl_done.connect(self._dl_done)
+        self.sig.stage.connect(lambda t: self.ctl.win.status(t))
         self._last = None                # the last transcript, while it can be re-flowed (see _finished)
         self._live = None                # the box as the app last wrote it, while transcribing
         self._edited = False             # the user typed in the box while it was transcribing
@@ -301,6 +310,14 @@ class TranscribePage(QWidget):
         self.para.setCurrentIndex(self.para.findData(self._para_mode()))
         self.para.currentIndexChanged.connect(self._on_paragraphs)
         head.addWidget(self.para)
+        self.tidy = QCheckBox("Clean up", checked=bool(self.cfg["tm_cleanup"]))
+        self.tidy.setToolTip(
+            f"Clean up each finished transcript with {cleanup.DISPLAY_NAME}: punctuation, capitals, "
+            "filler and repeated words, numbers, and paragraphs (they replace the Paragraphs setting).\n"
+            "Runs on this computer after the transcript is done. If it fails, the transcript stays as "
+            "transcribed. Downloaded from Models → Utilities.")
+        self.tidy.toggled.connect(self._on_tidy)
+        head.addWidget(self.tidy)
         b.addLayout(head)
         self.text = QPlainTextEdit()
         self.text.setPlaceholderText("The transcript lands here, and you can edit it. "
@@ -308,6 +325,7 @@ class TranscribePage(QWidget):
                                      "follow the Paragraphs setting above.")
         self.text.setStyleSheet("font-size: 14px;")
         b.addWidget(self.text, 1)
+        self.sync_cleanup()
         # Voice Typing's paste at the cursor stays out of this box (1.012): read from the decode
         # thread, so a plain bool kept by focusChanged (focus goes to None when the window loses it).
         self.box_focused = False
@@ -694,15 +712,17 @@ class TranscribePage(QWidget):
                                 "audio (about a minute for 90 minutes)…")
         started = time.monotonic()
         mode = self._asked = self._para_mode()
+        tidy = self._cleanup_on()
         note = ""
-        if mode == paragraphs.MODEL and paragraphs.installed() is None:
+        if mode == paragraphs.MODEL and paragraphs.installed() is None and not tidy:
             mode = paragraphs.TIME
             note = (" The paragraph model is still downloading" if self._dl else
                     " The paragraph model isn't downloaded") + ", so paragraphs are time-based."
 
         def work():
             try:
-                fix = dictionary.compile(dictionary.load())     # personal dictionary, as in dictation
+                words = dictionary.load()
+                fix = dictionary.compile(words)                  # personal dictionary, as in dictation
                 # pieces are ~10-25 s; Time-based starts a paragraph every ~30 s of audio. With
                 # the Paragraph model they are joined with spaces until the end.
                 pieces = paragraphs.Pieces(PARAGRAPH_S * audio.SAMPLE_RATE)
@@ -713,14 +733,19 @@ class TranscribePage(QWidget):
                     if sep is not None:      # the first piece is set off from what's in the box
                         self.sig.chunk.emit(("\n\n" if len(pieces.items) == 1 else sep) + text)
                     self.sig.progress.emit(done / total)
-                body, err = None, None
-                if mode == paragraphs.MODEL and pieces.items:
+                body, err, tidied = None, None, None
+                if tidy and pieces.items and not cancel.is_set():
+                    self.sig.stage.emit("Cleaning up the transcript…")
+                    tidied = cleanup.run(pieces.text(paragraphs.NONE), keep=tuple(e["word"] for e in words))
+                    if tidied.cleaned:
+                        body = tidied.text
+                if body is None and mode == paragraphs.MODEL and pieces.items:
                     try:
                         body = pieces.text(paragraphs.MODEL, paragraphs.breaker())
                     except Exception as e:   # fall back, never lose text
                         body, err = pieces.text(paragraphs.TIME), e
                 self.sig.done.emit((len(samples) / audio.SAMPLE_RATE, time.monotonic() - started,
-                                    cancel.is_set(), pieces, mode, body, err, note))
+                                    cancel.is_set(), pieces, mode, body, err, note, tidied))
             except Exception as e:
                 self.sig.done.emit(e)
         threading.Thread(target=work, daemon=True).start()
@@ -747,12 +772,26 @@ class TranscribePage(QWidget):
             self._show_leftover()            # the recording stays on disk, offered again
             QMessageBox.warning(self, "Transcription failed", str(result))
             return
-        audio_s, took, cancelled, pieces, mode, body, err, note = result
+        audio_s, took, cancelled, pieces, mode, body, err, note, tidied = result
         unedited = not self._edited and self.text.toPlainText() == live
         if unedited and pieces.items:
             self._last = {"from": self._from, "pieces": pieces, "mode": mode,
                           "shown": self.text.toPlainText(), "rid": None}
-        if mode == paragraphs.MODEL and pieces.items:
+        extra = None
+        if tidied is not None and tidied.cleaned:
+            if self._last:
+                self._show_body(body, "cleanup")
+                self._last = None            # the model's own words and paragraphs: never re-flowed
+                extra = {"cleanup": f"{cleanup.MODEL_ID} {cleanup.entry()['version']}",
+                         "cleanup_kept_raw": tidied.kept_raw}
+                note += (f" Cleaned up with {cleanup.DISPLAY_NAME}." if not tidied.kept_raw else
+                         f" Cleaned up, except {tidied.kept_raw} of {tidied.chunks} parts kept as "
+                         f"transcribed ({tidied.error}).")
+            else:
+                note += " You edited the transcript while it was transcribing, so it wasn't cleaned up."
+        elif tidied is not None:
+            note += f" Clean-up failed ({tidied.error}), so the transcript is as transcribed."
+        if not (tidied is not None and tidied.cleaned) and mode == paragraphs.MODEL and pieces.items:
             if self._last:
                 self._show_body(body, paragraphs.TIME if err else mode)
                 if err:
@@ -762,7 +801,7 @@ class TranscribePage(QWidget):
         if not cancelled:
             rid = self.ctl.remember(self.text.toPlainText()[self._from:].strip(),
                                     source="record" if source else "file",
-                                    seconds=audio_s)
+                                    seconds=audio_s, extra=extra)
             if self._last:
                 self._last["rid"] = rid
             if source is not None:
@@ -784,6 +823,35 @@ class TranscribePage(QWidget):
             return f" Audio saved: {longform.keep(source, self.cfg['tm_audio_dir'])}"
         except OSError as e:                 # left where it is: offered again as a leftover
             return f" Couldn't save the audio ({e}); it is still in {source.parent}."
+
+    # -- clean-up (B-40) --------------------------------------------------------------
+    def _cleanup_on(self) -> bool:
+        return bool(self.cfg["tm_cleanup"]) and cleanup.installed() is not None
+
+    def sync_cleanup(self):
+        """Show *Clean up* only once the model is downloaded, and grey out Paragraphs while it is
+        on (the model writes the paragraphs). Called at start, after a download or delete, and when
+        the Utilities checkbox changes."""
+        have = cleanup.installed() is not None
+        self.tidy.blockSignals(True)
+        self.tidy.setChecked(bool(self.cfg["tm_cleanup"]))
+        self.tidy.blockSignals(False)
+        self.tidy.setVisible(have)
+        on = self._cleanup_on()
+        self.para.setEnabled(not on)
+        self.para.setToolTip(self.para.toolTip().split("\n\nClean-up is on")[0] +
+                             ("\n\nClean-up is on, so the clean-up model sets the paragraphs; this "
+                              "applies only if it fails." if on else ""))
+
+    def _on_tidy(self, on: bool):
+        self.cfg.set("tm_cleanup", on)
+        self.sync_cleanup()
+        rows = getattr(self.ctl.win, "addon_rows", {})
+        use = rows.get(cleanup.MODEL_ID, {}).get("use")
+        if use is not None and use.isChecked() != on:
+            use.blockSignals(True)
+            use.setChecked(on)
+            use.blockSignals(False)
 
     # -- paragraphs (B-44) -----------------------------------------------------------
     def _para_mode(self) -> str:
