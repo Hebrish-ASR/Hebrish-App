@@ -299,6 +299,9 @@ each part works there:
 4. Publish the .deb to the APT repository: `with-secrets scripts/publish-apt.sh dist/hebrish_<ver>-1_amd64.deb` (credentials from Infisical since 2026-10-25)
    (see "APT repository" below). Do it after the CDN upload and `latest.json`, so the in-app
    update notice never points at a version apt can't yet fetch.
+   It downloads the whole pool to `mktemp -d`; on 2026-10-29 (1.011) that failed with `Disk quota
+   exceeded` on `/tmp` (tmpfs, per-user quota) before anything was uploaded. Run it with
+   `TMPDIR=<dir on a disk with ~100 MB free>` when `/tmp` is tight.
 5. Screenshots: `.venv/bin/python scripts/screenshots.py`, then upload them (see
    "Screenshots and the AppStream listing").
 
