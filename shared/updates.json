@@ -6,6 +6,12 @@
   "entries": [
     {
       "date": "2026-10-29",
+      "tag": "Desktop 1.011",
+      "title": "Transcription Mode for long sessions",
+      "summary": "Built for sessions of 90 minutes and more (a recording can run up to 4 hours)."
+    },
+    {
+      "date": "2026-10-29",
       "tag": "Desktop 1.010",
       "title": "Better voice detection, and a tidier Models tab",
       "summary": "Voice detection now uses Silero VAD, a small voice-activity model included with the app and on by default. It tells speech from fans, traffic and café noise, so silent takes are skipped and long pauses aren't transcribed."
@@ -117,12 +123,6 @@
       "tag": "Desktop 0.7.6",
       "title": "Desktop: fewer capitals and full stops in the middle of sentences",
       "summary": "With insert as you go, stopping to think in the middle of a sentence no longer ends it. Each piece of text is now transcribed together with the end of the piece before it, so the model hears that the sentence carries on and writes it the way it would mid-sentence."
-    },
-    {
-      "date": "2026-10-23",
-      "tag": "Android 0.8.1",
-      "title": "Android: transcription history, exported as CSV",
-      "summary": "Every take is now kept on your phone: the text, its length, the model, and how long it took to transcribe. Under Dictation, Export CSV saves it through the file picker, so you can put it straight into Google Drive."
     }
   ]
 }

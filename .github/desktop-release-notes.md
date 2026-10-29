@@ -1,5 +1,8 @@
-**1.010: better voice detection, and a tidier Models tab.**
+**1.011: Transcription Mode for long sessions.**
 
-- **Silero VAD, on by default:** voice detection uses a small voice-activity model included with the app. It tells speech from fans, traffic and café noise, so silent takes are skipped and long pauses aren't transcribed. Turn it off under *Models > Utilities* and detection goes by loudness as before.
-- **Models tab in two parts:** *Models* has a tab per family (Sabich, Jachnun, Shakshuka, Parakeet stock) with short rows; size, hardware and the technical notes are under *Details*, and versions this app can't run fold behind one link. *Utilities* holds the helper models: Silero VAD under *Audio components*, the paragraph model under *Post-processing*.
+- **90 minutes and more:** a recording can run up to 4 hours. If the microphone drops out (unplugged, the sound system restarts, the laptop wakes from sleep) it reconnects and the recording carries on; if the disk fills up, it stops cleanly and keeps what was recorded. Record warns first when the disk has room for less than 90 minutes.
+- **Voice detection switch** in the Transcription tab and in the tray menu, on by default in this mode and separate from Voice Typing's.
+- **Recording light and timer:** a small steady light and a quiet timer next to the controls; the tray icon shows when a transcription recording is running.
+- **Save audio:** keep each recording once it is transcribed, as the model hears it (16 kHz mono WAV, about 170 MB for 90 minutes), in a folder you choose.
+- With voice detection on, a long recording is scanned for speech once instead of twice before it is transcribed.
 - Ubuntu 26.04 .deb and a portable Windows zip. Not yet tested on Windows hardware. Downloads: [hebrish.app/download](https://hebrish.app/download).
