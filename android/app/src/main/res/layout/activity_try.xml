@@ -29,6 +29,9 @@
 
     <TextView android:id="@+id/try_status" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:layout_marginTop="6dp" android:gravity="center" android:minLines="2" />
+    <!-- The way out of a dead end: Open Models with no model, Try again after a failed load. -->
+    <Button android:id="@+id/try_fix" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal" android:visibility="gone" />
     <ProgressBar android:id="@+id/try_level" style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="160dp" android:layout_height="6dp" android:layout_gravity="center_horizontal"
         android:layout_marginTop="4dp" android:max="100" android:progressDrawable="@drawable/level_bar"

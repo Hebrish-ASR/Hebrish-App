@@ -41,20 +41,14 @@ class SetupActivity : Page() {
             button(R.string.setup_model_button, r) { startActivity(Intent(this, ModelsActivity::class.java)) }
         }
         step("keyboard", R.string.setup_keyboard_title, R.string.setup_keyboard, { Setup.imeEnabled(this) }) { r ->
-            button(R.string.enable, r) { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
+            button(R.string.enable, r) { Setup.openSystem(this, Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
             button(R.string.setup_more, r) { startActivity(Intent(this, KeyboardActivity::class.java)) }
         }
         step("floating", R.string.setup_floating_title, R.string.setup_floating, { Setup.bubbleOn(this) }) { r ->
             button(R.string.setup_floating_button, r) { startActivity(Intent(this, FloatingMicGuideActivity::class.java)) }
         }
         step("battery", R.string.setup_battery_title, R.string.setup_battery, { Setup.batteryExempt(this) }) { r ->
-            button(R.string.guide_battery_button, r) {
-                // The Play build has no exemption permission: the system list instead ([Channel]).
-                if (!Channel.batteryPrompt) startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
-                else runCatching {
-                    startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
-                }.onFailure { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
-            }
+            button(R.string.guide_battery_button, r) { Setup.askBattery(this) }
         }
         step("background", R.string.setup_background_title, R.string.setup_background, { Recording.background(this) }) { r ->
             button(R.string.setup_background_button, r) { askBackground() }
@@ -62,9 +56,7 @@ class SetupActivity : Page() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             step("unused", R.string.setup_unused_title, R.string.setup_unused, { Setup.notPausedWhenUnused(this) }) { r ->
                 button(R.string.setup_unused_button, r) {
-                    runCatching {
-                        startActivity(Intent(Intent.ACTION_AUTO_REVOKE_PERMISSIONS, Uri.parse("package:$packageName")))
-                    }.onFailure { appInfo() }
+                    Setup.openSystem(this, Intent(Intent.ACTION_AUTO_REVOKE_PERMISSIONS, Uri.parse("package:$packageName")), Setup.appInfoIntent(this))
                 }
             }
         }

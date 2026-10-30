@@ -15,7 +15,6 @@
 
     <!-- Home (0.10.0): the tagline above already says what it does, so this says where it runs. -->
     <string name="intro_home">It all runs on your phone; your voice never leaves it.</string>
-    <string name="intro">Voice typing in English that gets the Hebrew words right. It all runs on your phone; your voice never leaves it.</string>
     <string name="version_line">App %1$s · %2$s %3$s</string>
     <string name="version_line_none">App %1$s · %2$s</string>
 
@@ -61,6 +60,8 @@
     <string name="hebrish_feature">Request a feature</string>
     <string name="hebrish_feedback">Send feedback</string>
     <string name="no_email_app">No email app found. Write to %1$s.</string>
+    <string name="no_settings_screen">This phone doesn\'t have that settings screen. Open Settings and look for Hebrish there.</string>
+    <string name="no_browser">No browser found. The address is %1$s</string>
     <string name="hebrish_word">Suggest a word</string>
     <string name="hebrish_samples">Send voice samples</string>
     <string name="hebrish_involved">Get involved</string>
@@ -294,6 +295,8 @@
     <!-- Transcription Mode (R-2026-10-24-5): long recordings, then transcribe -->
     <string name="title_transcription">Transcription Mode</string>
     <string name="nav_transcription_summary">Record for as long as you need, then transcribe</string>
+    <!-- The level meter's clip lamp label (Transcription Mode). -->
+    <string name="tm_meter_clip">CLIP</string>
     <string name="tm_intro">Record a long take, then transcribe it. The recording is saved on your phone as you go and deleted once the transcript is in History. Unless background recording is on, keep this screen open: leaving it pauses the recording.</string>
     <string name="tm_background">Keep recording in the background (screen off, other apps)</string>
     <string name="tm_channel">Transcription Mode recording</string>
@@ -322,6 +325,7 @@
     <string name="tm_paused_left">Paused when you left the screen. Tap Resume to carry on.</string>
     <string name="tm_stopped">Stopped: %1$s recorded. Transcribe when you\'re ready.</string>
     <string name="tm_limit">The recording reached its limit and stopped.</string>
+    <string name="tm_write_failed">The recording stopped: the phone couldn\'t save more (is its storage full?). What was recorded is kept.</string>
     <string name="tm_mic_lost">The mic stopped: paused. Pick a mic and tap Resume.</string>
     <string name="tm_transcribing">Transcribing… %1$d%%</string>
     <string name="tm_done">Transcribed %1$s of audio.</string>
@@ -378,6 +382,10 @@
     <string name="try_failed">Something went wrong: %1$s</string>
     <string name="try_need_mic">The app needs microphone access to hear you.</string>
     <string name="try_copied">Copied</string>
+    <string name="try_nothing_to_copy">Nothing to copy yet.</string>
+    <string name="try_nothing_to_share">Nothing to share yet.</string>
+    <string name="try_open_models">Open Models</string>
+    <string name="try_again">Try again</string>
     <string name="try_cd_stop">Stop and transcribe</string>
 
     <!-- Sound, microphone and buttons (ControlsActivity, Feedback, Mic, Remote; 0.6.0) -->
@@ -429,6 +437,7 @@
     <string name="controls_profile_use">Use</string>
     <string name="controls_profile_delete">Delete</string>
     <string name="controls_profiles_none">No saved sets yet.</string>
+    <string name="controls_profile_need_name">Give the set a name first.</string>
     <string name="controls_profile_empty">Bind a key first: there is nothing to save.</string>
     <string name="controls_profile_saved">Saved %1$s</string>
     <string name="controls_profile_used">Now using %1$s</string>
@@ -529,6 +538,7 @@
     <string name="dict_added_shared">Added %1$s, also to Android\'s personal dictionary</string>
     <string name="dict_added_local">Added %1$s to Hebrish</string>
     <string name="dict_words">Words (%1$d)</string>
+    <string name="dict_need_word">Type the word first.</string>
     <string name="dict_empty">No words yet.</string>
     <string name="dict_row_heard">%1$s  ←  %2$s</string>
     <string name="dict_from_android">Android\'s personal dictionary</string>

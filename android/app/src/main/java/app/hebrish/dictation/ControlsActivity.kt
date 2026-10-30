@@ -137,7 +137,8 @@ class ControlsActivity : Page(), SharedPreferences.OnSharedPreferenceChangeListe
     private fun saveProfile() {
         val field = profileName ?: return
         val name = field.text.toString().trim()
-        if (name.isEmpty()) return
+        // Up to 1.008 Save with no name did nothing at all.
+        if (name.isEmpty()) { field.error = getString(R.string.controls_profile_need_name); return }
         if (Remote.Action.entries.all { Prefs.keyFor(this, it) == 0 }) return toast(getString(R.string.controls_profile_empty))
         Remote.saveProfile(this, name)
         field.setText("")

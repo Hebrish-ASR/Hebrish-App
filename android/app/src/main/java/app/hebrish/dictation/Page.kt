@@ -239,7 +239,8 @@ abstract class Page : Activity() {
     protected fun brandHeader(markSize: Int, nameSize: Float): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        addView(ImageView(this@Page).apply { setImageResource(R.drawable.ic_hebrish) }, LinearLayout.LayoutParams(dp(markSize), dp(markSize)))
+        // Decorative: the name next to it is read out.
+        addView(ImageView(this@Page).apply { setImageResource(R.drawable.ic_hebrish); importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }, LinearLayout.LayoutParams(dp(markSize), dp(markSize)))
         val words = LinearLayout(this@Page).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), 0, 0, 0) }
         words.addView(TextView(this@Page).apply {
             setText(R.string.app_name)
@@ -316,7 +317,7 @@ abstract class Page : Activity() {
         else add(row, 2, parent)
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         row.addView(box, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        row.addView(ImageView(this).apply { setImageResource(R.drawable.ic_chevron) }, LinearLayout.LayoutParams(dp(20), dp(20)))
+        row.addView(ImageView(this).apply { setImageResource(R.drawable.ic_chevron); importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }, LinearLayout.LayoutParams(dp(20), dp(20)))
         box.addView(TextView(this).apply {
             setText(title)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
@@ -335,7 +336,7 @@ abstract class Page : Activity() {
     protected fun open(url: String) {
         if (!url.startsWith("mailto:")) {
             try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } catch (_: android.content.ActivityNotFoundException) {
-                Toast.makeText(this, url, Toast.LENGTH_LONG).show()
+                Toast.makeText(this, getString(R.string.no_browser, url), Toast.LENGTH_LONG).show()
             }
             return
         }

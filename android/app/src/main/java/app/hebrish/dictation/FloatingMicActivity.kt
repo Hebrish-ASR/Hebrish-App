@@ -119,8 +119,7 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             text(R.string.bubble_clipboard_notice, top = 12)
             button(R.string.bubble_clipboard_settings) {
-                runCatching { startActivity(Intent(android.provider.Settings.ACTION_PRIVACY_SETTINGS)) }
-                    .onFailure { startActivity(Intent(android.provider.Settings.ACTION_SETTINGS)) }
+                Setup.openSystem(this, Intent(android.provider.Settings.ACTION_PRIVACY_SETTINGS), Intent(android.provider.Settings.ACTION_SETTINGS))
             }
         }
         text(R.string.bubble_options_hint)

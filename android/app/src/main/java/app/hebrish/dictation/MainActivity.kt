@@ -49,7 +49,7 @@ class MainActivity : Page() {
         })
 
         micLine = text(R.string.mic_missing, top = 16)
-        micBtn = button(R.string.grant) { requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC) }
+        micBtn = button(R.string.grant) { Setup.askMic(this, REQ_MIC) }
 
         setupSummary = nav(R.string.title_setup, {}, SetupActivity::class.java, group().also {
             (it.layoutParams as android.view.ViewGroup.MarginLayoutParams).topMargin = dp(20)
@@ -104,7 +104,7 @@ class MainActivity : Page() {
         render()
         if (grantResults.firstOrNull() == PackageManager.PERMISSION_DENIED && !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)) {
             // Permanently denied: only the app settings page can grant it now.
-            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+            Setup.appInfo(this)
         }
     }
 
@@ -170,8 +170,32 @@ object Setup {
         a.requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), requestCode)
     }
 
-    fun appInfo(ctx: Context) = ctx.startActivity(
-        android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${ctx.packageName}")))
+    fun appInfo(ctx: Context) = openSystem(ctx, appInfoIntent(ctx))
+
+    fun appInfoIntent(ctx: Context) = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}"))
+
+    /**
+     * Opens a system screen: the first of [intents] this phone has. Some ROMs leave screens out,
+     * and up to 1.008 most of the setup buttons then crashed the app (ActivityNotFoundException);
+     * when none opens, a message says so.
+     */
+    fun openSystem(ctx: Context, vararg intents: Intent) {
+        for (i in intents) {
+            try { ctx.startActivity(i); return } catch (_: android.content.ActivityNotFoundException) { } catch (_: SecurityException) { }
+        }
+        android.widget.Toast.makeText(ctx, R.string.no_settings_screen, android.widget.Toast.LENGTH_LONG).show()
+    }
+
+    /**
+     * Battery unrestricted (Setup and the floating mic guide): the direct prompt, or if a ROM
+     * refuses it the list of apps' battery settings. The Play build has no exemption permission,
+     * so it goes to the list ([Channel]).
+     */
+    fun askBattery(ctx: Context) {
+        val list = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        if (!Channel.batteryPrompt) openSystem(ctx, list)
+        else openSystem(ctx, Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${ctx.packageName}")), list)
+    }
 
     fun imeEnabled(ctx: Context) = (ctx.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
         .enabledInputMethodList.any { it.packageName == ctx.packageName }

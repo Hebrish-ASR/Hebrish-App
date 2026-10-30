@@ -27,14 +27,14 @@ class FloatingMicConsentActivity : Page() {
         button(R.string.consent_decline, r) { finish() }
         button(R.string.consent_accept, r) {
             Prefs.setA11yConsent(this, true)
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            Setup.openSystem(this, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             finish()
         }
     }
 
     companion object {
         fun openSettings(from: Activity) =
-            if (Prefs.a11yConsent(from)) from.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            if (Prefs.a11yConsent(from)) Setup.openSystem(from, Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             else from.startActivity(Intent(from, FloatingMicConsentActivity::class.java))
     }
 }

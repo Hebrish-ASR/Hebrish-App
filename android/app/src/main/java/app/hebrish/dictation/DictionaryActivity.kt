@@ -61,7 +61,7 @@ class DictionaryActivity : Page() {
 
     private fun add() {
         val w = word.text.toString().trim()
-        if (w.isEmpty()) return
+        if (w.isEmpty()) { word.error = getString(R.string.dict_need_word); return }
         val shared = PersonalDictionary.add(this, w, heard.text.toString())
         word.setText("")
         heard.setText("")

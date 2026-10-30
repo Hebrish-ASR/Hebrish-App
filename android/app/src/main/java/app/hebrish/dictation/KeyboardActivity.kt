@@ -26,7 +26,7 @@ class KeyboardActivity : Page() {
         heading(R.string.step_ime)
         imeStatus = text()
         val r = row()
-        button(R.string.enable, r) { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
+        button(R.string.enable, r) { Setup.openSystem(this, Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
         button(R.string.pick, r) { (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker() }
 
         heading(R.string.step_heliboard)

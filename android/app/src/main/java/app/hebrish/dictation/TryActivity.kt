@@ -3,8 +3,6 @@ package app.hebrish.dictation
 import app.hebrish.core.*
 import android.Manifest
 import android.app.Activity
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -34,6 +32,8 @@ class TryActivity : Activity() {
     private lateinit var mic: ImageButton
     private lateinit var status: TextView
     private lateinit var level: ProgressBar
+    /** Under the status line, only when the screen would otherwise be stuck: Open Models, or Try again. */
+    private lateinit var fix: Button
     private val ui = Handler(Looper.getMainLooper())
     private var state = State.LOADING
     private var startedAt = 0L
@@ -61,12 +61,17 @@ class TryActivity : Activity() {
         mic = findViewById(R.id.try_mic)
         status = findViewById(R.id.try_status)
         level = findViewById(R.id.try_level)
+        fix = findViewById(R.id.try_fix)
 
         mic.setOnClickListener { onMic() }
-        findViewById<Button>(R.id.try_copy).setOnClickListener { copy() }
-        findViewById<Button>(R.id.try_share).setOnClickListener { share() }
+        findViewById<Button>(R.id.try_copy).setOnClickListener { TextOut.copy(this, text.text) }
+        findViewById<Button>(R.id.try_share).setOnClickListener { TextOut.share(this, text.text) }
         findViewById<Button>(R.id.try_clear).setOnClickListener { text.setText("") }
-        findViewById<Button>(R.id.try_setup).setOnClickListener { finish() }
+        // Up to 1.008 this only closed the screen, which from home left the user where they started.
+        findViewById<Button>(R.id.try_setup).setOnClickListener {
+            startActivity(Intent(this, SetupActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))
+            finish()
+        }
 
         // Tapping an example shows it as a toast: something to read aloud, not to paste.
         val examples = findViewById<LinearLayout>(R.id.try_examples)
@@ -78,12 +83,31 @@ class TryActivity : Activity() {
             })
         }
 
-        if (!ModelStore.isReady(this)) {
-            setState(State.LOADING, getString(R.string.try_no_model))
-            mic.isEnabled = false
-            return
-        }
+        if (!ModelStore.isReady(this)) return showNoModel()
         preload()
+    }
+
+    /** Set while the screen waits for a model: coming back from Models with one loads it. */
+    private var noModel = false
+
+    private fun showNoModel() {
+        noModel = true
+        setState(State.LOADING, getString(R.string.try_no_model))
+        showFix(R.string.try_open_models) { startActivity(Intent(this, ModelsActivity::class.java)) }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (noModel && ModelStore.isReady(this)) {
+            noModel = false
+            preload()
+        }
+    }
+
+    private fun showFix(label: Int, action: () -> Unit) {
+        fix.setText(label)
+        fix.setOnClickListener { action() }
+        fix.visibility = View.VISIBLE
     }
 
     /** The mic this take records from (Mic.label), under the timer. */
@@ -101,13 +125,19 @@ class TryActivity : Activity() {
 
     /** The first load reads 650 MB and takes a few seconds; do it before the first tap. */
     private fun preload() {
+        fix.visibility = View.GONE
         if (Transcriber.isLoaded(this)) return setState(State.IDLE, getString(R.string.try_ready))
         setState(State.LOADING, getString(R.string.try_loading))
+        val app = applicationContext   // the load takes seconds: don't hold the screen meanwhile
         Thread {
-            val err = runCatching { Transcriber.load(this) }.exceptionOrNull()
+            val err = runCatching { Transcriber.load(app) }.exceptionOrNull()
             ui.post {
+                if (isDestroyed) return@post
                 if (err == null) setState(State.IDLE, getString(R.string.try_ready))
-                else setState(State.LOADING, getString(R.string.try_load_failed, err.message ?: "?"))
+                else {
+                    setState(State.LOADING, getString(R.string.try_load_failed, err.message ?: "?"))
+                    showFix(R.string.try_again) { preload() }
+                }
             }
         }.start()
     }
@@ -192,19 +222,6 @@ class TryActivity : Activity() {
         mic.alpha = if (mic.isEnabled) 1f else 0.4f
         level.visibility = if (s == State.RECORDING) View.VISIBLE else View.INVISIBLE
         mic.contentDescription = getString(if (s == State.RECORDING) R.string.try_cd_stop else R.string.cd_mic)
-    }
-
-    private fun copy() {
-        val clip = ClipData.newPlainText(getString(R.string.app_name), text.text)
-        (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
-        Toast.makeText(this, R.string.try_copied, Toast.LENGTH_SHORT).show()
-    }
-
-    private fun share() {
-        if (text.text.isBlank()) return
-        startActivity(Intent.createChooser(
-            Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text.text.toString()),
-            getString(R.string.try_share)))
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {

@@ -40,8 +40,8 @@ object Hebrish {
         R.string.hebrish_bug to mail("Bug report"),
         R.string.hebrish_feature to mail("Feature request"),
         R.string.hebrish_feedback to mail("Feedback"),
-        R.string.hebrish_word to "$SITE/contact?topic=word",
-        R.string.hebrish_samples to "$SITE/contact?topic=samples",
+        R.string.hebrish_word to WORD,
+        R.string.hebrish_samples to SAMPLES,
         R.string.hebrish_involved to "$SITE/contact?topic=involved",
     )
 }

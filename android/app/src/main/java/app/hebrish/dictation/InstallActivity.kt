@@ -1,7 +1,5 @@
 package app.hebrish.dictation
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -33,8 +31,8 @@ class InstallActivity : Page() {
             textSize = 12f
         }
         val r = row()
-        button(R.string.install_copy_repo, r) { copy(Hebrish.FDROID_REPO) }
-        button(R.string.install_copy_fingerprint, r) { copy(Hebrish.FDROID_FINGERPRINT) }
+        button(R.string.install_copy_repo, r) { TextOut.copy(this, Hebrish.FDROID_REPO) }
+        button(R.string.install_copy_fingerprint, r) { TextOut.copy(this, Hebrish.FDROID_FINGERPRINT) }
 
         heading(R.string.install_apk_title)
         text(R.string.install_apk)
@@ -53,10 +51,5 @@ class InstallActivity : Page() {
             Toast.makeText(this, R.string.install_no_fdroid, Toast.LENGTH_LONG).show()
             open(Hebrish.FDROID_REPO + q)
         }
-    }
-
-    private fun copy(text: String) {
-        getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), text))
-        Toast.makeText(this, R.string.try_copied, Toast.LENGTH_SHORT).show()
     }
 }
