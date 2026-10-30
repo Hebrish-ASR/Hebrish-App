@@ -44,6 +44,11 @@ import java.util.concurrent.Executors
  * once on the whole take when it is transcribed). The take's pieces and their time-based breaks
  * are kept ([Take]), so changing the setting re-flows the transcript as long as the box still
  * holds exactly what the app wrote ([shown]); text the user edited is never replaced.
+ *
+ * Clean up (B-40a; desktop B-40): with a clean-up model downloaded ([CleanupStore]: stock S1-mini
+ * by Superwhisper, or Daniel's fine-tune of it) and the switch on, the finished take is cleaned
+ * once ([Cleanup], [CleanupModel]) on the same worker. Its paragraphs replace the Paragraphs
+ * setting, which is used again if clean-up fails; failed parts keep their raw text.
  */
 class TranscriptionActivity : Page() {
     private val ui = Handler(Looper.getMainLooper())
@@ -67,6 +72,10 @@ class TranscriptionActivity : Page() {
         var modelText: String? = null
         /** The paragraph model is running on it. */
         var modelRunning = false
+        /** The clean-up model's text for the take, once it has cleaned at least one part. */
+        var cleanText: String? = null
+        /** The clean-up model is running on it. */
+        var cleanRunning = false
     }
     private var take: Take? = null
     /** What the app last put in the box; the box is re-flowed or replaced only while it still holds exactly this. */
@@ -76,6 +85,12 @@ class TranscriptionActivity : Page() {
     private val paraWorker = Executors.newSingleThreadExecutor()
     private var paraModel: ParagraphModel? = null
     private var paraModelDir: File? = null
+    /** Clean up is switched on; [cleanOk]: this phone can run a clean-up model the catalogue offers. */
+    private var cleanOn = false
+    private var cleanOk = false
+    /** The loaded clean-up model, kept between takes. [paraWorker] only. */
+    private var cleanModel: CleanupModel? = null
+    private var cleanModelFile: File? = null
 
     private lateinit var leftoverBox: LinearLayout
     private lateinit var leftoverText: TextView
@@ -95,6 +110,9 @@ class TranscriptionActivity : Page() {
     private lateinit var text: EditText
     private lateinit var paraLine: TextView
     private lateinit var paraProgress: ProgressBar
+    private lateinit var cleanBox: LinearLayout
+    private lateinit var cleanLine: TextView
+    private lateinit var cleanProgress: ProgressBar
 
     private val tick = object : Runnable {
         override fun run() {
@@ -174,6 +192,19 @@ class TranscriptionActivity : Page() {
         paraProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 1000 }
         column.addView(paraProgress, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
 
+        // Clean up (B-40a): a switch and the chosen model, only on phones that can run one.
+        cleanOn = Prefs.tmCleanup(this)
+        cleanOk = CleanupStore.available(this)
+        cleanBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(cleanBox, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        switch(R.string.tm_cleanup, { cleanOn }, { on -> setCleanup(on) }, cleanBox)
+        val cline = row(cleanBox).apply { gravity = Gravity.CENTER_VERTICAL }
+        cleanLine = TextView(this).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTextColor(getColor(R.color.brand_muted)) }
+        cline.addView(cleanLine, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        button(R.string.tm_para_change, cline) { chooseCleanup() }
+        cleanProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 1000 }
+        cleanBox.addView(cleanProgress, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+
         text = EditText(this).apply {
             setHint(R.string.tm_text_hint)
             gravity = Gravity.TOP or Gravity.START
@@ -193,6 +224,7 @@ class TranscriptionActivity : Page() {
         showMic()
         showLeftover()
         showParagraphs()
+        showCleanup()
         sync()
     }
 
@@ -200,14 +232,18 @@ class TranscriptionActivity : Page() {
         super.onResume()
         Recording.listener = { refresh() }
         ParagraphStore.listener = { onParagraphDownload(it) }
+        CleanupStore.listener = { onCleanupDownload(it) }
+        cleanOk = CleanupStore.available(this)
         refresh()
         showParagraphs()
+        showCleanup()
     }
 
     override fun onPause() {
         super.onPause()
         Recording.listener = null
         ParagraphStore.listener = null
+        CleanupStore.listener = null
         // Without background recording the mic can't stay open off-screen.
         if (tape.active && !tape.paused && !Recording.background(this)) {
             tape.pause()
@@ -227,7 +263,7 @@ class TranscriptionActivity : Page() {
         // The recording can outlive the screen (background on): stop redrawing views that are gone.
         ui.removeCallbacks(tick)
         // A paragraph run still queued finishes (and records History); then the session is closed.
-        paraWorker.execute { closeModel() }
+        paraWorker.execute { closeModel(); closeCleaner() }
         paraWorker.shutdown()
         super.onDestroy()
     }
@@ -520,7 +556,7 @@ class TranscriptionActivity : Page() {
      * The take's text in [m]. Paragraph model: the model's text once it has run; one block while
      * decoding or while it runs; Time-based when it is missing or failed (the spec's fallback).
      */
-    private fun flow(t: Take, m: ParagraphMode): String = when (m) {
+    private fun flow(t: Take, m: ParagraphMode): String = if (cleaning() && t.cleanText != null) t.cleanText!! else when (m) {
         ParagraphMode.NONE -> joined(t, false)
         ParagraphMode.TIME -> joined(t, true)
         ParagraphMode.MODEL -> t.modelText
@@ -549,6 +585,17 @@ class TranscriptionActivity : Page() {
     /** Transcription finished: Paragraph model runs now; otherwise History gets the take as shown. */
     private fun taken(t: Take, stats: TakeDecoder.Stats) {
         t.done = true
+        if (cleaning() && CleanupStore.readyFile(this) != null) return runCleanup(t, stats)
+        paragraphsFor(t, stats)
+    }
+
+    /** The Paragraphs setting for a finished take: clean-up is off or failed. */
+    private fun paragraphsFor(t: Take, stats: TakeDecoder.Stats?) {
+        if (stats == null) {
+            if (mode == ParagraphMode.MODEL && t.modelText == null && !t.modelRunning) runModel(t, null)
+            else if (unedited()) show(compose(t, mode))
+            return
+        }
         if (mode == ParagraphMode.MODEL) runModel(t, stats)
         else History.record(this, flow(t, mode), stats, History.RECORD)
         if (mode == ParagraphMode.MODEL && !ParagraphStore.isReady(this)) {
@@ -613,9 +660,156 @@ class TranscriptionActivity : Page() {
         val t = take ?: return
         if (t.pieces.isEmpty()) return
         if (!unedited()) { status.setText(R.string.tm_para_edited); return }
+        // Cleaned: the clean-up model's paragraphs stand; the setting applies again if clean-up is turned off.
+        if (cleaning() && t.cleanText != null) return show(compose(t, mode))
         // The model's first run on this take: the box keeps its current text until the result.
         if (mode == ParagraphMode.MODEL && t.done && t.modelText == null && !t.modelRunning && ParagraphStore.isReady(this)) runModel(t, null)
         else if (!t.modelRunning || mode != ParagraphMode.MODEL) show(compose(t, mode))
+    }
+
+    // -- clean up (B-40a) ---------------------------------------------------------------
+    private fun cleaning() = cleanOn && cleanOk
+
+    /**
+     * Cleans [t] with the chosen clean-up model (on [paraWorker]), then applies it if the box is
+     * unedited. Nothing cleaned (no model, an error, every part kept raw): the Paragraphs setting
+     * instead. [stats] set: the take has just finished and goes into History once its text is final.
+     */
+    private fun runCleanup(t: Take, stats: TakeDecoder.Stats?) {
+        val gguf = CleanupStore.readyFile(this)
+        val flat = joined(t, false)
+        if (gguf == null || flat.isBlank()) return paragraphsFor(t, stats)
+        val keep = PersonalDictionary.entries(this).map { it.word }
+        val before = status.text
+        t.cleanRunning = true
+        status.setText(R.string.tm_cleanup_running)
+        val app = applicationContext
+        paraWorker.execute {
+            val r = runCatching { Cleanup.clean(flat, cleaner(gguf), keep) }
+            if (r.isFailure) closeCleaner()
+            val res = r.getOrElse { Cleanup.Result(flat, 1, 1, it.message ?: it.javaClass.simpleName) }
+            ui.post {
+                t.cleanRunning = false
+                val current = take === t && cleaning()
+                if (!res.cleaned) {
+                    if (current) status.text = getString(R.string.tm_cleanup_failed, res.error)
+                    return@post paragraphsFor(t, stats)
+                }
+                t.cleanText = res.text
+                val applied = current && unedited()
+                if (applied) show(compose(t, mode))
+                if (stats != null) History.record(app, if (applied || !current) res.text else flat, stats, History.RECORD)
+                if (current) status.text = when {
+                    !applied -> getString(R.string.tm_cleanup_edited)
+                    res.keptRaw > 0 -> getString(R.string.tm_cleanup_partly, res.keptRaw, res.chunks, res.error)
+                    else -> before
+                }
+            }
+        }
+    }
+
+    /** The loaded clean-up model for [f], loaded on first use. [paraWorker] only. */
+    private fun cleaner(f: File): CleanupModel {
+        cleanModel?.takeIf { cleanModelFile == f }?.let { return it }
+        closeCleaner()
+        return CleanupModel(f, Transcriber.threads).also { cleanModel = it; cleanModelFile = f }
+    }
+
+    /** [paraWorker] only. Frees the model's memory (a few hundred MB). */
+    private fun closeCleaner() {
+        runCatching { cleanModel?.close() }
+        cleanModel = null
+        cleanModelFile = null
+    }
+
+    /** Clean up switched, a model chosen or downloaded: redo the finished take if the box is still what the app wrote. */
+    private fun reflowCleanup() {
+        val t = take ?: return
+        if (t.pieces.isEmpty() || !t.done || t.cleanRunning) return
+        if (!unedited()) { status.setText(R.string.tm_cleanup_edited); return }
+        if (cleaning() && t.cleanText == null && CleanupStore.readyFile(this) != null) runCleanup(t, null)
+        else if (cleaning() && t.cleanText != null) show(compose(t, mode))
+        else paragraphsFor(t, null)
+    }
+
+    private fun setCleanup(on: Boolean) {
+        cleanOn = on
+        Prefs.setTmCleanup(this, on)
+        if (!on) paraWorker.execute { closeCleaner() }
+        else if (CleanupStore.readyFile(this) == null) CleanupStore.chosen(this)?.let { askDownload(it) }
+        showCleanup()
+        showParagraphs()
+        reflowCleanup()
+    }
+
+    private fun chooseCleanup() {
+        val all = CleanupStore.entries(this)
+        val cur = CleanupStore.chosen(this)
+        val names = all.map { e ->
+            val n = getString(if (e.experimental) R.string.tm_cleanup_finetune else R.string.tm_cleanup_stock, e.name, e.downloadMb)
+            if (CleanupStore.isReady(this, e)) getString(R.string.tm_cleanup_downloaded_mark, n) else n
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.tm_cleanup_choose)
+            .setSingleChoiceItems(names.toTypedArray(), all.indexOf(cur)) { dlg, i ->
+                dlg.dismiss()
+                pickCleanup(all[i])
+            }
+            .setNeutralButton(R.string.tm_cleanup_delete_unused) { _, _ ->
+                all.filter { it.id != cur?.id }.forEach { CleanupStore.remove(this, it.id) }
+                showCleanup()
+            }
+            .show()
+    }
+
+    private fun pickCleanup(e: CleanupStore.Entry) {
+        if (e.id == CleanupStore.chosen(this)?.id) return
+        Prefs.setCleanupChoice(this, e.id)
+        paraWorker.execute { closeCleaner() }
+        take?.cleanText = null
+        if (!CleanupStore.isReady(this, e)) askDownload(e)
+        showCleanup()
+        showParagraphs()
+        if (cleanOn) reflowCleanup()
+    }
+
+    private fun askDownload(e: CleanupStore.Entry) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.tm_cleanup_ask_title)
+            .setMessage(getString(R.string.tm_cleanup_ask, e.name, e.downloadMb, e.ramMb))
+            .setPositiveButton(R.string.tm_cleanup_download) { _, _ -> CleanupStore.download(this, e); showCleanup() }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showCleanup() {
+        val e = CleanupStore.chosen(this)
+        cleanBox.visibility = if (cleanOk && e != null) View.VISIBLE else View.GONE
+        if (!cleanOk || e == null) return
+        val s = CleanupStore.status
+        cleanLine.text = when {
+            s is CleanupStore.Status.Running -> getString(R.string.tm_cleanup_downloading,
+                CleanupStore.entries(this).firstOrNull { it.id == s.id }?.name ?: e.name,
+                if (s.total > 0) (s.done * 100 / s.total).toInt() else 0)
+            !cleanOn -> getString(R.string.tm_cleanup_line_off, e.name)
+            !CleanupStore.isReady(this, e) -> getString(R.string.tm_cleanup_line_missing, e.name, e.downloadMb)
+            else -> getString(R.string.tm_cleanup_line_ready, e.name)
+        }
+        cleanProgress.visibility = if (s is CleanupStore.Status.Running) View.VISIBLE else View.GONE
+        if (s is CleanupStore.Status.Running) cleanProgress.progress = if (s.total > 0) (s.done * 1000 / s.total).toInt() else 0
+    }
+
+    private fun onCleanupDownload(s: CleanupStore.Status) {
+        showCleanup()
+        showParagraphs()
+        when (s) {
+            is CleanupStore.Status.Done -> if (cleanOn && s.id == CleanupStore.chosen(this)?.id) {
+                status.setText(R.string.tm_cleanup_downloaded)
+                reflowCleanup()
+            }
+            is CleanupStore.Status.Failed -> status.text = getString(R.string.tm_cleanup_download_failed, s.message)
+            else -> Unit
+        }
     }
 
     private fun chooseParagraphs() {
@@ -652,7 +846,10 @@ class TranscriptionActivity : Page() {
             ParagraphMode.MODEL -> R.string.tm_para_model
         })
         val s = ParagraphStore.status
+        val byCleanup = cleaning() && CleanupStore.readyFile(this) != null
+        paraLine.alpha = if (byCleanup) 0.6f else 1f
         paraLine.text = when {
+            byCleanup -> getString(R.string.tm_para_by_cleanup)
             s is ParagraphStore.Status.Running -> getString(R.string.tm_para_downloading, name,
                 if (s.total > 0) (s.done * 100 / s.total).toInt() else 0)
             mode == ParagraphMode.MODEL && !ParagraphStore.isReady(this) -> getString(R.string.tm_para_line_missing, name)

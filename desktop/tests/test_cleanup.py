@@ -1,5 +1,6 @@
-"""Dictation clean-up (B-40): S1-ASR-Cleanup, a fine-tune of S1-mini by Superwhisper, as an
-optional Utilities add-on run on finished Transcription-tab transcripts (hebrish/cleanup.py).
+"""Dictation clean-up (B-40): a choice of clean-up models (stock S1-mini by Superwhisper, the
+default, and the experimental fine-tune S1-ASR-Cleanup) as optional Utilities add-ons run on
+finished Transcription-tab transcripts (hebrish/cleanup.py).
 
 The runtime (llama-server) and the model are always faked here: nothing is downloaded and no
 process is started. The real model was smoke-tested by hand (desktop/docs/maintaining.md,
@@ -154,36 +155,93 @@ def test_chunks_fall_back_one_by_one(monkeypatch):
 
 def test_run_without_the_add_on_keeps_the_text(tmp_path, monkeypatch):
     monkeypatch.setattr(model_store, "ROOT", tmp_path)
-    assert C.installed() is None
+    assert C.ready() is None
     r = C.run("so um hi")
     assert r.text == "so um hi" and not r.cleaned and "isn't downloaded" in r.error
 
 
 # -- catalogue -------------------------------------------------------------------------------
 
-def test_catalogue_entry():
-    e = C.entry()
-    assert e["id"] == C.MODEL_ID and e["kind"] == "text_cleanup"
-    # licence: named "S1-mini" by "Superwhisper", exact capitalisation
-    assert "S1-mini by Superwhisper" in e["name"] and e["base_label"] == "S1-mini by Superwhisper"
-    assert "S1-mini by Superwhisper" in C.DISPLAY_NAME and C.DISPLAY_NAME == e["name"]
-    assert e["platforms"] == ["linux", "windows"] and e["devices"] == ["desktop"]
-    assert e["file"].endswith(".gguf") and e["size"] > 0 and len(e["sha256"]) == 64
-    assert e["card"] == C.CARD
+REAL = {a["id"]: a for a in model_store.bundled_catalogue()["addons"]}
+STOCK = REAL["s1-mini"]
+TUNE = REAL["s1-asr-cleanup"]
+
+
+@pytest.fixture
+def cat(monkeypatch):
+    """Serve `addons` as the cached catalogue; with no arguments: published stock + fine-tune."""
+    monkeypatch.setattr(model_store, "PLATFORM", "linux")
+
+    def use(*addons):
+        addons = addons or (STOCK, TUNE)
+        monkeypatch.setattr(model_store, "catalogue", lambda: {"lines": [], "addons": list(addons)})
+    use()
+    return use
+
+
+def test_catalogue_entries():
+    """The shipped catalogue: stock S1-mini by Superwhisper is the default, the fine-tune is
+    experimental, both share one llama.cpp build."""
+    es = [a for a in model_store.bundled_catalogue()["addons"] if a["kind"] == "text_cleanup"]
+    assert [e["id"] for e in es] == [C.DEFAULT_ID, C.LEGACY_ID]
+    stock, tune = es
+    assert stock["default"] is True and stock["experimental"] is False
+    assert tune["default"] is False and tune["experimental"] is True
+    for e in es:
+        # licence: named "S1-mini" by "Superwhisper", exact capitalisation
+        assert "S1-mini by Superwhisper" in e["short_name"] and e["base_label"] == "S1-mini by Superwhisper"
+        assert C.label(e) == e["short_name"]
+        assert {"linux", "windows"} <= set(e["platforms"]) and "desktop" in e["devices"]
+        for os_ in ("linux", "windows"):
+            rt = e["runtime"][os_]
+            assert rt["url"].startswith("https://github.com/ggml-org/llama.cpp/releases/download/" + e["runtime"]["build"] + "/")
+            assert rt["size"] > 0 and len(rt["sha256"]) == 64
+    assert stock["short_name"] == "S1-mini by Superwhisper"
+    assert stock["runtime"] == tune["runtime"], "one shared runtime"
+    for e in es:
+        assert e["file"].endswith(".gguf") and e["size"] > 0 and len(e["sha256"]) == 64
+
+
+def test_shipped_catalogue_offers_both_on_desktop(monkeypatch):
     for os_ in ("linux", "windows"):
-        rt = e["runtime"][os_]
-        assert rt["url"].startswith("https://github.com/ggml-org/llama.cpp/releases/download/" + e["runtime"]["build"] + "/")
-        assert rt["size"] > 0 and len(rt["sha256"]) == 64
+        monkeypatch.setattr(model_store, "PLATFORM", os_)
+        assert [e["id"] for e in C.entries()] == [C.DEFAULT_ID, C.LEGACY_ID]
+    assert C.chosen()["id"] in (C.DEFAULT_ID, C.LEGACY_ID)
 
 
-def test_older_cached_catalogue_falls_back_to_the_bundled_entry(monkeypatch):
+def test_todo_entries_are_not_offered(cat):
+    """An entry not yet published says "TODO" (as stock S1-mini did until 2026-10-30): not
+    offered, and chosen() falls back to what is, even when it was picked."""
+    cat({**STOCK, "version": "TODO", "repo": "TODO", "revision": "TODO", "file": "TODO",
+         "size": None, "sha256": None, "download_mb": None}, TUNE)
+    assert [e["id"] for e in C.entries()] == [C.LEGACY_ID]
+    assert C.chosen()["id"] == C.LEGACY_ID and C.chosen(C.DEFAULT_ID)["id"] == C.LEGACY_ID
+    with pytest.raises(RuntimeError):
+        C.entry(C.DEFAULT_ID)
+
+
+@pytest.mark.parametrize("change", [{"version": "TODO"}, {"file": "TODO"}, {"repo": None},
+                                    {"platforms": ["windows", "android"]},
+                                    {"runtime": {k: v for k, v in TUNE["runtime"].items() if k != "linux"}}])
+def test_unpublished_or_other_os_entries_are_not_offered(cat, change):
+    cat(STOCK, {**TUNE, **change})
+    assert [e["id"] for e in C.entries()] == [C.DEFAULT_ID]
+
+
+def test_default_entry_comes_first(cat):
+    cat(TUNE, STOCK)
+    assert [e["id"] for e in C.entries()] == [C.DEFAULT_ID, C.LEGACY_ID]
+
+
+def test_older_cached_catalogue_falls_back_to_the_bundled_entries(monkeypatch):
     monkeypatch.setattr(model_store, "catalogue", lambda: {"lines": []})
-    assert C.entry()["id"] == C.MODEL_ID
+    assert C.LEGACY_ID in {e["id"] for e in C._all()}
 
 
 def test_android_and_speech_models_ignore_addons():
-    """The add-on is not a speech model: it never shows up among the variants."""
-    assert C.MODEL_ID not in {m.id for m in model_store.variants()}
+    """The add-ons are not speech models: they never show up among the variants."""
+    ids = {m.id for m in model_store.variants()}
+    assert C.LEGACY_ID not in ids and C.DEFAULT_ID not in ids
 
 
 # -- download and install, with fetch_files faked -------------------------------------------
@@ -211,10 +269,22 @@ def _zip(members) -> bytes:
 
 
 @pytest.fixture
-def fake_fetch(tmp_path, monkeypatch):
-    """model_store.fetch_files writes `blobs[name]` instead of downloading."""
+def fake_fetch(tmp_path, monkeypatch, cat):
+    """model_store.fetch_files writes `blobs[name]` instead of downloading; the runtime archive
+    and both GGUFs are there."""
     monkeypatch.setattr(model_store, "ROOT", tmp_path / "models")
+    monkeypatch.setattr(C, "SERVER", "llama-server")
     blobs, fetched = {}, []
+    build = TUNE["runtime"]["build"]
+    blobs[TUNE["runtime"]["linux"]["url"].rsplit("/", 1)[-1]] = _tar([
+        (f"llama-{build}/llama-server", b"#!/bin/sh\n"),
+        (f"llama-{build}/llama-cli", b"not wanted"),
+        (f"llama-{build}/libllama.so.0.8.0", b"lib"),
+        (f"llama-{build}/libllama.so.0", ("link", "libllama.so.0.8.0")),
+        (f"llama-{build}/LICENSE", b"mit"),
+    ])
+    blobs[TUNE["file"]] = b"TUNE"
+    blobs[STOCK["file"]] = b"GGUF"
 
     def fetch(dest, files, url_for, on_progress=None, cancel=None):
         dest.mkdir(parents=True, exist_ok=True)
@@ -227,44 +297,82 @@ def fake_fetch(tmp_path, monkeypatch):
     return blobs, fetched
 
 
-def test_download_installs_runtime_and_model(fake_fetch, monkeypatch):
-    monkeypatch.setattr(model_store, "PLATFORM", "linux")
-    monkeypatch.setattr(C, "SERVER", "llama-server")
+def test_download_installs_runtime_and_model(fake_fetch):
     blobs, fetched = fake_fetch
-    e = C.entry()
-    build = e["runtime"]["build"]
-    blobs[e["runtime"]["linux"]["url"].rsplit("/", 1)[-1]] = _tar([
-        (f"llama-{build}/llama-server", b"#!/bin/sh\n"),
-        (f"llama-{build}/llama-cli", b"not wanted"),
-        (f"llama-{build}/libllama.so.0.8.0", b"lib"),
-        (f"llama-{build}/libllama.so.0", ("link", "libllama.so.0.8.0")),
-        (f"llama-{build}/LICENSE", b"mit"),
-    ])
-    blobs[e["file"]] = b"GGUF"
-    old = model_store.ROOT / C.MODEL_ID / "v0.9"
+    e = TUNE
+    old = model_store.ROOT / C.LEGACY_ID / "v0.9"
     old.mkdir(parents=True)
+    stale = C.runtime_root() / "b1"
+    stale.mkdir(parents=True)
     seen = []
-    C.download(lambda d, t, n: seen.append((d, t, n)))
-    gguf, server = C.installed()
-    assert gguf.read_bytes() == b"GGUF" and server.name == "llama-server"
+    C.download(C.LEGACY_ID, lambda d, t, n: seen.append((d, t, n)))
+    gguf, server = C.installed(C.LEGACY_ID)
+    assert gguf.read_bytes() == b"TUNE" and server.name == "llama-server"
+    assert gguf.parent == model_store.ROOT / C.LEGACY_ID / e["version"]
     rt = server.parent
+    assert rt == model_store.ROOT / C.RUNTIME_ROOT / e["runtime"]["build"], "the shared runtime folder"
     assert sorted(p.name for p in rt.iterdir()) == [".complete", "libllama.so.0", "libllama.so.0.8.0", "llama-server"]
     assert (rt / "libllama.so.0").read_bytes() == b"lib"
     if os.name != "nt":
         assert os.access(server, os.X_OK)
     assert not old.exists(), "older model versions are deleted"
-    assert not (rt.parent / ".download").exists(), "the archive is deleted after extraction"
+    assert not stale.exists(), "runtime builds no entry pins are deleted"
+    assert not (C.runtime_root() / ".download").exists(), "the archive is deleted after extraction"
     urls = [u for _n, u, _i in fetched]
     assert urls[0] == e["runtime"]["linux"]["url"]
     assert urls[1] == f"https://huggingface.co/{e['repo']}/resolve/{e['revision']}/{e['file']}"
     assert fetched[1][2] == {"size": e["size"], "sha256": e["sha256"]}
     assert seen[-1][1] == e["runtime"]["linux"]["size"] + e["size"]      # one progress total
     manifest = json.loads((gguf.parent / "manifest.json").read_text())
-    assert manifest["version"] == e["version"] and manifest["revision"] == e["revision"]
+    assert manifest["id"] == C.LEGACY_ID and manifest["version"] == e["version"]
     # a second download (a new model version) keeps the runtime
     fetched.clear()
-    C.download()
+    C.download(C.LEGACY_ID)
     assert [n for n, _u, _i in fetched] == [e["file"]]
+
+
+def test_second_model_shares_the_runtime(fake_fetch):
+    _blobs, fetched = fake_fetch
+    C.download(C.DEFAULT_ID)
+    fetched.clear()
+    C.download(C.LEGACY_ID)
+    assert [n for n, _u, _i in fetched] == [TUNE["file"]], "runtime fetched once"
+    a, b = C.installed(C.DEFAULT_ID), C.installed(C.LEGACY_ID)
+    assert a[1] == b[1] and a[0] != b[0]
+    assert a[0].parent == model_store.ROOT / C.DEFAULT_ID / STOCK["version"]
+
+
+def _install_1013(build=TUNE["runtime"]["build"]):
+    """What Desktop 1.013 left on disk after downloading S1-ASR-Cleanup."""
+    folder = model_store.ROOT / C.LEGACY_ID / TUNE["version"]
+    folder.mkdir(parents=True)
+    (folder / TUNE["file"]).write_bytes(b"TUNE")
+    (folder / "manifest.json").write_text("{}")
+    rt = model_store.ROOT / C.LEGACY_ID / "runtime" / build
+    rt.mkdir(parents=True)
+    (rt / "llama-server").write_bytes(b"#!/bin/sh\n")
+    (rt / ".complete").write_text(build + "\n")
+    return rt
+
+
+def test_1013_runtime_is_adopted_not_downloaded_again(fake_fetch):
+    _blobs, fetched = fake_fetch
+    _install_1013()
+    gguf, server = C.installed(C.LEGACY_ID)            # moved on first look
+    assert server == C.runtime_root() / TUNE["runtime"]["build"] / "llama-server" and server.is_file()
+    assert not (model_store.ROOT / C.LEGACY_ID / "runtime").exists()
+    C.download(C.DEFAULT_ID)
+    assert [n for n, _u, _i in fetched] == [STOCK["file"]], "no runtime download"
+
+
+def test_1013_runtime_of_another_build_is_cleared(fake_fetch):
+    _blobs, fetched = fake_fetch
+    _install_1013("b1")
+    assert C.installed(C.LEGACY_ID) is None             # the model is there, its runtime build isn't
+    C.download(C.LEGACY_ID)
+    assert fetched[0][1] == TUNE["runtime"]["linux"]["url"]
+    assert not (model_store.ROOT / C.LEGACY_ID / "runtime").exists()
+    assert C.installed(C.LEGACY_ID) is not None
 
 
 def test_windows_zip_is_flattened(tmp_path, monkeypatch):
@@ -287,18 +395,78 @@ def test_archive_without_a_server_fails(tmp_path):
 
 
 def test_size_and_sha_from_hugging_face_when_not_pinned(monkeypatch):
-    e = {**C.entry(), "size": None, "sha256": None}
+    e = {**STOCK, "size": None, "sha256": None}
     tree = [{"path": e["file"], "size": 123, "lfs": {"oid": "ab" * 32}}, {"path": "README.md", "size": 5}]
     monkeypatch.setattr(model_store, "_get", lambda url, timeout=20: json.dumps(tree).encode())
     assert C.model_files(e) == {e["file"]: {"size": 123, "sha256": "ab" * 32}}
 
 
-def test_remove_stops_the_server_and_deletes(fake_fetch, monkeypatch):
+def test_remove_keeps_the_runtime_until_the_last_model_goes(fake_fetch, monkeypatch):
     stopped = []
     monkeypatch.setattr(C, "stop", lambda: stopped.append(1))
-    C.root().mkdir(parents=True)
-    C.remove()
-    assert stopped and not C.root().exists()
+    C.download(C.DEFAULT_ID)
+    C.download(C.LEGACY_ID)
+    C.remove(C.LEGACY_ID)
+    assert stopped and not C.root(C.LEGACY_ID).exists()
+    assert C.installed(C.DEFAULT_ID) is not None, "the other model and the runtime stay"
+    C.remove(C.DEFAULT_ID)
+    assert not C.root(C.DEFAULT_ID).exists() and not C.runtime_root().exists()
+
+
+# -- which model Clean up uses ---------------------------------------------------------------
+
+def test_chosen_without_anything_installed_is_the_default(fake_fetch):
+    assert C.chosen()["id"] == C.DEFAULT_ID
+    assert C.ready() is None
+
+
+def test_1013_user_keeps_the_fine_tune(fake_fetch):
+    """A 1.013 user who downloaded S1-ASR-Cleanup and never picked: it stays in use, nothing new
+    to download."""
+    _install_1013()
+    assert C.chosen()["id"] == C.LEGACY_ID and C.ready()["id"] == C.LEGACY_ID
+
+
+def test_installed_default_wins_without_a_pick(fake_fetch):
+    C.download(C.LEGACY_ID)
+    C.download(C.DEFAULT_ID)
+    assert C.chosen()["id"] == C.DEFAULT_ID
+
+
+def test_explicit_pick_wins(fake_fetch, cat):
+    C.download(C.DEFAULT_ID)
+    assert C.chosen(C.LEGACY_ID)["id"] == C.LEGACY_ID
+    assert C.ready(C.LEGACY_ID) is None, "picked but not downloaded: Clean up can't run"
+    C.download(C.LEGACY_ID)
+    assert C.ready(C.LEGACY_ID)["id"] == C.LEGACY_ID
+    assert C.chosen("gone-from-catalogue")["id"] == C.DEFAULT_ID
+    cat(TUNE, {**STOCK, "version": "TODO"})          # a pick no longer offered falls through
+    assert C.chosen(C.DEFAULT_ID)["id"] == C.LEGACY_ID
+
+
+def test_run_uses_the_chosen_model_and_says_which(fake_fetch, monkeypatch):
+    C.download(C.DEFAULT_ID)
+    C.download(C.LEGACY_ID)
+    got = []
+    monkeypatch.setattr(C, "server", lambda aid: got.append(aid) or FakeClient())
+    r = C.run("so um hi")
+    assert got == [C.DEFAULT_ID] and (r.model, r.version, r.name) == (C.DEFAULT_ID, STOCK["version"],
+                                                                      "S1-mini by Superwhisper")
+    r = C.run("so um hi", aid=C.LEGACY_ID)
+    assert got[-1] == C.LEGACY_ID and r.version == TUNE["version"] and "S1-mini by Superwhisper" in r.name
+
+
+def test_server_restarts_when_the_model_changes(fake_fetch, monkeypatch):
+    C.download(C.DEFAULT_ID)
+    C.download(C.LEGACY_ID)
+    stopped = []
+    monkeypatch.setattr(C.Server, "stop", lambda self: stopped.append(self.gguf.name))
+    monkeypatch.setattr(C, "_server", None)
+    a = C.server(C.DEFAULT_ID)
+    assert C.server(C.DEFAULT_ID) is a and not stopped, "same model: same process"
+    b = C.server(C.LEGACY_ID)
+    assert b is not a and b.gguf.name == TUNE["file"] and stopped == [STOCK["file"]]
+    assert b.binary == a.binary, "one shared runtime"
 
 
 # -- Server, with the HTTP side faked --------------------------------------------------------
@@ -420,8 +588,8 @@ def page(monkeypatch):
     monkeypatch.setattr(transcribe.dictionary, "load", lambda: [])
     made = []
 
-    def make(installed=True, on=False, pieces=("so hi there", "and then we left")):
-        monkeypatch.setattr(C, "installed", lambda: ("m.gguf", "llama-server") if installed else None)
+    def make(installed=True, on=False, pieces=("so hi there", "and then we left"), model=STOCK):
+        monkeypatch.setattr(C, "ready", lambda pick=None: model if installed else None)
         if config.CONFIG_PATH.exists():
             config.CONFIG_PATH.unlink()
         cfg = config.Config()
@@ -480,29 +648,97 @@ def test_off_means_no_clean_up(page, monkeypatch):
     assert p.text.toPlainText() == "so hi there\n\nand then we left"     # Time-based, as before
 
 
-def test_cleaned_transcript_replaces_the_raw_one(page, monkeypatch):
+@pytest.mark.parametrize("model", [STOCK, TUNE])
+def test_cleaned_transcript_replaces_the_raw_one(page, monkeypatch, model):
     sent = []
 
-    def run(text, keep=()):
-        sent.append(text)
-        return C.Result("So, hi there.\n\nAnd then we left.", 1, 0)
+    def run(text, keep=(), aid=None):
+        sent.append((text, aid))
+        return C.Result("So, hi there.\n\nAnd then we left.", 1, 0, "", aid, model["version"], C.label(model))
     monkeypatch.setattr(C, "run", run)
-    p = page(installed=True, on=True)
+    p = page(installed=True, on=True, model=model)
     _run(p)
-    assert sent == ["so hi there and then we left"], "one block, no Time-based paragraph breaks"
+    assert sent == [("so hi there and then we left", model["id"])], "one block, the chosen model"
     assert p.text.toPlainText() == "So, hi there.\n\nAnd then we left."
     text, kw = p.ctl.remembered[0]
     assert text == "So, hi there.\n\nAnd then we left."
-    assert kw["extra"]["cleanup"].startswith(C.MODEL_ID)
+    assert kw["extra"]["cleanup"] == f"{model['id']} {model['version']}"
     assert p._last is None, "a cleaned transcript is not re-flowed"
-    assert any("S1-mini by Superwhisper" in s for s in p.ctl.win.said)
+    assert any(f"Cleaned up with {model['short_name']}." in s for s in p.ctl.win.said)
+
+
+def test_tooltip_names_the_chosen_model(page):
+    p = page(installed=True, model=STOCK)
+    assert "with S1-mini by Superwhisper:" in p.tidy.toolTip()
+    p = page(installed=True, model=TUNE)
+    assert f"with {TUNE['short_name']} (experimental):" in p.tidy.toolTip()
 
 
 def test_failed_clean_up_keeps_the_transcript_and_its_paragraphs(page, monkeypatch):
-    monkeypatch.setattr(C, "run", lambda text, keep=(): C.Result(text, 1, 1, "timed out"))
+    monkeypatch.setattr(C, "run", lambda text, keep=(), aid=None: C.Result(text, 1, 1, "timed out"))
     p = page(installed=True, on=True)
     _run(p)
     # Time-based layout, as with clean-up off: the second piece is 40 s on, so a new paragraph
     assert p.text.toPlainText() == "so hi there\n\nand then we left"
     assert p.ctl.remembered[0][1]["extra"] is None
     assert any("Clean-up failed (timed out)" in s for s in p.ctl.win.said)
+
+
+# -- Models → Utilities: a row per clean-up model ------------------------------------------------
+
+from hebrish.ui.window import MainWindow  # noqa: E402
+
+
+class Utilities(QWidget):
+    """Just enough of MainWindow for the Utilities page."""
+    UTILITIES = MainWindow.UTILITIES
+    CLEANUP_HEADING = MainWindow.CLEANUP_HEADING
+    _cleanup_item = staticmethod(MainWindow._cleanup_item)
+    for _n in ("_utilities_page", "_utility_row", "_check", "_update_addons", "_use_cleanup", "_delete_addon"):
+        locals()[_n] = getattr(MainWindow, _n)
+
+    def __init__(self, cfg):
+        super().__init__()
+        self.cfg = cfg
+        self.ctl = type("Ctl", (), {"addon_busy": {}, "addon_done": {}, "apply_vad": lambda s: None,
+                                    "download_addon": lambda s, a: None})()
+        self.synced = 0
+        self.transcribe = type("T", (), {"sync_cleanup": lambda _s: setattr(self, "synced", self.synced + 1)})()
+        self.page = self._utilities_page()
+
+    def update_model(self):
+        self._update_addons()
+
+
+def test_utilities_rows_and_choice(fake_fetch, monkeypatch):
+    if config.CONFIG_PATH.exists():
+        config.CONFIG_PATH.unlink()
+    cfg = config.Config()
+    _install_1013()
+    w = Utilities(cfg)
+    assert w.cleanup_ids == [C.DEFAULT_ID, C.LEGACY_ID], "a row per offered model, the default first"
+    w.update_model()
+    stock, tune = w.addon_rows[C.DEFAULT_ID], w.addon_rows[C.LEGACY_ID]
+    assert tune["chip"].isVisibleTo(w.page) and not tune["pick"].isVisibleTo(w.page), "the 1.013 install is in use"
+    assert stock["dl"].isVisibleTo(w.page) and f"{STOCK['download_mb']} MB" in stock["status"].text()
+    assert w.cleanup_check.isVisibleTo(w.page)
+    C.download(C.DEFAULT_ID)
+    w.update_model()
+    assert stock["chip"].isVisibleTo(w.page) and tune["pick"].isVisibleTo(w.page), "installed default wins"
+    stops = []
+    monkeypatch.setattr(C, "stop", lambda: stops.append(1))
+    tune["pick"].click()
+    assert cfg["tm_cleanup_model"] == C.LEGACY_ID and stops and w.synced
+    assert tune["chip"].isVisibleTo(w.page) and stock["pick"].isVisibleTo(w.page)
+    from hebrish.ui import window
+    monkeypatch.setattr(window.QMessageBox, "question", lambda *a, **k: window.QMessageBox.Yes)
+    w._delete_addon(C.LEGACY_ID, "x")
+    assert cfg["tm_cleanup_model"] is None and C.installed(C.LEGACY_ID) is None
+    assert stock["chip"].isVisibleTo(w.page)
+
+
+def test_utilities_names_follow_the_licence(cat):
+    texts = {e["id"]: MainWindow._cleanup_item(e) for e in C.entries()}
+    assert texts[C.DEFAULT_ID][1] == "S1-mini by Superwhisper"
+    assert texts[C.LEGACY_ID][1] == TUNE["short_name"] and "Experimental" in texts[C.LEGACY_ID][2]
+    assert "Experimental" not in texts[C.DEFAULT_ID][2]

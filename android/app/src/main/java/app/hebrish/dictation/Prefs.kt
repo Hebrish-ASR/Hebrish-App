@@ -80,6 +80,15 @@ object Prefs {
     /** The installed paragraph-break model's manifest (ParagraphStore.Installed JSON), or null. */
     fun paragraphModel(ctx: Context): String? = sp(ctx).getString("paragraph_model", null)
     fun setParagraphModel(ctx: Context, v: String?) = sp(ctx).edit().putString("paragraph_model", v).apply()
+    /** Transcription Mode's Clean up (B-40a; desktop `tm_cleanup`): run the clean-up model on each finished take. Off by default. */
+    fun tmCleanup(ctx: Context) = sp(ctx).getBoolean("tm_cleanup", false)
+    fun setTmCleanup(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("tm_cleanup", v).apply()
+    /** The chosen clean-up model (a catalogue `addons` id), or null for the catalogue's default (CleanupStore.chosen). */
+    fun cleanupChoice(ctx: Context): String? = sp(ctx).getString("cleanup_choice", null)
+    fun setCleanupChoice(ctx: Context, v: String) = sp(ctx).edit().putString("cleanup_choice", v).apply()
+    /** An installed clean-up model (CleanupStore.Installed JSON) by add-on id, or null. */
+    fun cleanupModel(ctx: Context, id: String): String? = sp(ctx).getString("cleanup_model_$id", null)
+    fun setCleanupModel(ctx: Context, id: String, v: String?) = sp(ctx).edit().putString("cleanup_model_$id", v).apply()
     fun micChoice(ctx: Context): String = sp(ctx).getString("mic_choice", Mic.AUTO) ?: Mic.AUTO
     fun setMicChoice(ctx: Context, v: String) = sp(ctx).edit().putString("mic_choice", v).apply()
 

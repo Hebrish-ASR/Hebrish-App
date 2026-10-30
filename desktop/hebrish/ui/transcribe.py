@@ -13,7 +13,8 @@ audio) or Paragraph model (paragraphs.Breaker, run once when the transcript is d
 transcript's pieces are kept (paragraphs.Pieces), so changing the setting lays it out again as long
 as the box still holds exactly what the app wrote.
 
-Clean-up (B-40, cleanup.py): with S1-ASR-Cleanup (a fine-tune of S1-mini by Superwhisper) downloaded
+Clean-up (B-40, cleanup.py): with the chosen clean-up model (cleanup.chosen: S1-mini by Superwhisper
+by default, or the experimental fine-tune S1-ASR-Cleanup; picked in Models → Utilities) downloaded
 and *Clean up* on (`tm_cleanup`, off by default), the finished transcript (after the disfluency chop
 and the personal dictionary, laid out as one block) is cleaned once, on the worker thread. The model
 writes its own paragraphs, so while clean-up is on the Paragraphs setting is greyed out and applies
@@ -313,11 +314,6 @@ class TranscribePage(QWidget):
         self.para.currentIndexChanged.connect(self._on_paragraphs)
         head.addWidget(self.para)
         self.tidy = QCheckBox("Clean up", checked=bool(self.cfg["tm_cleanup"]))
-        self.tidy.setToolTip(
-            f"Clean up each finished transcript with {cleanup.DISPLAY_NAME}: punctuation, capitals, "
-            "filler and repeated words, numbers, and paragraphs (they replace the Paragraphs setting).\n"
-            "Runs on this computer after the transcript is done. If it fails, the transcript stays as "
-            "transcribed. Downloaded from Models → Utilities.")
         self.tidy.toggled.connect(self._on_tidy)
         head.addWidget(self.tidy)
         b.addLayout(head)
@@ -721,6 +717,7 @@ class TranscribePage(QWidget):
         started = time.monotonic()
         mode = self._asked = self._para_mode()
         tidy = self._cleanup_on()
+        tidy_id = tidy["id"] if tidy else None
         note = ""
         if mode == paragraphs.MODEL and paragraphs.installed() is None and not tidy:
             mode = paragraphs.TIME
@@ -744,7 +741,8 @@ class TranscribePage(QWidget):
                 body, err, tidied = None, None, None
                 if tidy and pieces.items and not cancel.is_set():
                     self.sig.stage.emit("Cleaning up the transcript…")
-                    tidied = cleanup.run(pieces.text(paragraphs.NONE), keep=tuple(e["word"] for e in words))
+                    tidied = cleanup.run(pieces.text(paragraphs.NONE), keep=tuple(e["word"] for e in words),
+                                         aid=tidy_id)
                     if tidied.cleaned:
                         body = tidied.text
                 if body is None and mode == paragraphs.MODEL and pieces.items:
@@ -790,9 +788,9 @@ class TranscribePage(QWidget):
             if self._last:
                 self._show_body(body, "cleanup")
                 self._last = None            # the model's own words and paragraphs: never re-flowed
-                extra = {"cleanup": f"{cleanup.MODEL_ID} {cleanup.entry()['version']}",
+                extra = {"cleanup": f"{tidied.model} {tidied.version}",     # id and version that ran
                          "cleanup_kept_raw": tidied.kept_raw}
-                note += (f" Cleaned up with {cleanup.DISPLAY_NAME}." if not tidied.kept_raw else
+                note += (f" Cleaned up with {tidied.name}." if not tidied.kept_raw else
                          f" Cleaned up, except {tidied.kept_raw} of {tidied.chunks} parts kept as "
                          f"transcribed ({tidied.error}).")
             else:
@@ -833,19 +831,27 @@ class TranscribePage(QWidget):
             return f" Couldn't save the audio ({e}); it is still in {source.parent}."
 
     # -- clean-up (B-40) --------------------------------------------------------------
-    def _cleanup_on(self) -> bool:
-        return bool(self.cfg["tm_cleanup"]) and cleanup.installed() is not None
+    def _cleanup_on(self) -> dict | None:
+        """The clean-up model's catalogue entry when *Clean up* is on and it is downloaded."""
+        return cleanup.ready(self.cfg["tm_cleanup_model"]) if self.cfg["tm_cleanup"] else None
 
     def sync_cleanup(self):
-        """Show *Clean up* only once the model is downloaded, and grey out Paragraphs while it is
-        on (the model writes the paragraphs). Called at start, after a download or delete, and when
-        the Utilities checkbox changes."""
-        have = cleanup.installed() is not None
+        """Show *Clean up* only once the chosen model is downloaded, name it in the tooltip, and
+        grey out Paragraphs while it is on (the model writes the paragraphs). Called at start,
+        after a download or delete, and when the Utilities checkbox or choice changes."""
+        model = cleanup.ready(self.cfg["tm_cleanup_model"])
+        have = model is not None
         self.tidy.blockSignals(True)
         self.tidy.setChecked(bool(self.cfg["tm_cleanup"]))
         self.tidy.blockSignals(False)
         self.tidy.setVisible(have)
-        on = self._cleanup_on()
+        self.tidy.setToolTip(
+            f"Clean up each finished transcript with {cleanup.label(model) if have else 'the clean-up model'}"
+            + (" (experimental)" if have and model.get("experimental") else "") +
+            ": punctuation, capitals, filler and repeated words, numbers, and paragraphs (they replace "
+            "the Paragraphs setting).\nRuns on this computer after the transcript is done. If it fails, "
+            "the transcript stays as transcribed. Choose and download the model in Models → Utilities.")
+        on = self._cleanup_on() is not None
         self.para.setEnabled(not on)
         self.para.setToolTip(self.para.toolTip().split("\n\nClean-up is on")[0] +
                              ("\n\nClean-up is on, so the clean-up model sets the paragraphs; this "
@@ -854,8 +860,7 @@ class TranscribePage(QWidget):
     def _on_tidy(self, on: bool):
         self.cfg.set("tm_cleanup", on)
         self.sync_cleanup()
-        rows = getattr(self.ctl.win, "addon_rows", {})
-        use = rows.get(cleanup.MODEL_ID, {}).get("use")
+        use = getattr(self.ctl.win, "cleanup_check", None)      # the Utilities checkbox
         if use is not None and use.isChecked() != on:
             use.blockSignals(True)
             use.setChecked(on)

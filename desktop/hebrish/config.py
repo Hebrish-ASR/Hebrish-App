@@ -100,9 +100,12 @@ DEFAULTS = {
                                   # floating (its own small window). Up to 1.002 `tm_show_meter`
     "tm_paragraphs": "",          # none | time | model (paragraphs.MODES, B-44); "" = not chosen: model
                                   # when the paragraph model is installed, else time
-    "tm_cleanup": False,          # clean up each finished transcript with S1-ASR-Cleanup (a fine-tune of
-                                  # S1-mini by Superwhisper, cleanup.py, B-40) once it is downloaded;
-                                  # its paragraphs replace the Paragraphs setting while it is on
+    "tm_cleanup": False,          # clean up each finished transcript with the chosen clean-up model
+                                  # (cleanup.py, B-40) once it is downloaded; its paragraphs replace
+                                  # the Paragraphs setting while it is on
+    "tm_cleanup_model": None,     # the clean-up model the user picked (a catalogue addon id, 2026-10-30);
+                                  # None = cleanup.chosen(): an installed one, else the default
+                                  # (S1-mini by Superwhisper)
     "tm_vad": True,               # Voice detection for this tab (2026-10-29: on by default here,
                                   # independent of Voice Typing's `vad`; also in the tray menu)
     "tm_save_audio": False,       # keep each transcribed recording (16 kHz mono WAV) in tm_audio_dir

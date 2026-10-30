@@ -224,6 +224,19 @@
     <string name="models_not_downloaded">Not downloaded. About %1$d MB.</string>
     <string name="models_unqueue">Don\'t download</string>
     <string name="models_use">Use this model</string>
+    <string name="models_post">Post-processing</string>
+    <string name="models_post_intro">Small models that run after speech is turned into text, in Transcription Mode only. Download them here, then turn them on in Transcription Mode (Paragraphs, Clean up).</string>
+    <string name="models_post_para">Paragraph model</string>
+    <string name="models_post_para_about">Finds where paragraphs start in a finished transcript. About 34 MB.</string>
+    <string name="models_post_para_missing">Not downloaded. About 34 MB.</string>
+    <string name="models_post_downloading">Downloading… %1$d%%</string>
+    <string name="models_post_failed">Couldn\'t download: %1$s</string>
+    <string name="models_post_download">Download</string>
+    <string name="models_post_experimental">%1$s (experimental)</string>
+    <string name="models_post_cleanup_about">Tidies a finished transcript once (punctuation, numbers, slips) and sets it out in paragraphs. Runs on the phone; about %1$d MB of memory while it works.</string>
+    <string name="models_post_cleanup_chosen">Used by Clean up.</string>
+    <string name="models_post_cleanup_use">Use for Clean up</string>
+    <string name="models_post_cleanup_unsupported">Clean-up models need a newer processor than this phone has (ARMv8.2 with dot product).</string>
     <string name="models_updates">Updates</string>
     <string name="models_updates_hint">New versions of downloaded models are looked for when the app opens, at most every 6 hours. A model being updated stays usable until the new version is downloaded and checked.</string>
 
@@ -351,6 +364,27 @@
     <string name="tm_para_running">Adding paragraphs…</string>
     <string name="tm_para_failed">The paragraph model failed (%1$s): time-based paragraphs instead.</string>
     <string name="tm_para_edited">You edited the text, so the paragraphs were not changed.</string>
+    <!-- Clean up (B-40a). Licence: the models are always named with "S1-mini" by "Superwhisper". -->
+    <string name="tm_cleanup">Clean up</string>
+    <string name="tm_cleanup_line_off">Tidies each finished transcript once (punctuation, numbers, slips) and sets it out in paragraphs. Model: %1$s</string>
+    <string name="tm_cleanup_line_ready">Model: %1$s. If anything goes wrong, you keep the text as transcribed.</string>
+    <string name="tm_cleanup_line_missing">Model: %1$s (not downloaded yet, %2$d MB)</string>
+    <string name="tm_cleanup_downloading">Downloading %1$s… %2$d%%</string>
+    <string name="tm_cleanup_choose">Clean-up model</string>
+    <string name="tm_cleanup_stock">%1$s (recommended, %2$d MB)</string>
+    <string name="tm_cleanup_finetune">%1$s (experimental, %2$d MB)</string>
+    <string name="tm_cleanup_downloaded_mark">%1$s, downloaded</string>
+    <string name="tm_cleanup_delete_unused">Delete unused</string>
+    <string name="tm_cleanup_ask_title">Download the clean-up model?</string>
+    <string name="tm_cleanup_ask">%1$s runs on the phone: a %2$d MB download, and about %3$d MB of memory while it works. It runs once, after each transcript is finished, and can take a while on long ones. Best on Wi-Fi.</string>
+    <string name="tm_cleanup_download">Download</string>
+    <string name="tm_cleanup_downloaded">Clean-up model downloaded.</string>
+    <string name="tm_cleanup_download_failed">Couldn\'t download the clean-up model (%1$s).</string>
+    <string name="tm_cleanup_running">Cleaning up…</string>
+    <string name="tm_cleanup_partly">Cleaned up, except %1$d of %2$d parts kept as transcribed (%3$s).</string>
+    <string name="tm_cleanup_failed">Clean-up didn\'t work (%1$s): you have the text as transcribed.</string>
+    <string name="tm_cleanup_edited">You edited the text, so it was not cleaned up.</string>
+    <string name="tm_para_by_cleanup">Paragraphs: set by the clean-up model (this setting is used if clean-up fails)</string>
     <string name="tm_text_hint">The transcript lands here. You can edit it, then copy or share. Another recording is added at the end.</string>
     <string name="try_open">Try it now: no setup needed</string>
     <string name="try_open_hint">See what it does before you set it up as a keyboard.</string>

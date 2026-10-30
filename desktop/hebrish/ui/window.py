@@ -1073,16 +1073,28 @@ class MainWindow(QMainWindow):
          "voice detection goes by loudness."),)),
         ("Post-processing", ((paragraphs.MODEL_ID, "Paragraph model", "Splits long transcripts into paragraphs where the "
          "topic moves on. Used in Transcription Mode when Paragraphs is set to Paragraph model.",
-         "34 MB", "A small MiniLM text model (ONNX, int8). Without it, paragraphs are time-based."),
-         (cleanup.MODEL_ID, cleanup.DISPLAY_NAME, "Cleans up finished transcripts in Transcription Mode: "
-          "punctuation and capitals, filler and repeated words, numbers and currency, and paragraphs. "
-          "Off until you turn it on. If it fails, the transcript is kept as transcribed.",
-          "660 MB", "S1-ASR-Cleanup is a fine-tune of S1-mini by Superwhisper (Apache 2.0, with the "
-          "licence's naming term), trained for dictation clean-up: "
-          f"<a href='{cleanup.CARD}'>model card</a>. A 0.6B model (GGUF, Q8_0) run on the processor by "
-          "llama.cpp, downloaded with it (about 23 MB); about 1.2 GB of memory while it runs, and a few "
-          "seconds per paragraph. Its paragraphs replace the Paragraphs setting. Desktop only."),)),
+         "34 MB", "A small MiniLM text model (ONNX, int8). Without it, paragraphs are time-based."),)),
     )
+    # After the paragraph model: one row per clean-up model the catalogue offers here
+    # (cleanup.entries(), 2026-10-30), then the *Clean up* checkbox they share.
+    CLEANUP_HEADING = "Post-processing"
+
+    @staticmethod
+    def _cleanup_item(e: dict) -> tuple:
+        """(id, name, words, size, technical text) for a clean-up model's Utilities row. The name
+        is the catalogue's short_name (licence: "S1-mini" by "Superwhisper")."""
+        words = ("Cleans up finished transcripts in Transcription Mode: punctuation and capitals, "
+                 "filler and repeated words, numbers and currency, and paragraphs. If it fails, the "
+                 "transcript is kept as transcribed.")
+        if e.get("experimental"):
+            words += " Experimental: a fine-tune for dictation clean-up, still being tested."
+        size = f"{e['download_mb']} MB" if e.get("download_mb") else ""
+        tech = (f"{e.get('technical', '')} Licence: {e.get('licence', '')}: "
+                f"<a href='{e.get('card', '')}'>model card</a>. The llama.cpp runtime (about 23 MB) is "
+                "downloaded once, with the first clean-up model, and shared. "
+                f"{e.get('hardware', '')}; a few seconds per paragraph. Its paragraphs replace the "
+                "Paragraphs setting.")
+        return e["id"], cleanup.label(e), words, size, tech
 
     def _utilities_page(self) -> QWidget:
         page = QWidget()
@@ -1091,15 +1103,26 @@ class MainWindow(QMainWindow):
         lay.setSpacing(12)
         lay.addWidget(muted("Small models that work alongside the speech model, offline."))
         self.addon_rows = {}
+        self.cleanup_ids = []
+        self.cleanup_check = None
         for heading, items in self.UTILITIES:
             box, b = card(heading)
             for item in items:
                 b.addWidget(self._utility_row(*item))
+            if heading == self.CLEANUP_HEADING:
+                for e in cleanup.entries():
+                    self.cleanup_ids.append(e["id"])
+                    b.addWidget(self._utility_row(*self._cleanup_item(e), experimental=bool(e.get("experimental"))))
+                if self.cleanup_ids:
+                    self.cleanup_check = self._check("tm_cleanup", "Clean up Transcription Mode transcripts",
+                                                     lambda: self.transcribe.sync_cleanup())
+                    self.cleanup_check.setContentsMargins(10, 4, 10, 0)
+                    b.addWidget(self.cleanup_check)
             lay.addWidget(box)
         lay.addStretch(1)
         return page
 
-    def _utility_row(self, aid, name, words, size, tech) -> QFrame:
+    def _utility_row(self, aid, name, words, size, tech, experimental=False) -> QFrame:
         f = QFrame(objectName="modelRow")
         f.setStyleSheet("#modelRow { border: none; border-bottom: 1px solid palette(midlight); }"
                         " #modelRow QLabel { border: none; background: transparent; }")
@@ -1108,7 +1131,20 @@ class MainWindow(QMainWindow):
         outer.setSpacing(12)
         col = QVBoxLayout()
         col.setSpacing(3)
-        col.addWidget(QLabel(f"<b style='font-size:14px'>{name}</b>"))
+        head = QHBoxLayout()
+        head.addWidget(QLabel(f"<b style='font-size:14px'>{name}</b>"))
+        chip = QLabel("✓ Used by Clean up")         # the chosen clean-up model
+        chip.setStyleSheet(f"background: {BRAND_GREEN}; color: white; border-radius: 9px; padding: 1px 8px;"
+                           " font-size: 11px; font-weight: 600;")
+        chip.hide()
+        head.addWidget(chip)
+        if experimental:
+            tag = QLabel("Experimental")
+            tag.setStyleSheet("color: #8a5a00; border: 1px solid #8a5a00; border-radius: 9px;"
+                              " padding: 0 7px; font-size: 11px;")
+            head.addWidget(tag)
+        head.addStretch(1)
+        col.addLayout(head)
         text = QLabel(words)
         text.setWordWrap(True)
         col.addWidget(text)
@@ -1119,10 +1155,6 @@ class MainWindow(QMainWindow):
         use = None
         if aid == vad.MODEL_ID:
             use = self._check("vad_silero", "Use it for voice detection", self.ctl.apply_vad)
-            col.addWidget(use)
-        elif aid == cleanup.MODEL_ID:
-            use = self._check("tm_cleanup", "Clean up Transcription Mode transcripts",
-                              lambda: self.transcribe.sync_cleanup())
             col.addWidget(use)
         body = QLabel(tech)
         body.setWordWrap(True)
@@ -1141,13 +1173,18 @@ class MainWindow(QMainWindow):
         btns.setSpacing(4)
         dl = QPushButton(line_icon("download", "white"), "Download", objectName="primary")
         dl.clicked.connect(lambda _=False, a=aid: self.ctl.download_addon(a))
+        pick = QPushButton("Use this one")          # clean-up models: which one Clean up runs
+        pick.clicked.connect(lambda _=False, a=aid: self._use_cleanup(a))
+        pick.hide()
         rm = QPushButton("Delete")
         rm.clicked.connect(lambda _=False, a=aid, n=name: self._delete_addon(a, n))
         btns.addWidget(dl)
+        btns.addWidget(pick)
         btns.addWidget(rm)
         btns.addStretch(1)
         outer.addLayout(btns)
-        self.addon_rows[aid] = {"status": status, "dl": dl, "rm": rm, "use": use, "size": size}
+        self.addon_rows[aid] = {"status": status, "dl": dl, "rm": rm, "use": use, "size": size,
+                                "pick": pick, "chip": chip}
         return f
 
     def _update_addons(self):
@@ -1160,30 +1197,42 @@ class MainWindow(QMainWindow):
                 r["rm"].hide()
                 r["use"].setEnabled(ok)
                 continue
-            have = (cleanup.installed() if aid == cleanup.MODEL_ID else paragraphs.installed()) is not None
+            is_cleanup = aid in getattr(self, "cleanup_ids", ())
+            have = (cleanup.installed(aid) if is_cleanup else paragraphs.installed()) is not None
             busy = aid in self.ctl.addon_busy
-            if aid == cleanup.MODEL_ID:
-                r["use"].setVisible(have)
-                if not cleanup.supported():
-                    r["status"].setText("<span style='color:gray'>Not available on this computer</span>")
-                    r["dl"].hide()
-                    r["rm"].hide()
-                    continue
+            if is_cleanup:
+                ready = cleanup.ready(self.cfg["tm_cleanup_model"])
+                used = ready is not None and ready["id"] == aid
+                r["chip"].setVisible(used)
+                r["pick"].setVisible(have and not used)
             pct = self.ctl.addon_done.get(aid)
             r["status"].setText((f"<b>Downloading… {int(pct * 100)}%</b>" if pct else "<b>Downloading…</b>") if busy else
                                 "<span style='color:#2e9e5b'>✓ Downloaded</span>" if have else
-                                f"<span style='color:gray'>Not downloaded · {r['size']}</span>")
+                                "<span style='color:gray'>Not downloaded" +
+                                (f" · {r['size']}" if r["size"] else "") + "</span>")
             r["dl"].setVisible(not have)
             r["dl"].setEnabled(not busy)
             r["dl"].setText("Downloading…" if busy else "Download")
             r["rm"].setVisible(have)
+        if getattr(self, "cleanup_check", None) is not None:
+            self.cleanup_check.setVisible(cleanup.ready(self.cfg["tm_cleanup_model"]) is not None)
+
+    def _use_cleanup(self, aid):
+        """Make `aid` the model *Clean up* runs (`tm_cleanup_model`). The old model's llama-server
+        is stopped now; the next clean-up starts one with the new model (cleanup.server)."""
+        self.cfg.set("tm_cleanup_model", aid)
+        cleanup.stop()
+        self.transcribe.sync_cleanup()
+        self.update_model()
 
     def _delete_addon(self, aid, name):
         if QMessageBox.question(self, "Delete utility", f"Delete {name}? You can download it "
                                 "again later.") != QMessageBox.Yes:
             return
-        if aid == cleanup.MODEL_ID:
-            cleanup.remove()                  # stops its llama-server first
+        if aid in getattr(self, "cleanup_ids", ()):
+            cleanup.remove(aid)               # stops its llama-server first
+            if self.cfg["tm_cleanup_model"] == aid:
+                self.cfg.set("tm_cleanup_model", None)   # back to chosen()'s rule
             self.transcribe.sync_cleanup()
         else:
             import shutil

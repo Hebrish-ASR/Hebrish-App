@@ -55,7 +55,7 @@ android {
                     // 16 KB page alignment (Play requirement for targetSdk 35+).
                     "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384 -Wl,--build-id=none",
                 )
-                targets += listOf("sherpa-onnx-jni")
+                targets += listOf("sherpa-onnx-jni", "hebrish-llama-jni")
             }
         }
     }

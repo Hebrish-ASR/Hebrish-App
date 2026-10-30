@@ -11,7 +11,7 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | `app_update.py` | newer-app check against `latest.json`, how this copy updates (apt / deb-manual / windows / source), the pkexec apt upgrade, relaunch (0.6.2; "App updates in the app") |
 | `engine.py` | sherpa-onnx `OfflineRecognizer` (nemo_transducer) or, for Shakshuka, `OnlineRecognizer` (0.7.0): normalise, cut at pauses (`live_cut`, `split_points`), pad, `transcribe_chunks` generator; `LiveStream` for streaming takes |
 | `paragraphs.py` | Transcription Mode's Paragraphs setting (B-44): `Pieces` layout, the paragraph model (`Breaker`: pure-Python WordPiece + onnxruntime), its CDN download. See "Paragraphs" |
-| `cleanup.py` | the clean-up add-on (B-40): S1-ASR-Cleanup (a fine-tune of S1-mini by Superwhisper) on a downloaded `llama-server`, prompt, chunks, guard and fallback, download. See "Clean-up model" |
+| `cleanup.py` | the clean-up add-on (B-40): a choice of clean-up models (stock S1-mini by Superwhisper, default; the fine-tune S1-ASR-Cleanup, experimental) on a downloaded, shared `llama-server`; the choice rule, prompt, chunks, guard and fallback, download. See "Clean-up model" |
 | `audio.py` | sounddevice capture (pause/resume, level meter, `peek`/`consume` for live insertion), file decoding (ffmpeg, else soundfile), WAV save, beeps |
 | `hotkey.py` | the shared state machine for the two keys (toggle, push-to-talk) and the action keys, on evdev-style key names |
 | `hotkey_evdev.py` / `hotkey_win.py` | per-OS key sources: `/dev/input` on Linux, a pynput low-level hook on Windows |
@@ -981,7 +981,7 @@ D-2026-10-24-09; the spec both apps follow is `../shared/paragraphs.md`, the par
   Time-based, and choosing Paragraph model with nothing installed (download from the CDN with
   progress, then re-flow). Not yet tried in the running app on a real recording.
 
-## Clean-up model (B-40, unreleased, 2026-10-29)
+## Clean-up model (B-40, Desktop 1.013, 2026-10-29; a choice of models 2026-10-30)
 
 S1-ASR-Cleanup v1.0 (`danielrosehill/S1-ASR-Cleanup`, tag `v1.0`, `s1-asr-cleanup-v1.0-Q8_0.gguf`,
 639,446,560 bytes, SHA-256 `d7b73071…328ce1`) is a LoRA fine-tune of S1-mini by Superwhisper
@@ -1008,10 +1008,8 @@ ASR-Post-Processor-Model repo (`training/s1mini_lora.py`, `docs/fine-tuning.md`)
   glibc (checked with `ldd`, 2026-10-29). The builds are pre-releases on GitHub; the tag is pinned
   and the archive checked by SHA-256, so a newer build is a catalogue edit (new `build`, URLs,
   sizes, digests), no app release.
-- **On disk:** `<models>/s1-asr-cleanup/v1.0/` (the GGUF, `manifest.json` written last) and
-  `<models>/s1-asr-cleanup/runtime/b11982/` (`.complete` written last). `installed()` needs both.
-  A new model version keeps the runtime; Delete (`cleanup.remove()`) stops the server and removes
-  the whole folder.
+- **On disk (1.013):** `<models>/s1-asr-cleanup/v1.0/` (the GGUF, `manifest.json` written last) and
+  `<models>/s1-asr-cleanup/runtime/b11982/` (`.complete` written last). Changed 2026-10-30, below.
 - **Process:** `cleanup.server()` starts one `llama-server -m <gguf> --host 127.0.0.1 --port
   <free> -c 4096 -np 1 -t <cores/2> --no-webui` on first use and waits for `/health` (90 s cap).
   It is stopped after 10 minutes without a request (`IDLE_S`, the `cleanup-idle` thread), on a
@@ -1042,11 +1040,12 @@ ASR-Post-Processor-Model repo (`training/s1mini_lora.py`, `docs/fine-tuning.md`)
   overwritten. While clean-up is on, the Paragraphs box is greyed out and the transcript goes to
   the model with no breaks; if clean-up fails entirely, the Paragraphs setting is applied as if
   clean-up were off. A cleaned transcript is never re-flowed (`_last` is cleared).
-- **History** keeps the cleaned text (what the tab shows), with `cleanup` (`s1-asr-cleanup v1.0`)
-  and `cleanup_kept_raw` in the row's `decode` JSON. The raw text is not kept.
-- **Settings:** `tm_cleanup` (default off), one value behind two checkboxes (Utilities row and the
-  Transcript header, kept in step; the header one is shown only once the add-on is installed).
-  Not on systems without a pinned build (`supported()`): the row says "Not available".
+- **History** keeps the cleaned text (what the tab shows), with `cleanup` (`<id> <version>` of the
+  model that ran, e.g. `s1-mini v1.0` or `s1-asr-cleanup v1.0`; `Result.model`/`.version`) and
+  `cleanup_kept_raw` in the row's `decode` JSON. The raw text is not kept.
+- **Settings:** `tm_cleanup` (default off), one value behind two checkboxes (the Post-processing
+  card under the clean-up rows, and the Transcript header; kept in step, both shown only once the
+  chosen model is installed). `tm_cleanup_model` (default None): see below.
 - **Verified (2026-10-29, Ubuntu, this laptop's CPU):** `cleanup.download()` fetched and verified
   the runtime and the real GGUF into a temp models folder (15 s), and `cleanup.run()` on
   *"so um I was thinking that we should uh we should meet on tuesday to go over the arnona bill it
@@ -1058,8 +1057,51 @@ ASR-Post-Processor-Model repo (`training/s1mini_lora.py`, `docs/fine-tuning.md`)
   The Utilities row and the two checkboxes were driven off-screen with the real install.
   Not tried: Windows (the zip may need the MSVC runtime, which most machines have), a real
   Transcription Mode recording in the running app, transcripts long enough to need chunks.
-- Tests: `tests/test_cleanup.py` (fake runtime and fake downloads; the tab driven off-screen with a
-  fake engine).
+- Tests: `tests/test_cleanup.py` (fake runtime and fake downloads; the tab and the Utilities
+  rows driven off-screen with a fake engine).
+
+### A choice of clean-up models (2026-10-30, after 1.013)
+
+Daniel, 2026-10-30: use stock S1-mini by Superwhisper by default until the fine-tune is better
+validated; keep S1-ASR-Cleanup as an experimental alternative.
+
+- **Catalogue:** `addons` holds several `kind: text_cleanup` entries: `s1-mini` (stock, `default:
+  true`) and `s1-asr-cleanup` (`experimental: true`). New keys `short_name` (the name the app
+  shows; licence wording), `default`, `experimental`, and an `android` block desktop ignores.
+  `cleanup._all()` reads the cached catalogue's entries, else the bundled copy's. An entry is
+  offered (`offered()`, `entries()`, default first) only when `version`, `repo`, `revision` and
+  `file` are set and not `"TODO"` and this OS is in `platforms` and `runtime`. Stock is
+  Superwhisper's own GGUF (`superwhisper/s1-mini-GGUF` at commit `34add00a…`, version `v1`,
+  `s1-mini-q4_k_m.gguf`, 484,219,808 bytes, SHA-256 `3b41ebe2…c634`; Q4_K_M on desktop too, there
+  is no stock Q8_0), filled in 2026-10-30; before that it said `"TODO"` and was not offered. Null
+  `size`/`sha256` would be read from the Hugging Face tree. Rows are built when the window opens, so a catalogue that
+  gains an entry shows it after a restart.
+- **Choice rule (`chosen(pick)`):** the user's pick (`tm_cleanup_model`) if an offered entry has
+  that id; else, with no pick (or a stale one), the first installed entry, default first, so a
+  1.013 user who downloaded S1-ASR-Cleanup keeps using it with nothing new to download; else the
+  `default: true` entry; else the first offered. `ready(pick)` is `chosen()` when it is installed:
+  that is what *Clean up* needs. Deleting the picked model resets the pick to None.
+- **On disk:** `<models>/<id>/<version>/` per model (the fine-tune's 1.013 folder already fits),
+  and one runtime for all of them at `<models>/llama.cpp/<build>/`. 1.013's
+  `<models>/s1-asr-cleanup/runtime/<build>/` is moved there on first look (`_adopt`, an
+  `os.replace` on the same disk; if it fails the runtime is downloaded again); a 1.013 runtime
+  of another build is deleted by the next download. Downloading a model fetches the runtime only
+  if it is missing (under a lock, so two downloads at once fetch it once), deletes that model's
+  older versions, and deletes runtime builds no entry pins. `remove(id)` stops the server and
+  deletes that model; the runtime goes with the last model.
+- **Server:** `server(id)` keeps one `llama-server`; asked for another model's GGUF it stops the
+  old process and the next request starts one with the new model. *Use this one* also stops it
+  at once, to free the memory.
+- **UI:** Models → Utilities → Post-processing has a row per offered model (name = `short_name`;
+  "Experimental" tag on the fine-tune), each with Download / Delete and, once installed and not in
+  use, *Use this one* (the speech models' idiom); the one *Clean up* runs carries "✓ Used by
+  Clean up". The Transcription tab's *Clean up* tooltip names the chosen model.
+- **Verified (2026-10-30):** the test suite only (fake runtime, fake downloads, off-screen
+  widgets): choice rule incl. the 1.013 install, TODO and other-OS entries not offered, shared
+  runtime fetched once, 1.013 runtime adopted, server restart on a model change, History `extra`.
+  Not verified: a real download of the stock GGUF, stock S1-mini's output with this prompt and
+  the guard (the 2026-10-29 smoke test was the fine-tune), the new rows in the running app,
+  Windows.
 
 ## Disfluency chop (1.001, 2026-10-24)
 

@@ -129,6 +129,13 @@ object ParagraphStore {
 
     fun cancel() { cancel = true }
 
+    /** Deletes the model's files (the Paragraphs setting then falls back to time-based). */
+    fun remove(ctx: Context) {
+        Prefs.setParagraphModel(ctx, null)
+        base(ctx).deleteRecursively()
+        publish(Status.Idle)
+    }
+
     private fun get(url: String): String {
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.connectTimeout = 15_000

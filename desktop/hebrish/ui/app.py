@@ -1088,9 +1088,13 @@ class Controller(QObject):
 
     @staticmethod
     def addon_fetchers() -> dict:
-        """Add-on id -> download(on_progress, cancel). Silero VAD is bundled, so it has none."""
+        """Add-on id -> download(on_progress, cancel). Silero VAD is bundled, so it has none; each
+        offered clean-up model has its own (they share one llama.cpp runtime)."""
         from .. import cleanup, paragraphs
-        return {paragraphs.MODEL_ID: paragraphs.download, cleanup.MODEL_ID: cleanup.download}
+        out = {paragraphs.MODEL_ID: paragraphs.download}
+        for e in cleanup.entries():
+            out[e["id"]] = lambda p, c, a=e["id"]: cleanup.download(a, p, c)
+        return out
 
     def download_addon(self, aid: str):
         """Fetch an add-on (the paragraph model, the clean-up model) off the GUI thread."""

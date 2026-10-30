@@ -1,14 +1,18 @@
-"""Dictation clean-up (B-40): S1-ASR-Cleanup, a fine-tune of S1-mini by Superwhisper, run on a
-finished Transcription-tab transcript when the user has downloaded it and turned it on. Desktop only.
+"""Dictation clean-up (B-40): a clean-up model run on a finished Transcription-tab transcript when
+the user has downloaded it and turned it on. Desktop only. Since 2026-10-30 (Daniel) there is a
+choice: stock S1-mini by Superwhisper (the default) or S1-ASR-Cleanup, Daniel's fine-tune of it
+(experimental), one row each in Models → Utilities; `chosen()` says which one *Clean up* uses.
 
 The licence (Apache 2.0 plus a naming term) requires that wherever the app names or describes the
-model it is identified as "S1-mini" by "Superwhisper", exact capitalisation (`DISPLAY_NAME`).
+model it is identified as "S1-mini" by "Superwhisper", exact capitalisation (the catalogue's
+`short_name`, `label()`).
 
-- The add-on is listed in the catalogue under `addons` (../shared/catalogue.json, id
-  `s1-asr-cleanup`): the GGUF file on Hugging Face (repo, tag, file name) and the llama.cpp build
-  that runs it (a pinned CPU build of `llama-server` per OS, with size and SHA-256).
+- The models are listed in the catalogue under `addons` (../shared/catalogue.json, `kind:
+  text_cleanup`): the GGUF file on Hugging Face (repo, tag, file name) and the llama.cpp build
+  that runs it (a pinned CPU build of `llama-server` per OS, with size and SHA-256). An entry
+  still marked "TODO" (not yet published) is not offered.
 - Runtime: the stock `llama-server` from ggml-org/llama.cpp's GitHub releases, downloaded with
-  the model into <models>/s1-asr-cleanup/runtime/<build>/ and started on first use as a child
+  the first model into <models>/llama.cpp/<build>/ (shared) and started on first use as a child
   process on 127.0.0.1 (one slot, CPU), stopped after IDLE_S without work and when the app quits.
   No Python LLM package: the .deb and the Windows zip stay as they are, and an install that never
   downloads the add-on runs no llama.cpp code at all. Why not llama-cpp-python: no prebuilt wheels
@@ -40,10 +44,10 @@ from pathlib import Path
 
 from . import model_store
 
-MODEL_ID = "s1-asr-cleanup"
-DISPLAY_NAME = "S1-ASR-Cleanup (fine-tune of S1-mini by Superwhisper)"   # licence: keep "S1-mini" by "Superwhisper"
-CARD = "https://huggingface.co/danielrosehill/S1-ASR-Cleanup"
-RUNTIME_DIR = "runtime"
+DEFAULT_ID = "s1-mini"           # the catalogue's `default: true` entry decides; this is for tests/docs
+LEGACY_ID = "s1-asr-cleanup"     # 1.013's only model; its runtime folder is adopted (`_adopt`)
+LEGACY_RUNTIME = "runtime"
+RUNTIME_ROOT = "llama.cpp"       # <models>/llama.cpp/<build>/, shared by every clean-up model
 SERVER = "llama-server.exe" if sys.platform == "win32" else "llama-server"
 
 # -- prompt (verbatim from ASR-Post-Processor-Model training/s1mini_lora.py) -------------------
@@ -146,6 +150,9 @@ class Result:
     chunks: int        # chunks sent to the model
     kept_raw: int      # chunks that fell back to their raw text
     error: str = ""    # the first failure, for the status line
+    model: str = ""    # the catalogue id and version that ran (run() sets them), for History
+    version: str = ""
+    name: str = ""     # its display name (label())
 
     @property
     def cleaned(self) -> bool:
@@ -184,54 +191,136 @@ def clean(text: str, client, keep: tuple = ()) -> Result:
     return Result("\n\n".join(out), len(chunks), kept, first)
 
 
-# -- catalogue entry ---------------------------------------------------------------------
+# -- catalogue entries ----------------------------------------------------------------------
 
-def entry() -> dict:
-    """The add-on's catalogue entry. A cached catalogue from before the add-on existed has no
-    `addons`, so the bundled copy is the fallback."""
+def _all() -> list[dict]:
+    """Every `text_cleanup` add-on in the catalogue, offered or not. A cached catalogue from before
+    the add-on existed has none, so the bundled copy is the fallback."""
     for doc in (model_store.catalogue(), model_store.bundled_catalogue()):
-        for a in doc.get("addons", []):
-            if a.get("id") == MODEL_ID:
-                return a
-    raise RuntimeError("the catalogue has no clean-up model")
+        found = [a for a in doc.get("addons", []) if a.get("kind") == "text_cleanup"]
+        if found:
+            return found
+    return []
+
+
+def _pending(v) -> bool:
+    return not v or v == "TODO"
+
+
+def offered(e: dict) -> bool:
+    """Published (no "TODO" or empty version, repo, tag or file) and runnable on this OS (listed
+    in `platforms`, with a pinned llama.cpp build under `runtime`)."""
+    if any(_pending(e.get(k)) for k in ("version", "repo", "revision", "file")):
+        return False
+    rt = e.get("runtime") or {}
+    return model_store.PLATFORM in e.get("platforms", []) and model_store.PLATFORM in rt and bool(rt.get("build"))
+
+
+def entries() -> list[dict]:
+    """The clean-up models this computer can use: the `default: true` one first, then catalogue
+    order."""
+    out = [e for e in _all() if offered(e)]
+    return sorted(out, key=lambda e: not e.get("default"))
+
+
+def entry(aid: str) -> dict:
+    """The offered entry with id `aid`."""
+    for e in entries():
+        if e["id"] == aid:
+            return e
+    raise RuntimeError(f"the catalogue offers no clean-up model {aid!r}")
+
+
+def chosen(pick: str | None = None) -> dict | None:
+    """The model *Clean up* uses. `pick` is the user's choice (`tm_cleanup_model`); it counts while
+    the catalogue still offers it. Without one: an installed model, the default first (so a 1.013
+    install of S1-ASR-Cleanup keeps working); else the `default: true` entry; else the first."""
+    es = entries()
+    for e in es:
+        if pick and e["id"] == pick:
+            return e
+    for e in es:
+        if installed(e["id"]) is not None:
+            return e
+    return next((e for e in es if e.get("default")), es[0] if es else None)
+
+
+def ready(pick: str | None = None) -> dict | None:
+    """chosen(pick) when it is installed, else None: whether *Clean up* can run."""
+    e = chosen(pick)
+    return e if e is not None and installed(e["id"]) is not None else None
 
 
 def supported() -> bool:
-    """This OS has a pinned llama.cpp build (Linux and Windows on x86-64)."""
+    """At least one clean-up model runs here (Linux and Windows on x86-64)."""
     try:
-        e = entry()
-    except (RuntimeError, OSError, ValueError):
+        return bool(entries())
+    except (OSError, ValueError):
         return False
-    return model_store.PLATFORM in e.get("platforms", []) and model_store.PLATFORM in e["runtime"]
+
+
+def label(e: dict) -> str:
+    """The name shown in the app. Licence: it must read "S1-mini" by "Superwhisper"."""
+    return e.get("short_name") or e["name"]
 
 
 # -- on disk and download -------------------------------------------------------------------
+# <models>/<id>/<version>/             the GGUF, manifest.json written last
+# <models>/llama.cpp/<build>/          llama-server and its libraries, shared by every model;
+#                                      .complete written last
+# 1.013 kept the runtime in <models>/s1-asr-cleanup/runtime/<build>/; it is moved (`_adopt`).
 
-def root() -> Path:
-    """<models>/s1-asr-cleanup: beside the speech models, so it moves with the model folder."""
-    return model_store.ROOT / MODEL_ID
+def root(aid: str) -> Path:
+    """<models>/<id>: beside the speech models, so it moves with the model folder."""
+    return model_store.ROOT / aid
+
+
+def runtime_root() -> Path:
+    return model_store.ROOT / RUNTIME_ROOT
 
 
 def _model_dir(e: dict) -> Path:
-    return root() / "".join(c if c.isalnum() or c in "-_." else "_" for c in e["version"])
+    return root(e["id"]) / "".join(c if c.isalnum() or c in "-_." else "_" for c in e["version"])
 
 
 def _runtime_dir(e: dict) -> Path:
-    return root() / RUNTIME_DIR / e["runtime"]["build"]
+    return runtime_root() / e["runtime"]["build"]
 
 
-def installed() -> tuple[Path, Path] | None:
-    """(the GGUF file, the llama-server binary) when both are complete, else None. The model is
-    complete once its manifest.json is written (last); the runtime once its `.complete` marker is."""
+def _adopt(build: str):
+    """Move 1.013's runtime (<models>/s1-asr-cleanup/runtime/<build>/) to the shared folder, so an
+    existing install isn't downloaded again. A rename on the same disk; anything else there is
+    left for download() to clear."""
+    old, new = root(LEGACY_ID) / LEGACY_RUNTIME / build, runtime_root() / build
+    if not (old / ".complete").is_file() or (new / ".complete").is_file():
+        return
     try:
-        e = entry()
+        shutil.rmtree(new, ignore_errors=True)
+        new.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(old, new)
+        shutil.rmtree(old.parent, ignore_errors=True)
+    except OSError:
+        pass                              # still works: download() fetches the runtime again
+
+
+def _runtime_ok(rt: Path) -> bool:
+    return (rt / ".complete").is_file() and (rt / SERVER).is_file()
+
+
+def installed(aid: str) -> tuple[Path, Path] | None:
+    """(the GGUF file, the llama-server binary) when the offered model `aid` and the runtime are
+    both complete, else None."""
+    try:
+        e = entry(aid)
     except (RuntimeError, OSError, ValueError):
         return None
-    folder, rt = _model_dir(e), _runtime_dir(e)
-    gguf, server = folder / e["file"], rt / SERVER
-    if (folder / "manifest.json").is_file() and gguf.is_file() and (rt / ".complete").is_file() and server.is_file():
-        return gguf, server
-    return None
+    folder = _model_dir(e)
+    gguf = folder / e["file"]
+    if not ((folder / "manifest.json").is_file() and gguf.is_file()):
+        return None
+    _adopt(e["runtime"]["build"])
+    rt = _runtime_dir(e)
+    return (gguf, rt / SERVER) if _runtime_ok(rt) else None
 
 
 def model_files(e: dict) -> dict:
@@ -284,48 +373,60 @@ def _extract(archive: Path, dest: Path):
         (dest / SERVER).chmod(0o755)
 
 
-def download(on_progress=None, cancel: threading.Event | None = None) -> Path:
-    """Fetch the llama.cpp runtime (if not already there) and the model, verify both, then make
-    them the installed ones (older versions are deleted). on_progress(done_bytes, total, name)."""
-    e = entry()
-    if not supported():
-        raise RuntimeError("the clean-up model isn't available on this computer")
+_runtime_lock = threading.Lock()       # two models downloading at once fetch the runtime once
+
+
+def download(aid: str, on_progress=None, cancel: threading.Event | None = None) -> Path:
+    """Fetch the shared llama.cpp runtime (if not already there) and model `aid`, verify both,
+    then make them the installed ones (older versions of that model and runtime builds no
+    catalogue entry pins are deleted). on_progress(done_bytes, total, name)."""
+    e = entry(aid)
     rt_info = e["runtime"][model_store.PLATFORM]
     rt, folder = _runtime_dir(e), _model_dir(e)
     files = model_files(e)
-    rt_size = 0 if (rt / ".complete").is_file() else rt_info["size"]
+    _adopt(e["runtime"]["build"])
+    rt_size = 0 if _runtime_ok(rt) else rt_info["size"]
     total = rt_size + sum(f["size"] for f in files.values())
 
     def prog(offset):
         return (lambda d, _t, n: on_progress(offset + d, total, n)) if on_progress else None
 
-    if rt_size:
-        archive = rt_info["url"].rsplit("/", 1)[-1]
-        stage = root() / RUNTIME_DIR / ".download"
-        model_store.fetch_files(stage, {archive: {"size": rt_info["size"], "sha256": rt_info["sha256"]}},
-                                lambda _n: rt_info["url"], prog(0), cancel)
-        shutil.rmtree(rt, ignore_errors=True)
-        rt.mkdir(parents=True)
-        _extract(stage / archive, rt)
-        (rt / ".complete").write_text(e["runtime"]["build"] + "\n")
-        shutil.rmtree(stage, ignore_errors=True)
+    with _runtime_lock:
+        if not _runtime_ok(rt):
+            archive = rt_info["url"].rsplit("/", 1)[-1]
+            stage = runtime_root() / ".download"
+            model_store.fetch_files(stage, {archive: {"size": rt_info["size"], "sha256": rt_info["sha256"]}},
+                                    lambda _n: rt_info["url"], prog(0), cancel)
+            shutil.rmtree(rt, ignore_errors=True)
+            rt.mkdir(parents=True)
+            _extract(stage / archive, rt)
+            (rt / ".complete").write_text(e["runtime"]["build"] + "\n")
+            shutil.rmtree(stage, ignore_errors=True)
     url = f"{model_store.HF}/{e['repo']}/resolve/{e['revision']}/"
     model_store.fetch_files(folder, files, lambda n: url + n, prog(rt_size), cancel)
     (folder / "manifest.json").write_text(json.dumps(
-        {"id": MODEL_ID, "version": e["version"], "repo": e["repo"], "revision": e["revision"],
+        {"id": aid, "version": e["version"], "repo": e["repo"], "revision": e["revision"],
          "files": files}, indent=2))
-    for d in root().iterdir():                # older model versions; the runtime folder stays
-        if d.is_dir() and d.name not in (folder.name, RUNTIME_DIR):
+    for d in root(aid).iterdir():             # older versions (and 1.013's runtime folder, if left)
+        if d.is_dir() and d.name != folder.name:
             shutil.rmtree(d, ignore_errors=True)
-    for d in (root() / RUNTIME_DIR).iterdir():
-        if d.is_dir() and d.name != rt.name:
-            shutil.rmtree(d, ignore_errors=True)
+    builds = {(a.get("runtime") or {}).get("build") for a in _all()}
+    with _runtime_lock:
+        for d in runtime_root().iterdir():
+            if d.is_dir() and d.name not in builds:
+                shutil.rmtree(d, ignore_errors=True)
     return folder
 
 
-def remove():
+def remove(aid: str):
+    """Delete model `aid` (stopping llama-server first); the shared runtime goes too once no
+    clean-up model is left."""
     stop()
-    shutil.rmtree(root(), ignore_errors=True)
+    shutil.rmtree(root(aid), ignore_errors=True)
+    if not any((_model_dir(e) / "manifest.json").is_file() for e in _all()
+               if not any(_pending(e.get(k)) for k in ("version", "file"))):
+        shutil.rmtree(runtime_root(), ignore_errors=True)
+        shutil.rmtree(root(LEGACY_ID) / LEGACY_RUNTIME, ignore_errors=True)
 
 
 # -- the llama-server child process -------------------------------------------------------
@@ -416,15 +517,16 @@ _server_lock = threading.Lock()
 _reaper: threading.Thread | None = None
 
 
-def server() -> Server:
-    """The running (or startable) server for the installed add-on, kept between transcripts.
-    Raises when the add-on isn't installed."""
+def server(aid: str) -> Server:
+    """The running (or startable) server for model `aid`, kept between transcripts. Choosing
+    another model stops the old process; the next request starts one with the new GGUF. Raises
+    when `aid` isn't installed."""
     global _server, _reaper
-    have = installed()
+    have = installed(aid)
     if have is None:
         raise FileNotFoundError("the clean-up model isn't downloaded")
     with _server_lock:
-        if _server is None or (_server.gguf, _server.binary) != have:
+        if _server is None or (_server.gguf, _server.binary) != tuple(Path(p) for p in have):
             if _server is not None:
                 _server.stop()
             _server = Server(*have)
@@ -450,10 +552,16 @@ def stop():
         s.stop()
 
 
-def run(text: str, keep: tuple = ()) -> Result:
-    """Clean `text` with the installed add-on; any failure keeps the raw text (Result.error)."""
+def run(text: str, keep: tuple = (), aid: str | None = None) -> Result:
+    """Clean `text` with model `aid` (default: chosen()); any failure keeps the raw text
+    (Result.error). Result.model and .version say which model it was."""
     try:
-        s = server()
-    except Exception as e:
-        return Result(text, 1, 1, str(e))
-    return clean(text, s, keep)
+        e = entry(aid) if aid else chosen()
+        if e is None:
+            raise FileNotFoundError("the clean-up model isn't downloaded")
+        s = server(e["id"])
+    except Exception as ex:
+        return Result(text, 1, 1, str(ex))
+    r = clean(text, s, keep)
+    r.model, r.version, r.name = e["id"], e["version"], label(e)
+    return r

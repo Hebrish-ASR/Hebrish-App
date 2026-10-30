@@ -1203,6 +1203,67 @@ Dictation (keyboard, floating mic, Try it) is unchanged.
 - Built locally (`assembleFdroidDebug`, `assemblePlayDebug`, JDK 21, NDK 26.3.11579264) in a fresh
   clone with submodules. Not run on a device.
 
+## Clean up: S1-mini on the phone, and Post-processing in Models (unreleased, B-40a, 2026-10-30)
+
+Parity with desktop B-40 (`desktop/hebrish/cleanup.py`). Daniel, 2026-10-30: quantise it for
+phones and offer it; then offer **two** models, **stock S1-mini by Superwhisper as the default**
+and his fine-tune S1-ASR-Cleanup as **experimental** until it is better validated; no benchmark
+for this step. Licence: every place a model is named reads "S1-mini" by "Superwhisper".
+
+- **Catalogue:** `../shared/catalogue.json` `addons`, kind `text_cleanup`, entries `s1-mini`
+  (`default: true`) and `s1-asr-cleanup` (`experimental: true`). Android reads only an entry's
+  `android` block (file, size, SHA-256, `ram_mb`, optional `revision`). An entry with placeholders
+  or no `android` block is skipped (`CleanupStore.parse`). Android builds before this ignore `addons`.
+  Files (both Q4_K_M, which keeps the most sensitive tensors at Q6_K):
+  - stock: Superwhisper's own `superwhisper/s1-mini-GGUF` `s1-mini-q4_k_m.gguf` (484,219,808 bytes),
+    pinned to commit `34add00a48a2e5d24e5a4ee5405a99620a3a240c`; Superwhisper's card calls it the
+    build its published accuracy was measured on. Desktop uses the same file. Not re-hosted.
+  - fine-tune: `danielrosehill/S1-ASR-Cleanup` `s1-asr-cleanup-v1.0-Q4_K_M.gguf` (396,704,480
+    bytes), made 2026-10-30 from the v1.0 safetensors (`convert_hf_to_gguf.py --outtype f16`, then
+    `llama-quantize … Q4_K_M`, llama.cpp b11982; transformers 5.x needed: 4.57 crashes on the
+    tokenizer config's list-form `extra_special_tokens`). Uploaded after the `v1.0` tag, so pinned by
+    commit `33b39785995179277426beac2da5c243970df3b0` (`android.revision`). The stock GGUF is bigger
+    because it carries a separate output matrix.
+  - Sanity check only (no benchmark, Daniel): each file loaded in llama-server b11982 on the laptop
+    and cleaned one test sentence coherently through `cleanup.py`'s own `clean()`. Peak RSS at ctx
+    4,096: stock Q4_K_M 1.24 GB, fine-tune Q4_K_M 1.16 GB (desktop context; Android's is smaller).
+    Q4_0 was also tried for the fine-tune and dropped words on that one sentence; not used.
+- **Runtime:** llama.cpp **b11982** (the build desktop's `llama-server` is pinned to) as the
+  submodule `third_party/llama.cpp`, compiled into its own `libhebrish-llama-jni.so`
+  (`src/main/cpp/CMakeLists.txt`, bridge `s1_cleanup_jni.cpp`), loaded only when Clean up first runs.
+  No llama-server: Android can't run a downloaded executable, and F-Droid needs it built from source.
+  Flags: `GGML_CPU_ARM_ARCH=armv8.2-a+dotprod+fp16`, OpenMP off (ggml's thread pool; no libomp to
+  ship), KleidiAI off (upstream's Android example turns it on, but it is fetched at configure time
+  and the build is offline). A CPU without `asimddp` in `/proc/cpuinfo` (Cortex-A53/A73 era) is not
+  offered clean-up (`CleanupModel.supported()`); the library would hit illegal instructions there.
+  Library: 54.6 MB unstripped, **6.6 MB stripped, about 2.5 MB compressed** in the APK (NDK
+  26.3.11579264, built alone on the laptop 2026-10-30, all four `Java_..._CleanupModel_native*`
+  symbols exported). The full app native build was not run locally (it comes from CI).
+- **Code:** `Cleanup.kt` is `cleanup.py`'s logic line for line (prompt, `[Layers: 1,2]`, chunks at
+  sentence ends, 1.3 x input + 32 output cap, the guard: empty, cut off or a dropped dictionary word
+  keeps that chunk raw); no `android.*`. One deliberate difference: chunks of at most **600** tokens
+  and a **1,536**-token context (desktop 900 / 4,096), so the f16 KV cache is about 170 MB instead
+  of about 470 MB. Timeout per chunk 45 s + 0.2 s per output token. `CleanupModel.kt` is the JNI
+  wrapper (UTF-8 byte arrays, not jstring: JNI's modified UTF-8 breaks on non-BMP characters; greedy
+  sampler; stop at end-of-generation; a deadline through llama.cpp's abort callback).
+  `CleanupStore.kt` downloads from Hugging Face at the entry's tag through `ModelStore.downloadFiles`
+  into `filesDir/models/<id>/<version>/`; the user's pick is `Prefs.cleanupChoice`, else the default.
+- **Transcription Mode:** a **Clean up** switch (`Prefs.tmCleanup`, off by default) with the chosen
+  model's line and *Change* (pick a model; *Delete unused*). Turning it on with the model missing
+  asks before downloading (size and memory). When a take finishes, the flat text (after the
+  disfluency chop and the dictionary) is cleaned on `paraWorker`; the model stays loaded until the
+  switch goes off, the model changes or the screen closes. Its paragraphs replace the Paragraphs
+  setting (that line is dimmed and says so); if nothing was cleaned, the Paragraphs setting runs
+  as before. Same edited-box rule as paragraphs: the text replaces the box only while it still
+  holds what the app wrote. History records the cleaned text.
+- **Models screen:** a **Post-processing** section (desktop: Models, Utilities) lists the paragraph
+  model (B-44a; until now only reachable from Transcription Mode's Paragraphs dialog) and each
+  clean-up model, with Download / Cancel / Delete and *Use for Clean up*. `ParagraphStore.remove`
+  added for its Delete.
+- **Checked (2026-10-30):** `./gradlew --offline :app:compileFdroidDebugKotlin` (JDK 21); the JNI
+  library built alone with the pinned NDK (above). Not run on a phone: speed and memory on a real
+  device are unknown, and long takes may take a while to clean.
+
 ## Robustness pass: dead ends, leaks, main-thread work (unreleased, 2026-10-30)
 
 A whole-app review (`android/app/src/main`, `android/core/src/main`) and its fixes. No measured

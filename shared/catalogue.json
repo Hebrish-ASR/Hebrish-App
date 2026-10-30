@@ -630,10 +630,67 @@
 ,
   "addons": [
     {
-      "_doc": "Optional add-ons that are not speech models (B-40). Read by desktop 1.013+; Android and older desktop builds ignore this key. kind text_cleanup: a GGUF text model run on a finished transcript by `runtime` (a pinned llama.cpp CPU build of llama-server, per OS, downloaded with the model). Licence: S1-ASR-Cleanup is a fine-tune of S1-mini by Superwhisper (Apache 2.0 plus a naming term): wherever an app names or describes it, it is identified as \"S1-mini\" by \"Superwhisper\". desktop/hebrish/cleanup.py",
+      "_doc": "Optional add-ons that are not speech models (B-40, B-40a). kind text_cleanup: a GGUF text model run once on a finished Transcription Mode transcript. Desktop (1.013+) runs it with `runtime` (a pinned llama.cpp CPU build of llama-server, per OS, downloaded with the model) and the top-level file; Android (B-40a) reads the `android` block (a smaller quantisation; llama.cpp is built into the APK) and ignores entries without one. Several entries since 2026-10-30 (Daniel): one has `default: true` (offered first and used until the user picks another); `experimental: true` is shown as such. Builds before multi-model support read only the entry with id s1-asr-cleanup. Licence: S1-mini by Superwhisper is Apache 2.0 plus a naming term: wherever an app names or describes it or a fine-tune of it, it is identified as \"S1-mini\" by \"Superwhisper\". desktop/hebrish/cleanup.py, android CleanupStore.kt",
+      "id": "s1-mini",
+      "kind": "text_cleanup",
+      "name": "S1-mini by Superwhisper",
+      "short_name": "S1-mini by Superwhisper",
+      "default": true,
+      "experimental": false,
+      "base_model": "superwhisper/s1-mini",
+      "base_label": "S1-mini by Superwhisper",
+      "licence": "Apache 2.0 with the S1-mini naming term",
+      "version": "v1",
+      "repo": "superwhisper/s1-mini-GGUF",
+      "revision": "34add00a48a2e5d24e5a4ee5405a99620a3a240c",
+      "card": "https://huggingface.co/superwhisper/s1-mini-GGUF",
+      "file": "s1-mini-q4_k_m.gguf",
+      "size": 484219808,
+      "sha256": "3b41ebe2502cbd03e811d5d16b022f5ab551eda58d62597d152f89535003c634",
+      "download_mb": 485,
+      "platforms": [
+        "linux",
+        "windows",
+        "android"
+      ],
+      "devices": [
+        "desktop",
+        "phone"
+      ],
+      "requirements": {
+        "ram_mb": 1300,
+        "gpu": null
+      },
+      "hardware": "A computer, no graphics card needed; about 1.3 GB of memory while it runs",
+      "technical": "Qwen3-0.6B, the stock model, in Superwhisper's own GGUF build (Q4_K_M, 484 MB, the build its published accuracy was measured on), run on the processor by llama.cpp's llama-server (CPU build, 22 to 24 MB download). Greedy decoding with S1-mini's prompt and [Layers: 1,2].",
+      "android": {
+        "file": "s1-mini-q4_k_m.gguf",
+        "size": 484219808,
+        "sha256": "3b41ebe2502cbd03e811d5d16b022f5ab551eda58d62597d152f89535003c634",
+        "ram_mb": 750
+      },
+      "runtime": {
+        "engine": "llama_server",
+        "build": "b11982",
+        "linux": {
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11982/llama-b11982-bin-ubuntu-x64.tar.gz",
+          "size": 22692196,
+          "sha256": "a7e6cc16d423fc88c204a8d8e646c1d11b1d0de9ec4a56942f6c02936e9bf09c"
+        },
+        "windows": {
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11982/llama-b11982-bin-win-cpu-x64.zip",
+          "size": 24408458,
+          "sha256": "20cd898fafc269657df8de946b06ef37dcf6b783dfa43d28ac6d187bb6ebfe1e"
+        }
+      }
+    },
+    {
       "id": "s1-asr-cleanup",
       "kind": "text_cleanup",
       "name": "S1-ASR-Cleanup (fine-tune of S1-mini by Superwhisper)",
+      "short_name": "S1-ASR-Cleanup (fine-tune of S1-mini by Superwhisper)",
+      "default": false,
+      "experimental": true,
       "base_model": "superwhisper/s1-mini",
       "base_label": "S1-mini by Superwhisper",
       "licence": "Apache 2.0 with the S1-mini naming term",
@@ -647,10 +704,12 @@
       "download_mb": 662,
       "platforms": [
         "linux",
-        "windows"
+        "windows",
+        "android"
       ],
       "devices": [
-        "desktop"
+        "desktop",
+        "phone"
       ],
       "requirements": {
         "ram_mb": 1200,
@@ -658,6 +717,14 @@
       },
       "hardware": "A computer, no graphics card needed; about 1.2 GB of memory while it runs",
       "technical": "Qwen3-0.6B architecture, GGUF Q8_0 (639 MB), run on the processor by llama.cpp's llama-server (CPU build, 22 to 24 MB download). Greedy decoding with S1-mini's prompt and [Layers: 1,2].",
+      "android": {
+        "_doc": "Q4_K_M from the v1.0 safetensors via F16 (llama.cpp b11982), added to the repo after the v1.0 tag, so pinned by commit.",
+        "file": "s1-asr-cleanup-v1.0-Q4_K_M.gguf",
+        "revision": "33b39785995179277426beac2da5c243970df3b0",
+        "size": 396704480,
+        "sha256": "b7d9a71855b4fb804624046c2f233a79a310b1e880e9a7bd3e7711c3d456af19",
+        "ram_mb": 650
+      },
       "runtime": {
         "engine": "llama_server",
         "build": "b11982",

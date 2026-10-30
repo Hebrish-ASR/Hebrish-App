@@ -60,3 +60,28 @@ endforeach()
 set(SHERPA_ONNX_ENABLE_JNI ON CACHE BOOL "" FORCE)
 
 add_subdirectory("${THIRD_PARTY_DIR}/sherpa-onnx" sherpa-onnx)
+
+# -- Clean-up model (B-40a): llama.cpp for S1-ASR-Cleanup ------------------------------------
+# libhebrish-llama-jni.so: llama.cpp b11982 (submodule third_party/llama.cpp, the build the
+# desktop app's llama-server is pinned to) compiled in statically, with a small JNI bridge
+# (s1_cleanup_jni.cpp). Its own library, loaded only when Clean up runs, so a phone that never
+# downloads the model never maps it. Upstream's Android example is the reference, minus
+# KleidiAI (fetched at configure time: not allowed offline) and OpenMP (ggml's own thread pool;
+# no libomp to package). armv8.2-a with dot product and fp16: the Q4 matmul kernels need dotprod
+# to be usable on a phone; CleanupModel.supported() checks the CPU for it before loading.
+if(NOT EXISTS "${THIRD_PARTY_DIR}/llama.cpp/CMakeLists.txt")
+  message(FATAL_ERROR "llama.cpp submodule missing. Run: git submodule update --init")
+endif()
+set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
+set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
+set(GGML_CPU_KLEIDIAI OFF CACHE BOOL "" FORCE)
+set(GGML_LLAMAFILE ON CACHE BOOL "" FORCE)
+set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16" CACHE STRING "" FORCE)
+foreach(opt COMMON TESTS TOOLS EXAMPLES SERVER APP)
+  set(LLAMA_BUILD_${opt} OFF CACHE BOOL "" FORCE)
+endforeach()
+set(LLAMA_OPENSSL OFF CACHE BOOL "" FORCE)
+add_subdirectory("${THIRD_PARTY_DIR}/llama.cpp" llama.cpp EXCLUDE_FROM_ALL)
+
+add_library(hebrish-llama-jni SHARED s1_cleanup_jni.cpp)
+target_link_libraries(hebrish-llama-jni PRIVATE llama log)

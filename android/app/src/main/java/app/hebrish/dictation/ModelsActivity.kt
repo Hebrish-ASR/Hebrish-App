@@ -22,6 +22,7 @@ class ModelsActivity : Page() {
     private lateinit var list: LinearLayout
     private lateinit var checkStatus: TextView
     private lateinit var checkBtn: Button
+    private lateinit var post: LinearLayout
 
     override fun build() {
         text(R.string.models_intro)
@@ -32,6 +33,13 @@ class ModelsActivity : Page() {
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         column.addView(list)
 
+        // Post-processing (desktop: Models, Utilities): the paragraph model (B-44a) and the
+        // clean-up models (B-40a), switched on in Transcription Mode.
+        heading(R.string.models_post)
+        text(R.string.models_post_intro)
+        post = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(post)
+
         heading(R.string.models_updates)
         checkStatus = text()
         checkBtn = button(R.string.check_update) { ModelDownload.check(this, force = true) }
@@ -40,13 +48,77 @@ class ModelsActivity : Page() {
     override fun onResume() {
         super.onResume()
         ModelDownload.listener = { render() }
+        ParagraphStore.listener = { renderPost() }
+        CleanupStore.listener = { renderPost() }
         ModelDownload.check(this)
         render()
+        renderPost()
     }
 
     override fun onPause() {
         super.onPause()
         ModelDownload.listener = null
+        ParagraphStore.listener = null
+        CleanupStore.listener = null
+    }
+
+    /** The post-processing models: one card each, with Download or Delete (and, for clean-up, which one Clean up uses). */
+    private fun renderPost() {
+        post.removeAllViews()
+        val ps = ParagraphStore.status
+        val pInst = ParagraphStore.installed(this)
+        postCard(getString(R.string.models_post_para), getString(R.string.models_post_para_about),
+            when {
+                ps is ParagraphStore.Status.Running -> getString(R.string.models_post_downloading, pct(ps.done, ps.total))
+                ps is ParagraphStore.Status.Failed -> getString(R.string.models_post_failed, ps.message)
+                ParagraphStore.isReady(this) && pInst != null -> getString(R.string.models_downloaded, pInst.version, mb(pInst.totalBytes).toInt())
+                else -> getString(R.string.models_post_para_missing)
+            }) { card ->
+            when {
+                ps is ParagraphStore.Status.Running -> button(getString(R.string.tm_cancel), card) { ParagraphStore.cancel() }
+                ParagraphStore.isReady(this) -> button(getString(R.string.delete), card) { ParagraphStore.remove(this); renderPost() }
+                else -> button(getString(R.string.models_post_download), card) { ParagraphStore.download(this); renderPost() }
+            }
+        }
+
+        if (!CleanupModel.supported()) {
+            text(R.string.models_post_cleanup_unsupported, post)
+            return
+        }
+        val cs = CleanupStore.status
+        val chosen = CleanupStore.chosen(this)
+        for (e in CleanupStore.entries(this)) {
+            val ready = CleanupStore.isReady(this, e)
+            val name = if (e.experimental) getString(R.string.models_post_experimental, e.name) else e.name
+            val state = when {
+                cs is CleanupStore.Status.Running && cs.id == e.id -> getString(R.string.models_post_downloading, pct(cs.done, cs.total))
+                ready -> getString(R.string.models_downloaded, e.version, e.downloadMb)
+                else -> getString(R.string.models_not_downloaded, e.downloadMb)
+            }
+            val used = if (e.id == chosen?.id) getString(R.string.models_post_cleanup_chosen) else ""
+            postCard(name, getString(R.string.models_post_cleanup_about, e.ramMb), if (used.isEmpty()) state else "$state $used") { card ->
+                when {
+                    cs is CleanupStore.Status.Running && cs.id == e.id -> button(getString(R.string.tm_cancel), card) { CleanupStore.cancel() }
+                    ready -> button(getString(R.string.delete), card) { CleanupStore.remove(this, e.id); renderPost() }
+                    cs !is CleanupStore.Status.Running -> button(getString(R.string.models_post_download), card) { CleanupStore.download(this, e); renderPost() }
+                }
+                if (e.id != chosen?.id) button(getString(R.string.models_post_cleanup_use), card) {
+                    Prefs.setCleanupChoice(this, e.id)
+                    renderPost()
+                }
+            }
+        }
+        if (CleanupStore.status is CleanupStore.Status.Failed) text(getString(R.string.models_post_failed, (cs as CleanupStore.Status.Failed).message), post)
+    }
+
+    private fun pct(done: Long, total: Long) = if (total > 0) (done * 100 / total).toInt() else 0
+
+    private fun postCard(title: String, about: String, state: String, buttons: (LinearLayout) -> Unit) {
+        val card = group(post).apply { setPadding(dp(14), dp(10), dp(14), dp(10)) }
+        heading(title, card)
+        text(about, card)
+        text(state, card)
+        buttons(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; card.addView(this) })
     }
 
     private fun mb(bytes: Long) = bytes / 1_000_000

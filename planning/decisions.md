@@ -9,6 +9,28 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-30-01: Two clean-up models, stock S1-mini by Superwhisper the default; Q4_K_M with llama.cpp built in on Android
+
+- **Decision:** The clean-up add-on offers two models in both apps: stock **S1-mini by
+  Superwhisper** (default; Superwhisper's own `s1-mini-q4_k_m.gguf`, pinned by commit) and Daniel's
+  fine-tune **S1-ASR-Cleanup** (marked experimental). Android gets clean-up (B-40a) with Q4_K_M
+  files and llama.cpp b11982 compiled into the APK from a submodule, offered only on CPUs with the
+  ARMv8.2 dot-product instructions. The Android Models screen gains a Post-processing section
+  (paragraph model and clean-up models), as desktop's Models > Utilities.
+- **Why:** Daniel, 2026-10-30: "use the stock s1 for now until my fine tune is better validated",
+  offer both, on desktop too, and quantise for phones; no benchmark for this step. The only
+  comparison so far (proof-of-concept LoRA, 9 held-out items: 0.898 vs stock 0.891) is too small to
+  rank them, and v1.0 is unbenchmarked. Android can't run a downloaded executable and F-Droid needs
+  native code built from source, so desktop's downloaded `llama-server` doesn't carry over.
+- **Alternatives:** fine-tune only (as desktop 1.013); stock only; re-hosting a stock Q8_0
+  (Superwhisper publishes only F16 and Q4_K_M; their card measures accuracy on Q4_K_M); Q4_0 for
+  phones (dropped words on the one sanity sentence); llama.cpp's CPU-variant dynamic backends
+  (needs shared libraries, clashes with the static sherpa-onnx build).
+- **By:** Daniel (both models, stock default, Android and desktop, no scoring); agent (files,
+  runtime, dot-product gate, Android context size).
+- **Links:** backlog B-40a; `android/docs/maintaining.md` "Clean up: S1-mini on the phone";
+  `desktop/docs/maintaining.md` "Clean-up model".
+
 ### D-2026-10-29-03: The clean-up model (S1-mini by Superwhisper fine-tune) runs on a downloaded llama-server, in Transcription Mode, and replaces Paragraphs while on
 
 - **Decision:** S1-ASR-Cleanup (a fine-tune of S1-mini by Superwhisper) is an optional desktop
