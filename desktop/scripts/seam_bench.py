@@ -4,7 +4,8 @@
     .venv/bin/python scripts/seam_bench.py <benchmark data/test dir> [interval_s] [out.json]
     SETUPS="0.7.6" CONTEXT_S=2 .venv/bin/python scripts/seam_bench.py ...
 
-<benchmark data/test dir>: `data/test` of the HF dataset Hebrish/English-Hebrew-Codeswitching-ASR-Benchmark.
+<benchmark data/test dir>: `data/test` of the HF dataset Hebrish/English-Hebrew-Codeswitching-ASR-Benchmark
+at its pinned v1 commit 3cb0b2b3b3e4 (an audiofolder; the dataset's `main` is Parquet since 2026-10-30).
 Model: ~/.local/share/hebrish/models/sabich. CPU only, nothing is uploaded.
 
 The other benches (pace_sim.py, live_bench.py) pause only between sentences. Real dictation pauses
