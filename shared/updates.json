@@ -6,6 +6,18 @@
   "entries": [
     {
       "date": "2026-10-30",
+      "tag": "Desktop 1.013",
+      "title": "Optional clean-up model, and a lighter, clearer app",
+      "summary": "Clean up (optional, off by default): download S1-ASR-Cleanup, a fine-tune of S1-mini by Superwhisper, under Models, Utilities, Post-processing (about 660 MB), and turn on Clean up there or in the Transcription tab."
+    },
+    {
+      "date": "2026-10-30",
+      "tag": "Android 1.009",
+      "title": "No dead ends, and steadier under load",
+      "summary": "Buttons that open a phone settings screen no longer close the app on phones that don't have that screen; the app tells you instead."
+    },
+    {
+      "date": "2026-10-30",
       "tag": "Android 1.008",
       "title": "Switch between the phone's mic and Bluetooth with one tap",
       "summary": "The top of the Hebrish voice keyboard shows which mic it will use: Phone, or BT and your headset's name. Tap it once to switch between the phone's mic and a connected Bluetooth headset, before you start or in the middle of a take; what you have already said is kept."
@@ -111,18 +123,6 @@
       "tag": "Apps: Android 1.000, Desktop 1.000",
       "title": "Hebrish 1.0: the floating mic gets out of the way, desktop output you can combine, and Paste last",
       "summary": "Both apps are now version 1.000. From here, versions count 1.001, 1.002, and so on, on Android and desktop alike."
-    },
-    {
-      "date": "2026-10-23",
-      "tag": "Android 0.10.0",
-      "title": "A cleaner look, and the floating mic keeps your line breaks",
-      "summary": "The app's screens now use the Hebrish look from this site: the warm paper background, the green accent, the Hebrish logo (it was showing as a plain green square), headings in the Hebrish typeface and grouped settings on the home screen."
-    },
-    {
-      "date": "2026-10-23",
-      "tag": "Apps: Android 0.9.0, Desktop 0.8.0",
-      "title": "A personal dictionary: your words, written your way",
-      "summary": "Add the words you want written a certain way: names, brands, Hebrew words in the spelling you use. After each take, Hebrish replaces what the model wrote with your spelling."
     }
   ]
 }
