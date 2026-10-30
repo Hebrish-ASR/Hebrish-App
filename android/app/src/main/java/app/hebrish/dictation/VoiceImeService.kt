@@ -5,9 +5,13 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.os.Handler
 import android.text.InputType
 import android.os.Looper
+import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -63,8 +67,8 @@ class VoiceImeService : InputMethodService() {
     /** Set when the user asked to leave while a take was being transcribed: insert, then switch. */
     private var switchWhenDone = false
     private var shownSeconds = -1
-    /** Short name of the mic the current take records from (Mic.label), shown in the status line. */
-    private var micName = ""
+    /** The mic source chip (1.008): Mic.shortLabel of the mic the next or current take uses. */
+    private lateinit var source: TextView
     private lateinit var status: TextView
     private lateinit var mic: ImageButton
     private lateinit var spinner: ProgressBar
@@ -88,6 +92,8 @@ class VoiceImeService : InputMethodService() {
         insertLastBtn = v.findViewById(R.id.insert_last)
         pauseLbl = v.findViewById(R.id.pause_lbl)
         micLbl = v.findViewById(R.id.mic_lbl)
+        source = v.findViewById(R.id.source)
+        source.setOnClickListener { switchMic() }
         insertLastBtn.setOnClickListener { insertLast() }
         mic.setOnClickListener { onMic() }
         v.findViewById<ImageButton>(R.id.switch_ime).apply {
@@ -105,7 +111,60 @@ class VoiceImeService : InputMethodService() {
         restartBtn.setOnClickListener { restart() }
         discardBtn.setOnClickListener { discard() }
         renderTake()
+        showSource()
         return v
+    }
+
+    /** Keeps the idle chip right when a headset connects or drops while the keyboard is up. */
+    private val devices = object : AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(added: Array<out AudioDeviceInfo>) { if (!open) showSource() }
+        override fun onAudioDevicesRemoved(removed: Array<out AudioDeviceInfo>) { if (!open) showSource() }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        getSystemService(AudioManager::class.java).registerAudioDeviceCallback(devices, main)
+    }
+
+    override fun onDestroy() {
+        getSystemService(AudioManager::class.java).unregisterAudioDeviceCallback(devices)
+        super.onDestroy()
+    }
+
+    /** The chip names the take's mic while one is open, else the mic the next take will use. */
+    private fun showSource() {
+        if (!::source.isInitialized) return
+        val name = Mic.shortLabel(this, recorder?.preferredDevice ?: Mic.preferred(this))
+        source.text = name
+        source.contentDescription = getString(R.string.bubble_mic_cd, name)
+    }
+
+    /**
+     * The source chip was tapped (1.008, as the floating mic's since 0.7.2): switch between
+     * Bluetooth and the phone's mic. Idle, the next take uses the new mic; mid-take the recorder
+     * pauses, re-routes and resumes, so the take keeps what it had; paused, it applies on Resume.
+     */
+    private fun switchMic() {
+        val r = recorder
+        Mic.toggle(this, r?.preferredDevice ?: Mic.preferred(this))
+            ?: return show(getString(R.string.bubble_no_headset), busy = finishing.isNotEmpty())
+        source.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        if (r != null && open) {
+            val wasRecording = state == State.RECORDING
+            if (wasRecording) r.pause()
+            Mic.release(this)
+            Mic.prepare(this, r)
+            if (wasRecording) {
+                try {
+                    r.start()
+                } catch (e: Exception) {
+                    state = State.PAUSED
+                    show(getString(R.string.ime_mic_error, e.message ?: ""), busy = false)
+                }
+            }
+            renderTake()
+        }
+        showSource()
     }
 
     /**
@@ -139,6 +198,7 @@ class VoiceImeService : InputMethodService() {
             else -> { show(getString(R.string.ime_tap_to_speak), busy = false); preload() }
         }
         renderTake()
+        showSource()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -203,12 +263,12 @@ class VoiceImeService : InputMethodService() {
         }
         recorder = r
         take = t
-        micName = Mic.label(this, r.routedDevice)
         state = State.RECORDING
+        showSource()
         shownSeconds = -1
         Feedback.cue(this, cue)
         if (cue == Feedback.Cue.RESTART) flashRetake()
-        show(getString(R.string.ime_status_listening, 0, 0) + " · " + micName, busy = false)
+        show(getString(R.string.ime_status_listening, 0, 0), busy = false)
         renderTake()
     }
 
@@ -230,7 +290,7 @@ class VoiceImeService : InputMethodService() {
                 }
                 state = State.RECORDING
                 shownSeconds = -1
-                show(getString(R.string.ime_status_listening, r.seconds / 60, r.seconds % 60) + " · " + micName, busy = false)
+                show(getString(R.string.ime_status_listening, r.seconds / 60, r.seconds % 60), busy = false)
             }
             else -> return
         }
@@ -534,7 +594,7 @@ class VoiceImeService : InputMethodService() {
         val secs = recorder?.seconds ?: return
         if (state == State.RECORDING && secs != shownSeconds && !flashing) {
             shownSeconds = secs
-            status.text = getString(R.string.ime_status_listening, secs / 60, secs % 60) + " · " + micName
+            status.text = getString(R.string.ime_status_listening, secs / 60, secs % 60)
         }
     }
 

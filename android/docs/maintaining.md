@@ -556,7 +556,8 @@ to the left and then the timer can be to the right".
 - Source chip: `Mic.shortLabel` = "BT <name>" (name cut to 10 chars with "…"), "Internal",
   "Wired", "USB <name>"; the TextView is also capped at `SOURCE_MAX_DP` = 110 dp with end
   ellipsis. The timer no longer carries the mic name.
-- Tap the chip → `switchMic()` → `Mic.toggle`: from the phone mic to `Mic.AUTO` (Bluetooth first;
+- Tap the chip → `switchMic()` → `Mic.toggle` (decided from the chosen mic since 1.008, see "One-tap
+  mic source"): from the phone mic to `Mic.AUTO` (Bluetooth first;
   refuses with a toast if no Bluetooth or headset mic is connected), from anything else to the
   built-in mic's key. The choice is **saved in `Prefs.micChoice`**, so it holds for later takes
   and the Controls screen shows it (decision made without asking: a take-only override would
@@ -885,6 +886,38 @@ Compiled (`compileFdroidDebugKotlin`, `processFdroidDebugResources`, V, 2026-10-
 local `assembleDebug` failed in cmake on locally modified `third_party` submodules, not this
 change); not run on an emulator or phone (I).
 
+## One-tap mic source in the keyboard and the floating mic (1.008, 2026-10-30)
+
+Daniel, 2026-10-30: "Needs to be a one touch operation on Android to toggle between internal mic
+and BT audio source (if available)", in both the voice keyboard and the floating mic.
+
+- **Voice keyboard:** a source chip in the header, left of the settings gear (`R.id.source` in
+  `res/layout/ime_view.xml`, `VoiceImeService.showSource` / `switchMic`). It is always shown and
+  names the mic the next take will use (idle) or the take is using (`Mic.shortLabel`: "Phone",
+  "BT <name>", "Wired", "USB <name>"). One tap switches: idle, it only saves the choice; mid-take
+  it pauses, re-routes (`Mic.release` + `Mic.prepare`) and resumes into the same take, as the
+  floating mic has done since 0.7.2; paused, it applies on Resume. No headset: the status line
+  says "No Bluetooth or headset mic is connected." An `AudioDeviceCallback` (registered in
+  `onCreate`) refreshes the idle chip when a headset connects or drops. The status line no longer
+  appends the mic's long name ("Listening 0:12 · Bluetooth: X"); the chip carries it.
+- **`Mic.toggle` (both surfaces):** decides the direction from the mic the take *asked* for
+  (`Recorder.preferredDevice`, or `Mic.preferred` when idle), no longer from
+  `Recorder.routedDevice`. While a Bluetooth link is still opening, the route can still report the
+  phone's mic, so up to 1.007 a tap on "Phone" could switch to Automatic (Bluetooth) again and look
+  like it did nothing (I: from the code; not reproduced, no device on the laptop). Phone → `Mic.AUTO`
+  (Bluetooth first, then wired/USB); anything else → the built-in mic's key. It returns the mic
+  switched to, or null when there is nothing to switch to.
+- **Floating mic:** the chip now names the chosen mic (`preferredDevice`) at the start and after a
+  switch instead of the routed one, and a tap gives a haptic tick. Its idle bubble gets no chip
+  (decided without asking: the bar only exists during a take, and a chip on the idle bubble would
+  be in the way of dragging; a take starts with one tap and the chip switches without losing
+  audio). Tap = start, double-tap = minimise and long-press = insert last are unchanged.
+- Trade-off: the chips show the mic asked for, so if Android fails to route to the headset the
+  chip still says "BT"; up to 1.007 the label could flip to "Phone" in that case.
+- Compiled (`compileFdroidDebugKotlin`, V, 2026-10-30, JDK 21; the local `assembleDebug` failed in
+  cmake on locally modified `third_party` submodules, as on 2026-10-27, not this change); not run
+  on a phone (I).
+
 ## Enter guard and Voice Typing (1.006, B-50a/B-51a, 2026-10-27)
 
 Parity with desktop 1.007 (D-2026-10-27-02, -03). **Enter guard:** the voice keyboard's Enter
@@ -1201,6 +1234,10 @@ Dictation (keyboard, floating mic, Try it) is unchanged.
   folder updating to 0.8.0 (copied back, or re-downloaded?); the keyboard in a password field
   (message shown, no auto-start, mic does nothing).
 
+
+- 1.008 on a device: the keyboard's source chip (idle switch, mid-take switch with a Bluetooth
+  headset, headset connecting while the keyboard is up), and whether the floating mic's chip now
+  switches on the first tap while a Bluetooth link is opening.
 
 - 0.7.2 on a device: the bar order on both edges, the chip's width with a long headset name,
   switching Bluetooth ↔ internal mid-take (does the SCO link come up fast enough that the first

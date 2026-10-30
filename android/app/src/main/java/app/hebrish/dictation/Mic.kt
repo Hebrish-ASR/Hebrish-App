@@ -85,7 +85,7 @@ object Mic {
         }
     }
 
-    /** Name for the keyboard's and Try's status line: "Bluetooth: Pixel Buds", "Phone mic". */
+    /** Name for Try's status line: "Bluetooth: Pixel Buds", "Phone mic". */
     fun label(ctx: Context, d: AudioDeviceInfo?): String = when {
         d == null || d.type == AudioDeviceInfo.TYPE_BUILTIN_MIC -> ctx.getString(R.string.mic_builtin)
         isBluetooth(d) -> ctx.getString(R.string.mic_bluetooth, d.productName)
@@ -108,21 +108,28 @@ object Mic {
     private fun clip(name: String) = if (name.length <= SHORT_NAME) name else name.take(SHORT_NAME - 1).trimEnd() + "…"
 
     /**
-     * The floating mic's source chip was tapped while [current] records: switch between the
-     * phone's mic and Automatic (Bluetooth first). Saved as Prefs.micChoice, so the next take and
-     * the Controls screen agree. False when there is nothing to switch to (internal is in use and
-     * no headset is connected).
+     * One-tap source switch (1.008; the floating mic's chip since 0.7.2, the keyboard's chip since
+     * 1.008): from the phone's mic to a Bluetooth mic (or, with none, a wired/USB headset), and from
+     * any headset back to the phone's mic (saved as the phone's mic, not Automatic). Decided from
+     * [current], the mic the take was *asked* to use (Recorder.preferredDevice, or [preferred] when idle), not the one Android reports as
+     * routed: while a Bluetooth link is still opening the route can read "phone", and up to 1.007
+     * a tap then switched to Bluetooth again, which looked like the chip doing nothing (I).
+     * Saved as Prefs.micChoice, so the next take, both chips and the Controls screen agree.
+     * Returns the mic switched to, or null when there is nothing to switch to (phone in use and
+     * no headset connected).
      */
-    fun toggle(ctx: Context, current: AudioDeviceInfo?): Boolean {
+    fun toggle(ctx: Context, current: AudioDeviceInfo?): AudioDeviceInfo? {
         val internal = current == null || current.type == AudioDeviceInfo.TYPE_BUILTIN_MIC
-        if (internal) {
-            if (inputs(ctx).none { isBluetooth(it) || it.type in HEADSETS }) return false
+        return if (internal) {
+            // Automatic (Bluetooth first), so whichever headset is connected next time is used.
+            val to = preferred(ctx, AUTO) ?: return null
             Prefs.setMicChoice(ctx, AUTO)
+            to
         } else {
-            val phone = inputs(ctx).firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC } ?: return false
+            val phone = inputs(ctx).firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC } ?: return null
             Prefs.setMicChoice(ctx, key(phone))
+            phone
         }
-        return true
     }
 
     /** Longest device name [shortLabel] shows before cutting it with "…". */

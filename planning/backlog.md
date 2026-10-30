@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated 2026-10-29. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
+Last updated 2026-10-30. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
 `released <version>`. Work is queued in **one sprint per platform** (desktop = Ubuntu + Windows,
 which share `desktop/`; Android). A sprint ends with a release, when the release gate below says so. Parity is the aim (decision
 D-2026-10-22-05): an item done on one platform gets a matching item in the other sprint, unless

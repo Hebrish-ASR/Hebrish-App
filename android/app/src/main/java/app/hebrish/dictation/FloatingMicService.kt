@@ -86,7 +86,8 @@ import android.widget.Toast
  *
  * Feedback and control (0.6.0): while recording the mic pulses, and each start / stop / retake /
  * discard can pip and buzz ([Feedback]). The bar names the microphone in use ([Mic]; Bluetooth
- * first) in a chip that switches between Bluetooth and the phone's mic when tapped (0.7.2). Broadcast intents and bound hardware keys (a Bluetooth shutter remote, a keyboard)
+ * first) in a chip that switches between Bluetooth and the phone's mic when tapped (0.7.2; the
+ * keyboard has the same chip since 1.008). Broadcast intents and bound hardware keys (a Bluetooth shutter remote, a keyboard)
  * drive the same actions as the buttons ([Remote], [onKeyEvent]; docs/external-control.md).
  *
  * Takes can overlap (B-43a, R-2026-10-24-6): a tap while the last take is still transcribing
@@ -670,7 +671,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         }
         recorder = r
         take = t
-        showSource(r.routedDevice)
+        // The mic asked for, not routedDevice: a Bluetooth link can still be opening (1.008).
+        showSource(r.preferredDevice)
         state = State.RECORDING
         shownSeconds = -1
         Feedback.cue(this, cue)
@@ -722,12 +724,15 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     /**
      * The source chip was tapped (0.7.2): switch between Bluetooth and the phone's mic in the
      * middle of the take. The recorder pauses, re-routes and resumes, so the take keeps what it
-     * had; paused, the switch applies on Resume. The choice is saved ([Mic.toggle]).
+     * had; paused, the switch applies on Resume. The choice is saved ([Mic.toggle]). Since 1.008
+     * the direction comes from the mic the take asked for, not the routed one (see Mic.toggle),
+     * the chip names that mic, and a click confirms the switch.
      */
     private fun switchMic() {
         val r = recorder ?: return
         if (!open) return
-        if (!Mic.toggle(this, r.routedDevice ?: r.preferredDevice)) return toast(getString(R.string.bubble_no_headset))
+        Mic.toggle(this, r.preferredDevice) ?: return toast(getString(R.string.bubble_no_headset))
+        source.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         val wasRecording = state == State.RECORDING
         if (wasRecording) r.pause()
         Mic.release(this)
@@ -740,7 +745,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
                 toast(getString(R.string.ime_mic_error, e.message ?: ""))
             }
         }
-        showSource(if (wasRecording && state == State.RECORDING) r.routedDevice else r.preferredDevice)
+        showSource(r.preferredDevice)
         render()
     }
 
