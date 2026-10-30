@@ -1,5 +1,6 @@
-**1.007: Clearer controls in the voice keyboard.**
+**1.008: Switch between the phone's mic and Bluetooth with one tap.**
 
-- **One row of controls:** the Hebrish voice keyboard now has a single row of round, colour-coded buttons: Discard (red), Retake (amber), the mic in the middle, Pause (gold while paused) and Insert last. They are always in the same place, so you never have to scroll to reach Retake or Discard, and the keyboard no longer grows when you start talking.
-- **A new mic button:** green with a mic when ready, red with a stop square while you talk (it was a flat blue circle).
+- **Mic switch in the voice keyboard:** the top of the Hebrish voice keyboard now shows which mic it will use ("Phone" or "BT" and your headset's name). Tap it once to switch between the phone's mic and a connected Bluetooth headset. It works before you start or in the middle of a take, and what you have already said is kept. If no headset is connected, it says so.
+- **Floating mic:** the mic chip on the floating mic's bar now switches on the first tap, even while the Bluetooth headset is still connecting, and you feel a short tick when it switches.
+- Your choice is remembered for the next take in both the keyboard and the floating mic.
 - Not yet tested on a phone. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).
