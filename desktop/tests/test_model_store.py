@@ -291,3 +291,24 @@ def test_upgrade_drops_keep_old_versions_and_turns_on_auto_update():
     from hebrish.config import upgrade
     out = upgrade({"feedback": "beeps", "keep_old_versions": True, "auto_update": False})
     assert out == {"feedback": "beeps", "auto_update": True, "keep_history": True}
+
+
+def test_catalogue_is_read_once_until_the_cache_changes(monkeypatch):
+    """The window asks for the catalogue dozens of times per refresh: it is parsed again only when
+    the cached file changes (written by refresh_catalogue), not on every call (2026-10-30)."""
+    reads = []
+    real = ms.load_json
+    monkeypatch.setattr(ms, "load_json", lambda p, d=None: (reads.append(p), real(p, d))[1])
+    bundled = json.loads(ms.BUNDLED_CATALOGUE.read_text())
+    ms.save_json(ms.CATALOGUE_CACHE, bundled)
+    try:
+        for _ in range(5):
+            ms.models()
+            ms.recommended_id()
+        assert reads.count(ms.CATALOGUE_CACHE) == 1
+        ms.save_json(ms.CATALOGUE_CACHE, {**bundled, "lines": [{"id": "l", "name": "L", "variants": [
+            {"id": "x", "name": "X", "status": "available", "repo": "a/b", "engine": "sherpa_offline_transducer"}]}]})
+        assert [m.id for m in ms.models()] == ["x"]
+    finally:
+        ms.CATALOGUE_CACHE.unlink()
+    assert "sabich" in {m.id for m in ms.models()}     # cache gone: the bundled catalogue again

@@ -115,16 +115,39 @@ def _parse(doc: dict) -> dict:
     return doc
 
 
-def _load_catalogue() -> dict:
-    bundled = _parse(json.loads(BUNDLED_CATALOGUE.read_text()))
+_BUNDLED: dict | None = None
+_CACHED: tuple = (None, None)       # (stat key of CATALOGUE_CACHE, its parsed doc or None)
+
+
+def bundled_catalogue() -> dict:
+    """The catalogue shipped with the app, parsed once (it can't change while the app runs)."""
+    global _BUNDLED
+    if _BUNDLED is None:
+        _BUNDLED = _parse(json.loads(BUNDLED_CATALOGUE.read_text()))
+    return _BUNDLED
+
+
+def _stat_key(path: Path):
     try:
-        return _parse(load_json(CATALOGUE_CACHE))
-    except ValueError:
-        return bundled
+        st = path.stat()
+    except OSError:
+        return None
+    return st.st_mtime_ns, st.st_size, st.st_ino
 
 
 def catalogue() -> dict:
-    return _load_catalogue()
+    """The published catalogue last fetched (CATALOGUE_CACHE), else the bundled one. Read from
+    disk only when the cache file changes: the window asks for it dozens of times per refresh
+    (lines(), models(), current_id(), get_model() all start here). Callers must not mutate it."""
+    global _CACHED
+    key = _stat_key(CATALOGUE_CACHE)
+    if key is None or key != _CACHED[0]:
+        try:
+            doc = _parse(load_json(CATALOGUE_CACHE)) if key is not None else None
+        except ValueError:
+            doc = None
+        _CACHED = (key, doc)
+    return _CACHED[1] or bundled_catalogue()
 
 
 FILES: tuple = tuple(catalogue()["engines"]["sherpa_offline_transducer"]["files"])
@@ -170,7 +193,7 @@ def recommended_id() -> str:
 
 def refresh_catalogue():
     """Fetch the published catalogue; keep the cached/bundled one if that fails."""
-    url = json.loads(BUNDLED_CATALOGUE.read_text())["catalogue_v2_url"]
+    url = bundled_catalogue()["catalogue_v2_url"]
     try:
         doc = _parse(json.loads(_get(url)))
     except Exception:

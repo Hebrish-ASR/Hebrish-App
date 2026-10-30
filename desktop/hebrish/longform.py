@@ -101,9 +101,14 @@ class TapeRecorder:
 
     def _open(self, device):
         self._device = device
-        self._stream = sd.InputStream(samplerate=audio.SAMPLE_RATE, channels=1, dtype="float32",
-                                      device=device or None, callback=self._cb)
-        self._stream.start()
+        s = sd.InputStream(samplerate=audio.SAMPLE_RATE, channels=1, dtype="float32",
+                           device=device or None, callback=self._cb)
+        try:
+            s.start()
+        except Exception:
+            s.close()
+            raise
+        self._stream = s
         self._last_block = time.monotonic()
         mics.OPEN.add(self)
 

@@ -327,8 +327,14 @@ class DiagnosticsPage(QScrollArea):
         self.show_history_card()
 
     def _tick(self):
-        if self.isVisible() and len(self.ctl.engine.stats) != self._shown:
+        # The newest record, not the count: stats is a deque(maxlen=200), so once full its length
+        # stops changing and the table stopped updating (up to 1.012)
+        if self.isVisible() and self._newest() is not self._shown:
             self.refresh()
+
+    def _newest(self):
+        stats = self.ctl.engine.stats
+        return stats[-1] if stats else None
 
     def _recent(self):
         n = self.window.currentData()
@@ -364,7 +370,7 @@ class DiagnosticsPage(QScrollArea):
 
     def refresh(self):
         stats, lat = self._recent()
-        self._shown = len(self.ctl.engine.stats)
+        self._shown = self._newest()
         s = summarize(stats, lat)
         fmt = {"x_realtime": "{}× real time", "ms_per_audio_s": "{} ms", "latency_avg_s": "{} s",
                "latency_max_s": "{} s", "audio_s": "{} s"}

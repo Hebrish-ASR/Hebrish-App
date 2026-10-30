@@ -189,7 +189,7 @@ def clean(text: str, client, keep: tuple = ()) -> Result:
 def entry() -> dict:
     """The add-on's catalogue entry. A cached catalogue from before the add-on existed has no
     `addons`, so the bundled copy is the fallback."""
-    for doc in (model_store.catalogue(), json.loads(model_store.BUNDLED_CATALOGUE.read_text())):
+    for doc in (model_store.catalogue(), model_store.bundled_catalogue()):
         for a in doc.get("addons", []):
             if a.get("id") == MODEL_ID:
                 return a
@@ -390,6 +390,7 @@ class Server:
                 p.wait(5)
             except subprocess.TimeoutExpired:
                 p.kill()
+                p.wait()             # reap it: no zombie until the next start
 
     def count(self, text: str) -> int:
         self.start()

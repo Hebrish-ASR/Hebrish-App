@@ -1,6 +1,7 @@
 """Microphone capture (16 kHz mono float32), audio files, and the start/stop beeps and
 spoken status prompts."""
 
+import logging
 import math
 import shutil
 import subprocess
@@ -14,6 +15,8 @@ import numpy as np
 import sounddevice as sd
 
 from . import mics
+
+log = logging.getLogger("hebrish")
 
 SAMPLE_RATE = 16000
 DICTATION_MAX_S = 60 * 60          # one take (hotkey or the Dictate tab); stops itself at the cap
@@ -171,9 +174,14 @@ class Recorder:
 
     def _open(self, device):
         self._device = device
-        self._stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="float32",
-                                      device=device or None, callback=self._cb)
-        self._stream.start()
+        s = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="float32",
+                           device=device or None, callback=self._cb)
+        try:
+            s.start()
+        except Exception:
+            s.close()        # not left as self._stream: the recorder would look active with no mic
+            raise
+        self._stream = s
         mics.OPEN.add(self)
 
     def pause(self):
@@ -205,10 +213,14 @@ class Recorder:
 
     def _close(self):
         s = self._stream
-        if isinstance(s, sd.InputStream):
-            s.stop()
-            s.close()
-        mics.OPEN.discard(self)
+        try:
+            if isinstance(s, sd.InputStream):
+                s.stop()
+                s.close()
+        except Exception:        # a dead stream (device unplugged) may fail to stop; drop it
+            log.warning("closing the input stream failed", exc_info=True)
+        finally:
+            mics.OPEN.discard(self)
 
     def stop(self) -> np.ndarray:
         self._close()
