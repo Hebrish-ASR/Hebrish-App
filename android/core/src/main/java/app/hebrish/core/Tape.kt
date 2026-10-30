@@ -52,10 +52,15 @@ class Tape(
 
         /** Fixes the header of a recording the app didn't close; returns its length in seconds. */
         fun recover(f: File): Float {
-            val n = ((f.length() - HEADER).coerceAtLeast(0) / 2 * 2).toInt()
+            val n = dataBytes(f)
             RandomAccessFile(f, "rw").use { it.seek(0); it.write(header(n)) }
             return n / 2f / RATE
         }
+
+        /** A recording's length in seconds, from its size alone: no write, so a redraw can call it. */
+        fun seconds(f: File): Float = dataBytes(f) / 2f / RATE
+
+        private fun dataBytes(f: File) = ((f.length() - HEADER).coerceAtLeast(0) / 2 * 2).toInt()
 
         /**
          * Reads [f] in 100 ms chunks and cuts it the way a live take is cut ([Recorder.Segmenting]:
@@ -160,6 +165,9 @@ class Tape(
     @Volatile var routedDevice: AudioDeviceInfo? = null
         private set
 
+    /** Set when the capture thread couldn't write the file (storage full); the take ends as at the limit. */
+    @Volatile var writeError: java.io.IOException? = null
+        private set
     @Volatile private var running = false
     private var thread: Thread? = null
     private var out: RandomAccessFile? = null
@@ -176,6 +184,7 @@ class Tape(
         samples = 0
         clippedAt = 0L
         paused = false
+        writeError = null
         try {
             open()
         } catch (e: Exception) {
@@ -212,6 +221,11 @@ class Tape(
                     write(buf, n, bytes)
                     if (samples >= RATE * MAX_SECONDS) { running = false; onLimit() }
                 }
+            } catch (e: java.io.IOException) {
+                // Storage full mid-take: up to 1.008 this was uncaught and killed the app. What is on
+                // disk stays a valid WAV up to the last header flush; stop as the limit does.
+                writeError = e
+                if (running) { running = false; onLimit() }
             } finally {
                 record.stop()
                 record.release()

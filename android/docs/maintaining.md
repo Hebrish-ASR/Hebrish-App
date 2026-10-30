@@ -1203,8 +1203,58 @@ Dictation (keyboard, floating mic, Try it) is unchanged.
 - Built locally (`assembleFdroidDebug`, `assemblePlayDebug`, JDK 21, NDK 26.3.11579264) in a fresh
   clone with submodules. Not run on a device.
 
+## Robustness pass: dead ends, leaks, main-thread work (unreleased, 2026-10-30)
+
+A whole-app review (`android/app/src/main`, `android/core/src/main`) and its fixes. No measured
+rule changed: trailing pad, segment cuts, deferred reload and the update protocol are untouched.
+**Rules that came out of it:**
+
+- **System screens open through `Setup.openSystem(ctx, intent, fallback…)`** (`MainActivity.kt`,
+  object `Setup`). It tries each intent in turn and, when the phone has none of them, shows
+  `no_settings_screen`. Up to 1.008 most setup buttons called `startActivity` on a settings action
+  directly, so a ROM without that screen (`ActivityNotFoundException`) crashed the app. The
+  battery button (Setup and the floating mic guide) is one helper, `Setup.askBattery`; App info is
+  `Setup.appInfo` / `Setup.appInfoIntent`. Web links go through `Page.open` (ModelsActivity's line
+  links swallowed the failure before).
+- **Copy and Share are `TextOut`** (Try it, Transcription Mode, Install): an empty box says
+  "Nothing to copy/share yet" instead of a false "Copied" or no reaction.
+- **No dead ends on Try it:** with no model it shows **Open Models** and loads the model when the
+  user comes back with one; a failed load shows **Try again**. "Set it up for every app" opens the
+  Setup checklist (it only closed the screen, which from home went nowhere).
+- **Long work off the main thread:** "Use this model" unloads and preloads on a worker thread
+  (`Transcriber.unload` waits for a decode in progress, since it holds the lock, and froze the
+  Models screen meanwhile); Delete removes the model files on a worker thread.
+  `Transcriber.preload` runs one load at a time (an `AtomicBoolean`); before, each field focus
+  started a thread that queued on the lock.
+- **Transcription Mode:** a write error on the capture thread (storage full) ends the take as the
+  length limit does, keeps the file and shows `tm_write_failed` (`Tape.writeError`); before, the
+  uncaught `IOException` killed the app. The screen stops its 80 ms redraw loop in `onDestroy`,
+  because with background recording the take outlives the screen and the loop kept the destroyed
+  Activity alive. Seconds shown for a held or leftover file come from its size (`Tape.seconds`);
+  `Tape.recover`, which rewrites the WAV header, ran on every redraw. A failed Resume now shows
+  its error (it was cleared on the next line).
+- **Takes:** a type-as-you-go piece already posted to the main thread when Discard or Retake ran
+  is dropped (`TakeDecoder.isCancelled`); it used to be typed in after the discard. Both services
+  clear their main-thread callbacks in `onDestroy`, and the keyboard also drops an open take and
+  the takes still landing there (normally `onFinishInputView` has already done it).
+- **Floating mic, accessibility events:** once a focused field is known, click and text events
+  from views that aren't editable no longer run the full probe (windows list, `findFocus`, up to
+  `MAX_NODES` per window); focus and window events still do (`PROBE_EVENTS`). The rising edge
+  (preload, show the bar) is decided exactly as before.
+- **Downloads:** each file's `HttpURLConnection` is disconnected in a `finally` (a cancel or read
+  error skipped it), and progress is published every 2 MB but at most 5 times a second, because
+  each update rebuilds every card on the Models screen.
+- Lint: the app has product flavours, so the task is `:app:lintFdroidDebug` (plain `lintDebug` is
+  ambiguous). Before this pass it reported 1 error (a literal byte-order mark in `History.kt`,
+  now `"\uFEFF"`) and 54 warnings; after, 0 errors and 51 warnings, none new.
+- Compiled both flavours and linted locally. Not run on a device or an emulator (the native build
+  needs the `third_party` submodules checked out).
+
 ## Not yet verified (as of 2026-10-20)
 
+- Robustness pass (2026-10-30) on a device: Try it with no model (Open Models, then back) and
+  after a failed load (Try again); the settings buttons on a phone missing a screen; storage full
+  during a Transcription Mode take; Use this model while a take is still decoding.
 - Overlapping takes (B-43a) on a device: floating mic and keyboard, tap during "transcribing",
   texts in order, type-as-you-go on and off, switching back after the last take lands.
 - Paragraphs setting (B-44a) on a device: the download and its progress, the model's latency and

@@ -34,10 +34,16 @@ object Recording {
     /** A stopped recording waiting for Transcribe. */
     var held: File? = null
 
-    /** The take reached Tape.MAX_SECONDS (stop, keep it for Transcribe) or the mic went away (pause). */
+    /**
+     * The take reached Tape.MAX_SECONDS or the file couldn't be written (stop, keep it for
+     * Transcribe), or the mic went away (pause).
+     */
     private fun limit() {
         if (!tape.active) return
-        if (tape.seconds >= Tape.MAX_SECONDS) {
+        if (tape.writeError != null) {
+            held = tape.stop() ?: held
+            notice = R.string.tm_write_failed
+        } else if (tape.seconds >= Tape.MAX_SECONDS) {
             held = tape.stop() ?: held
             notice = R.string.tm_limit
         } else {

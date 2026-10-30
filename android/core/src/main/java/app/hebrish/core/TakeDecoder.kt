@@ -36,6 +36,8 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
      */
     private val dictionary by lazy { runCatching { PersonalDictionary.compile(PersonalDictionary.entries(app)) }.getOrDefault { it } }
     @Volatile private var cancelled = false
+    /** True once [cancel] ran: a piece already posted to the UI thread before it must not go in. */
+    val isCancelled: Boolean get() = cancelled
     @Volatile private var failure: Throwable? = null
     @Volatile var segmentsDecoded = 0
         private set

@@ -281,28 +281,29 @@ object ModelStore {
                 conn.instanceFollowRedirects = true
                 val have = part.length()
                 if (have > 0) conn.setRequestProperty("Range", "bytes=$have-")
-                val code = conn.responseCode
-                val append = code == HttpURLConnection.HTTP_PARTIAL
-                if (code != HttpURLConnection.HTTP_OK && !append) {
-                    conn.disconnect()
-                    throw java.io.IOException("HTTP $code for ${f.name}")
-                }
-                // A server that ignores Range sends the whole file with 200: start over.
-                var written = if (append) have else 0L
-                conn.inputStream.use { input ->
-                    FileOutputStream(part, append).use { out ->
-                        val buf = ByteArray(1 shl 16)
-                        while (true) {
-                            if (cancelled()) throw InterruptedException("cancelled")
-                            val n = input.read(buf)
-                            if (n < 0) break
-                            out.write(buf, 0, n)
-                            written += n
-                            progress(doneBefore + written)
+                // finally: a cancel, a timeout or a read error mid-file used to skip disconnect.
+                try {
+                    val code = conn.responseCode
+                    val append = code == HttpURLConnection.HTTP_PARTIAL
+                    if (code != HttpURLConnection.HTTP_OK && !append) throw java.io.IOException("HTTP $code for ${f.name}")
+                    // A server that ignores Range sends the whole file with 200: start over.
+                    var written = if (append) have else 0L
+                    conn.inputStream.use { input ->
+                        FileOutputStream(part, append).use { out ->
+                            val buf = ByteArray(1 shl 16)
+                            while (true) {
+                                if (cancelled()) throw InterruptedException("cancelled")
+                                val n = input.read(buf)
+                                if (n < 0) break
+                                out.write(buf, 0, n)
+                                written += n
+                                progress(doneBefore + written)
+                            }
                         }
                     }
+                } finally {
+                    conn.disconnect()
                 }
-                conn.disconnect()
             }
             if (f.sha256 != null && sha256(part) != f.sha256) {
                 part.delete()

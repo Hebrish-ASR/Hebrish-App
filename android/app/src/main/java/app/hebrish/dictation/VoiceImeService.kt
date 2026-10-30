@@ -128,6 +128,12 @@ class VoiceImeService : InputMethodService() {
 
     override fun onDestroy() {
         getSystemService(AudioManager::class.java).unregisterAudioDeviceCallback(devices)
+        // onFinishInputView normally drops an open take first; if it didn't, don't leave the mic
+        // open or a held Enter pending on a dead service. Takes still landing have no field left.
+        dropTake()
+        for (t in finishing) t.decoder.cancel()
+        finishing.clear()
+        main.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
@@ -245,7 +251,7 @@ class VoiceImeService : InputMethodService() {
         if (passwordField) return show(getString(R.string.ime_password), busy = false)
         preload()
         var t: Take? = null
-        val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { t?.let { deliverPart(it, text) } } } else null)
+        val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
         t = Take(d)
         val r = Recorder(
             onLevel = { l -> main.post { setLevel(l) } },

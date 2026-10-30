@@ -1,8 +1,6 @@
 package app.hebrish.dictation
 
 import app.hebrish.core.*
-import android.content.Intent
-import android.net.Uri
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -105,7 +103,7 @@ class ModelsActivity : Page() {
             setPadding(0, dp(22), 0, dp(2))
         }
         list.addView(top)
-        top.addView(ImageView(this).apply { setImageResource(mark(line.id)) }, LinearLayout.LayoutParams(dp(44), dp(44)))
+        top.addView(ImageView(this).apply { setImageResource(mark(line.id)); importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }, LinearLayout.LayoutParams(dp(44), dp(44)))
         val words = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, 0) }
         top.addView(words, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         words.addView(TextView(this).apply {
@@ -123,7 +121,8 @@ class ModelsActivity : Page() {
         }
         setTextColor(getColor(R.color.brand_accent))
         setPadding(0, dp(4), 0, dp(4))
-        setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }
+        // Page.open: with no browser it says so instead of doing nothing (up to 1.008).
+        setOnClickListener { open(url) }
     }
 
     /** "Speed ●●●○○  Accuracy ●●●●○ (estimates)": the speed/accuracy gradient (catalogue tiers). */
@@ -278,8 +277,10 @@ class ModelsActivity : Page() {
     /** Makes [m] the model the keyboard and floating mic use. */
     private fun use(m: Catalogue.Model) {
         ModelPrefs.setSelectedModel(this, m.id)
-        Transcriber.unload()
-        Transcriber.preload(this)
+        // Off the main thread: unload waits for a decode in progress (it holds Transcriber's lock),
+        // which froze this screen for the length of a take's tail up to 1.008.
+        val app = applicationContext
+        Thread { Transcriber.unload(); Transcriber.preload(app) }.start()
         ModelDownload.clearFailure()
         ModelDownload.check(this)
         render()
@@ -288,7 +289,11 @@ class ModelsActivity : Page() {
     private fun confirmDelete(m: Catalogue.Model) {
         android.app.AlertDialog.Builder(this)
             .setMessage(getString(R.string.manage_confirm, m.name))
-            .setPositiveButton(R.string.delete) { _, _ -> ModelStore.delete(this, m); render() }
+            .setPositiveButton(R.string.delete) { _, _ ->
+                // About 650 MB of files: delete them on a worker thread, then redraw.
+                val app = applicationContext
+                Thread { ModelStore.delete(app, m); runOnUiThread { if (!isDestroyed) render() } }.start()
+            }
             .setNegativeButton(R.string.cancel, null)
             .show()
     }

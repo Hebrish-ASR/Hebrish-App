@@ -50,9 +50,13 @@ object Transcriber {
     /** Loads on a background thread if needed. Cheap to call often (e.g. on every field focus). */
     fun preload(ctx: Context) {
         if (isLoaded(ctx) || !ModelStore.isReady(ctx)) return
+        // One at a time: it is called on every field focus, and up to 1.008 each call started a
+        // thread that then queued on [lock] behind the load already running.
+        if (!preloading.compareAndSet(false, true)) return
         val app = ctx.applicationContext
-        Thread { runCatching { load(app) } }.start()
+        Thread { try { runCatching { load(app) } } finally { preloading.set(false) } }.start()
     }
+    private val preloading = java.util.concurrent.atomic.AtomicBoolean(false)
 
     /** Blocking. Safe to call repeatedly; only the first call loads. */
     fun load(ctx: Context): OfflineRecognizer {

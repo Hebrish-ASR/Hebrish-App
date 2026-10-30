@@ -3,10 +3,7 @@ package app.hebrish.dictation
 import app.hebrish.core.*
 import android.Manifest
 import android.app.AlertDialog
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Color
@@ -140,7 +137,8 @@ class TranscriptionActivity : Page() {
             meterText.visibility = meter.visibility
         })
         switch(R.string.tm_background, { Recording.background(this) }, { on -> setBackground(on) })
-        meter = Meter(this)
+        // The level is read out by meterText below; the bars themselves are decorative.
+        meter = Meter(this).apply { importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }
         column.addView(meter, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(18)).apply { topMargin = dp(6) })
         meterText = text(top = 4).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f) }
         meter.visibility = if (meterOn) View.VISIBLE else View.GONE
@@ -187,8 +185,8 @@ class TranscriptionActivity : Page() {
         }
         column.addView(text, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
         row().also { r ->
-            button(R.string.try_copy, r) { copy() }
-            button(R.string.try_share, r) { share() }
+            button(R.string.try_copy, r) { TextOut.copy(this, text.text) }
+            button(R.string.try_share, r) { TextOut.share(this, text.text) }
             button(R.string.try_clear, r) { text.setText("") }
         }
 
@@ -226,6 +224,8 @@ class TranscriptionActivity : Page() {
         }
         cancelled = true
         decoder?.cancel()
+        // The recording can outlive the screen (background on): stop redrawing views that are gone.
+        ui.removeCallbacks(tick)
         // A paragraph run still queued finishes (and records History); then the session is closed.
         paraWorker.execute { closeModel() }
         paraWorker.shutdown()
@@ -288,8 +288,8 @@ class TranscriptionActivity : Page() {
                 val d = device()
                 tape.preferredDevice = d
                 Mic.routeFor(this, d)
-                try { tape.resume() } catch (e: Exception) { status.text = getString(R.string.ime_mic_error, e.message ?: "?") }
-                status.text = ""
+                // Up to 1.008 the error was cleared on the next line, so a failed resume showed nothing.
+                try { tape.resume(); status.text = "" } catch (e: Exception) { status.text = getString(R.string.ime_mic_error, e.message ?: "?") }
             }
             tape.active -> { tape.pause(); Mic.release(this) }
             else -> {
@@ -315,7 +315,8 @@ class TranscriptionActivity : Page() {
         sync()
     }
 
-    private fun heldSeconds(): Float = held?.takeIf { it.exists() }?.let { Tape.recover(it) } ?: 0f
+    /** Read on every redraw ([sync]), so from the file's size: Tape.recover rewrote the header each time up to 1.008. */
+    private fun heldSeconds(): Float = held?.takeIf { it.exists() }?.let { Tape.seconds(it) } ?: 0f
 
     private fun confirmDrop(then: () -> Unit) {
         val s = if (tape.active) tape.seconds.toFloat() else heldSeconds()
@@ -399,7 +400,7 @@ class TranscriptionActivity : Page() {
     private fun deleteLeftover() {
         val f = leftover ?: return
         AlertDialog.Builder(this)
-            .setMessage(getString(R.string.tm_confirm_drop, clock(Tape.recover(f))))
+            .setMessage(getString(R.string.tm_confirm_drop, clock(Tape.seconds(f))))
             .setPositiveButton(R.string.tm_delete) { _, _ -> f.delete(); showLeftover() }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
@@ -673,19 +674,6 @@ class TranscriptionActivity : Page() {
         }
     }
 
-    private fun copy() {
-        (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager)
-            .setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), text.text))
-        Toast.makeText(this, R.string.try_copied, Toast.LENGTH_SHORT).show()
-    }
-
-    private fun share() {
-        if (text.text.isBlank()) return
-        startActivity(Intent.createChooser(
-            Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text.text.toString()),
-            getString(R.string.try_share)))
-    }
-
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         if (requestCode == REQ_NOTIFY) { Recording.changed(); return refresh() }
         if (requestCode == REQ_MIC && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) recOrPause()
@@ -699,6 +687,9 @@ class TranscriptionActivity : Page() {
         private var clipping = false
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         private val d = ctx.resources.displayMetrics.density
+        // Redrawn on every meter block: no allocations in onDraw.
+        private val lampRect = RectF()
+        private val clipLabel = ctx.getString(R.string.tm_meter_clip)
 
         fun set(db: Float, peakDb: Float, clipping: Boolean) {
             this.db = db; this.peakDb = peakDb; this.clipping = clipping
@@ -727,12 +718,13 @@ class TranscriptionActivity : Page() {
                 c.drawRect(px - d, 0f, px + d, h, paint)
             }
             paint.color = if (clipping) CLIP_RED else Color.rgb(0xc9, 0xcf, 0xcc)
-            c.drawRoundRect(RectF(w + 6 * d, 0f, w + 6 * d + lamp, h), 4 * d, 4 * d, paint)
+            lampRect.set(w + 6 * d, 0f, w + 6 * d + lamp, h)
+            c.drawRoundRect(lampRect, 4 * d, 4 * d, paint)
             paint.color = Color.WHITE
             paint.textSize = 9 * d
             paint.isFakeBoldText = true
             paint.textAlign = Paint.Align.CENTER
-            c.drawText("CLIP", w + 6 * d + lamp / 2, h / 2 + 3 * d, paint)
+            c.drawText(clipLabel, w + 6 * d + lamp / 2, h / 2 + 3 * d, paint)
         }
     }
 

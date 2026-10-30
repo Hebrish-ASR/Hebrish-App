@@ -196,6 +196,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         finishing.clear()
         root?.let { runCatching { wm.removeView(it) } }
         root = null
+        // Pending taps, long-press, Retake flash and the clipboard tip would act on the removed bar.
+        main.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
@@ -253,8 +255,12 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             val was = editableFocused
             val source = event.source
             if (source?.isEditable == true && !source.isPassword) lastEditable = source
+            // The full probe (the windows list, findFocus, up to MAX_NODES nodes per window) only
+            // matters for the rising edge below. Once a field is known to be focused, a click or
+            // text event from a view that isn't one can't change what is shown, so it waits for a
+            // focus or window event instead of walking the tree each time (1.008 and before did).
             editableFocused = source?.isEditable == true && event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
-                keyboardShowing() || focusedField() != null
+                (was && event.eventType !in PROBE_EVENTS) || keyboardShowing() || focusedField() != null
             // Only the rising edge changes what is shown: losing focus leaves the bubble up
             // (stuck), so it can still be moved and tapped (Daniel, 2026-10-22).
             if (editableFocused && !was) {
@@ -654,7 +660,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         stuck = true
         // Type as you go: each segment goes in when decoded. Otherwise it is all held for Stop.
         var t: Take? = null
-        val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { t?.let { deliverPart(it, text) } } } else null)
+        val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
         t = Take(into, d)
         val r = Recorder(
             onLevel = { l -> main.post { setLevel(l) } },
@@ -1118,5 +1124,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         const val SURROUNDING_CHARS = 64
         /** Most nodes [findFocusedEditable] visits per search. */
         const val MAX_NODES = 1500
+        /** Events after which a known-focused field may have lost focus: the full probe runs. */
+        private val PROBE_EVENTS = setOf(AccessibilityEvent.TYPE_VIEW_FOCUSED,
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, AccessibilityEvent.TYPE_WINDOWS_CHANGED)
     }
 }

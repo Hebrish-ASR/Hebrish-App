@@ -162,11 +162,16 @@ object ModelDownload {
         publish(Status.Running(0, total))
         Thread {
             var last = 0L
+            var lastAt = 0L
             try {
                 job(app) { done ->
                     val t = if (moving) total else target?.second?.totalBytes ?: total
-                    if (done - last > 2_000_000 || done == t) {
+                    // Every 2 MB and at most 5 times a second: each one redraws every model card,
+                    // and on fast Wi-Fi 2 MB alone meant several redraws a second (up to 1.008).
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    if ((done - last > 2_000_000 && now - lastAt >= 200) || done == t) {
                         last = done
+                        lastAt = now
                         publish(Status.Running(done, t))
                     }
                 }

@@ -132,7 +132,7 @@ object History {
         val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US)
         var n = 0
         out.bufferedWriter(Charsets.UTF_8).use { w ->
-            w.write("﻿")
+            w.write("\uFEFF")
             w.write(CSV_COLUMNS.joinToString(",") + "\r\n")
             db(ctx).rawQuery("SELECT uid, at, text, words, seconds, model, source, model_rev, decode FROM dictations ORDER BY at", null).use { c ->
                 while (c.moveToNext()) {
