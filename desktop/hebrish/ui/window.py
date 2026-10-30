@@ -3,6 +3,7 @@ History is there only while "Keep a history" is on (on by default again since 0.
 every transcript in a searchable SQLite file: hebrish.history)."""
 
 import os
+import sqlite3
 import time
 
 from pathlib import Path
@@ -24,7 +25,7 @@ from .mics import MicsCard, fill_combo, in_use
 from .app import ICONS, icon
 from .meter import LevelMeter, verdict
 from .icons import line_icon
-from .style import BLUE, BRAND_GREEN, GOLD, colours, display_font
+from .style import BRAND_GREEN, GOLD, colours, display_font
 
 OVERLAY = [("off", "Off"), ("active", "While recording"), ("always", "Always (a mic button)")]
 # Insert-as-you-go presets (R-2026-10-25-3: Fast 4, Normal 6, Relaxed 10 s; 0.7.1 had 3/5/8, 0.7.0
@@ -156,8 +157,16 @@ class MainWindow(QMainWindow):
             self.tabs.setTabVisible(self.tabs.indexOf(self.pages[key]), False)
         self.tabs.currentChanged.connect(self._sync_header_buttons)
         self.ctl.sig.piece.connect(self._append_piece)
+        # The level meter repaints ~16 times a second, so only while the window is shown
+        # (showEvent / hideEvent): up to 1.012 it woke the app all day in the tray.
         self._meter_timer = QTimer(self, interval=60, timeout=self._update_meter)
-        self._meter_timer.start()
+        self._meter_idle = False
+        # Models and History are rebuilt only when they can be seen (update_model, show_history):
+        # every take's state changes used to re-read the catalogue, each model's manifest and
+        # state.json, walk the model folders, and rebuild 100 History rows, all on the GUI thread.
+        self._models_dirty = self._history_dirty = False
+        self._history_keep = True
+        self.tabs.currentChanged.connect(self._refresh_shown)
         outer.addWidget(self.tabs, 1)
 
         # Footer: status on the left, the app version always visible on the right (0.6.3,
@@ -302,6 +311,26 @@ class MainWindow(QMainWindow):
             ev.ignore()
             self.hide()
 
+    def showEvent(self, ev):
+        super().showEvent(ev)
+        self._meter_idle = False
+        self._meter_timer.start()
+        self._refresh_shown()
+
+    def hideEvent(self, ev):
+        super().hideEvent(ev)
+        self._meter_timer.stop()
+
+    def _shown(self, page) -> bool:
+        return self.isVisible() and self.tabs.currentWidget() is page
+
+    def _refresh_shown(self, _i=None):
+        """A tab came into view: bring Models or History up to date if they changed meanwhile."""
+        if self._models_dirty and self._shown(self.pages["model"]):
+            self.update_model()
+        if self._history_dirty and self._shown(self.pages["history"]):
+            self.show_history(keep_limit=self._history_keep)
+
     # -- dictate -------------------------------------------------------------------
     def _dictate_page(self):
         """Record into the text box (and wherever Output sends it), with the mic, voice
@@ -311,10 +340,21 @@ class MainWindow(QMainWindow):
         lay.setContentsMargins(16, 14, 16, 8)
         lay.setSpacing(10)
 
+        # A banner stays until dismissed (its ✕) or replaced: up to 1.012 it had no way to close,
+        # so a fixed problem ("Couldn't load the model") stayed on the tab for the session.
+        self.banner_frame = QWidget()
+        bl = QHBoxLayout(self.banner_frame)
+        bl.setContentsMargins(0, 0, 0, 0)
         self.banner_label = QLabel(objectName="banner")
         self.banner_label.setWordWrap(True)
-        self.banner_label.hide()
-        lay.addWidget(self.banner_label)
+        self.banner_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        bl.addWidget(self.banner_label, 1)
+        close = QToolButton(text="✕", toolTip="Dismiss")
+        close.setAutoRaise(True)
+        close.clicked.connect(self.banner_frame.hide)
+        bl.addWidget(close, 0, Qt.AlignTop)
+        self.banner_frame.hide()
+        lay.addWidget(self.banner_frame)
 
         top = QHBoxLayout()
         top.setSpacing(16)
@@ -392,8 +432,7 @@ class MainWindow(QMainWindow):
         b.addWidget(self.text, 1)
         row = QHBoxLayout()
         self.btn_copy_text = QPushButton(line_icon("copy"), "Copy")
-        self.btn_copy_text.clicked.connect(lambda: (copy_to_clipboard(self.text.toPlainText()),
-                                                    self.status("Text copied.")))
+        self.btn_copy_text.clicked.connect(lambda: self._copy(self.text.toPlainText(), "Text copied."))
         self.btn_save_text = QPushButton(line_icon("save"), "Save…")
         self.btn_save_text.clicked.connect(self._save_text)
         self.btn_clear_text = QPushButton(line_icon("clear"), "Clear")
@@ -447,13 +486,18 @@ class MainWindow(QMainWindow):
             self.ctl.stop_monitor()
 
     def _update_meter(self):
-        if not self.isVisible():
+        if not self.meter.isVisible():          # another tab is open
             return
         src = self.ctl.meter_source
-        self.meter.set_source(src)
         if src is None:
-            self.meter_label.setText("<span style='color:gray'>Level: talk, or press Test mic</span>")
-        elif src.paused:
+            if not self._meter_idle:            # nothing to animate: draw the empty meter once
+                self._meter_idle = True
+                self.meter.set_source(None)
+                self.meter_label.setText("<span style='color:gray'>Level: talk, or press Test mic</span>")
+            return
+        self._meter_idle = False
+        self.meter.set_source(src)
+        if src.paused:
             self.meter_label.setText("Paused")
         else:
             text, col = verdict(self.meter.rms_db, self.meter.clipping)
@@ -513,8 +557,20 @@ class MainWindow(QMainWindow):
         path, _ = QFileDialog.getSaveFileName(self, "Save text", str(Path.home() / name),
                                               "Text (*.txt);;Markdown (*.md);;All files (*)")
         if path:
-            Path(path).write_text(self.text.toPlainText() + "\n", encoding="utf-8")
+            try:
+                Path(path).write_text(self.text.toPlainText() + "\n", encoding="utf-8")
+            except OSError as e:
+                self.banner(f"Couldn't save {path}: {e}")
+                return
             self.status(f"Saved {path}")
+
+    def _copy(self, text, done="Copied."):
+        try:
+            copy_to_clipboard(text)
+        except Exception as e:
+            self.banner(f"Couldn't copy to the clipboard: {e}")
+            return
+        self.status(done)
 
     # -- history -----------------------------------------------------------------------
     def _history_page(self):
@@ -643,7 +699,8 @@ class MainWindow(QMainWindow):
         heard = [h.strip() for h in self.dict_heard.text().split(",") if h.strip()]
         entries = [e for e in self.dict_entries if e["word"] != word]   # adding a word again replaces it
         entries.append({"word": word, "heard": heard})
-        dictionary.save(entries)
+        if not self._dict_save(entries):
+            return
         self.dict_word.clear()
         self.dict_heard.clear()
         self._dict_show()
@@ -651,10 +708,19 @@ class MainWindow(QMainWindow):
 
     def _dict_remove(self):
         rows = {i.row() for i in self.dict_table.selectedIndexes()}
-        if rows:
-            dictionary.save([e for i, e in enumerate(self.dict_entries) if i not in rows])
+        if not rows:
+            self.status("Select the words to remove first.")
+        elif self._dict_save([e for i, e in enumerate(self.dict_entries) if i not in rows]):
             self._dict_show()
             self.toast("Dictionary saved")
+
+    def _dict_save(self, entries) -> bool:
+        try:
+            dictionary.save(entries)
+            return True
+        except OSError as e:
+            self.banner(f"Couldn't save the dictionary ({dictionary.PATH}): {e}")
+            return False
 
     def _on_history_setting(self):
         on = self.cfg["keep_history"]
@@ -679,7 +745,11 @@ class MainWindow(QMainWindow):
                                                    "CSV (*.csv);;JSON Lines (*.jsonl);;All files (*)")
         if path:
             jsonl = path.endswith(".jsonl") or (chosen.startswith("JSON") and not path.endswith(".csv"))
-            n = (self.ctl.history.export_jsonl if jsonl else self.ctl.history.export_csv)(Path(path))
+            try:
+                n = (self.ctl.history.export_jsonl if jsonl else self.ctl.history.export_csv)(Path(path))
+            except (OSError, sqlite3.Error) as e:
+                self.banner(f"Couldn't export the history to {path}: {e}")
+                return
             self.status(f"Exported {n:,} transcripts to {path}")
 
     def _edit_entry(self, h):
@@ -688,12 +758,17 @@ class MainWindow(QMainWindow):
             "Fix any words the model got wrong. The original is kept alongside, so corrections "
             "can become training data.", h["text"])
         if ok and text.strip() and text.strip() != h["text"]:
-            self.ctl.history.update_text(h["id"], text)
-            self.show_history()
+            self._history_edit(self.ctl.history.update_text, h["id"], text)
 
     def _delete_entry(self, h):
-        self.ctl.history.delete(h["id"])
-        self.show_history()
+        self._history_edit(self.ctl.history.delete, h["id"])
+
+    def _history_edit(self, fn, *args):
+        try:
+            fn(*args)
+        except sqlite3.Error as e:
+            self.banner(f"Couldn't change the history: {e}")
+        self.show_history(keep_limit=True)
 
     def _more(self):
         self._hist_limit += HISTORY_PAGE
@@ -717,6 +792,12 @@ class MainWindow(QMainWindow):
                 f"on {st['days_active']} day{'s' if st['days_active'] != 1 else ''}")
 
     def show_history(self, keep_limit=False):
+        if not self._shown(self.pages.get("history")):
+            # rebuilt when the tab is opened (_refresh_shown); a reset of the page count wins
+            self._history_keep = self._history_keep and keep_limit if self._history_dirty else keep_limit
+            self._history_dirty = True
+            return
+        self._history_dirty = False
         hist = self.ctl.history
         while self.hist_box.count():
             w = self.hist_box.takeAt(0).widget()
@@ -770,7 +851,7 @@ class MainWindow(QMainWindow):
                 bits.append("audio kept")
             col.addWidget(muted(" · ".join(bits)))
             rl.addLayout(col, 1)
-            for name, label, fn in (("copy", "Copy", lambda _=False, s=h["text"]: copy_to_clipboard(s)),
+            for name, label, fn in (("copy", "Copy", lambda _=False, s=h["text"]: self._copy(s, "Transcript copied.")),
                                     ("edit", "Correct", lambda _=False, e=h: self._edit_entry(e)),
                                     ("trash", "Delete", lambda _=False, e=h: self._delete_entry(e))):
                 b = QToolButton()
@@ -1198,6 +1279,9 @@ class MainWindow(QMainWindow):
                                 f"({model_store.disk_usage(mid) >> 20} MB)? You can download it "
                                 "again later.") == QMessageBox.Yes:
             model_store.remove_model(mid)
+            if model_store.installed(mid):          # rmtree ignores errors: a file was locked or read-only
+                self.banner(f"Couldn't delete all of {m.name} in {model_store.model_dir(mid)}. Close "
+                            "anything using it and try again, or delete the folder yourself.")
             self.update_model()
 
     def _change_store(self):
@@ -1229,12 +1313,20 @@ class MainWindow(QMainWindow):
         self.update_model()
 
     def _open_store(self):
-        model_store.ROOT.mkdir(parents=True, exist_ok=True)
+        try:
+            model_store.ROOT.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            self.banner(f"Couldn't open {model_store.ROOT}: {e}")
+            return
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(model_store.ROOT)))
 
     def update_model(self):
         if not hasattr(self, "model_label"):
             return
+        if not self._shown(self.pages.get("model")):
+            self._models_dirty = True           # rebuilt when the Models tab is opened
+            return
+        self._models_dirty = False
         cur, ctl = model_store.active(), self.ctl
         sel = model_store.current()
         lines = model_store.lines()
@@ -1292,8 +1384,12 @@ class MainWindow(QMainWindow):
             r["dl"].setVisible(inst is None)
             r["dl"].setEnabled(not busy)
             r["dl"].setText("Downloading…" if here else "Download")
+            r["dl"].setToolTip("One download at a time: wait for the one running to finish"
+                               if busy and not here else "")
             r["use"].setVisible(inst is not None and not in_use)
             r["use"].setEnabled(ctl.state == "idle")
+            r["use"].setToolTip("" if ctl.state == "idle" else
+                                "Available when dictation and model loading have finished")
             r["rm"].setVisible(inst is not None and not in_use)
             r["rm"].setEnabled(not here)
 
@@ -1599,12 +1695,18 @@ class MainWindow(QMainWindow):
         return row
 
     def _on_chord(self, entry, text, key="paste_chord"):
+        if not hasattr(entry, "hint"):
+            entry.hint = entry.toolTip()
         try:
             parse_chord(text)
             entry.setStyleSheet("")
+            entry.setToolTip(entry.hint)
             self.cfg.set(key, text.strip().lower())
-        except ValueError:
+        except ValueError as e:
+            # Not saved: say why, or the red border is all there is (the last good chord stays in use)
             entry.setStyleSheet("border: 1px solid #D62828;")
+            entry.setToolTip(f"Not saved: {e or 'not a key combination'}. Still using "
+                             f"{self.cfg[key]}.\n{entry.hint}")
 
     def _hotkey_row(self, slot):
         row = QHBoxLayout()
@@ -1620,15 +1722,42 @@ class MainWindow(QMainWindow):
         self.hk_labels[slot], self.hk_btns[slot] = lbl, change
         return row
 
+    CAPTURE_S = 15          # "Press the key you want…" gives up after this long
+
     def _capture_hotkey(self, slot):
+        if self.ctl.hotkeys.problem:
+            # The key source can't run, so no key would ever arrive (the buttons stayed disabled)
+            self.banner(self.ctl.hotkeys.problem)
+            return
         for b in self.hk_btns.values():
             b.setEnabled(False)
         self.hk_labels[slot].setText("Press the key you want…")
         self._capture_slot = slot
         self.ctl.sig.captured.connect(self._captured)
         self.ctl.hotkeys.capture_next_key(self.ctl.sig.captured.emit)
+        if not hasattr(self, "_capture_timer"):
+            self._capture_timer = QTimer(self, singleShot=True, interval=self.CAPTURE_S * 1000,
+                                         timeout=self._capture_timeout)
+        self._capture_timer.start()
+
+    def _capture_timeout(self):
+        """No key came: put the row back as it was."""
+        self.ctl.hotkeys.capture_next_key(None)
+        self._end_capture()
+        self.status("No key was pressed, so the key wasn't changed.")
+
+    def _end_capture(self):
+        try:
+            self.ctl.sig.captured.disconnect(self._captured)
+        except (RuntimeError, TypeError):
+            pass                              # already disconnected
+        for b in self.hk_btns.values():
+            b.setEnabled(True)
+        self.update_state()
 
     def _captured(self, name):
+        if hasattr(self, "_capture_timer"):
+            self._capture_timer.stop()
         self.ctl.sig.captured.disconnect(self._captured)
         slot = self._capture_slot
         for other in SLOTS:                    # one key, one job: move it
@@ -1687,5 +1816,5 @@ class MainWindow(QMainWindow):
 
     def banner(self, text):
         self.banner_label.setText(text)
-        self.banner_label.show()
+        self.banner_frame.show()
         self.present_tab("dictate")

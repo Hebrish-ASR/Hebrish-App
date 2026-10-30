@@ -62,6 +62,8 @@ def test_dictionary_tab(saved_words):
     class Page(QWidget):
         _dictionary_page, _dict_show = MainWindow._dictionary_page, MainWindow._dict_show
         _dict_add, _dict_remove = MainWindow._dict_add, MainWindow._dict_remove
+        _dict_save = MainWindow._dict_save
+        banner = status = lambda self, text: None  # noqa: E731
         toast = lambda self, text="": None  # noqa: E731
 
     p = Page()

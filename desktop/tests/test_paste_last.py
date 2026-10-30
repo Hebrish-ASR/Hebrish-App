@@ -25,7 +25,7 @@ def test_action_key_slot_exists():
     assert DEFAULTS["detect_no_field"] is False
 
 
-def _ctl(last="", history=(), state="idle", keep_history=True):
+def _ctl(last="", history=(), state="idle", keep_history=True, visible=True):
     pytest.importorskip("PySide6")
     from hebrish.ui.app import Controller
     pasted, done = [], threading.Event()
@@ -34,7 +34,10 @@ def _ctl(last="", history=(), state="idle", keep_history=True):
         cfg={"keep_history": keep_history, "trailing_space": True, "paste_chord": "ctrl+v"},
         history=SimpleNamespace(recent=lambda n: [{"text": t} for t in history][:n]),
         inserter=SimpleNamespace(insert=lambda t, how, chord: (pasted.append((t, how)), done.set())),
-        win=SimpleNamespace(status=lambda m: (pasted.append(("STATUS", m)), done.set())))
+        win=SimpleNamespace(status=lambda m: (pasted.append(("STATUS", m)), done.set()),
+                            isVisible=lambda: visible))
+    ctl.notify = lambda title, body="": pasted.append(("NOTIFY", body))
+    ctl._said = lambda text, manual=True: Controller._said(ctl, text, manual)
     ctl._clear_no_field = lambda: None
     ctl._clear_late = lambda: None
     Controller.paste_last(ctl)
@@ -51,7 +54,12 @@ def test_paste_last_falls_back_to_history():
 
 
 def test_paste_last_nothing_yet():
-    assert _ctl(keep_history=False)[0][0] == "STATUS"
+    assert [k for k, _ in _ctl(keep_history=False)] == ["STATUS"]
+
+
+def test_paste_last_nothing_yet_window_hidden_notifies():
+    """From the tray or an action key the window is hidden: its status line can't be seen."""
+    assert [k for k, _ in _ctl(keep_history=False, visible=False)] == ["STATUS", "NOTIFY"]
 
 
 def test_paste_last_not_during_a_take():

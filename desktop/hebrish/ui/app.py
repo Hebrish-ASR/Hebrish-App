@@ -371,7 +371,7 @@ class Controller(QObject):
             rows = self.history.recent(1)
             text = rows[0]["text"] if rows else ""
         if not text:
-            self.win.status("No transcription to paste yet.")
+            self._said("No transcription to paste yet.")
             return
         if _in_tm_box(getattr(self, "win", None)):
             self.win.status("Paste last doesn't paste into the Transcription box.")
@@ -779,7 +779,11 @@ class Controller(QObject):
         self.win.show_history()
 
     def clear_history(self):
-        self.history.clear()
+        try:
+            self.history.clear()
+        except Exception as e:
+            log.exception("clearing the history failed")
+            self.win.banner(f"Couldn't clear the history: {e}")
         self.win.show_history()
 
     def maintain_history(self, manual=False):
@@ -893,15 +897,15 @@ class Controller(QObject):
         self.latest = latest
         missing = model_store.active() is None
         if not model_store.needs_update(latest):
-            self.win.status(f"Up to date ({latest.full_label}).")
+            self._said(f"Up to date ({latest.full_label}).", manual)
         elif self.pending_download == latest.model or (self.cfg["auto_update"] and not missing):
             self.pending_download = None
             self.download(latest)
         elif missing:
-            self.win.status(f"Ready to download {latest.full_label} ({latest.total_size >> 20} MB).")
+            self._said(f"Ready to download {latest.full_label} ({latest.total_size >> 20} MB).", manual)
         else:
             self.win.status(f"Update available: {latest.full_label}")
-            if not manual:
+            if not manual or not self.win.isVisible():
                 self.notify("Model update available", f"{latest.full_label}. Open {APP_NAME} to install it.")
         self.win.update_model()
         self._update_tray()
@@ -950,12 +954,10 @@ class Controller(QObject):
                     "stays downloaded: switch back to it in Models if you prefer it.")
 
     def _periodic_check(self):
-        hours = self.cfg["update_check_hours"]
-        last = load_json(STATE_PATH).get("last_check", 0)
-        if hours and not self.downloading and time.time() - last >= hours * 3600:
+        hours, state = self.cfg["update_check_hours"], load_json(STATE_PATH)
+        if hours and not self.downloading and time.time() - state.get("last_check", 0) >= hours * 3600:
             self.check_updates()
-        last_app = load_json(STATE_PATH).get("app_last_check", 0)
-        if self.cfg["app_update_check"] and time.time() - last_app >= APP_CHECK_S:
+        if self.cfg["app_update_check"] and time.time() - state.get("app_last_check", 0) >= APP_CHECK_S:
             self.check_app_update()
         if self.history.due():
             self.maintain_history()
@@ -1163,6 +1165,13 @@ class Controller(QObject):
                         if self.app_method == "apt" else f"See the {APP_NAME} window for how to get it.")
         save_json(STATE_PATH, state)
 
+    def _said(self, text, manual=True):
+        """A result the user asked for: in the window's status line, and as a notification when
+        the window is hidden (asked from the tray or an action key), where the status can't be seen."""
+        self.win.status(text)
+        if manual and not self.win.isVisible():
+            self.notify(APP_NAME, text)
+
     def _app_said(self, text, manual=True):
         """A check's result: in Settings → App updates, and as a notification when the check was
         asked for from the tray (window hidden)."""
@@ -1361,7 +1370,11 @@ class Controller(QObject):
         cleanup.stop()                       # the clean-up model's llama-server, if it runs
         self.hotkeys.hold_send(False)
         self.win.transcribe.tape.stop()      # closed cleanly; offered again on the next start
+        self.stop_monitor()
+        if self.recorder.active:             # the take is lost either way; close the stream
+            self.recorder.stop()
         self.overlay.close()
+        self.history.close()                 # last WAL checkpoint, so no -wal file is left
         self.win.quitting = True
         self.tray.hide()
         QApplication.quit()

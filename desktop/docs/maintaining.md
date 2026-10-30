@@ -1398,6 +1398,31 @@ uinput, the same rule Steam uses) for the paste device. The hotkey still needs t
 Verified 2026-10-18 (V): 0.1.0 installed with apt on daniellaptop. `ldd` shows no missing
 libs in the bundled .so files, and `--toggle` record → transcribe ran from `/usr/bin`.
 
+## Work on the GUI thread (streamlining pass, 2026-10-30)
+
+Measured off-screen with a fresh profile (no model installed): 15 state changes (record, busy,
+idle) did 285 reads of `state.json` and the cached catalogue, about 114 ms in all, because every
+`update_state()` re-ran `update_model()`. After this pass: 0 reads, about 1 ms (V, off-screen
+script driving the controller; with models installed the old cost was higher, as it also walked
+each model folder for its size). The rules:
+
+- `model_store.catalogue()` is parsed once and again only when `CATALOGUE_CACHE` changes (its
+  mtime, size and inode); the bundled copy once per run (`bundled_catalogue()`). Callers must not
+  mutate the dict it returns.
+- `MainWindow.update_model()` and `show_history()` rebuild only when their tab can be seen;
+  otherwise they mark it dirty and `_refresh_shown` (tab change, `showEvent`) catches up. Call
+  them as before: they are cheap when hidden.
+- The level meter's 60 ms timer runs only while the window is shown and repaints only while a
+  mic is open (Test mic or a take).
+- An input stream is assigned to the recorder only after `start()` succeeded, and closing one
+  that fails to stop (device unplugged) still takes it off `mics.OPEN`: a half-open stream made
+  the recorder look active with no mic.
+- A result the user asked for from the tray (Check for model update, Paste last with nothing to
+  paste) is also a notification when the window is hidden (`Controller._said`): the status line
+  can't be seen from the tray.
+- Hotkey capture ("Change…") shows the key source's problem instead of waiting when there is no
+  key source, and gives up after `CAPTURE_S` (15 s), so the Change buttons can't stay disabled.
+
 ## Testing
 
 - `.venv/bin/python -m pytest tests`: offline tests of the update logic, the hotkey state

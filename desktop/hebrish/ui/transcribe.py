@@ -30,13 +30,12 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QObject, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QIcon, QTextCursor
+from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel,
                                QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider,
                                QToolButton, QVBoxLayout, QWidget)
 
 from .. import audio, cleanup, dictionary, disfluency, longform, mics, paragraphs
-from ..inserter import copy_to_clipboard
 from .icons import line_icon
 from .mics import fill_combo
 from .meter import LevelMeter, verdict
@@ -194,6 +193,9 @@ class TranscribePage(QWidget):
         self.gain.setToolTip("Digital gain on what is recorded. The meter shows the result: aim "
                              "for the green zone, and turn it down if the clip lamp lights.")
         self.gain.valueChanged.connect(self._on_gain)
+        # _on_gain skips saving mid-drag: save where the drag ended (up to 1.012 a dragged gain was
+        # applied but never saved, so it was lost at the next start)
+        self.gain.sliderReleased.connect(lambda: self.cfg.set("tm_gain_db", self.gain.value()))
         row.addWidget(self.gain, 1)
         self.gain_label = QLabel()
         self.gain_label.setMinimumWidth(48)
@@ -605,6 +607,12 @@ class TranscribePage(QWidget):
         rec, held = t.active, self._held is not None and not t.active
         paused = rec and t.paused
         self.btn_rec.setEnabled(not busy and not held and not rec)
+        self.btn_rec.setToolTip("Wait for the transcription to finish" if busy else
+                                "Transcribe or discard the stopped recording first" if held else
+                                "Start a recording")
+        for b in (self.btn_left_go, self.btn_left_del):     # did nothing while a job ran
+            b.setEnabled(not busy)
+            b.setToolTip("Wait for the transcription to finish" if busy else "")
         self.btn_pause.setText("Resume" if paused else "Pause")
         self.btn_pause.setIcon(line_icon("play" if paused else "pause", "white"))
         self.btn_pause.setAccessibleName(self.btn_pause.text())
@@ -978,15 +986,18 @@ class TranscribePage(QWidget):
             b.setEnabled(bool(t.strip()))
 
     def _copy(self):
-        copy_to_clipboard(self.text.toPlainText())
-        self.ctl.win.status("Transcript copied.")
+        self.ctl.win._copy(self.text.toPlainText(), "Transcript copied.")
 
     def _save(self):
         name = time.strftime("transcript-%Y-%m-%d-%H%M.txt")
         path, _ = QFileDialog.getSaveFileName(self, "Save transcript", str(Path.home() / name),
                                               "Text (*.txt);;Markdown (*.md);;All files (*)")
         if path:
-            Path(path).write_text(self.text.toPlainText() + "\n", encoding="utf-8")
+            try:
+                Path(path).write_text(self.text.toPlainText() + "\n", encoding="utf-8")
+            except OSError as e:
+                QMessageBox.warning(self, "Couldn't save", f"Couldn't save {path}:\n{e}")
+                return
             self.ctl.win.status(f"Saved {path}")
 
     def _clear(self):

@@ -32,7 +32,6 @@ TYPES = [("", "Not set"), ("internal", "Built-in"), ("headset", "Headset"),
          ("lavalier", "Lav (lavalier)"), ("wireless-lav", "Wireless lav"), ("handheld", "Handheld"),
          ("boundary", "Boundary / conference"), ("webcam", "Webcam"), ("interface", "Audio interface"),
          ("other", "Other")]
-TYPE_LABELS = dict(TYPES)
 _KEEP = ("label", "device", "vendor_id", "product_id", "serial", "bus")
 
 

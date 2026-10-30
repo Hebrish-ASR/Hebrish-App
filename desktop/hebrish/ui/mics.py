@@ -177,7 +177,10 @@ class MicsCard(QFrame):
     def _move(self, step: int):
         i, keys = self._row(), self._keys()
         j = i + step
-        if i < 0 or not 0 <= j < len(keys):
+        if i < 0:
+            self.status.setText("Select a microphone first.")
+            return
+        if not 0 <= j < len(keys):
             return
         keys[i], keys[j] = keys[j], keys[i]
         self.cfg.set("mic_order", keys)
@@ -188,6 +191,7 @@ class MicsCard(QFrame):
     def _forget(self):
         i = self._row()
         if i < 0:
+            self.status.setText("Select a microphone first.")
             return
         key = self._keys()[i]
         if self.table.item(i, 4).text() == "Connected":
