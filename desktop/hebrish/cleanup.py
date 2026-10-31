@@ -198,14 +198,18 @@ KINDS = ("text_cleanup", "text_title")    # GGUF add-ons on the llama-server run
 
 def _all(kind: str | None = "text_cleanup") -> list[dict]:
     """Every add-on of `kind` in the catalogue (None: every llama-server kind, KINDS), offered or
-    not. A cached catalogue from before the add-on existed has none, so the bundled copy is the
-    fallback."""
+    not: the cached (published) catalogue's, then any the bundled copy has that it lacks. A cache
+    fetched before an add-on existed must not hide it: 1.015 fell back to the bundled copy only
+    when the cache had no add-on of the kinds asked for, so with S1-mini cached, entry() (kind None)
+    could not find the title model and its Download failed (2026-10-31, docs/debug-log)."""
     kinds = KINDS if kind is None else (kind,)
+    out, seen = [], set()
     for doc in (model_store.catalogue(), model_store.bundled_catalogue()):
-        found = [a for a in doc.get("addons", []) if a.get("kind") in kinds]
-        if found:
-            return found
-    return []
+        for a in doc.get("addons", []):
+            if a.get("kind") in kinds and a.get("id") not in seen:
+                seen.add(a.get("id"))
+                out.append(a)
+    return out
 
 
 def _pending(v) -> bool:

@@ -1651,6 +1651,10 @@ Daniel, 2026-10-31 (R-2026-10-31-5; B-75, B-77, B-78). Code: `hebrish/ui/transcr
   first 1,200 words, greedy, 40 tokens. Its reply is JSON with emojis; `titles.clean` keeps the
   title's letters, digits and `& - ' , : + / . #`, strips quotes and a final full stop, and `fit`
   cuts at a word end without a dangling "and"/"&"/"the".
+- **Add-on lookup merges the cached and bundled catalogues (2026-10-31).** `cleanup._all` takes the
+  cached catalogue's add-ons, then every bundled add-on whose id the cache lacks. Never fall back
+  to the bundled copy only when the cache has none of a kind: a cache from before an add-on was
+  published then hides it from `entry()` ([debug log](../../docs/debug-log/2026-10-31-title-model-download.md)).
 - **How the title model was picked (2026-10-31, laptop CPU, llama-server b11982, greedy).** Four
   transcripts (a shopping note with makolet/Shufersal, a Hebrish release note, a vaad bayit /
   arnona / iriya note, 1,200 words of the 2026-10-22 voice note). S1-mini by Superwhisper with a

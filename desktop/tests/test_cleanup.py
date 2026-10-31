@@ -809,3 +809,11 @@ def test_save_with_title_and_cleaned_copy(page, monkeypatch, tmp_path):
     doc = json.loads(md.with_suffix(".json").read_text())
     assert [v["kind"] for v in doc["versions"]] == ["transcript", "raw", "cleaned"]
     assert doc["title"] == "Leaving Early" and doc["versions"][2]["cleanup_model"] == "S1-mini by Superwhisper v1"
+
+
+def test_cached_catalogue_without_the_title_model_still_finds_it(monkeypatch):
+    """1.015 regression (2026-10-31): a cache fetched before the title model existed, holding
+    only clean-up add-ons, hid the bundled title entry from entry(), so its Download failed."""
+    cached = {"addons": [a for a in model_store.bundled_catalogue()["addons"] if a["kind"] == "text_cleanup"]}
+    monkeypatch.setattr(model_store, "catalogue", lambda: cached)
+    assert C.entry("title-gemma-270m")["kind"] == "text_title"
