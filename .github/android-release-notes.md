@@ -1,5 +1,5 @@
-**1.010: Stability release: less memory, and a floating mic crash guarded.**
+**1.011: Stability release: the speech model is now freed while the phone sleeps.**
 
-- **Less memory:** the speech model (about 700 MB) is no longer loaded when the phone starts. It loads when you focus a text field or start a take, is freed after 5 minutes without use, and is freed straight away when the phone runs short of memory. Up to 1.009 it stayed in memory all the time, which could make the phone close other apps in the background. The first take after a pause can take a few seconds longer to start transcribing.
-- **Floating mic:** dragging the floating mic is guarded against a crash ("The specified child already has a parent") reported on 0.6.0.
-- Only these changes on top of 1.009. Not yet tested on a phone. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).
+- **Less memory while the phone sleeps:** 1.010 freed the speech model (about 700 MB) after 5 minutes without use, but that timer stalls while the phone is asleep, so the model could stay in memory for hours. Now it is also freed as soon as the screen turns off (unless you are recording), and the 5 minutes are measured on a clock that keeps counting during sleep.
+- Model loads and frees are logged under the tag `HebrishModel`, for anyone checking memory with adb.
+- Only these changes on top of 1.010. Not yet tested on a phone. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).

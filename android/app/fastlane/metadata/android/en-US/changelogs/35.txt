@@ -1,0 +1,1 @@
+Stability: the speech model (about 700 MB) is now freed as soon as the screen turns off (unless you are recording), and the 5-minute idle free keeps counting while the phone sleeps. In 1.010 it could stay in memory for hours on a sleeping phone.
