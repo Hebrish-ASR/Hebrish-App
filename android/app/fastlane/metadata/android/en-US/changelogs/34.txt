@@ -1,0 +1,1 @@
+Stability: the speech model (about 700 MB) no longer loads at startup; it loads when you focus a text field or start a take, and is freed after 5 minutes without use or when the phone runs short of memory. Dragging the floating mic is guarded against a crash reported on 0.6.0.

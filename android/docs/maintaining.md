@@ -1390,6 +1390,40 @@ rule changed: trailing pad, segment cuts, deferred reload and the update protoco
 - Compiled both flavours and linted locally. Not run on a device or an emulator (the native build
   needs the `third_party` submodules checked out).
 
+## Model memory and the drag crash guard (1.010 hotfix, 2026-10-31)
+
+Reported 2026-10-31 by the session managing Hannah's phone (Pixel 11 "cubs", Android 17 / SDK 37,
+12 GB RAM; installed from F-Droid). Released as a stability hotfix on Daniel's word ("push out this
+as a new stability release (android only)"), from branch `hotfix/android-1.010` off
+`android-v1.009`, so none of the unreleased sprint work on `main` ships with it.
+
+**Memory (V on her phone, numbers from `dumpsys meminfo`):** on 1.009, 94 s after the process
+started (20:51:50 to 20:53:24), Native Heap PSS was 717,368 KB (TOTAL PSS 751,895 KB, RSS 871 MB),
+with no dictation yet. On 0.6.0 the same ~700 MB sat in swap and lmkd killed background apps
+("low watermark is breached"). Cause (I, from the code): not a leak. `Transcriber` holds one
+recognizer, and sherpa-onnx reads the 650 MB int8 encoder into native heap (not mmap). Up to 1.009
+`FloatingMicService.onServiceConnected` preloaded it at boot, and nothing freed it while the
+always-on accessibility service kept the process alive. Fix:
+- no preload in `FloatingMicService.onServiceConnected`; it still preloads on a field's focus
+  (rising edge) and on Start, and the IME as before;
+- `Transcriber.touch()` on every load and decode arms a timer; `unloadIfIdle(IDLE_UNLOAD_MS)`
+  (5 min) frees the model, waiting for a decode in progress (it holds `lock`);
+- `Transcriber.onTrimMemory(level, takeOpen)` from both services' `onTrimMemory`: levels 10-15
+  (pre-Android 14) and 40+ free it if no take is open in that service and it was not used in the
+  last 30 s. Level 20 (UI_HIDDEN) is ignored: the IME gets it each time the keyboard hides.
+Trade-off: a take after 5 min idle (or a Transcription Mode pause over 5 min) waits for a reload
+(a few seconds) before its first decode. Not changed: the model's size; a smaller model is the
+user's choice (Sabich-Parakeet-110M).
+
+**Drag crash (0.6.0 only so far):** 14 `data_app_crash` entries, 2026-10-29 14:52 to 2026-10-31
+19:48, all `IllegalStateException: The specified child already has a parent` at
+`FloatingMicService.place` (0.6.0 line 346, `r.addView(c, ...)` in the children loop) via
+`savePosition` from `Drag.onTouch`. 0.6.0 and 1.009 both call `r.removeAllViews()` first and no
+child is listed twice, so why a child kept a parent is not established. 1.010 detaches each child
+from whatever parent it has before `addView`. Not reproduced; no 1.009 crash reported yet.
+
+Verified: compiles (`compileFdroidDebugKotlin`, `compilePlayDebugKotlin`). Not run on a phone.
+
 ## Not yet verified (as of 2026-10-20)
 
 - Robustness pass (2026-10-30) on a device: Try it with no model (Open Models, then back) and

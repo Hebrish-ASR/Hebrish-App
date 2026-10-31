@@ -1,6 +1,7 @@
 package app.hebrish.core
 
 import android.content.Context
+import android.os.SystemClock
 import com.k2fsa.sherpa.onnx.FeatureConfig
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
@@ -8,8 +9,12 @@ import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineTransducerModelConfig
 
 /**
- * One process-wide recognizer. Loading the 650 MB encoder takes a few seconds, so it is done
- * once and kept for as long as Android keeps the process alive.
+ * One process-wide recognizer. Loading the 650 MB encoder takes a few seconds, so it is loaded
+ * ahead of a take ([preload] on field focus and on Start) and kept while it is in use. Since 1.010
+ * it is freed after [IDLE_UNLOAD_MS] without use, and on memory pressure ([unloadIfIdle] from the
+ * services' onTrimMemory): up to 1.009 it stayed resident (~700 MB of native heap) for as long as
+ * the always-on accessibility service kept the process alive, and on a 12 GB Pixel 11 that pushed
+ * lmkd into killing background apps (2026-10-31; android/docs/maintaining.md, "Model memory").
  *
  * Speed (docs/maintaining.md, "Inference speed"): the encoder's cost grows with the audio it is
  * given, so [transcribe] trims silence off both ends ([trim]) and pads only the tail the model
@@ -38,6 +43,43 @@ object Transcriber {
     /** How the model is run, for the history export's `engine` column. */
     const val ENGINE = "sherpa-onnx nemo_transducer int8 greedy_search"
 
+    /** Free the model after this long without a load or decode (1.010). */
+    const val IDLE_UNLOAD_MS = 5 * 60_000L
+
+    @Volatile private var lastUse = 0L
+    private val idleTimer = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r ->
+        Thread(r, "transcriber-idle").apply { isDaemon = true }
+    }
+    @Volatile private var idleCheck: java.util.concurrent.ScheduledFuture<*>? = null
+
+    /** Marks the model as used now and (re)arms the idle unload. */
+    private fun touch() {
+        lastUse = SystemClock.elapsedRealtime()
+        idleCheck?.cancel(false)
+        idleCheck = idleTimer.schedule({ unloadIfIdle(IDLE_UNLOAD_MS) }, IDLE_UNLOAD_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+    }
+
+    /**
+     * Frees the model if it has not been used for [idleMs]. Waits for a decode in progress (it
+     * holds [lock]). The next take loads it again. Returns whether it freed anything.
+     */
+    fun unloadIfIdle(idleMs: Long): Boolean = synchronized(lock) {
+        if (recognizer == null || SystemClock.elapsedRealtime() - lastUse < idleMs) return false
+        unload()
+        true
+    }
+
+    /**
+     * For a service's onTrimMemory (1.010). Android 14+ sends only UI_HIDDEN (20, which the IME
+     * gets every time the keyboard hides, so it is ignored) and BACKGROUND (40) and up; older
+     * versions also send RUNNING_LOW / RUNNING_CRITICAL (10, 15) to a running process. Frees the
+     * model, off the main thread, unless a take is open or it was used in the last 30 s.
+     */
+    fun onTrimMemory(level: Int, takeOpen: Boolean) {
+        val pressure = level in 10..15 || level >= 40
+        if (pressure && !takeOpen && recognizer != null) Thread { unloadIfIdle(30_000L) }.start()
+    }
+
     fun isLoaded(ctx: Context) = recognizer != null && loadedDir == ModelStore.dir(ctx)?.path
 
     /** Frees the loaded model, e.g. after it moved; the next transcription loads it again. */
@@ -49,7 +91,8 @@ object Transcriber {
 
     /** Loads on a background thread if needed. Cheap to call often (e.g. on every field focus). */
     fun preload(ctx: Context) {
-        if (isLoaded(ctx) || !ModelStore.isReady(ctx)) return
+        if (isLoaded(ctx)) { touch(); return }
+        if (!ModelStore.isReady(ctx)) return
         // One at a time: it is called on every field focus, and up to 1.008 each call started a
         // thread that then queued on [lock] behind the load already running.
         if (!preloading.compareAndSet(false, true)) return
@@ -61,9 +104,9 @@ object Transcriber {
     /** Blocking. Safe to call repeatedly; only the first call loads. */
     fun load(ctx: Context): OfflineRecognizer {
         val want = ModelStore.dir(ctx)?.path
-        recognizer?.takeIf { loadedDir == want }?.let { return it }
+        recognizer?.takeIf { loadedDir == want }?.let { touch(); return it }
         synchronized(lock) {
-            recognizer?.takeIf { loadedDir == want }?.let { return it }
+            recognizer?.takeIf { loadedDir == want }?.let { touch(); return it }
             recognizer?.release()
             recognizer = null
             val app = ctx.applicationContext
@@ -88,6 +131,7 @@ object Transcriber {
             runCatching { decode(rec, FloatArray(SAMPLE_RATE / 2)) }
             recognizer = rec
             loadedDir = want
+            touch()
             return rec
         }
     }
@@ -100,7 +144,7 @@ object Transcriber {
     fun transcribe(ctx: Context, samples: FloatArray): String {
         val speech = trim(samples)
         synchronized(lock) {
-            return decode(load(ctx), speech + FloatArray((SAMPLE_RATE * PAD_SECONDS).toInt()))
+            return decode(load(ctx), speech + FloatArray((SAMPLE_RATE * PAD_SECONDS).toInt())).also { touch() }
         }
     }
 
@@ -119,7 +163,7 @@ object Transcriber {
         val audio = FloatArray(before.size + speech.size + (SAMPLE_RATE * PAD_SECONDS).toInt())
         before.copyInto(audio)
         speech.copyInto(audio, before.size)
-        val r = synchronized(lock) { result(load(ctx), audio) }
+        val r = synchronized(lock) { result(load(ctx), audio).also { touch() } }
         val tokens = r.tokens
         val times = r.timestamps
         val k = seamSplit(tokens, times, at)
