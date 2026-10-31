@@ -1,128 +1,201 @@
 {
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
-  "built": "2026-10-30",
+  "platform": "desktop",
+  "built": "2026-10-31",
   "source": "https://hebrish.app/changelog",
   "entries": [
     {
       "date": "2026-10-30",
+      "tag": "Models",
+      "title": "Sabich v2.3: 20% more recordings",
+      "summary": "Sabich v2.3 replaces v2.2 as the recommended model in the apps. It is a Sabich-only update to Release v2, trained the same way as v2.2 on 1,296 minutes of audio (522.8 minutes of English with Hebrew words in it, up from 471.4).",
+      "platforms": [
+        "android",
+        "desktop",
+        "models"
+      ]
+    },
+    {
+      "date": "2026-10-30",
       "tag": "Desktop 1.013",
       "title": "Optional clean-up model, and a lighter, clearer app",
-      "summary": "Clean up (optional, off by default): download S1-ASR-Cleanup, a fine-tune of S1-mini by Superwhisper, under Models, Utilities, Post-processing (about 660 MB), and turn on Clean up there or in the Transcription tab."
-    },
-    {
-      "date": "2026-10-30",
-      "tag": "Android 1.009",
-      "title": "No dead ends, and steadier under load",
-      "summary": "Buttons that open a phone settings screen no longer close the app on phones that don't have that screen; the app tells you instead."
-    },
-    {
-      "date": "2026-10-30",
-      "tag": "Android 1.008",
-      "title": "Switch between the phone's mic and Bluetooth with one tap",
-      "summary": "The top of the Hebrish voice keyboard shows which mic it will use: Phone, or BT and your headset's name. Tap it once to switch between the phone's mic and a connected Bluetooth headset, before you start or in the middle of a take; what you have already said is kept."
+      "summary": "Clean up (optional, off by default): download S1-ASR-Cleanup, a fine-tune of S1-mini by Superwhisper, under Models, Utilities, Post-processing (about 660 MB), and turn on Clean up there or in the Transcription tab.",
+      "platforms": [
+        "desktop"
+      ]
     },
     {
       "date": "2026-10-29",
       "tag": "Desktop 1.012",
       "title": "New recording controls in Transcription",
-      "summary": "The Transcription tab's controls are round icon buttons with one colour for each action: Record red, Pause amber, Stop slate, Retake blue, Discard grey, and Transcribe a green send arrow."
+      "summary": "The Transcription tab's controls are round icon buttons with one colour for each action: Record red, Pause amber, Stop slate, Retake blue, Discard grey, and Transcribe a green send arrow.",
+      "platforms": [
+        "desktop"
+      ]
     },
     {
       "date": "2026-10-29",
       "tag": "Desktop 1.011",
       "title": "Transcription Mode for long sessions",
-      "summary": "Built for sessions of 90 minutes and more (a recording can run up to 4 hours)."
+      "summary": "Built for sessions of 90 minutes and more (a recording can run up to 4 hours).",
+      "platforms": [
+        "desktop"
+      ]
     },
     {
       "date": "2026-10-29",
       "tag": "Desktop 1.010",
       "title": "Better voice detection, and a tidier Models tab",
-      "summary": "Voice detection now uses Silero VAD, a small voice-activity model included with the app and on by default. It tells speech from fans, traffic and café noise, so silent takes are skipped and long pauses aren't transcribed."
+      "summary": "Voice detection now uses Silero VAD, a small voice-activity model included with the app and on by default. It tells speech from fans, traffic and café noise, so silent takes are skipped and long pauses aren't transcribed.",
+      "platforms": [
+        "desktop"
+      ]
     },
     {
       "date": "2026-10-29",
       "tag": "Desktop 1.009",
       "title": "Your history at a glance, and a history that stays lean",
-      "summary": "Diagnostics has a History card: how much you have transcribed all told (rounded: 12K words, 1.2M words), hours of audio, days active and how much space the history takes."
+      "summary": "Diagnostics has a History card: how much you have transcribed all told (rounded: 12K words, 1.2M words), hours of audio, days active and how much space the history takes.",
+      "platforms": [
+        "desktop"
+      ]
     },
     {
       "date": "2026-10-28",
       "tag": "Desktop 1.008",
       "title": "A softer beep, now the default",
-      "summary": "The start and stop beeps are lower, rounder and quieter: easier on the ears, and on the people around you. The old beep is still there as Loud (Settings, Sounds, Beep); choosing one plays it."
+      "summary": "The start and stop beeps are lower, rounder and quieter: easier on the ears, and on the people around you. The old beep is still there as Loud (Settings, Sounds, Beep); choosing one plays it.",
+      "platforms": [
+        "desktop"
+      ]
     },
     {
       "date": "2026-10-28",
       "tag": "Models",
       "title": "Sabich v2.2: more recordings, speed perturbation, and a better score on every measure",
-      "summary": "Sabich v2.2 replaces v2.1 as the recommended model in the apps. It is a Sabich-only update to Release v2; Shakshuka, Jachnun and Meorav are unchanged."
-    },
-    {
-      "date": "2026-10-27",
-      "tag": "Android 1.007",
-      "title": "Clearer controls in the voice keyboard",
-      "summary": "The Hebrish voice keyboard has one row of round, colour-coded buttons: Discard (red), Retake (amber), the mic in the middle, Pause (gold while paused) and Insert last."
-    },
-    {
-      "date": "2026-10-27",
-      "tag": "Android 1.006",
-      "title": "Enter waits for your last words, fewer repeated words, and Voice Typing",
-      "summary": "In the Hebrish voice keyboard, if you tap Enter after you stop and before the last words are in, the Enter now waits for them (up to 4 seconds), then sends."
+      "summary": "Sabich v2.2 replaces v2.1 as the recommended model in the apps. It is a Sabich-only update to Release v2; Shakshuka, Jachnun and Meorav are unchanged.",
+      "platforms": [
+        "android",
+        "desktop",
+        "models"
+      ]
     },
     {
       "date": "2026-10-27",
       "tag": "Desktop 1.007",
       "title": "Voice Typing, late words kept out of your next message, fewer repeated words",
-      "summary": "If you press Enter after you stop and before the last words are in, those words no longer land in whatever you type next, such as the next prompt in a chat box."
+      "summary": "If you press Enter after you stop and before the last words are in, those words no longer land in whatever you type next, such as the next prompt in a chat box.",
+      "platforms": [
+        "desktop"
+      ]
     },
     {
       "date": "2026-10-27",
       "tag": "Android 1.005 · Desktop 1.006",
       "title": "No more half-words where a long dictation is split",
-      "summary": "Longer dictations are decoded in pieces cut at your pauses. The first word after a pause sometimes lost its start (\"ividual\" for \"individual\", \"chnically\" for \"technically\"); it now comes out whole, on Android and on the desktop."
-    },
-    {
-      "date": "2026-10-25",
-      "tag": "Android 1.004",
-      "title": "Switch your remote's buttons off without losing them, and save sets of them",
-      "summary": "Settings, Sound, microphone and buttons has a new Use bound buttons switch. Turn it off and Hebrish takes no keys, so the same Bluetooth remote works in other apps; your bindings are kept for when you turn it back on."
+      "summary": "Longer dictations are decoded in pieces cut at your pauses. The first word after a pause sometimes lost its start (\"ividual\" for \"individual\", \"chnically\" for \"technically\"); it now comes out whole, on Android and on the desktop.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
     },
     {
       "date": "2026-10-25",
       "tag": "Android 1.003 · Desktop 1.005",
       "title": "Models in plain words, a What's new list, and the floating mic types instead of pasting",
-      "summary": "Each model now says what it's built on, for example \"Base model: Parakeet 0.6B v2 by NVIDIA\"; the technical detail is under Technical details."
+      "summary": "Each model now says what it's built on, for example \"Base model: Parakeet 0.6B v2 by NVIDIA\"; the technical detail is under Technical details.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
     },
     {
       "date": "2026-10-25",
       "tag": "Models",
       "title": "Sabich v2.1: more recordings, and no more <unk>",
-      "summary": "Sabich v2.1 replaces v2.0 as the recommended model in the apps. It is a Sabich-only update to Release v2; Shakshuka, Jachnun and Meorav are unchanged."
+      "summary": "Sabich v2.1 replaces v2.0 as the recommended model in the apps. It is a Sabich-only update to Release v2; Shakshuka, Jachnun and Meorav are unchanged.",
+      "platforms": [
+        "android",
+        "desktop",
+        "models"
+      ]
     },
     {
       "date": "2026-10-25",
       "tag": "Desktop 1.003",
       "title": "Your microphones in your order, and no more lost words",
-      "summary": "Settings has a Microphones list: every mic Hebrish has seen on this computer, with a name you give it and a type (built-in, headset, wireless headset, shotgun, lav, dynamic and more)."
+      "summary": "Settings has a Microphones list: every mic Hebrish has seen on this computer, with a name you give it and a type (built-in, headset, wireless headset, shotgun, lav, dynamic and more).",
+      "platforms": [
+        "desktop"
+      ]
     },
     {
       "date": "2026-10-24",
       "tag": "Apps 1.002",
       "title": "Paragraphs in Transcription Mode, your choice of how",
-      "summary": "Transcription Mode, in both apps, has a Paragraphs setting: None (one block of text), Time-based (a new paragraph about every 30 seconds, as before) or Paragraph model."
+      "summary": "Transcription Mode, in both apps, has a Paragraphs setting: None (one block of text), Time-based (a new paragraph about every 30 seconds, as before) or Paragraph model.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
     },
     {
       "date": "2026-10-24",
       "tag": "Apps 1.001",
       "title": "Transcription Mode, the next take any time, and no more \"um\"",
-      "summary": "Transcription Mode, in both apps: record a long take, then transcribe it."
+      "summary": "Transcription Mode, in both apps: record a long take, then transcribe it.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
     },
     {
       "date": "2026-10-24",
       "tag": "Apps: Android 1.000, Desktop 1.000",
       "title": "Hebrish 1.0: the floating mic gets out of the way, desktop output you can combine, and Paste last",
-      "summary": "Both apps are now version 1.000. From here, versions count 1.001, 1.002, and so on, on Android and desktop alike."
+      "summary": "Both apps are now version 1.000. From here, versions count 1.001, 1.002, and so on, on Android and desktop alike.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Apps: Android 0.9.0, Desktop 0.8.0",
+      "title": "A personal dictionary: your words, written your way",
+      "summary": "Add the words you want written a certain way: names, brands, Hebrew words in the spelling you use. After each take, Hebrish replaces what the model wrote with your spelling.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Desktop 0.7.6",
+      "title": "Desktop: fewer capitals and full stops in the middle of sentences",
+      "summary": "With insert as you go, stopping to think in the middle of a sentence no longer ends it. Each piece of text is now transcribed together with the end of the piece before it, so the model hears that the sentence carries on and writes it the way it would mid-sentence.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-10-22",
+      "tag": "Terms",
+      "title": "Terms of use 1.2: every model listed",
+      "summary": "The licence table now lists every model line: Jachnun, Sabich and its variants on other bases, Shakshuka, Meorav and the Whisper fine-tunes, each with the licence it was released under.",
+      "platforms": [
+        "site"
+      ]
+    },
+    {
+      "date": "2026-10-22",
+      "tag": "Desktop 0.7.5",
+      "title": "Desktop: change how dictation is inserted from the tray",
+      "summary": "The tray menu has an Output submenu: paste at the cursor, clipboard only, or the app's own text box, and the paste shortcut (Ctrl+V, or Ctrl+Shift+V for terminals).",
+      "platforms": [
+        "desktop"
+      ]
     }
   ]
 }

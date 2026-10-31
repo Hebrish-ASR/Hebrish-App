@@ -115,7 +115,7 @@ you talk, and you're returned to HeliBoard with the text inserted. Details:
 | `android/` | Android voice keyboard (Kotlin, sherpa-onnx built from source) |
 | `shared/catalogue.json` | The model catalogue (schema 2: lines and variants) both apps bundle and re-fetch since Android 0.7.0 / desktop 0.6.0; a test fails if either app's copy drifts |
 | `shared/models.json` | The schema-1 catalogue, kept for older builds; a test fails if it disagrees with `catalogue.json` |
-| `shared/updates.json` | The in-app What's new list (Android: What's new screen; desktop: About tab), baked from hebrish.app's changelog by `scripts/bake_updates.py`; copied into the APK at build time, and to `desktop/hebrish/data/` by the script |
+| `shared/updates-android.json` | Android's in-app What's new list (Updates screen), baked from hebrish.app's changelog by `scripts/bake_updates.py`, Android entries only (by each entry's `data-platforms`, 2026-10-31); copied into the APK as `assets/updates.json` at build time. The desktop's list (Desktop and Site entries) is `desktop/hebrish/data/updates.json`, written by the same script |
 | `shared/update-protocol.md` | How models are listed, downloaded and updated, and the quirks both apps work around |
 | `planning/` | Public project tracking: feature requests, backlog (with ideas for future versions), decision log |
 | `CLAUDE.md` | Agent instructions, public on purpose. The project's skills are in the public [`hebrish` marketplace](https://github.com/Hebrish-ASR/Hebrish-Claude-Plugins), plugin `hebrish-maintainers` |
@@ -124,7 +124,7 @@ Versions are `M.NNN` (three digits after the point): 1.000 (2026-10-24) was the 
 apps, and every GitHub release before it was deleted that day (the `*-v0.*` tags remain).
 Before tagging, add the release's entry to hebrish.app's changelog: `scripts/release-tag.sh` runs
 `scripts/bake_updates.py`, which bakes the changelog up to that day into the apps' What's new list
-(`shared/updates.json`, the last 20 entries, offline) and commits it with the version.
+(one per app: `shared/updates-android.json` and `desktop/hebrish/data/updates.json`, the last 20 entries for that platform, offline) and commits it with the version.
 Releases: tag `android-vM.NNN` builds the signed APK in CI. Tag `desktop-vM.NNN` builds the
 Windows zip in CI; the Ubuntu .deb is built with `desktop/build-deb.sh` and added to the same
 release. Then overwrite the one stable file per platform on the Hebrish CDN

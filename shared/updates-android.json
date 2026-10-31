@@ -1,0 +1,202 @@
+{
+  "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
+  "schema": 1,
+  "platform": "android",
+  "built": "2026-10-31",
+  "source": "https://hebrish.app/changelog",
+  "entries": [
+    {
+      "date": "2026-10-30",
+      "tag": "Models",
+      "title": "Sabich v2.3: 20% more recordings",
+      "summary": "Sabich v2.3 replaces v2.2 as the recommended model in the apps. It is a Sabich-only update to Release v2, trained the same way as v2.2 on 1,296 minutes of audio (522.8 minutes of English with Hebrew words in it, up from 471.4).",
+      "platforms": [
+        "android",
+        "desktop",
+        "models"
+      ]
+    },
+    {
+      "date": "2026-10-30",
+      "tag": "Android 1.009",
+      "title": "No dead ends, and steadier under load",
+      "summary": "Buttons that open a phone settings screen no longer close the app on phones that don't have that screen; the app tells you instead.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-10-30",
+      "tag": "Android 1.008",
+      "title": "Switch between the phone's mic and Bluetooth with one tap",
+      "summary": "The top of the Hebrish voice keyboard shows which mic it will use: Phone, or BT and your headset's name. Tap it once to switch between the phone's mic and a connected Bluetooth headset, before you start or in the middle of a take; what you have already said is kept.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-10-28",
+      "tag": "Models",
+      "title": "Sabich v2.2: more recordings, speed perturbation, and a better score on every measure",
+      "summary": "Sabich v2.2 replaces v2.1 as the recommended model in the apps. It is a Sabich-only update to Release v2; Shakshuka, Jachnun and Meorav are unchanged.",
+      "platforms": [
+        "android",
+        "desktop",
+        "models"
+      ]
+    },
+    {
+      "date": "2026-10-27",
+      "tag": "Android 1.007",
+      "title": "Clearer controls in the voice keyboard",
+      "summary": "The Hebrish voice keyboard has one row of round, colour-coded buttons: Discard (red), Retake (amber), the mic in the middle, Pause (gold while paused) and Insert last.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-10-27",
+      "tag": "Android 1.006",
+      "title": "Enter waits for your last words, fewer repeated words, and Voice Typing",
+      "summary": "In the Hebrish voice keyboard, if you tap Enter after you stop and before the last words are in, the Enter now waits for them (up to 4 seconds), then sends.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-10-27",
+      "tag": "Android 1.005 · Desktop 1.006",
+      "title": "No more half-words where a long dictation is split",
+      "summary": "Longer dictations are decoded in pieces cut at your pauses. The first word after a pause sometimes lost its start (\"ividual\" for \"individual\", \"chnically\" for \"technically\"); it now comes out whole, on Android and on the desktop.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-10-25",
+      "tag": "Android 1.004",
+      "title": "Switch your remote's buttons off without losing them, and save sets of them",
+      "summary": "Settings, Sound, microphone and buttons has a new Use bound buttons switch. Turn it off and Hebrish takes no keys, so the same Bluetooth remote works in other apps; your bindings are kept for when you turn it back on.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-10-25",
+      "tag": "Android 1.003 · Desktop 1.005",
+      "title": "Models in plain words, a What's new list, and the floating mic types instead of pasting",
+      "summary": "Each model now says what it's built on, for example \"Base model: Parakeet 0.6B v2 by NVIDIA\"; the technical detail is under Technical details.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-10-25",
+      "tag": "Models",
+      "title": "Sabich v2.1: more recordings, and no more <unk>",
+      "summary": "Sabich v2.1 replaces v2.0 as the recommended model in the apps. It is a Sabich-only update to Release v2; Shakshuka, Jachnun and Meorav are unchanged.",
+      "platforms": [
+        "android",
+        "desktop",
+        "models"
+      ]
+    },
+    {
+      "date": "2026-10-24",
+      "tag": "Apps 1.002",
+      "title": "Paragraphs in Transcription Mode, your choice of how",
+      "summary": "Transcription Mode, in both apps, has a Paragraphs setting: None (one block of text), Time-based (a new paragraph about every 30 seconds, as before) or Paragraph model.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-10-24",
+      "tag": "Apps 1.001",
+      "title": "Transcription Mode, the next take any time, and no more \"um\"",
+      "summary": "Transcription Mode, in both apps: record a long take, then transcribe it.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-10-24",
+      "tag": "Apps: Android 1.000, Desktop 1.000",
+      "title": "Hebrish 1.0: the floating mic gets out of the way, desktop output you can combine, and Paste last",
+      "summary": "Both apps are now version 1.000. From here, versions count 1.001, 1.002, and so on, on Android and desktop alike.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Android 0.10.0",
+      "title": "A cleaner look, and the floating mic keeps your line breaks",
+      "summary": "The app's screens now use the Hebrish look from this site: the warm paper background, the green accent, the Hebrish logo (it was showing as a plain green square), headings in the Hebrish typeface and grouped settings on the home screen.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Apps: Android 0.9.0, Desktop 0.8.0",
+      "title": "A personal dictionary: your words, written your way",
+      "summary": "Add the words you want written a certain way: names, brands, Hebrew words in the spelling you use. After each take, Hebrish replaces what the model wrote with your spelling.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Android 0.8.2",
+      "title": "Android: fewer capitals and full stops in the middle of sentences",
+      "summary": "Long takes are transcribed in pieces at your pauses, and each piece used to be treated as a sentence of its own, so a pause mid-sentence could leave \"word. Capital\".",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Android 0.8.1",
+      "title": "Android: transcription history, exported as CSV",
+      "summary": "Every take is now kept on your phone: the text, its length, the model, and how long it took to transcribe. Under Dictation, Export CSV saves it through the file picker, so you can put it straight into Google Drive.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Android 0.8.0",
+      "title": "Android: minimise the floating mic with a double-tap",
+      "summary": "When the floating mic is in the way of what you are writing, double-tap it and it shrinks to a small dot in the same place.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Android 0.7.6",
+      "title": "Android: the floating mic keeps your line breaks",
+      "summary": "With the floating mic, a line break typed before dictating (to start a new paragraph, say) was deleted when the text arrived, and a space put in its place.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-10-22",
+      "tag": "Apps: desktop 0.7.3, Android 0.7.5",
+      "title": "ALL CAPS, a tidier app, and history you can export",
+      "summary": "ALL CAPS: a setting (Dictation, on both apps) that types everything you dictate in capitals. Just for fun.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
+    }
+  ]
+}

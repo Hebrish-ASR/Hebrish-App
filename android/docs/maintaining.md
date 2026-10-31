@@ -1483,6 +1483,20 @@ full changelog. Checked: `./gradlew --offline :app:compileFdroidDebugKotlin
 `assembleDebug` could not run on 2026-10-25 because the native (sherpa-onnx) configure step failed
 on this checkout's submodule state, unrelated to this change; not run on a device (I).
 
+**One list per platform (2026-10-31).** Daniel: "the updates should only be related to Android on
+Android ... categorized according to what platform they're relevant to, that way we can build them
+accordingly". Every entry on hebrish.app's changelog now carries `data-platforms` (`android`,
+`desktop`, `models`, `site`; site README, `changelog.html` row; the page filters on it). A model
+update the apps offer through their model update (Sabich releases) is filed under `android` and
+`desktop` too, so Sabich v2.3 shows in both apps; other model news (TTS, variants not in the apps)
+is `models` only and shows in neither. `bake_updates.py` now writes `shared/updates-android.json`
+(`android` entries; copied into the APK as `assets/updates.json`, renamed by the gradle
+`copyCatalogue` task) and `desktop/hebrish/data/updates.json` (`desktop` and `site` entries:
+major site changes are shown on desktop), each with `"platform"` and per-entry `platforms`.
+`shared/updates.json` is retired. An entry without the attribute falls back to its tag
+(`platforms_from_tag`). Tests: `test_updates_are_well_formed[android|desktop]`,
+`test_bake_keeps_each_apps_own_entries`.
+
 **Button bindings: on/off, Clear all, saved sets (unreleased, 2026-10-25).** Daniel: the floating
 mic grabbing bound keys all the time is inconvenient when the same Bluetooth remote is wanted for
 something else; asked for a way to switch the bindings off without losing them, a clear button,

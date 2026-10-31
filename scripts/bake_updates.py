@@ -14,9 +14,17 @@ summary is cut from the first `<li>`. The site's other feeds were not usable: da
 has only the numbered model releases (two entries) and data/updates/ holds the voice-note
 podcast. If the checkout is missing, the live page is fetched instead.
 
-Writes shared/updates.json and its byte-identical copy desktop/hebrish/data/updates.json (the
-Android build copies shared/updates.json into the APK's assets, like catalogue.json).
-desktop/tests/test_shared.py checks the copies agree and the file is well formed.
+Each app gets only its own entries (2026-10-31, Daniel: "the updates should only be related to
+Android on Android ... categorized according to what platform they're relevant to"). Every entry on
+the changelog carries `data-platforms` (android, desktop, models, site; a model update the apps
+offer through their model update also carries android and desktop). Android keeps `android`
+entries, the desktop app `desktop` and `site` ones (major site changes are shown on desktop).
+An entry without the attribute falls back to its tag (`platforms_from_tag`). Each entry keeps its
+`platforms` list.
+
+Writes shared/updates-android.json (the Android build copies it into the APK's assets as
+updates.json, like catalogue.json) and desktop/hebrish/data/updates.json (the desktop list).
+desktop/tests/test_shared.py checks both are well formed and filtered.
 
     python3 scripts/bake_updates.py                 # build date today, last 20
     python3 scripts/bake_updates.py --date 2026-10-24 --limit 10
@@ -39,13 +47,15 @@ from html.parser import HTMLParser
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOCAL = os.path.join(ROOT, "..", "Hebrish-App", "changelog.html")
 URL = "https://hebrish.app/changelog"
-OUTS = [os.path.join(ROOT, "shared", "updates.json"),
-        os.path.join(ROOT, "desktop", "hebrish", "data", "updates.json")]
+# Each app: where its list goes, and which platforms it shows.
+OUTS = {"android": (os.path.join(ROOT, "shared", "updates-android.json"), {"android"}),
+        "desktop": (os.path.join(ROOT, "desktop", "hebrish", "data", "updates.json"), {"desktop", "site"})}
+PLATFORMS = ("android", "desktop", "models", "site")
 MAX_SUMMARY = 280
 
 
 class Changelog(HTMLParser):
-    """Collects {date, tag, title, first} from each <article class="log">."""
+    """Collects {date, tag, title, first, platforms} from each <article class="log">."""
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -54,7 +64,8 @@ class Changelog(HTMLParser):
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         if tag == "article" and "log" in (a.get("class") or "").split():
-            self.cur = {"date": "", "tag": "", "title": "", "first": "", "lis": 0}
+            self.cur = {"date": "", "tag": "", "title": "", "first": "", "lis": 0,
+                        "platforms": (a.get("data-platforms") or "").split()}
         elif self.cur is None:
             return
         elif tag == "time" and not self.cur["date"]:
@@ -90,6 +101,20 @@ def clean(s: str) -> str:
     return re.sub(r"\s+", " ", html.unescape(s)).strip()
 
 
+def platforms_from_tag(tag: str) -> list:
+    """The site's rule, for an entry without data-platforms: app tags by name, Apps both, models, else site."""
+    out = set()
+    if re.search(r"Android|Keyboard", tag) or tag.startswith("Apps"):
+        out.add("android")
+    if re.search(r"Desktop", tag, re.I) or tag.startswith("Apps"):
+        out.add("desktop")
+    if re.search(r"Model|Benchmark|Experimental", tag):
+        out.add("models")
+    if re.search(r"Site|Terms", tag):
+        out.add("site")
+    return [p for p in PLATFORMS if p in out] or ["site"]
+
+
 def summarise(text: str, limit: int = MAX_SUMMARY) -> str:
     """The first one or two sentences, within `limit` characters."""
     text = clean(text)
@@ -114,15 +139,19 @@ def read(source: str) -> str:
         return f.read()
 
 
-def bake(page: str, build_date: str, limit: int, source: str) -> dict:
+def bake(page: str, build_date: str, limit: int, source: str, platform: str = "") -> dict:
+    """The list for one app ("android", "desktop"), or every entry if platform is empty."""
     p = Changelog()
     p.feed(page)
     entries = []
     for e in p.entries:
         if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", e["date"]) or e["date"] > build_date or not clean(e["title"]):
             continue
+        platforms = [p for p in PLATFORMS if p in e["platforms"]] or platforms_from_tag(clean(e["tag"]))
+        if platform and not OUTS[platform][1] & set(platforms):
+            continue
         entries.append({"date": e["date"], "tag": clean(e["tag"]), "title": clean(e["title"]),
-                        "summary": summarise(e["first"])})
+                        "summary": summarise(e["first"]), "platforms": platforms})
     # The page is newest first; keep its order within a day, sort across days to be safe.
     entries.sort(key=lambda e: e["date"], reverse=True)
     if not entries:
@@ -131,6 +160,7 @@ def bake(page: str, build_date: str, limit: int, source: str) -> dict:
         "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. "
                     "Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
         "schema": 1,
+        "platform": platform or "all",
         "built": build_date,
         "source": URL,
         "entries": entries[:limit],
@@ -144,14 +174,14 @@ def main(argv=None) -> int:
     ap.add_argument("--limit", type=int, default=20)
     args = ap.parse_args(argv)
     source = args.source or (LOCAL if os.path.exists(LOCAL) else URL)
-    doc = bake(read(source), args.date, args.limit, source)
-    text = json.dumps(doc, ensure_ascii=False, indent=2) + "\n"
-    for out in OUTS:
+    page = read(source)
+    for platform, (out, _) in OUTS.items():
+        doc = bake(page, args.date, args.limit, source, platform)
         with open(out, "w", encoding="utf-8") as f:
-            f.write(text)
-    newest = doc["entries"][0]
-    print(f"{len(doc['entries'])} entries from {source} (newest {newest['date']}: {newest['title']}) "
-          f"-> {', '.join(os.path.relpath(o, ROOT) for o in OUTS)}", file=sys.stderr)
+            f.write(json.dumps(doc, ensure_ascii=False, indent=2) + "\n")
+        newest = doc["entries"][0]
+        print(f"{platform}: {len(doc['entries'])} entries from {source} (newest {newest['date']}: "
+              f"{newest['title']}) -> {os.path.relpath(out, ROOT)}", file=sys.stderr)
     return 0
 
 

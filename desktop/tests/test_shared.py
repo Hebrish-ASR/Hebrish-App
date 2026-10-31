@@ -6,6 +6,8 @@ import os
 import re
 import sys
 
+import pytest
+
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "desktop"))
 
@@ -149,22 +151,26 @@ def test_what_users_see_is_plain_language():
 
 
 # -- What's new, baked at build time (2026-10-25) -----------------------------------------------
-UPDATES = os.path.join(ROOT, "shared", "updates.json")
+# One list per app (2026-10-31): Android's in shared/, copied into the APK; the desktop's in its package
+# (the path, without importing the Qt UI: CI's test job has no PySide6).
+UPDATES = {"android": (os.path.join(ROOT, "shared", "updates-android.json"), {"android"}),
+           "desktop": (os.path.join(ROOT, "desktop", "hebrish", "data", "updates.json"), {"desktop", "site"})}
 
 
 def test_updates_are_bundled_by_both_apps():
-    # The desktop copy's path, without importing the Qt UI (CI's test job has no PySide6).
-    desktop_copy = os.path.join(ROOT, "desktop", "hebrish", "data", "updates.json")
-    assert open(desktop_copy).read() == open(UPDATES).read(), \
-        "run scripts/bake_updates.py (it writes both copies)"
-    assert "../shared/updates.json" in open(os.path.join(ANDROID, "build.gradle.kts")).read()
+    assert '"../shared/updates-android.json"' in open(os.path.join(ANDROID, "build.gradle.kts")).read()
     assert "data/updates.json" in open(os.path.join(ROOT, "desktop", "pyproject.toml")).read()
+    assert not os.path.exists(os.path.join(ROOT, "shared", "updates.json")), "retired 2026-10-31: one list per app"
 
 
-def test_updates_are_well_formed():
-    doc = json.load(open(UPDATES))
+@pytest.mark.parametrize("platform", sorted(UPDATES))
+def test_updates_are_well_formed(platform):
+    path, shown = UPDATES[platform]
+    doc = json.load(open(path))
     entries = doc["entries"]
-    assert doc["schema"] == 1 and 0 < len(entries) <= 20
+    assert doc["schema"] == 1 and doc["platform"] == platform and 0 < len(entries) <= 20
+    # Only this app's entries: "updates should only be related to Android on Android".
+    assert all(shown & set(e["platforms"]) for e in entries), [e["title"] for e in entries if not shown & set(e["platforms"])]
     dates = [e["date"] for e in entries]
     assert dates == sorted(dates, reverse=True) and dates[0] <= doc["built"]
     for e in entries:
@@ -185,4 +191,23 @@ def test_bake_reads_the_changelog_markup():
       <ul><li>It can leave "word. Capital" now. <a href="/x">Second</a> sentence. Third one.</li><li>Other.</li></ul></article>"""
     doc = bake_updates.bake(page, "2026-10-25", 20, "test")
     assert doc["entries"] == [{"date": "2026-10-25", "tag": "Models · Site", "title": "A & B",
-                               "summary": 'It can leave "word. Capital" now. Second sentence.'}]
+                               "summary": 'It can leave "word. Capital" now. Second sentence.',
+                               "platforms": ["models", "site"]}]
+
+
+def test_bake_keeps_each_apps_own_entries():
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import bake_updates
+    page = """<article class="log" data-platforms="android desktop models"><time datetime="2026-10-30"></time>
+      <span class="tag">Models</span><h3>Sabich</h3><ul><li>New model.</li></ul></article>
+      <article class="log" data-platforms="desktop"><time datetime="2026-10-30"></time>
+      <span class="tag">Desktop 1.013</span><h3>Desk</h3><ul><li>Desktop.</li></ul></article>
+      <article class="log" data-platforms="models"><time datetime="2026-10-29"></time>
+      <span class="tag">Models</span><h3>TTS</h3><ul><li>Not in the apps.</li></ul></article>
+      <article class="log"><time datetime="2026-10-28"></time>
+      <span class="tag">Android 1.007</span><h3>Phone</h3><ul><li>No attribute: from the tag.</li></ul></article>
+      <article class="log"><time datetime="2026-10-27"></time><h3>Site</h3><ul><li>Untagged.</li></ul></article>"""
+    titles = lambda p: [e["title"] for e in bake_updates.bake(page, "2026-10-31", 20, "test", p)["entries"]]
+    assert titles("android") == ["Sabich", "Phone"]
+    assert titles("desktop") == ["Sabich", "Desk", "Site"]
+    assert titles("") == ["Sabich", "Desk", "TTS", "Phone", "Site"]

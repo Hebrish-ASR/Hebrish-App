@@ -8,9 +8,10 @@ import org.json.JSONObject
 /**
  * What's new (2026-10-25, Daniel: "bake in the short updates according to the build time"): the
  * project's recent changes, newest first, read from the APK's assets/updates.json. That file is
- * shared/updates.json, baked from hebrish.app/changelog by scripts/bake_updates.py before each
- * release and copied in by the gradle copyCatalogue task, so the list is offline and fixed at
- * build time. Reached from home (More), the side menu and About.
+ * shared/updates-android.json, baked from hebrish.app/changelog by scripts/bake_updates.py before
+ * each release and copied in by the gradle copyCatalogue task, so the list is offline and fixed at
+ * build time. It holds only the entries filed under Android (including model updates the app
+ * offers; 2026-10-31). Reached from home (More), the side menu and About.
  */
 class UpdatesActivity : Page() {
     override fun build() {
