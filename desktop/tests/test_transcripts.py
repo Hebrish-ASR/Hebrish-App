@@ -39,4 +39,37 @@ def test_save_with_title(tmp_path):
 
 def test_default_folder():
     assert transcripts.folder("") == transcripts.default_dir()
-    assert transcripts.default_dir().name == "Hebrish transcripts"
+    assert transcripts.default_dir().name == "transcripts"
+    assert transcripts.default_dir().parent.name == "Hebrish"
+
+
+def test_hebrish_folder(tmp_path, monkeypatch):
+    """2026-10-31: transcripts/ and recordings/ live in one Hebrish folder (files_dir), unless set on their own."""
+    from hebrish import config
+    monkeypatch.setattr(config.Path, "home", lambda: tmp_path)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / ".config"))
+    (tmp_path / "Documents").mkdir()
+    cfg = {"files_dir": "", "transcripts_dir": "", "tm_audio_dir": ""}
+    assert config.transcripts_folder(cfg) == tmp_path / "Documents" / "Hebrish" / "transcripts"
+    assert config.recordings_folder(cfg) == tmp_path / "Documents" / "Hebrish" / "recordings"
+    cfg["files_dir"] = str(tmp_path / "hebrish")
+    assert config.transcripts_folder(cfg) == tmp_path / "hebrish" / "transcripts"
+    cfg["tm_audio_dir"] = "/elsewhere"
+    assert config.recordings_folder(cfg) == config.Path("/elsewhere")
+    # localised Documents from user-dirs.dirs
+    (tmp_path / "Dokumente").mkdir()
+    (tmp_path / ".config").mkdir()
+    (tmp_path / ".config" / "user-dirs.dirs").write_text('XDG_DOCUMENTS_DIR="$HOME/Dokumente"\n')
+    assert config.default_files_root() == tmp_path / "Dokumente" / "Hebrish"
+
+
+def test_old_default_folders_are_pinned(tmp_path, monkeypatch):
+    from hebrish import config
+    monkeypatch.setattr(config.Path, "home", lambda: tmp_path)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / ".config"))
+    (tmp_path / "Documents" / "Hebrish recordings").mkdir(parents=True)
+    out = config.upgrade({"mics": {}, "send_chord": "enter", "clear_each_take": False})
+    assert out["tm_audio_dir"] == str(tmp_path / "Documents" / "Hebrish recordings")
+    assert "transcripts_dir" not in out
+    # a config that already has files_dir is left alone
+    assert "tm_audio_dir" not in config.upgrade({"mics": {}, "send_chord": "enter", "files_dir": ""})

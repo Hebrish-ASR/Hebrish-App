@@ -955,8 +955,8 @@ timer; an option to save the audio "in the optimized version for ASR, not the or
   elapsed time at the end of the controls row; no blinking. While the tape records with Voice
   Typing idle, the tray shows the listening icon (paused: idle) and the tooltip says "Transcription
   Mode recording/paused, voice detection on/off" (`Controller.sync_tray_tape`).
-- **Save audio** (`tm_save_audio`, off; folder `tm_audio_dir`, "" = `~/Documents/Hebrish
-  recordings`): after a successful transcription the recording is moved there (`longform.keep`,
+- **Save audio** (`tm_save_audio`, off; folder `config.recordings_folder`, default
+  `<Hebrish folder>/recordings`, see "Transcripts folder, Your data, Backup"): after a successful transcription the recording is moved there (`longform.keep`,
   never overwrites: `-2`, `-3` …) instead of deleted. It is the file the model was fed before
   voice detection: 16 kHz mono 16-bit WAV with the gain applied, not the mic's native rate. If the
   move fails the file stays in `recordings/` and is offered as a leftover.
@@ -1569,10 +1569,27 @@ Daniel, 2026-10-31 (R-2026-10-31-3, R-2026-10-31-4; B-74, B-76):
 
 - **Save** (Dictate and Transcription tabs) writes straight to the transcripts folder, no file
   dialog: `<transcripts_dir>/YYYY/MM/DD/HH-MM-SS.md`, Markdown; `-2`, `-3`, … instead of
-  overwriting (`hebrish/transcripts.py`). Default `~/Documents/Hebrish transcripts` (`~` when there
-  is no Documents), `transcripts_dir` "" = default. With a title (B-75, the title model, not built)
-  the name is `<snake_case_title>_HH-MM-SS.md` and the file starts with `# Title`.
-- **Settings → Your data** lists every place user data lives: history (`DATA_DIR/history.db`,
+  overwriting (`hebrish/transcripts.py`). With a title (B-75, the title model, not built)
+  the name is `<snake_case_title>_HH-MM-SS.md` and the file starts with `# Title`. Under the
+  Transcription tab's text box: "Transcripts are saved to: <folder>" with **Open** and **Change…**
+  (`TranscribePage.sync_saved_to`; the buttons call the window's `_open_transcripts` /
+  `_change_transcripts`, the same as Settings).
+- **The Hebrish folder** (`files_dir`, Daniel 2026-10-31): one folder for the user's own files.
+  Saved transcripts go in `<files_dir>/transcripts`, kept recordings (Save audio) in
+  `<files_dir>/recordings`, unless `transcripts_dir` / `tm_audio_dir` set one on its own
+  (`config.files_root`, `transcripts_folder`, `recordings_folder`; always resolve through these,
+  never read the raw keys). Default `<Documents>/Hebrish`, where Documents is `XDG_DOCUMENTS_DIR`
+  from `~/.config/user-dirs.dirs` (localised names such as `~/Dokumente` work), else `~/Documents`,
+  else `~`. Settings → Your data offers the default, `~/hebrish`, or Other…. Settings, history,
+  dictionary and models stay in `CONFIG_DIR` / `DATA_DIR` (`~/.config/hebrish`,
+  `~/.local/share/hebrish`): that is the XDG convention for app state, so they don't move with
+  it. Ruled out: `~/.app-data/hebrish` (no Linux convention uses it). Before this the defaults were
+  `~/Documents/Hebrish transcripts` and `~/Documents/Hebrish recordings`: `config.upgrade` pins
+  either one into its own key when a config without `files_dir` finds it on disk, so nothing
+  already saved seems to vanish. The Folder… button by Save audio is gone; the recordings folder
+  is set in Settings → Your data (Recordings folder…).
+- **Settings → Your data** lists every place user data lives: the Hebrish folder, saved
+  transcripts and recordings, history (`DATA_DIR/history.db`,
   SQLite, with size and count), the transcripts folder, `dictionary.json`, `config.json`, the
   models folder; refreshed whenever the Settings tab is shown. The History tab's storage card
   names the database as SQLite and points there.

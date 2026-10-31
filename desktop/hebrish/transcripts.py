@@ -15,15 +15,17 @@ import time
 import unicodedata
 from pathlib import Path
 
+from . import config
+
 SLUG_MAX = 60
 
 
 def default_dir() -> Path:
-    docs = Path.home() / "Documents"
-    return (docs if docs.is_dir() else Path.home()) / "Hebrish transcripts"
+    return config.default_files_root() / "transcripts"
 
 
 def folder(setting: str) -> Path:
+    """`setting` is the resolved folder (config.transcripts_folder(cfg)) or a bare transcripts_dir."""
     return Path(setting).expanduser() if setting else default_dir()
 
 

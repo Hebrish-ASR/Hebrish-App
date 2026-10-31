@@ -30,7 +30,7 @@ from pathlib import Path
 import numpy as np
 import sounddevice as sd
 
-from . import audio, mics
+from . import audio, config, mics
 from .config import DATA_DIR
 
 RECORDINGS_DIR = DATA_DIR / "recordings"
@@ -217,8 +217,8 @@ def free_seconds() -> float:
 
 
 def default_keep_dir() -> Path:
-    docs = Path.home() / "Documents"
-    return (docs if docs.is_dir() else Path.home()) / "Hebrish recordings"
+    """Without a cfg: <Hebrish folder>/recordings. The app passes config.recordings_folder(cfg)."""
+    return config.default_files_root() / "recordings"
 
 
 def keep(path: Path, folder: str) -> Path:

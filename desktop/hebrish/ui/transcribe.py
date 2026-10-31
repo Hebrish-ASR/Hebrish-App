@@ -23,7 +23,8 @@ transcribed (cleanup.clean), and the status line says so.
 
 Long sessions (2026-10-29): a small Recording light and timer by the controls, Voice detection for
 this tab (`tm_vad`, on by default, also in the tray menu), Save audio (`tm_save_audio`: the recording
-is moved to a folder instead of deleted), and the recorder's disk and stalled-stream checks in
+is moved to <Hebrish folder>/recordings instead of deleted; the folder is set in Settings),
+"Transcripts are saved to: <folder>" with Open and Change… under the text box (2026-10-31), and the recorder's disk and stalled-stream checks in
 `_tick` (longform.py)."""
 
 import threading
@@ -36,7 +37,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, 
                                QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import audio, cleanup, dictionary, disfluency, longform, mics, paragraphs, transcripts
+from .. import audio, cleanup, config, dictionary, disfluency, longform, mics, paragraphs, transcripts
 from .icons import line_icon
 from .mics import fill_combo
 from .meter import LevelMeter, verdict
@@ -272,9 +273,6 @@ class TranscribePage(QWidget):
         self.chk_keep.setChecked(bool(self.cfg["tm_save_audio"]))
         self.chk_keep.toggled.connect(lambda on: (self.cfg.set("tm_save_audio", on), self._keep_tip()))
         row.addWidget(self.chk_keep)
-        self.btn_keep_dir = QToolButton(text="Folder…")
-        self.btn_keep_dir.clicked.connect(self._pick_keep_dir)
-        row.addWidget(self.btn_keep_dir)
         row.addStretch(1)
         b.addLayout(row)
         self._keep_tip()
@@ -348,6 +346,23 @@ class TranscribePage(QWidget):
         self.words = muted()
         row.addWidget(self.words)
         b.addLayout(row)
+        # Where Save writes (Daniel, 2026-10-31): the folder, with Open and Change…; the same
+        # setting as Settings → Your data.
+        row = QHBoxLayout()
+        self.saved_to = muted()
+        self.saved_to.setTextFormat(Qt.PlainText)
+        self.saved_to.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        row.addWidget(self.saved_to, 1)
+        self.btn_open_saved = QPushButton(line_icon("folder"), "Open")
+        self.btn_open_saved.setToolTip("Open the transcripts folder")
+        self.btn_open_saved.clicked.connect(lambda: self.ctl.win._open_transcripts())
+        row.addWidget(self.btn_open_saved)
+        self.btn_change_saved = QPushButton("Change…")
+        self.btn_change_saved.setToolTip("Save transcripts somewhere else (also in Settings → Your data)")
+        self.btn_change_saved.clicked.connect(lambda: self.ctl.win._change_transcripts())
+        row.addWidget(self.btn_change_saved)
+        b.addLayout(row)
+        self.sync_saved_to()
         self.text.textChanged.connect(self._count)
         lay.addWidget(box, 1)
 
@@ -386,20 +401,18 @@ class TranscribePage(QWidget):
         self.ctl.sync_tray_vad()
 
     def _keep_dir(self) -> Path:
-        return Path(self.cfg["tm_audio_dir"]) if self.cfg["tm_audio_dir"] else longform.default_keep_dir()
+        return config.recordings_folder(self.cfg)
+
+    def sync_saved_to(self):
+        """The 'Transcripts are saved to' line; the window calls it when a folder setting changes."""
+        self.saved_to.setText(f"Transcripts are saved to: {config.transcripts_folder(self.cfg)}")
+        self._keep_tip()
 
     def _keep_tip(self):
         tip = (f"Keep each recording once it is transcribed, in {self._keep_dir()}. It is saved as "
                "the model hears it: 16 kHz mono WAV with your gain applied (about 170 MB for 90 "
                "minutes). Off: the audio is deleted once the transcript is in History.")
-        self.chk_keep.setToolTip(tip)
-        self.btn_keep_dir.setToolTip(f"Where saved audio goes: {self._keep_dir()}")
-
-    def _pick_keep_dir(self):
-        d = QFileDialog.getExistingDirectory(self, "Save recordings in", str(self._keep_dir()))
-        if d:
-            self.cfg.set("tm_audio_dir", d)
-            self._keep_tip()
+        self.chk_keep.setToolTip(tip + " The folder is set in Settings → Your data.")
 
     # -- levels panel (B-45) ----------------------------------------------------------
     def _set_levels(self, state: str):
@@ -826,7 +839,7 @@ class TranscribePage(QWidget):
             source.unlink(missing_ok=True)
             return ""
         try:
-            return f" Audio saved: {longform.keep(source, self.cfg['tm_audio_dir'])}"
+            return f" Audio saved: {longform.keep(source, str(config.recordings_folder(self.cfg)))}"
         except OSError as e:                 # left where it is: offered again as a leftover
             return f" Couldn't save the audio ({e}); it is still in {source.parent}."
 
@@ -994,9 +1007,9 @@ class TranscribePage(QWidget):
         self.ctl.win._copy(self.text.toPlainText(), "Transcript copied.")
 
     def _save(self):
-        """B-74: straight to the transcripts folder (Settings → Transcripts), as Markdown."""
+        """B-74: straight to the transcripts folder (shown under the box), as Markdown."""
         try:
-            path = transcripts.save(self.text.toPlainText(), self.cfg["transcripts_dir"])
+            path = transcripts.save(self.text.toPlainText(), str(config.transcripts_folder(self.cfg)))
         except OSError as e:
             QMessageBox.warning(self, "Couldn't save", f"Couldn't save the transcript:\n{e}")
             return

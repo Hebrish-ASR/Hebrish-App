@@ -118,9 +118,11 @@ DEFAULTS = {
     "tm_vad": True,               # Voice detection for this tab (2026-10-29: on by default here,
                                   # independent of Voice Typing's `vad`; also in the tray menu)
     "tm_save_audio": False,       # keep each transcribed recording (16 kHz mono WAV) in tm_audio_dir
-    "tm_audio_dir": "",           # "" = ~/Documents/Hebrish recordings (longform.default_keep_dir)
+    "tm_audio_dir": "",           # "" = <files_dir>/recordings (recordings_folder)
     "transcripts_dir": "",        # Save writes here (transcripts.py, B-74): <dir>/YYYY/MM/DD/HH-MM-SS.md;
-                                  # "" = ~/Documents/Hebrish transcripts
+                                  # "" = <files_dir>/transcripts (transcripts_folder)
+    "files_dir": "",              # the Hebrish folder for the user's own files (2026-10-31): transcripts/
+                                  # and recordings/ go in it unless set on their own; "" = <Documents>/Hebrish
     "backup_format": "tar.gz",    # Settings → Your data → Back up (backup.py, B-76): tar.gz | zip
     "backup_dir": "",             # where the last backup was saved; "" = ~/Documents
     "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad)
@@ -273,7 +275,54 @@ def upgrade(stored: dict) -> dict:
     # Normal 5 -> 6, Relaxed 8 -> 10. A config without `mics` (added with it) predates that.
     if stored and "mics" not in stored and stored.get("live_insert_s") in (3, 5, 8):
         stored["live_insert_s"] = {3: 4, 5: 6, 8: 10}[stored["live_insert_s"]]
+    # 2026-10-31 (Daniel): saved transcripts and recordings moved under one Hebrish folder
+    # (<Documents>/Hebrish/transcripts, /recordings). A config without `files_dir` predates that:
+    # if the old default folders exist, pin them so nothing already saved seems to vanish.
+    if stored and "files_dir" not in stored:
+        for key, old in (("transcripts_dir", "Hebrish transcripts"), ("tm_audio_dir", "Hebrish recordings")):
+            for parent in {documents_dir(), Path.home() / "Documents", Path.home()}:
+                if not stored.get(key) and (parent / old).is_dir():
+                    stored[key] = str(parent / old)
     return stored
+
+
+def documents_dir() -> Path:
+    """The user's Documents folder: XDG_DOCUMENTS_DIR from ~/.config/user-dirs.dirs on Linux (it is
+    localised, e.g. ~/Dokumente), else ~/Documents, else home."""
+    home = Path.home()
+    if sys.platform != "win32":
+        try:
+            dirs = (_env("XDG_CONFIG_HOME", ".config") / "user-dirs.dirs").read_text(encoding="utf-8")
+            for line in dirs.splitlines():
+                if line.startswith("XDG_DOCUMENTS_DIR="):
+                    p = Path(line.split("=", 1)[1].strip().strip('"').replace("$HOME", str(home)))
+                    if p.is_dir() and p != home:
+                        return p
+        except OSError:
+            pass
+    docs = home / "Documents"
+    return docs if docs.is_dir() else home
+
+
+def default_files_root() -> Path:
+    return documents_dir() / "Hebrish"
+
+
+def files_root(cfg=None) -> Path:
+    """The Hebrish folder for the user's own files (saved transcripts, kept recordings). Settings
+    and models stay in CONFIG_DIR / DATA_DIR (XDG), which is where Linux apps keep those."""
+    v = cfg["files_dir"] if cfg is not None else ""
+    return Path(v).expanduser() if v else default_files_root()
+
+
+def transcripts_folder(cfg=None) -> Path:
+    v = cfg["transcripts_dir"] if cfg is not None else ""
+    return Path(v).expanduser() if v else files_root(cfg) / "transcripts"
+
+
+def recordings_folder(cfg=None) -> Path:
+    v = cfg["tm_audio_dir"] if cfg is not None else ""
+    return Path(v).expanduser() if v else files_root(cfg) / "recordings"
 
 
 def threads(cfg) -> int:
@@ -324,7 +373,8 @@ class Config(dict):
         old = bool(stored) and ("mode" in stored or "keep_old_versions" in stored
                                 or "feedback" not in stored or "send_chord" not in stored
                                 or "clear_each_take" not in stored or "insert" in stored
-                                or "tm_show_meter" in stored or "mics" not in stored)
+                                or "tm_show_meter" in stored or "mics" not in stored
+                                or "files_dir" not in stored)
         self.update({k: v for k, v in upgrade(stored).items() if k in DEFAULTS})
         if old or not CONFIG_PATH.exists():
             self.save()

@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, Q
                                QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QTimeEdit,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import __version__, audio, autostart, backup, cleanup, dictionary, model_store, paragraphs, transcripts, vad
+from .. import __version__, audio, autostart, backup, cleanup, config, dictionary, model_store, paragraphs, transcripts, vad
 from ..config import APP_NAME, CONFIG_PATH, DATA_DIR, MODELS_DIR, STATE_PATH, TAGLINE, load_json, threads
 from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
@@ -564,9 +564,9 @@ class MainWindow(QMainWindow):
             w.setEnabled(bool(t.strip()))
 
     def _save_text(self):
-        """B-74: straight to the transcripts folder (Settings → Transcripts), as Markdown."""
+        """B-74: straight to the transcripts folder (Settings → Your data), as Markdown."""
         try:
-            path = transcripts.save(self.text.toPlainText(), self.cfg["transcripts_dir"])
+            path = transcripts.save(self.text.toPlainText(), str(config.transcripts_folder(self.cfg)))
         except OSError as e:
             self.banner(f"Couldn't save the text: {e}")
             return
@@ -1708,9 +1708,17 @@ class MainWindow(QMainWindow):
         b.addWidget(muted("Everything Hebrish keeps about you is in these places on this computer. "
                           "Nothing leaves it."))
         form = QFormLayout()
+        # The Hebrish folder (2026-10-31): saved transcripts and kept recordings go in it, unless one
+        # of them is set on its own. Settings, history and models stay in the XDG config/data dirs.
+        self.files_root = QComboBox()
+        self.files_root.setToolTip("Where your own files go: transcripts/ and recordings/ inside it. "
+                                   "Settings, history and models stay in the app's data folders.")
+        self.files_root.activated.connect(self._on_files_root)
+        form.addRow(QLabel("Hebrish folder"), self.files_root)
         self.data_labels = {}
-        for key, title in (("history", "History"), ("transcripts", "Saved transcripts"),
-                           ("dictionary", "Dictionary"), ("config", "Settings"), ("models", "Models")):
+        for key, title in (("transcripts", "Saved transcripts"), ("recordings", "Saved recordings"),
+                           ("history", "History"), ("dictionary", "Dictionary"), ("config", "Settings"),
+                           ("models", "Models")):
             lbl = muted()
             lbl.setTextFormat(Qt.PlainText)      # "<year>" is not a tag
             lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -1720,13 +1728,16 @@ class MainWindow(QMainWindow):
         row = QHBoxLayout()
         change = QPushButton(line_icon("folder"), "Transcripts folder…")
         change.clicked.connect(self._change_transcripts)
-        self.btn_transcripts_default = QPushButton("Use the default folder")
-        self.btn_transcripts_default.clicked.connect(lambda: self._set_transcripts(""))
-        opener = QPushButton("Open transcripts")
-        opener.clicked.connect(self._open_transcripts)
+        rec = QPushButton(line_icon("folder"), "Recordings folder…")
+        rec.clicked.connect(self._change_recordings)
+        self.btn_transcripts_default = QPushButton("Use the Hebrish folder")
+        self.btn_transcripts_default.setToolTip("Put transcripts and recordings back inside the Hebrish folder")
+        self.btn_transcripts_default.clicked.connect(self._folders_default)
+        opener = QPushButton("Open Hebrish folder")
+        opener.clicked.connect(lambda: self._open_folder(config.files_root(self.cfg)))
         data = QPushButton("Open data folder")
         data.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(DATA_DIR))))
-        for w in (change, self.btn_transcripts_default, opener, data):
+        for w in (change, rec, self.btn_transcripts_default, opener, data):
             row.addWidget(w)
         row.addStretch(1)
         b.addLayout(row)
@@ -1776,7 +1787,8 @@ class MainWindow(QMainWindow):
     # -- transcripts folder (B-74) -------------------------------------------------------
     def _sync_transcripts(self):
         """Settings → Your data (B-76): where each kind of data lives, with sizes."""
-        base = transcripts.folder(self.cfg["transcripts_dir"])
+        base = config.transcripts_folder(self.cfg)
+        self._fill_files_root()
         hist = self.ctl.history
         if hist is not None:
             n = hist.count()
@@ -1785,17 +1797,61 @@ class MainWindow(QMainWindow):
             h = f"{DATA_DIR / 'history.db'}  (history is off)"
         self.data_labels["history"].setText(h)
         self.data_labels["transcripts"].setText(f"{base}/<year>/<month>/<day>/<time>.md  (Save writes here)")
+        self.data_labels["recordings"].setText(f"{config.recordings_folder(self.cfg)}  (with Save audio on)")
         self.data_labels["dictionary"].setText(str(dictionary.PATH))
         self.data_labels["config"].setText(str(CONFIG_PATH))
         self.data_labels["models"].setText(str(model_store.ROOT))
-        self.btn_transcripts_default.setEnabled(bool(self.cfg["transcripts_dir"]))
+        self.btn_transcripts_default.setEnabled(bool(self.cfg["transcripts_dir"] or self.cfg["tm_audio_dir"]))
+        if hasattr(self, "transcribe"):
+            self.transcribe.sync_saved_to()
+
+    def _fill_files_root(self):
+        """Choices: <Documents>/Hebrish (default), ~/hebrish, the current custom folder, Other…"""
+        cur = self.cfg["files_dir"]
+        home = str(Path.home() / "hebrish")
+        items = [(f"{config.default_files_root()}  (default)", ""), (home, home)]
+        if cur and Path(cur).expanduser() not in (Path(home), config.default_files_root()):
+            items.append((cur, cur))
+        items.append(("Other…", None))
+        self.files_root.blockSignals(True)
+        self.files_root.clear()
+        for label, val in items:
+            self.files_root.addItem(label, val)
+        sel = 0 if not cur or Path(cur).expanduser() == config.default_files_root() else \
+            next(i for i, (_, v) in enumerate(items) if v is not None and v and Path(v) == Path(cur).expanduser())
+        self.files_root.setCurrentIndex(sel)
+        self.files_root.blockSignals(False)
+
+    def _on_files_root(self, i):
+        val = self.files_root.itemData(i)
+        if val is None:
+            start = config.files_root(self.cfg)
+            val = QFileDialog.getExistingDirectory(self, "Hebrish folder", str(start if start.exists() else Path.home()))
+            if not val:
+                self._fill_files_root()
+                return
+        self.cfg.set("files_dir", val)
+        self._sync_transcripts()
+
+    def _folders_default(self):
+        self.cfg.set("transcripts_dir", "")
+        self.cfg.set("tm_audio_dir", "")
+        self._sync_transcripts()
+
+    def _change_recordings(self):
+        base = config.recordings_folder(self.cfg)
+        path = QFileDialog.getExistingDirectory(self, "Folder for saved recordings",
+                                                str(base if base.exists() else Path.home()))
+        if path:
+            self.cfg.set("tm_audio_dir", path)
+            self._sync_transcripts()
 
     def back_up(self):
         """B-76: pick where, then write the archive on a worker thread."""
         fmt = self.backup_format.currentText()
         hist_db = self.ctl.history.path if self.ctl.history is not None else DATA_DIR / "history.db"
         name = backup.file_name(fmt, backup.count(hist_db))
-        start = Path(self.cfg["backup_dir"]) if self.cfg["backup_dir"] else transcripts.default_dir().parent
+        start = Path(self.cfg["backup_dir"]) if self.cfg["backup_dir"] else config.documents_dir()
         filt = "Gzipped tar (*.tar.gz)" if fmt == "tar.gz" else "Zip (*.zip)"
         path, _ = QFileDialog.getSaveFileName(self, "Back up Hebrish data", str(start / name), filt)
         if not path:
@@ -1805,7 +1861,7 @@ class MainWindow(QMainWindow):
         self.cfg.set("backup_dir", str(Path(path).parent))
         self.btn_backup.setEnabled(False)
         self.backup_status.setText("Backing up…")
-        tdir = transcripts.folder(self.cfg["transcripts_dir"])
+        tdir = config.transcripts_folder(self.cfg)
 
         def go():
             try:
@@ -1829,7 +1885,7 @@ class MainWindow(QMainWindow):
         self.status(f"Backed up to {path}")
 
     def _change_transcripts(self):
-        base = transcripts.folder(self.cfg["transcripts_dir"])
+        base = config.transcripts_folder(self.cfg)
         start = str(base if base.exists() else Path.home())
         path = QFileDialog.getExistingDirectory(self, "Folder for saved transcripts", start)
         if path:
@@ -1840,7 +1896,9 @@ class MainWindow(QMainWindow):
         self._sync_transcripts()
 
     def _open_transcripts(self):
-        base = transcripts.folder(self.cfg["transcripts_dir"])
+        self._open_folder(config.transcripts_folder(self.cfg))
+
+    def _open_folder(self, base: Path):
         try:
             base.mkdir(parents=True, exist_ok=True)
         except OSError as e:
