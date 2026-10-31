@@ -179,7 +179,14 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         Prefs.listen(this, this)
         addBubble()
         remote = Remote.register(this) { main.post { onRemote(it) } }
-        Transcriber.preload(this)
+        // No preload here (1.010): this runs at boot, and the model (~700 MB) then sat unused.
+        // It loads when a text field gets focus or a take starts.
+    }
+
+    /** Memory pressure (1.010): free the model unless a take is open or it was just used. */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        Transcriber.onTrimMemory(level, takeOpen = open)
     }
 
     override fun onDestroy() {
@@ -480,6 +487,10 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
                 else -> LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             }
             if (c !== mic) if (along) lp.setMargins(0, dp(2), 0, dp(2)) else lp.setMargins(dp(2), 0, dp(2), 0)
+            // A child still attached elsewhere crashed 0.6.0 on drag ("The specified child already has a
+            // parent", FloatingMicService.place via savePosition; Hannah's Pixel 11, 2026-10-29..31).
+            // removeAllViews() above should detach every child; this guard makes sure of it (1.010).
+            (c.parent as? android.view.ViewGroup)?.removeView(c)
             r.addView(c, lp)
         }
         timer.textSize = 14f * scale

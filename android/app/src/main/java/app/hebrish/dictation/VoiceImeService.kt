@@ -126,6 +126,12 @@ class VoiceImeService : InputMethodService() {
         getSystemService(AudioManager::class.java).registerAudioDeviceCallback(devices, main)
     }
 
+    /** Memory pressure (1.010): free the model unless a take is open or it was just used. */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        Transcriber.onTrimMemory(level, takeOpen = state != State.IDLE)
+    }
+
     override fun onDestroy() {
         getSystemService(AudioManager::class.java).unregisterAudioDeviceCallback(devices)
         // onFinishInputView normally drops an open take first; if it didn't, don't leave the mic
