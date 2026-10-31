@@ -114,6 +114,10 @@ def test_appimage(tmp_path):
     assert au.appimage_path(env) == env["APPIMAGE"]
     assert au.appimage_path({"APPIMAGE": "x"}) == ""
     assert au.download_page("appimage") == "https://hebrish.app/download#appimage"
+    # stable channel: the AppImage reads files.appimage, never the beta .deb's entry
+    assert au.platform_key("linux", "appimage") == "appimage"
+    assert au.platform_key("linux", "apt") == "ubuntu"
+    assert au.platform_key("win32") == "windows"
 
 
 def test_this_checkout_is_source():

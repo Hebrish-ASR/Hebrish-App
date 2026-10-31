@@ -20,6 +20,7 @@ import time
 
 import evdev
 from evdev import UInput, ecodes
+from evdev.uinput import UInputError
 
 from .hotkey import HotkeyMachine
 
@@ -59,7 +60,7 @@ class EvdevHotkeys(HotkeyMachine):
                 try:
                     self._pass = self._pass or UInput(
                         {ecodes.EV_KEY: [c for c in ecodes.KEY if c < ecodes.BTN_MISC]}, name=PASSTHROUGH_NAME)
-                except OSError:
+                except (OSError, UInputError):              # UInputError: no /dev/uinput at all
                     return super().hold_send(False)       # no uinput: guard falls back to late words
                 for path, dev in self._devices.items():
                     keys = dev.capabilities().get(ecodes.EV_KEY, [])

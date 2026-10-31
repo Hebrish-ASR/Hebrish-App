@@ -1,13 +1,18 @@
-# Tag desktop-vM.NNN -> tests, then the Ubuntu 26.04 .deb (built in an ubuntu:26.04 container,
-# so it is pinned to that release's python3), installed and self-tested in a clean container,
-# attested and attached to the GitHub release. The default release is Android (android.yml) and
-# this .deb (Daniel, 2026-10-31). Beside it, the AppImage for other distributions (Daniel,
-# 2026-10-31): built in ubuntu:22.04 (glibc 2.35, so it runs on 22.04+, Debian 12+, Fedora 36+),
-# self-tested in a clean Fedora container, attested and attached to the same release.
-# Windows is built only on request (Daniel, 2026-10-31: "periodically whenever I request it"):
-# Actions -> desktop -> Run workflow with `windows` ticked and `tag` set to an existing
-# desktop-vM.NNN release; the zip is attached to that release.
-#   gh workflow run desktop.yml -R Hebrish-ASR/Hebrish-App -f windows=true -f tag=desktop-v1.014
+# Two channels (Daniel, 2026-10-31, R-2026-10-31-9):
+#
+# Beta, the default. Tag desktop-vM.NNN (scripts/release-tag.sh) -> tests, then the Ubuntu 26.04
+#   .deb (built in an ubuntu:26.04 container, pinned to that release's python3), installed and
+#   self-tested in a clean container, attested, attached to a release titled "(beta)". The APT
+#   repo and files.ubuntu in latest.json follow beta. (Android's APK, android.yml, is the other
+#   half of beta and is unchanged.)
+#
+# Stable: an existing beta promoted, so one version line. Actions -> desktop -> Run workflow with
+#   `stable` ticked and `tag` = that desktop-vM.NNN:
+#     gh workflow run desktop.yml -R Hebrish-ASR/Hebrish-App -f stable=true -f tag=desktop-v1.017
+#   Builds from that tag the AppImage (ubuntu:22.04, glibc 2.35; self-tested in fedora:43) and
+#   the Windows zip (PyInstaller, frozen --selftest), attaches both to the same release and
+#   retitles it "(stable)". files.appimage and files.windows in latest.json (and the in-app
+#   update check of those builds) follow stable. Without `tag`: dev artifacts only.
 name: desktop
 on:
   push:
@@ -16,18 +21,18 @@ on:
     paths: ["desktop/**"]
   workflow_dispatch:
     inputs:
-      windows:
-        description: "Build the Windows zip"
+      stable:
+        description: "Stable: build the AppImage and the Windows zip (and, with tag, promote that release)"
         type: boolean
         default: false
       tag:
-        description: "Release tag to build from and attach to (desktop-vM.NNN); empty = a dev build, no release"
+        description: "Beta release to promote (desktop-vM.NNN); empty = a dev build, no release"
         type: string
         default: ""
 
 permissions:
   contents: write
-  # Build provenance for the .deb and the Windows zip
+  # Build provenance for the .deb, the AppImage and the Windows zip
   # (gh attestation verify <file> -R Hebrish-ASR/Hebrish-App).
   id-token: write
   attestations: write
@@ -85,7 +90,7 @@ jobs:
 
   appimage:
     needs: test-linux
-    if: github.event_name != 'workflow_dispatch' || inputs.tag == ''
+    if: github.event_name == 'workflow_dispatch' && inputs.stable
     runs-on: ubuntu-latest
     container: ubuntu:22.04      # the oldest glibc the AppImage supports: desktop/build-appimage.sh
     defaults: { run: { working-directory: desktop } }
@@ -95,8 +100,9 @@ jobs:
         run: |
           apt-get update -q
           DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
-            ca-certificates curl file binutils patchelf desktop-file-utils xclip wl-clipboard libportaudio2 git
+            ca-certificates curl file binutils patchelf desktop-file-utils zsync xclip wl-clipboard libportaudio2 git
       - uses: actions/checkout@v4
+        with: { ref: "${{ inputs.tag || github.ref }}" }
       - uses: astral-sh/setup-uv@v6
       - name: Build
         run: ./build-appimage.sh
@@ -104,8 +110,8 @@ jobs:
         run: echo "APPIMAGE_FILE=$(ls dist/Hebrish-*-x86_64.AppImage)" >> "$GITHUB_ENV"
       - uses: actions/attest-build-provenance@v2
         with: { subject-path: "desktop/${{ env.APPIMAGE_FILE }}" }
-      - uses: actions/upload-artifact@v4
-        with: { name: appimage, path: "desktop/${{ env.APPIMAGE_FILE }}" }
+      - uses: actions/upload-artifact@v4       # + the .zsync for the CDN (build-appimage.sh, step 7)
+        with: { name: appimage, path: "desktop/dist/Hebrish-*" }
 
   appimage-test:
     needs: appimage
@@ -125,28 +131,32 @@ jobs:
           PULSE_SERVER=unix:/var/run/pulse/native QT_QPA_PLATFORM=offscreen \
             dist/*.AppImage --appimage-extract-and-run --selftest | tee selftest.txt
           grep -q "install: appimage" selftest.txt
+      - name: AppStream and desktop file (what AppImageHub checks)
+        run: |
+          dnf install -y -q appstream desktop-file-utils
+          cd "$(mktemp -d)" && "$GITHUB_WORKSPACE"/dist/*.AppImage --appimage-extract >/dev/null
+          appstreamcli validate --no-net squashfs-root/usr/share/metainfo/app.hebrish.Dictation.metainfo.xml
+          desktop-file-validate squashfs-root/hebrish.desktop
 
   release:
-    needs: [deb, appimage-test]
+    needs: deb
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { name: deb, path: dist }
-      - uses: actions/download-artifact@v4
-        with: { name: appimage, path: dist }
       - name: Release
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
-            gh release create "$GITHUB_REF_NAME" --title "Hebrish for desktop ${GITHUB_REF_NAME#desktop-}" \
+            gh release create "$GITHUB_REF_NAME" --title "Hebrish for desktop ${GITHUB_REF_NAME#desktop-} (beta)" \
               --notes-file .github/desktop-release-notes.md
-          gh release upload "$GITHUB_REF_NAME" dist/*.deb dist/*.AppImage --clobber
+          gh release upload "$GITHUB_REF_NAME" dist/*.deb --clobber
 
   windows:
     needs: test-linux
-    if: github.event_name == 'workflow_dispatch' && inputs.windows
+    if: github.event_name == 'workflow_dispatch' && inputs.stable
     runs-on: windows-latest
     defaults: { run: { working-directory: desktop, shell: pwsh } }
     steps:
@@ -190,12 +200,22 @@ jobs:
         with: { subject-path: "desktop/${{ env.ZIP }}" }
       - uses: actions/upload-artifact@v4
         with: { name: windows-build, path: "desktop/${{ env.ZIP }}" }
-      - name: Attach to the release
-        if: inputs.tag != ''
+
+  promote:
+    # Stable: attach the AppImage and the zip to the beta's release and retitle it. Only after
+    # both built and passed their self-tests, so a half-promoted release can't happen.
+    needs: [appimage-test, windows]
+    if: github.event_name == 'workflow_dispatch' && inputs.stable && inputs.tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: appimage, path: dist }
+      - uses: actions/download-artifact@v4
+        with: { name: windows-build, path: dist }
+      - name: Promote
         env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ inputs.tag }}" }
         run: |
-          gh release view $env:TAG 2>$null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create $env:TAG --title "Hebrish for desktop $($env:TAG.Replace('desktop-',''))" --notes-file ../.github/desktop-release-notes.md
-          }
-          gh release upload $env:TAG $env:ZIP --clobber
+          gh release view "$TAG" >/dev/null   # a beta release must exist: stable promotes, never creates
+          gh release upload "$TAG" dist/*.AppImage dist/*.zip --clobber
+          gh release edit "$TAG" --title "Hebrish for desktop ${TAG#desktop-} (stable)"

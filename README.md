@@ -125,12 +125,15 @@ apps, and every GitHub release before it was deleted that day (the `*-v0.*` tags
 Before tagging, add the release's entry to hebrish.app's changelog: `scripts/release-tag.sh` runs
 `scripts/bake_updates.py`, which bakes the changelog up to that day into the apps' What's new list
 (one per app: `shared/updates-android.json` and `desktop/hebrish/data/updates.json`, the last 20 entries for that platform, offline) and commits it with the version.
-Releases: tag `android-vM.NNN` builds the signed APK in CI. Tag `desktop-vM.NNN` builds the
-Ubuntu 26.04 .deb in CI (an `ubuntu:26.04` container), installs and self-tests it, and attaches it
-to the release, with the AppImage for other distributions (built in `ubuntu:22.04`, self-tested
-in `fedora:43`; since 2026-10-31, first in 1.017). The default release is Android and the .deb (Daniel, 2026-10-31); the Windows zip
-is built only on request: `gh workflow run desktop.yml -R Hebrish-ASR/Hebrish-App -f windows=true
--f tag=desktop-vM.NNN` attaches it to that release. Then overwrite the one stable file per platform on the Hebrish CDN
+Release channels (Daniel, 2026-10-31): **beta** is the default release, the Android APK and
+the Ubuntu .deb; **stable** is a beta promoted to every platform, adding the AppImage and the
+Windows zip. Tag `android-vM.NNN` builds the signed APK in CI. Tag `desktop-vM.NNN` (beta)
+builds the Ubuntu 26.04 .deb in CI (an `ubuntu:26.04` container), installs and self-tests it, and
+attaches it to a release titled "(beta)". Promoting it to stable: `gh workflow run desktop.yml -R
+Hebrish-ASR/Hebrish-App -f stable=true -f tag=desktop-vM.NNN` builds the AppImage (`ubuntu:22.04`,
+self-tested in `fedora:43`) and the Windows zip from that tag, attaches both and retitles the
+release "(stable)". The .deb (APT, `files.ubuntu`) follows beta; the AppImage and the zip
+(`files.appimage`, `files.windows`) follow stable. Then overwrite the one stable file per platform on the Hebrish CDN
 (`https://cdn.hebrish.app/apps/{android,ubuntu,linux,windows}/`: `Hebrish-latest.apk`,
 `hebrish-latest-amd64.deb`, `Hebrish-latest-x86_64.AppImage` (latest.json key `appimage`),
 `Hebrish-latest-windows-x64.zip`; since 2026-10-21, old versions

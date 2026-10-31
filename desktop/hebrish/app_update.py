@@ -15,7 +15,9 @@ Model updates are model_store's job; this is the app itself. No Qt import, so it
               the download page; the new .deb brings the source with it.
    windows    the frozen PyInstaller build: link to the download page.
    appimage   the AppImage (build-appimage.sh; the runtime sets $APPIMAGE and $APPDIR, 2026-10-31):
-              link to the download page; the version is files.ubuntu's (same tag, same CI run).
+              link to the download page.
+   Channels (2026-10-31): the .deb follows beta (files.ubuntu, the APT repo); the AppImage and
+   the Windows zip follow stable (files.appimage, files.windows), so each reads only its own key.
    source     a checkout or venv: say a new version exists, nothing else.
 """
 
@@ -88,9 +90,12 @@ def is_newer(latest: str, current: str = __version__) -> bool:
         return False
 
 
-def platform_key(platform: str = sys.platform) -> str:
-    """The latest.json `files` key for this OS."""
-    return "windows" if platform == "win32" else "ubuntu"
+def platform_key(platform: str = sys.platform, method: str | None = None) -> str:
+    """The latest.json `files` key for this copy: windows, appimage (both stable) or ubuntu (beta)."""
+    if platform == "win32":
+        return "windows"
+    method = install_method(platform) if method is None else method
+    return "appimage" if method == "appimage" else "ubuntu"
 
 
 def parse_manifest(doc: dict, key: str | None = None) -> Release:

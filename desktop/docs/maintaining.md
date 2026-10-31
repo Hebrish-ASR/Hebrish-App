@@ -296,16 +296,22 @@ each part works there:
    `hebrish --selftest` (offscreen, against a system PulseAudio: PortAudio won't initialise
    without a sound server), attests it, and creates the release with the .deb attached.
    Up to 1.013 the .deb was built by hand on the maintainer's machine; 1.013's never was, so 1.013
-   reached only Windows (found 2026-10-31). From 1.017 the same tag also builds the AppImage
-   (jobs `appimage` and `appimage-test`, see "AppImage" below); the release needs both. Publish it
-   with the .deb: overwrite `apps/linux/Hebrish-latest-x86_64.AppImage` on the CDN and add
-   `files.appimage` to `downloads/latest.json` (url, name, platform "Linux x86_64, AppImage",
-   size, sha256, version); `/get/appimage` then works with no site change (api/get.mjs reads any key).
-3. **Windows only on request** (Daniel, 2026-10-31): `gh workflow run desktop.yml -R
-   Hebrish-ASR/Hebrish-App -f windows=true -f tag=desktop-v<ver>` runs the tests, builds the zip
-   with PyInstaller from that tag, runs the frozen exe's `--selftest` and attaches the zip to the
-   release. Without `tag` it is a dev build (artifact only). `latest.json` keeps naming the last
-   Windows zip until one is built.
+   reached only Windows (found 2026-10-31).
+   That tag is a **beta** release (title "(beta)"; the default, with Android's APK).
+3. **Stable: promote a beta to every platform** (Daniel, 2026-10-31, R-2026-10-31-9; replaces
+   "Windows only on request" and its `windows` input): `gh workflow run desktop.yml -R
+   Hebrish-ASR/Hebrish-App -f stable=true -f tag=desktop-v<ver>` runs the tests at that tag, builds
+   the AppImage (jobs `appimage`, `appimage-test`; see "AppImage") and the Windows zip
+   (PyInstaller, the frozen exe's `--selftest`), and only when both pass (job `promote`) attaches
+   them to the existing release and retitles it "(stable)". It never creates a release. Without
+   `tag` it is a dev build (artifacts only). Then publish on the CDN: overwrite
+   `apps/linux/Hebrish-latest-x86_64.AppImage` **and** `apps/linux/Hebrish-latest-x86_64.AppImage.zsync`
+   (both in the `appimage` artifact; the AppImage's update information names that .zsync) and
+   `apps/windows/Hebrish-latest-windows-x64.zip`, and set `files.appimage` (url, name, platform
+   "Linux x86_64, AppImage", size, sha256, version) and `files.windows` in `downloads/latest.json`.
+   `/get/appimage` works with no site change (api/get.mjs reads any key). Until a stable is cut,
+   `files.appimage`/`files.windows` keep naming the last stable; the AppImage and Windows builds
+   check only their own key, so they are never offered a beta.
 4. Publish the .deb to the APT repository (download it from the release first: `gh release download desktop-v<ver> -p "*.deb" -D dist`): `with-secrets scripts/publish-apt.sh dist/hebrish_<ver>-1_amd64.deb` (credentials from Infisical since 2026-10-25)
    (see "APT repository" below). Do it after the CDN upload and `latest.json`, so the in-app
    update notice never points at a version apt can't yet fetch.
@@ -365,6 +371,22 @@ launcher `packaging/appimage/AppRun`, CI jobs `appimage` (ubuntu:22.04) and `app
 - **In the app:** `app_update.install_method()` is "appimage" when `$APPIMAGE` and `$APPDIR` are set
   *and* the module lives under `$APPDIR` (a child process inherits the variables). `autostart` and
   `relaunch` use `$APPIMAGE`, the file, never the mount point (`/tmp/.mount_*` changes each run).
+- **Update information:** `zsync|https://cdn.hebrish.app/apps/linux/Hebrish-latest-x86_64.AppImage.zsync`
+  (AppImageUpdate, Gear Lever, AM). Not `gh-releases-zsync`: this repo's releases mix Android and
+  desktop, so its "latest" can be an APK release. The script makes the .zsync with `zsyncmake -u
+  Hebrish-latest-x86_64.AppImage` (relative to the CDN copy) and drops appimagetool's own, which
+  names the versioned file the CDN doesn't keep.
+- **AppStream:** `usr/share/metainfo/app.hebrish.Dictation.metainfo.xml` plus the symlink
+  `hebrish.appdata.xml` (the name appimagetool and AppImageHub look for). Built with
+  `--no-appstream` because 22.04's appstreamcli 0.15 rejects current tags (`<developer>`,
+  `vcs-browser`); `appimage-test` validates it with fedora:43's appstreamcli, and
+  `desktop-file-validate`s the desktop file.
+- **Offline first start** (AppImageHub's test: X11, no network, a useful window within 30 s):
+  checked 2026-10-31 in ubuntu:22.04 under Xvfb with `unshare -n` and a fresh HOME. It opens on
+  Models (no model yet). It first crashed: no `/dev/uinput` in the container raises evdev's
+  `UInputError`, which is not an OSError (debug log 2026-10-31-uinput-missing-crash). Also seen
+  there and fixed: the Bundles card's "To download" line didn't wrap and pushed the page wider
+  than the window.
 - **Pinned:** appimagetool 1.9.0 and type2-runtime 20251108, sha256 in the script (unpinned,
   appimagetool downloads the runtime's moving `continuous` build).
 - **Verified 2026-10-31** (local build of 1.016 + these changes, 103 MB): `--selftest` OK in

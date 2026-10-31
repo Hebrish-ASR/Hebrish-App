@@ -9,6 +9,7 @@ import threading
 import time
 
 from evdev import UInput, ecodes
+from evdev.uinput import UInputError
 
 from .hotkey_evdev import OWN_DEVICE_NAME
 from .inserter import chord_names
@@ -147,8 +148,11 @@ class LinuxInserter:
         try:
             keys = [c for c in ecodes.KEY.keys() if c < ecodes.BTN_MISC]
             self._ui = UInput({ecodes.EV_KEY: keys}, name=OWN_DEVICE_NAME)
-        except OSError as e:
-            self.error = f"Cannot open /dev/uinput ({e.strerror}); transcripts go to the clipboard only"
+        except (OSError, UInputError) as e:
+            # UInputError (not an OSError) when /dev/uinput doesn't exist at all (uinput module not
+            # loaded): it crashed the app at start, found 2026-10-31 in a container with no uinput.
+            why = getattr(e, "strerror", None) or "it doesn't exist; is the uinput module loaded?"
+            self.error = f"Cannot open /dev/uinput ({why}); transcripts go to the clipboard only"
             if os.environ.get("APPIMAGE"):     # the .deb installs this rule; an AppImage can't
                 self.error += (". To paste at the cursor, run once: " + UINPUT_RULE_COMMAND)
 

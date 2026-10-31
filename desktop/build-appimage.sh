@@ -5,7 +5,7 @@
 # Run it in an ubuntu:22.04 container (CI job `appimage` in .github/workflows/desktop.yml, then
 # `appimage-test` self-tests it in fedora:43):
 # the bundled binaries are linked against that glibc (2.35), so the AppImage runs on
-# Ubuntu 22.04+, Debian 12+, Fedora 36+ and anything newer. Needs: curl, file, binutils, patchelf, desktop-file-utils,
+# Ubuntu 22.04+, Debian 12+, Fedora 36+ and anything newer. Needs: curl, file, binutils, patchelf, desktop-file-utils, zsync,
 # xclip, wl-clipboard, libportaudio2 and uv on PATH.
 #
 # Unlike the .deb (system python3 + apt's PySide6/numpy), everything is bundled:
@@ -112,6 +112,8 @@ cp hebrish/data/icons/hebrish.svg "$APPDIR/hebrish.svg"
 ln -s hebrish.svg "$APPDIR/.DirIcon"
 sed "s|@RELEASES@|    <release version=\"$VERSION\" date=\"$(date -u +%F)\"><url>https://hebrish.app/changelog</url></release>|" \
     packaging/hebrish.metainfo.xml > "$APPDIR/usr/share/metainfo/app.hebrish.Dictation.metainfo.xml"
+# appimagetool (and AppImageHub's check) look for <desktop file name>.appdata.xml and validate it
+ln -s app.hebrish.Dictation.metainfo.xml "$APPDIR/usr/share/metainfo/hebrish.appdata.xml"
 
 # 6. Pack
 curl -fsSL -o "$BUILD/appimagetool" "$TOOL_URL"
@@ -120,5 +122,16 @@ printf '%s  %s\n' "$TOOL_SHA" "$BUILD/appimagetool" "$RUNTIME_SHA" "$BUILD/runti
 chmod +x "$BUILD/appimagetool"
 mkdir -p dist
 OUT="dist/Hebrish-$VERSION-x86_64.AppImage"
-ARCH=x86_64 "$BUILD/appimagetool" --appimage-extract-and-run --no-appstream --runtime-file "$BUILD/runtime" "$APPDIR" "$OUT" >/dev/null
-echo "Built: $OUT ($(du -h "$OUT" | cut -f1))"
+# Update information: AppImageUpdate, Gear Lever and AM fetch this .zsync and download only the
+# changed blocks. It names the stable CDN copy, not a GitHub release: the repo's releases mix
+# Android and desktop, so gh-releases-zsync's "latest" would find an APK release.
+UPDATE_INFO="zsync|https://cdn.hebrish.app/apps/linux/Hebrish-latest-x86_64.AppImage.zsync"
+# --no-appstream: 22.04's appstreamcli 0.15 rejects current tags (<developer>, vcs-browser URL);
+# CI job appimage-test validates the metainfo with fedora:43's current appstreamcli instead.
+ARCH=x86_64 "$BUILD/appimagetool" --appimage-extract-and-run --no-appstream --runtime-file "$BUILD/runtime" \
+    -u "$UPDATE_INFO" "$APPDIR" "$OUT" >/dev/null
+rm -f "$OUT.zsync"          # appimagetool's names the versioned file, which the CDN doesn't keep
+
+# 7. The .zsync for the CDN, beside Hebrish-latest-x86_64.AppImage (its URL is relative to it)
+zsyncmake -u Hebrish-latest-x86_64.AppImage -o dist/Hebrish-latest-x86_64.AppImage.zsync "$OUT"
+echo "Built: $OUT ($(du -h "$OUT" | cut -f1)) + dist/Hebrish-latest-x86_64.AppImage.zsync"

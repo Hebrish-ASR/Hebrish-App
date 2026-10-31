@@ -1597,7 +1597,11 @@ def _selftest() -> int:
               sounddevice.get_portaudio_version()[1], file=out)
         print("icons (name: failed to render):", sizes, file=out)
         print("latest model:", model_store.fetch_latest().debug_label, file=out)
-        print("latest app:", app_update.fetch().version, "| install:", app_update.install_method(), file=out)
+        try:
+            latest = app_update.fetch().version
+        except ValueError as e:              # a channel with nothing published yet (first AppImage)
+            latest = f"none ({e})"
+        print("latest app:", latest, "| install:", app_update.install_method(), file=out)
         if not sizes or any(sizes.values()):
             raise RuntimeError("an icon failed to load (missing Qt SVG plugin?)")
         voice = [f"{v}/{k}" for v, _ in audio.VOICES for k in audio.VOICE_PROMPTS

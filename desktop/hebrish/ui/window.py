@@ -962,7 +962,8 @@ class MainWindow(QMainWindow):
             status = QLabel()
             status.setStyleSheet("font-size: 12px;")
             status.setTextFormat(Qt.RichText)
-            col.addWidget(status)
+            status.setWordWrap(True)     # the "To download" list is long: unwrapped, it widened the
+            col.addWidget(status)        # page past a narrow window and hid the button (2026-10-31)
             row.addLayout(col, 1)
             btn = QPushButton(line_icon("download", "white"), "Download", objectName="primary")
             btn.clicked.connect(lambda _=False, i=bd["id"]: self.ctl.download_bundle(i))
