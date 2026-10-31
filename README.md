@@ -126,8 +126,10 @@ Before tagging, add the release's entry to hebrish.app's changelog: `scripts/rel
 `scripts/bake_updates.py`, which bakes the changelog up to that day into the apps' What's new list
 (one per app: `shared/updates-android.json` and `desktop/hebrish/data/updates.json`, the last 20 entries for that platform, offline) and commits it with the version.
 Releases: tag `android-vM.NNN` builds the signed APK in CI. Tag `desktop-vM.NNN` builds the
-Windows zip in CI; the Ubuntu .deb is built with `desktop/build-deb.sh` and added to the same
-release. Then overwrite the one stable file per platform on the Hebrish CDN
+Ubuntu 26.04 .deb in CI (an `ubuntu:26.04` container), installs and self-tests it, and attaches it
+to the release. The default release is Android and the .deb (Daniel, 2026-10-31); the Windows zip
+is built only on request: `gh workflow run desktop.yml -R Hebrish-ASR/Hebrish-App -f windows=true
+-f tag=desktop-vM.NNN` attaches it to that release. Then overwrite the one stable file per platform on the Hebrish CDN
 (`https://cdn.hebrish.app/apps/{android,ubuntu,windows}/`: `Hebrish-latest.apk`,
 `hebrish-latest-amd64.deb`, `Hebrish-latest-windows-x64.zip`; since 2026-10-21, old versions
 stay only on the GitHub releases) and rewrite `downloads/latest.json` (the `r2-upload` skill in

@@ -20,6 +20,8 @@ MIN_TAKE_S = 0.3
 # last word it lost a whole final sentence (measured 2026-10-18, v4). Releasing
 # push-to-talk right as you stop talking produces exactly that, so every chunk is padded.
 TAIL_PAD_S = 1.0
+EMPTY_RETRY_DEPTH = 2     # an empty piece with speech is re-decoded in halves, then quarters (_decode_retry)
+EMPTY_RETRY_MIN_S = 2.0   # ... unless the halves would be shorter than this
 # Short pauses between sentences can swallow speech: two sentences 0.3 s apart lost half
 # of the second, which decodes fine alone (v4, 2026-10-18). Stretching every pause of
 # 0.12-0.6 s to 0.6 s recovered sentences in every test (0.3 s gaps: 6/8 -> 8/8) and the
@@ -477,6 +479,27 @@ class Engine:
         self._rec.decode_stream(s)
         return drop_unk(s.result.text).strip(), len(s.result.tokens)
 
+    def _decode_retry(self, x: np.ndarray, pad: np.ndarray, depth: int = 0):
+        """_decode_piece, but a piece with speech that comes back empty is decoded again as two
+        halves, cut at the quietest 100 ms between 35% and 65% of it, up to EMPTY_RETRY_DEPTH times.
+        Sabich v2.3 sometimes returns nothing for a whole ~20 s piece: on a voice note with a child
+        talking in the background, the same piece was empty, then complete with its first 1 s
+        dropped, then empty again with 2 s dropped (2026-10-31, docs/debug-log/
+        2026-10-31-empty-piece.md). Caller holds the lock."""
+        text, tokens = self._decode_piece(np.concatenate([x, pad]))
+        if text or depth >= EMPTY_RETRY_DEPTH or len(x) < 2 * EMPTY_RETRY_MIN_S * SAMPLE_RATE \
+                or not has_speech(x):
+            return text, tokens
+        lo, hi = int(len(x) * 0.35), int(len(x) * 0.65)
+        win = SAMPLE_RATE // 10
+        rms = np.convolve(x[lo:hi] ** 2, np.ones(win) / win, mode="valid")
+        cut = lo + int(np.argmin(rms)) + win // 2
+        log.info("empty piece of %.1f s with speech: decoding it as %.1f + %.1f s",
+                 len(x) / SAMPLE_RATE, cut / SAMPLE_RATE, (len(x) - cut) / SAMPLE_RATE)
+        a, ta = self._decode_retry(x[:cut], pad, depth + 1)
+        b, tb = self._decode_retry(x[cut:], pad, depth + 1)
+        return " ".join(t for t in (a, b) if t), ta + tb
+
     def transcribe(self, samples: np.ndarray, vad: bool = False, record: bool = True,
                    ref: np.ndarray | None = None) -> str:
         return " ".join(self.transcribe_chunks(samples, vad=vad, record=record, ref=ref))
@@ -550,7 +573,7 @@ class Engine:
                 if self._rec is None:
                     raise RuntimeError("Model not loaded")
                 t0 = time.monotonic()
-                text, tokens = self._decode_piece(np.concatenate([samples[a:b], pad]))
+                text, tokens = self._decode_retry(samples[a:b], pad)
                 took = time.monotonic() - t0
             if record:
                 self.stats.append({"at": time.time(), "audio_s": (b - a) / SAMPLE_RATE,

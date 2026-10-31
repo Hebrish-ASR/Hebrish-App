@@ -1,6 +1,11 @@
-# Tag desktop-vX.Y.Z -> Windows build (PyInstaller, zipped) attached to the GitHub release.
-# The Linux .deb is built on Ubuntu 26.04 with desktop/build-deb.sh and uploaded to the same
-# release by hand: the runners' Ubuntu has an older python3 than the .deb is pinned to.
+# Tag desktop-vM.NNN -> tests, then the Ubuntu 26.04 .deb (built in an ubuntu:26.04 container,
+# so it is pinned to that release's python3), installed and self-tested in a clean container,
+# attested and attached to the GitHub release. The default release is Android (android.yml) and
+# this .deb (Daniel, 2026-10-31).
+# Windows is built only on request (Daniel, 2026-10-31: "periodically whenever I request it"):
+# Actions -> desktop -> Run workflow with `windows` ticked and `tag` set to an existing
+# desktop-vM.NNN release; the zip is attached to that release.
+#   gh workflow run desktop.yml -R Hebrish-ASR/Hebrish-App -f windows=true -f tag=desktop-v1.014
 name: desktop
 on:
   push:
@@ -8,11 +13,20 @@ on:
   pull_request:
     paths: ["desktop/**"]
   workflow_dispatch:
+    inputs:
+      windows:
+        description: "Build the Windows zip"
+        type: boolean
+        default: false
+      tag:
+        description: "Release tag to build from and attach to (desktop-vM.NNN); empty = a dev build, no release"
+        type: string
+        default: ""
 
 permissions:
   contents: write
-  # Build provenance for the Windows zip (gh attestation verify <zip> -R Hebrish-ASR/Hebrish-App).
-  # The .deb is built locally (desktop/build-deb.sh), so it has none.
+  # Build provenance for the .deb and the Windows zip
+  # (gh attestation verify <file> -R Hebrish-ASR/Hebrish-App).
   id-token: write
   attestations: write
 
@@ -22,25 +36,75 @@ jobs:
     defaults: { run: { working-directory: desktop } }
     steps:
       - uses: actions/checkout@v4
+        with: { ref: "${{ inputs.tag || github.ref }}" }
       - name: Tag matches version
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
         shell: bash
+        env: { TAG: "${{ inputs.tag || github.ref_name }}" }
         run: |
           # scripts/release-tag.sh sets both together; a hand-made tag that disagrees fails here.
           code=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' hebrish/__init__.py)
-          [ "desktop-v$code" = "$GITHUB_REF_NAME" ] || { echo "::error::tag $GITHUB_REF_NAME but __version__ is $code"; exit 1; }
+          [ "desktop-v$code" = "$TAG" ] || { echo "::error::tag $TAG but __version__ is $code"; exit 1; }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: sudo apt-get install -y -q libportaudio2
       - run: pip install numpy sounddevice onnxruntime pytest     # onnxruntime: the paragraph-model parity tests
       - run: python -m pytest -q tests
 
+  deb:
+    needs: test-linux            # includes "Tag matches version"
+    if: github.event_name != 'workflow_dispatch' || inputs.tag == ''
+    runs-on: ubuntu-latest
+    container: ubuntu:26.04      # the runners' Ubuntu has an older python3 than the .deb pins
+    defaults: { run: { working-directory: desktop } }
+    steps:
+      - name: Build tools
+        working-directory: /
+        run: |
+          apt-get update -q
+          apt-get install -y -q --no-install-recommends python3 ca-certificates git
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Build
+        run: ./build-deb.sh
+      - name: Install and self-test
+        run: |
+          # PortAudio won't initialise without a sound server: a system PulseAudio stands in
+          apt-get install -y -q --no-install-recommends pulseaudio ./dist/hebrish_*_amd64.deb
+          pulseaudio -D --system --disallow-exit --exit-idle-time=-1 || true
+          sleep 1
+          PULSE_SERVER=unix:/var/run/pulse/native QT_QPA_PLATFORM=offscreen hebrish --selftest
+      - name: Name
+        run: echo "DEB=$(ls dist/hebrish_*_amd64.deb)" >> "$GITHUB_ENV"
+      - uses: actions/attest-build-provenance@v2
+        with: { subject-path: "desktop/${{ env.DEB }}" }
+      - uses: actions/upload-artifact@v4
+        with: { name: deb, path: "desktop/${{ env.DEB }}" }
+
+  release:
+    needs: deb
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: deb, path: dist }
+      - name: Release
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --title "Hebrish for desktop ${GITHUB_REF_NAME#desktop-}" \
+              --notes-file .github/desktop-release-notes.md
+          gh release upload "$GITHUB_REF_NAME" dist/*.deb --clobber
+
   windows:
-    needs: test-linux            # includes "Tag matches version": no release from a mismatched tag
+    needs: test-linux
+    if: github.event_name == 'workflow_dispatch' && inputs.windows
     runs-on: windows-latest
     defaults: { run: { working-directory: desktop, shell: pwsh } }
     steps:
       - uses: actions/checkout@v4
+        with: { ref: "${{ inputs.tag || github.ref }}" }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - name: Install
@@ -71,7 +135,7 @@ jobs:
           if ($p.ExitCode -ne 0) { exit 1 }
       - name: Zip
         run: |
-          $ver = "${{ github.ref_name }}".Replace("desktop-", "")
+          $ver = "${{ inputs.tag }}".Replace("desktop-", "")
           if (-not $ver.StartsWith("v")) { $ver = "dev" }
           Compress-Archive -Path dist\Hebrish -DestinationPath "Hebrish-$ver-windows-x64.zip"
           "ZIP=Hebrish-$ver-windows-x64.zip" | Out-File -Append $env:GITHUB_ENV
@@ -79,12 +143,12 @@ jobs:
         with: { subject-path: "desktop/${{ env.ZIP }}" }
       - uses: actions/upload-artifact@v4
         with: { name: windows-build, path: "desktop/${{ env.ZIP }}" }
-      - name: Release
-        if: startsWith(github.ref, 'refs/tags/')
-        env: { GH_TOKEN: "${{ github.token }}" }
+      - name: Attach to the release
+        if: inputs.tag != ''
+        env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ inputs.tag }}" }
         run: |
-          gh release view $env:GITHUB_REF_NAME 2>$null
+          gh release view $env:TAG 2>$null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $env:GITHUB_REF_NAME --title "Hebrish for desktop $($env:GITHUB_REF_NAME.Replace('desktop-',''))" --notes-file ../.github/desktop-release-notes.md
+            gh release create $env:TAG --title "Hebrish for desktop $($env:TAG.Replace('desktop-',''))" --notes-file ../.github/desktop-release-notes.md
           }
-          gh release upload $env:GITHUB_REF_NAME $env:ZIP --clobber
+          gh release upload $env:TAG $env:ZIP --clobber

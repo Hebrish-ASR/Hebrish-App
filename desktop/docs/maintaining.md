@@ -290,14 +290,19 @@ each part works there:
    Linux and Windows (Linux CI has no PySide6: a test importing `hebrish.ui` must
    `pytest.importorskip("PySide6")`, or the tag fails, as 0.7.1's first tag did on 2026-10-22, and likewise `importorskip("sherpa_onnx")` for a test that runs a
    sherpa-onnx model: Linux CI installs neither, 1.010's first tag failed on `test_vad.py`, 2026-10-29;
-   that tag was deleted and re-made, since nothing had been released from it), builds the
-   Windows zip with PyInstaller, runs the frozen exe's
-   `--selftest`, and creates the release with the zip attached.
-3. On Ubuntu 26.04, run `./build-deb.sh`. It writes `dist/hebrish_<ver>-1_amd64.deb`,
-   bundles sherpa-onnx + sherpa-onnx-core, and is pinned to the build machine's python3
-   minor (3.14). Then run `gh release upload desktop-v<ver> dist/*.deb`. CI can't build it
-   because the GitHub runners' Ubuntu has an older python3.
-4. Publish the .deb to the APT repository: `with-secrets scripts/publish-apt.sh dist/hebrish_<ver>-1_amd64.deb` (credentials from Infisical since 2026-10-25)
+   that tag was deleted and re-made, since nothing had been released from it), then (job `deb`,
+   since 1.014) builds the .deb with `./build-deb.sh` in an `ubuntu:26.04` container, so it is
+   pinned to 26.04's python3 (3.14) as before, installs it in that container and runs
+   `hebrish --selftest` (offscreen, against a system PulseAudio: PortAudio won't initialise
+   without a sound server), attests it, and creates the release with the .deb attached.
+   Up to 1.013 the .deb was built by hand on the maintainer's machine; 1.013's never was, so 1.013
+   reached only Windows (found 2026-10-31).
+3. **Windows only on request** (Daniel, 2026-10-31): `gh workflow run desktop.yml -R
+   Hebrish-ASR/Hebrish-App -f windows=true -f tag=desktop-v<ver>` runs the tests, builds the zip
+   with PyInstaller from that tag, runs the frozen exe's `--selftest` and attaches the zip to the
+   release. Without `tag` it is a dev build (artifact only). `latest.json` keeps naming the last
+   Windows zip until one is built.
+4. Publish the .deb to the APT repository (download it from the release first: `gh release download desktop-v<ver> -p "*.deb" -D dist`): `with-secrets scripts/publish-apt.sh dist/hebrish_<ver>-1_amd64.deb` (credentials from Infisical since 2026-10-25)
    (see "APT repository" below). Do it after the CDN upload and `latest.json`, so the in-app
    update notice never points at a version apt can't yet fetch.
    It downloads the whole pool to `mktemp -d`; on 2026-10-29 (1.011) that failed with `Disk quota
@@ -1549,6 +1554,14 @@ the card.
   guards, no model, port in use); and the real Sabich v2.3 int8 model behind `LocalApi` driven by
   curl: a 40 s mp3 in 5.1 s on CPU (4 threads), the `Origin` request refused. Not yet run inside
   the full app, or on Windows.
+
+## Empty pieces are decoded again (1.014, 2026-10-31)
+
+Sabich can return nothing for a whole piece of speech, depending on exactly where the piece
+starts. `Engine.transcribe_chunks` decodes through `_decode_retry`: a piece with speech that
+comes back empty is cut at its quietest 100 ms near the middle and decoded as two halves, then
+quarters at most. Don't remove it because a test file decodes fine without it: the failure
+depends on piece boundaries. Story and measurements: `docs/debug-log/2026-10-31-empty-piece.md`.
 
 ## Testing
 
