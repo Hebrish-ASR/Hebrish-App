@@ -1266,7 +1266,7 @@
       },
       "ubuntu": {
         "status": "present",
-        "since": "unreleased",
+        "since": "1.014",
         "evidence": "desktop/hebrish/local_api.py; Settings → Local API (window._local_api_row); tests/test_local_api.py"
       },
       "windows": {
