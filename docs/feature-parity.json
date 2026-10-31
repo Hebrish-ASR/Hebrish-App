@@ -1153,7 +1153,7 @@
       "android": {
         "status": "present",
         "since": "unreleased",
-        "evidence": "android/app/src/main/java/app/hebrish/dictation/Cleanup.kt (cleanup.py's logic), CleanupModel.kt + src/main/cpp/s1_cleanup_jni.cpp (llama.cpp b11982 submodule, built in), CleanupStore.kt (catalogue addons android block, HF download); switch in TranscriptionActivity.kt; Models > Post-processing",
+        "evidence": "android/app/src/main/java/app/hebrish/dictation/Cleanup.kt (cleanup.py's logic), CleanupModel.kt + src/main/cpp/s1_cleanup_jni.cpp (llama.cpp b11982 submodule, built in), CleanupStore.kt (catalogue addons android block, HF download); switch in TranscriptionActivity.kt; Models > Add-on models",
         "verified": false,
         "notes": "B-40a, 2026-10-30. Q4_K_M files; chunks 600 tokens, context 1,536 (desktop 900 / 4,096). Needs ARMv8.2 dot product. Not run on a phone."
       },
@@ -1216,7 +1216,7 @@
     {
       "id": "whats-new",
       "group": "app",
-      "name": "What's new: recent changes baked into the build from hebrish.app/changelog, offline",
+      "name": "What's new / Updates page: recent changes baked into the build from hebrish.app/changelog, offline",
       "android": {
         "status": "present",
         "since": "unreleased",
@@ -1225,12 +1225,12 @@
       "ubuntu": {
         "status": "present",
         "since": "unreleased",
-        "evidence": "desktop/hebrish/ui/about.py (AboutPage._whats_new, data/updates.json)"
+        "evidence": "desktop/hebrish/ui/updates.py (UpdatesPage, header button Updates; data/updates.json; moved off About 2026-10-31)"
       },
       "windows": {
         "status": "present",
         "since": "unreleased",
-        "evidence": "desktop/hebrish/ui/about.py (AboutPage._whats_new, data/updates.json)",
+        "evidence": "desktop/hebrish/ui/updates.py (UpdatesPage, header button Updates; data/updates.json; moved off About 2026-10-31)",
         "verified": false
       },
       "notes": "shared/updates.json by scripts/bake_updates.py, run by scripts/release-tag.sh (2026-10-25)."

@@ -36,10 +36,9 @@ HEBRISH = "https://hebrish.app"
 FEEDBACK = "feedback@hebrish.app"
 TERMS = f"{HEBRISH}/terms"
 CHANGELOG = f"{HEBRISH}/changelog"
-# What's new (2026-10-25): baked from hebrish.app/changelog by scripts/bake_updates.py before each
+# Updates (2026-10-25; its own page, ui/updates.py, since 2026-10-31): baked from hebrish.app/changelog by scripts/bake_updates.py before each
 # release (a copy of shared/updates.json), so it is offline and fixed at build time.
 UPDATES = Path(__file__).resolve().parent.parent / "data" / "updates.json"
-UPDATES_SHOWN = 5       # the rest behind "Show all"
 
 
 def load_updates() -> dict:
@@ -115,7 +114,7 @@ def _rich(html: str) -> QLabel:
 class AboutPage(QScrollArea):
     """card(title) and muted(text) are window.py's helpers (passed in: window imports us)."""
 
-    def __init__(self, icon, card, muted):
+    def __init__(self, icon, card, muted, open_updates=None):
         super().__init__()
         self.setWidgetResizable(True)
         self.setFrameShape(QFrame.NoFrame)
@@ -124,7 +123,7 @@ class AboutPage(QScrollArea):
         lay.setContentsMargins(16, 14, 16, 16)
         lay.setSpacing(12)
         lay.addWidget(self._hero(icon))
-        lay.addWidget(self._whats_new(card))
+        lay.addWidget(self._updates_link(open_updates))
 
         box, b = card("Private by design")
         b.addWidget(_rich(
@@ -216,32 +215,13 @@ class AboutPage(QScrollArea):
         lay.addStretch(1)
         self.setWidget(page)
 
-    def _whats_new(self, card) -> QFrame:
-        """What's new: the latest changes baked into this build, newest first; Show all expands."""
-        doc = load_updates()
-        entries = doc["entries"]
-        box, b = card("What's new")
-        if not entries:
-            b.addWidget(_rich(f"This version has no list of changes. See <a href='{CHANGELOG}'>hebrish.app/changelog</a>."))
-            return box
-        b.addWidget(_rich(f"<small style='color:gray'>The latest changes to Hebrish, up to {doc.get('built', '')} "
-                          f"when this version was built. <a href='{CHANGELOG}'>Full changelog</a></small>"))
-        self.updates_label = _rich(updates_html(entries[:UPDATES_SHOWN]))
-        b.addWidget(self.updates_label)
-        if len(entries) > UPDATES_SHOWN:
-            more = QLabel()
-            more.setTextFormat(Qt.RichText)
-
-            def toggle(_=None):
-                full = more.property("full") is not True
-                more.setProperty("full", full)
-                self.updates_label.setText(updates_html(entries if full else entries[:UPDATES_SHOWN]))
-                more.setText(f"<a href='#'>{'Show fewer' if full else f'Show all ({len(entries)})'}</a>")
-            more.setProperty("full", True)
-            toggle()
-            more.linkActivated.connect(toggle)
-            b.addWidget(more)
-        return box
+    def _updates_link(self, open_updates) -> QLabel:
+        """One line pointing at the Updates page (the What's new card moved there, 2026-10-31)."""
+        lbl = QLabel(f"<a href='#updates'>What's new: see Updates</a> · <a href='{CHANGELOG}'>Full changelog</a>")
+        lbl.setTextFormat(Qt.RichText)
+        lbl.linkActivated.connect(lambda url: open_updates() if url == "#updates" and open_updates
+                                  else QDesktopServices.openUrl(QUrl(url)))
+        return lbl
 
     def _hero(self, icon) -> QFrame:
         hero = QFrame(objectName="aboutHero")

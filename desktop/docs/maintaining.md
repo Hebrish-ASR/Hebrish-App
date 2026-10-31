@@ -1746,3 +1746,13 @@ it. Checked: desktop tests pass, and the Models rows and About tab were rendered
 bundled catalogue (V). Note that a cached catalogue (`catalogue-v2.json` in the data dir) wins over
 the bundled one, so a local run shows the new fields only once `main` has them or the cache is
 cleared.
+
+**Updates page (unreleased, 2026-10-31).** Daniel asked for an Updates panel on desktop (Android
+has its Updates screen). What's new moved off About into its own page, `hebrish/ui/updates.py`
+`UpdatesPage`, opened from the header's **Updates** button (icon `data/icons/line-bell.svg`, same
+24 px stroke style) next to Diagnostics and About, and hidden from the tab bar like them. It shows
+every entry in `data/updates.json`, sorted newest first by `date`, as date · tag, title and
+summary (`about.updates_html`), then the full changelog link, in a scroll area. Extra keys such as
+a future `platforms` list are ignored. About keeps one line: "What's new: see Updates" (switches
+to the page) and the full changelog link. `UPDATES_SHOWN` and the "Show all" toggle are gone.
+Tests: `tests/test_updates_page.py`.

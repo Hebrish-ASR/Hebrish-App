@@ -145,15 +145,17 @@ class MainWindow(QMainWindow):
         self.pages["settings"].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)   # labels wrap, never scroll sideways
         from .diagnostics import DiagnosticsPage
         self.pages["diagnostics"] = DiagnosticsPage(ctl, card, muted)
+        from .updates import UpdatesPage
+        self.pages["updates"] = UpdatesPage(card, muted)
         self.pages["about"] = self._about_page()
         for key, label in (("dictate", "Voice Typing"), ("file", "Transcription"), ("history", "History"),
                            ("dictionary", "Dictionary"), ("model", "Models"), ("settings", "Settings"),
-                           ("diagnostics", "Diagnostics"), ("about", "About")):
+                           ("updates", "Updates"), ("diagnostics", "Diagnostics"), ("about", "About")):
             self.tabs.addTab(self.pages[key], label)
         self.tabs.setTabVisible(self.tabs.indexOf(self.pages["history"]), self.cfg["keep_history"])
         # Diagnostics and About open from the header's buttons (1.007): eight tabs didn't fit the
-        # window's width, and these two are visited rarely.
-        for key in ("diagnostics", "about"):
+        # window's width, and these two are visited rarely. Updates joined them (2026-10-31).
+        for key in ("updates", "diagnostics", "about"):
             self.tabs.setTabVisible(self.tabs.indexOf(self.pages[key]), False)
         self.tabs.currentChanged.connect(self._sync_header_buttons)
         self.ctl.sig.piece.connect(self._append_piece)
@@ -215,7 +217,8 @@ class MainWindow(QMainWindow):
         text.addWidget(QLabel(TAGLINE, objectName="tagline"))
         lay.addLayout(text, 1)
         self.header_buttons = {}
-        for key, name, label in (("diagnostics", "pulse", "Diagnostics"), ("about", "info", "About")):
+        for key, name, label in (("updates", "bell", "Updates"), ("diagnostics", "pulse", "Diagnostics"),
+                                 ("about", "info", "About")):
             b = QToolButton(objectName="headerButton", text=label, checkable=True)
             b.setIcon(line_icon(name))
             b.setIconSize(QSize(16, 16))
@@ -1819,7 +1822,8 @@ class MainWindow(QMainWindow):
 
     # -- about ---------------------------------------------------------------------
     def _about_page(self):
-        self._about = about.AboutPage(icon("hebrish"), card, muted)
+        self._about = about.AboutPage(icon("hebrish"), card, muted,
+                                      open_updates=lambda: self.tabs.setCurrentWidget(self.pages["updates"]))
         self.tabs.currentChanged.connect(lambda i: self.tabs.widget(i) is self._about and self._about.refresh())
         return self._about
 
