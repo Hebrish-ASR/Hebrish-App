@@ -1,8 +1,10 @@
-**1.014: Press Enter after silence, a local transcription API, and no more lost pieces.**
+**1.015: Saved transcripts get a folder, a title and a proper header; transcripts arrive in one go; Backup.**
 
-- **Press Enter after silence (optional, off by default):** Settings → Action keys. While Voice Typing with Insert as you go, once text has been typed and you have been quiet for 8 s (2–60 s), Hebrish presses your Send key once, so a message to Claude goes without reaching for Enter.
-- **Local API (optional, off by default):** Settings → Local API. Other programs on this computer can send audio files to Hebrish and get the transcript back, from an OpenAI-compatible endpoint on 127.0.0.1:8723. No key, and nothing leaves the computer. For coding agents: the `transcribe-with-hebrish` skill in the Hebrish Claude Code marketplace.
-- **Transcription no longer loses pieces:** the model sometimes returned nothing for a whole stretch of a recording or file (about 20 s on one voice note). Such a stretch is now transcribed again in two halves.
-- **Clean-up model choice:** S1-mini by Superwhisper (the default) or S1-ASR-Cleanup (experimental), under Models → Utilities → Post-processing.
-- **Updates:** What's new has its own page, from a button in the header, with every entry newest first.
+- **Transcripts folder:** Save writes straight to a Hebrish folder (default Documents/Hebrish/transcripts), one folder per year, month and day, as Markdown. Never overwrites. The folder is shown under the Transcription tab's text box with Open and Change….
+- **Titles (optional):** download the title model (292 MB) in Models → Utilities → Post-processing and each saved transcript gets a short title in its file name and heading. Set the longest title there (60 characters by default).
+- **A proper header:** each saved file starts with YAML front matter (title, date, model, audio length), the title as a heading, the date and time under it, and which model transcribed it.
+- **Versions, never overwritten:** if you edited the transcript or clean-up changed it, the raw transcription is saved beside it. *Save cleaned copy* runs a clean-up model you choose (S1-mini by Superwhisper or S1-ASR-Cleanup) and saves the result as its own file; the original stays as it was. A small JSON file links the versions.
+- **Transcripts arrive in one go:** the Transcription tab shows the finished transcript at once instead of filling it in piece by piece. A "Transcribing…" timer appears only if it takes more than 5 seconds.
+- **Next recording:** choose whether a new recording or file adds to the transcript in the box or starts a new one.
+- **Your data and Backup:** Settings → Your data shows where your history, transcripts, dictionary and settings are kept. Back up… saves them as one tar.gz or zip file.
 - Ubuntu 26.04 .deb. Downloads: [hebrish.app/download](https://hebrish.app/download).
