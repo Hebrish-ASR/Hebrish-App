@@ -89,6 +89,14 @@ object Prefs {
     /** An installed clean-up model (CleanupStore.Installed JSON) by add-on id, or null. */
     fun cleanupModel(ctx: Context, id: String): String? = sp(ctx).getString("cleanup_model_$id", null)
     fun setCleanupModel(ctx: Context, id: String, v: String?) = sp(ctx).edit().putString("cleanup_model_$id", v).apply()
+    /** The transcripts folder (B-74a): a Storage Access Framework tree URI with a persisted grant (TranscriptFolder), or null. */
+    fun transcriptsTree(ctx: Context): String? = sp(ctx).getString("transcripts_tree", null)
+    fun setTranscriptsTree(ctx: Context, v: String?) = sp(ctx).edit().putString("transcripts_tree", v).apply()
+    /** Give saved transcripts a title (B-75a; desktop `titles`), when the title model is downloaded. On by default, as on desktop. */
+    fun titles(ctx: Context) = sp(ctx).getBoolean("titles", true)
+    fun setTitles(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("titles", v).apply()
+    /** Longest title in characters (desktop `title_max_chars`); no setting on Android yet. */
+    fun titleMaxChars(ctx: Context) = Titles.limit(sp(ctx).getInt("title_max_chars", Titles.MAX_CHARS))
     fun micChoice(ctx: Context): String = sp(ctx).getString("mic_choice", Mic.AUTO) ?: Mic.AUTO
     fun setMicChoice(ctx: Context, v: String) = sp(ctx).edit().putString("mic_choice", v).apply()
 

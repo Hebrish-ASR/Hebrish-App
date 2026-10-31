@@ -1271,6 +1271,78 @@ for this step. Licence: every place a model is named reads "S1-mini" by "Superwh
   library built alone with the pinned NDK (above). Not run on a phone: speed and memory on a real
   device are unknown, and long takes may take a while to clean.
 
+## Transcripts folder and titles (unreleased, B-74a/B-75a, 2026-10-31)
+
+Daniel, 2026-10-31 (R-2026-10-31-7): "bring the title model to Android, and keep at least some of
+the transcription features available there". Parity with desktop B-74/B-75/B-78
+(`desktop/hebrish/transcripts.py`, `titles.py`; desktop maintaining.md, "Transcript in one go,
+Next recording, titles, versions"). B-77a (transcript in one go, Next recording) is not done.
+
+- **Save (B-74a).** Transcription Mode's text box has **Save** (primary, before Copy / Share /
+  Clear) and, under it, a line saying where Save writes plus **Folder…**. The folder is picked
+  with the system picker (`ACTION_OPEN_DOCUMENT_TREE`) and kept with a persisted read/write grant
+  (`TranscriptFolder.accept`, pref `transcripts_tree`; the old grant is released on a change).
+  Storage Access Framework only: no all-files permission (Google Play refuses it for this kind of
+  app), and the picker also offers SD cards and cloud providers' folders. No folder yet (or the
+  grant was revoked): Save opens the picker, then saves.
+- **Layout and names** as desktop: `<folder>/YYYY/MM/DD/<stem>.md`, stem `HH-MM-SS` or
+  `<snake_case_title>_HH-MM-SS` (`Transcripts.slug`, ASCII, at most 60 characters at a word end),
+  `-2`, `-3`, … while the day folder already has `<stem>.md` or `<stem>.json`. Day folders are
+  created with `DocumentsContract.createDocument`; files are created as
+  `application/octet-stream` because a provider may append `.txt` to a name given a `text/*` type
+  it doesn't map to `.md` (AOSP `FileUtils.splitFileName`; octet-stream keeps the name as given).
+- **File format (B-78), copied from desktop.** YAML front matter (`title`, `date` ISO with offset,
+  `version`, `generator`, `model`, `audio_seconds`, `source`, `cleanup_model`, `versions`; empty
+  ones left out; strings JSON-quoted), `# <title>` or `# Transcript`, `## <Weekday> <d Month yyyy>,
+  HH:MM` (English names, ASCII digits whatever the phone's language), the credit line
+  `*Transcribed by Hebrish Android 1.0xx with Sabich v2.3 on 31 October 2026.*`, the text.
+  Android values: `generator` "Hebrish Android <versionName>" (the version numbers of the two apps
+  differ, so the platform is named), `model` the catalogue name plus the installed version label,
+  `source` "recording", `cleanup_model` "<name> <version>" when Clean up changed a part.
+- **Versions.** `<stem>.md` (the box, edits included), `<stem>.raw.md` (each take's text as
+  decoded, before clean-up and edits; written only when its words differ), `<stem>.json`
+  (schema 1, desktop's manifest: shared fields, one entry per version). No *Save cleaned copy* on
+  Android. Save on an unchanged box says "Already saved: <path>".
+- **The document behind the box** (`TranscriptionActivity.Doc`, desktop `_doc`): the first take's
+  time, raw text per take, models, audio seconds, clean-up models, what was last saved. A take that
+  starts in an empty box starts a new one; Clear drops it. Typing into an empty box and saving
+  works (saved with the current model and now).
+- **Titles (B-75a).** Catalogue `title-gemma-270m` now has an `android` block: the desktop Q8_0
+  file as is (`openwebui-title-generator-270m.q8_0.gguf`, 291,546,016 bytes, SHA-256
+  `94eb69ae…`, revision `66dd1caf…`), `ram_mb` 450 (an estimate, not measured), and `android` /
+  `phone` in `platforms` / `devices` (desktop's `offered()` checks only its own OS and `runtime`,
+  so it is unaffected; desktop tests pass). `CleanupStore.entries(ctx, kind)` reads either kind,
+  deciding cached-vs-bundled catalogue per kind (a cached catalogue with clean-up models but no
+  Android title entry still finds the bundled one; the desktop debug log
+  `docs/debug-log/2026-10-31-title-model-download.md` is the same trap). `CleanupStore.title` /
+  `titleFile`; one download at a time across both kinds; `Status.Failed` now carries the id so
+  Transcription Mode says which model failed.
+  - Models › Add-on models has a card for it (Download / Cancel / Delete). Transcription Mode has
+    the switch **Give saved transcripts a title** (pref `titles`, on by default as on desktop;
+    turning it on without the model offers the download) and a status line. Hidden on phones
+    without ARMv8.2 dot product (`CleanupModel.supported`). No *Longest title* setting yet:
+    pref `title_max_chars` (default 60, 16–120) is read but has no UI.
+  - `Titles.kt` is `titles.py` line for line: Open WebUI's title prompt in Gemma's template,
+    first 1,200 words, greedy, 40 tokens, `clean()` / `fit()` of the JSON reply. Android
+    difference: the model runs with a 2,048-token context (`Titles.CTX`; `CleanupModel` now takes
+    `nCtx`), and a prompt that would not fit with the 40 output tokens is cut by a quarter of its
+    words at a time (romanized Hebrew can pass 2,000 tokens in 1,200 words). Stops at
+    `<end_of_turn>` through llama.cpp's end-of-generation check in the JNI.
+  - Save runs the title on `paraWorker` (which owns the models): the clean-up model is closed
+    first to keep memory down, the title model loaded, run and closed. Any failure, or nothing left
+    after cleaning, saves by the time alone. Status: "Writing a title…", then "Saved: <path>".
+- **Tests:** `app/src/test/…/TitlesTest.kt` (every case of `desktop/tests/test_titles.py`, plus
+  the context cut) and `TranscriptsTest.kt` (names, slug, no overwrite, the front matter / H1 / H2
+  / credit line byte for byte as `test_transcripts.py` checks, raw version and manifest). The
+  app's first JVM unit tests: `testImplementation` junit 4.13.2 and org.json 20240303 (android.jar's
+  org.json is a stub off-device). Run `./gradlew testFdroidDebugUnitTest`.
+- **Checked (2026-10-31):** the 12 JVM tests pass; `assembleFdroidDebug` builds (JDK 21, a clean
+  worktree with every submodule at its pinned commit, 19.4 MB debug APK with
+  `libhebrish-llama-jni.so` and the new catalogue); desktop tests pass apart from the known
+  `test_numbers_and_rules_match_the_website`. **Not run on a phone:** the folder picker, writing
+  through a real provider, the title model's speed and memory, and whether 2,048 tokens of context
+  load comfortably on a mid-range phone are all unverified (B-75a's phone check is still open).
+
 ## Robustness pass: dead ends, leaks, main-thread work (unreleased, 2026-10-30)
 
 A whole-app review (`android/app/src/main`, `android/core/src/main`) and its fixes. No measured

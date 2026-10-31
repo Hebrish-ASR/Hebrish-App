@@ -6,15 +6,15 @@ import java.io.File
 /**
  * The clean-up model in-process (B-40a): libhebrish-llama-jni.so (llama.cpp b11982, built from
  * the submodule; src/main/cpp/s1_cleanup_jni.cpp) with one GGUF loaded and a [Cleanup.CTX]
- * context. Loading maps the file and takes a few seconds; the model is kept until [close]. Blocking;
+ * context ([Titles.CTX] for the title model, B-75a). Loading maps the file and takes a few seconds; the model is kept until [close]. Blocking;
  * call from a worker thread, one call at a time.
  */
-class CleanupModel(gguf: File, threads: Int) : Cleanup.Client, AutoCloseable {
+class CleanupModel(gguf: File, threads: Int, nCtx: Int = Cleanup.CTX) : Cleanup.Client, AutoCloseable {
     private var handle: Long
 
     init {
         System.loadLibrary("hebrish-llama-jni")
-        handle = nativeLoad(gguf.path, Cleanup.CTX, threads)
+        handle = nativeLoad(gguf.path, nCtx, threads)
     }
 
     override fun count(text: String): Int = nativeCount(live(), text.toByteArray())

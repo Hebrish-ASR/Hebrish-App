@@ -4,6 +4,7 @@ import app.hebrish.core.*
 import android.Manifest
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Color
@@ -49,6 +50,12 @@ import java.util.concurrent.Executors
  * by Superwhisper, or Daniel's fine-tune of it) and the switch on, the finished take is cleaned
  * once ([Cleanup], [CleanupModel]) on the same worker. Its paragraphs replace the Paragraphs
  * setting, which is used again if clean-up fails; failed parts keep their raw text.
+ *
+ * Save (B-74a; desktop B-74/B-78): writes the box as Markdown into the transcripts folder the user
+ * picked ([TranscriptFolder], [Transcripts]): front matter, title, date, credit line, plus the raw
+ * transcription and a JSON manifest. [Doc] is what Save needs about the transcript in the box.
+ * With the title model downloaded and *Give saved transcripts a title* on (B-75a, [Titles]) the
+ * title is written first on [paraWorker]; any failure saves without one.
  */
 class TranscriptionActivity : Page() {
     private val ui = Handler(Looper.getMainLooper())
@@ -92,6 +99,25 @@ class TranscriptionActivity : Page() {
     private var cleanModel: CleanupModel? = null
     private var cleanModelFile: File? = null
 
+    /**
+     * The transcript in the box, for Save (desktop `_doc`): its time (the first part's), each
+     * part's raw text (before clean-up and edits), speech models, audio seconds, source, clean-up
+     * models, and what was last saved. Reset by Clear and by a take that starts in an empty box.
+     */
+    private class Doc(val whenMs: Long) {
+        val raw = ArrayList<String>()
+        val models = LinkedHashSet<String>()
+        val cleanup = LinkedHashSet<String>()
+        var seconds = 0.0
+        var recorded = false
+        var savedText: String? = null
+        var savedPath: String? = null
+    }
+    private var doc: Doc? = null
+    private var saving = false
+    /** Save was pressed before a folder was chosen: save once the picker answers. */
+    private var saveAfterPick = false
+
     private lateinit var leftoverBox: LinearLayout
     private lateinit var leftoverText: TextView
     private lateinit var micLine: TextView
@@ -113,6 +139,10 @@ class TranscriptionActivity : Page() {
     private lateinit var cleanBox: LinearLayout
     private lateinit var cleanLine: TextView
     private lateinit var cleanProgress: ProgressBar
+    private lateinit var saveLine: TextView
+    private lateinit var titleBox: LinearLayout
+    private lateinit var titleLine: TextView
+    private lateinit var titleProgress: ProgressBar
 
     private val tick = object : Runnable {
         override fun run() {
@@ -216,15 +246,30 @@ class TranscriptionActivity : Page() {
         }
         column.addView(text, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
         row().also { r ->
+            primary(button(R.string.tm_save, r) { save() })
             button(R.string.try_copy, r) { TextOut.copy(this, text.text) }
             button(R.string.try_share, r) { TextOut.share(this, text.text) }
-            button(R.string.try_clear, r) { text.setText("") }
+            button(R.string.try_clear, r) { text.setText(""); doc = null }
         }
+
+        // Save (B-74a) and titles (B-75a): where Save writes, and the title switch when the phone can run the model.
+        val sline = row().apply { gravity = Gravity.CENTER_VERTICAL; (layoutParams as LinearLayout.LayoutParams).topMargin = dp(6) }
+        saveLine = TextView(this).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTextColor(getColor(R.color.brand_muted)) }
+        sline.addView(saveLine, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        button(R.string.tm_folder, sline) { pickFolder() }
+        titleBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(titleBox, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        switch(R.string.tm_titles, { Prefs.titles(this) }, { on -> setTitles(on) }, titleBox)
+        titleLine = TextView(this).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTextColor(getColor(R.color.brand_muted)) }
+        titleBox.addView(titleLine)
+        titleProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 1000 }
+        titleBox.addView(titleProgress, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
 
         showMic()
         showLeftover()
         showParagraphs()
         showCleanup()
+        showSave()
         sync()
     }
 
@@ -237,6 +282,7 @@ class TranscriptionActivity : Page() {
         refresh()
         showParagraphs()
         showCleanup()
+        showSave()
     }
 
     override fun onPause() {
@@ -585,6 +631,7 @@ class TranscriptionActivity : Page() {
     /** Transcription finished: Paragraph model runs now; otherwise History gets the take as shown. */
     private fun taken(t: Take, stats: TakeDecoder.Stats) {
         t.done = true
+        noteDoc(t, stats)
         if (cleaning() && CleanupStore.readyFile(this) != null) return runCleanup(t, stats)
         paragraphsFor(t, stats)
     }
@@ -680,6 +727,7 @@ class TranscriptionActivity : Page() {
         val flat = joined(t, false)
         if (gguf == null || flat.isBlank()) return paragraphsFor(t, stats)
         val keep = PersonalDictionary.entries(this).map { it.word }
+        val cleanName = CleanupStore.chosen(this)?.let { "${it.name} ${it.version}" }
         val before = status.text
         t.cleanRunning = true
         status.setText(R.string.tm_cleanup_running)
@@ -696,6 +744,7 @@ class TranscriptionActivity : Page() {
                     return@post paragraphsFor(t, stats)
                 }
                 t.cleanText = res.text
+                if (take === t) cleanName?.let { doc?.cleanup?.add(it) }
                 val applied = current && unedited()
                 if (applied) show(compose(t, mode))
                 if (stats != null) History.record(app, if (applied || !current) res.text else flat, stats, History.RECORD)
@@ -802,14 +851,134 @@ class TranscriptionActivity : Page() {
     private fun onCleanupDownload(s: CleanupStore.Status) {
         showCleanup()
         showParagraphs()
+        showSave()
+        val titleId = CleanupStore.title(this)?.id
         when (s) {
-            is CleanupStore.Status.Done -> if (cleanOn && s.id == CleanupStore.chosen(this)?.id) {
-                status.setText(R.string.tm_cleanup_downloaded)
-                reflowCleanup()
-            }
-            is CleanupStore.Status.Failed -> status.text = getString(R.string.tm_cleanup_download_failed, s.message)
+            is CleanupStore.Status.Done -> if (s.id == titleId) status.setText(R.string.tm_titles_downloaded)
+                else if (cleanOn && s.id == CleanupStore.chosen(this)?.id) {
+                    status.setText(R.string.tm_cleanup_downloaded)
+                    reflowCleanup()
+                }
+            is CleanupStore.Status.Failed -> status.text = getString(
+                if (s.id == titleId) R.string.tm_titles_download_failed else R.string.tm_cleanup_download_failed, s.message)
             else -> Unit
         }
+    }
+
+    // -- save (B-74a) and titles (B-75a) -------------------------------------------------
+    /** The speech model in use, as the files name it: "Sabich v2.3". */
+    private fun modelLabel(): String {
+        val m = Catalogue.selected(this)
+        return listOf(m.name, ModelStore.installed(this, m)?.label.orEmpty()).filter { it.isNotEmpty() }.joinToString(" ")
+    }
+
+    /** A take finished: start a new [Doc] when the box was empty, else add the take to it. */
+    private fun noteDoc(t: Take, stats: TakeDecoder.Stats) {
+        val d = doc?.takeIf { t.base.isNotBlank() } ?: Doc(System.currentTimeMillis()).also { doc = it }
+        joined(t, false).trim().takeIf { it.isNotEmpty() }?.let(d.raw::add)
+        d.seconds += stats.audioSeconds
+        d.recorded = true
+        modelLabel().takeIf { it.isNotEmpty() }?.let(d.models::add)
+    }
+
+    /** The front matter's details, in desktop's order (generator, model, audio_seconds, source, cleanup_model). */
+    private fun meta(d: Doc?): Map<String, Any?> = linkedMapOf(
+        "generator" to "Hebrish Android ${versionName()}",
+        "model" to (d?.models?.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: modelLabel()),
+        "audio_seconds" to d?.seconds?.takeIf { it > 0 },
+        "source" to if (d?.recorded == true) "recording" else null,
+        "cleanup_model" to d?.cleanup?.takeIf { it.isNotEmpty() }?.joinToString(", "),
+    )
+
+    /**
+     * Saves the box: the title first when the title model is downloaded and the switch is on (on
+     * [paraWorker], which owns the models; the clean-up model is let go first to keep memory low),
+     * then the files. No folder yet: the picker first, then this again.
+     */
+    private fun save() {
+        val body = text.text.toString()
+        if (body.isBlank()) { status.setText(R.string.tm_save_empty); return }
+        val d = doc ?: Doc(System.currentTimeMillis()).also { doc = it }
+        if (d.savedText == body) { status.text = getString(R.string.tm_already_saved, d.savedPath); return }
+        if (saving) return
+        if (TranscriptFolder.tree(this) == null) { saveAfterPick = true; pickFolder(); return }
+        saving = true
+        val raw = d.raw.takeIf { it.isNotEmpty() }?.joinToString("\n\n")
+        val meta = meta(d)
+        val titleFile = if (Prefs.titles(this)) CleanupStore.titleFile(this) else null
+        val max = Prefs.titleMaxChars(this)
+        status.setText(if (titleFile != null) R.string.tm_titling else R.string.tm_saving)
+        val app = applicationContext
+        paraWorker.execute {
+            val title = titleFile?.let { f ->
+                closeCleaner()
+                runCatching { CleanupModel(f, Transcriber.threads, Titles.CTX).use { Titles.make(body, it, max) } }.getOrNull()
+            }
+            val r = runCatching { TranscriptFolder.save(app, body, raw, title, d.whenMs, meta) }
+            ui.post {
+                saving = false
+                r.onSuccess { path ->
+                    d.savedText = body
+                    d.savedPath = path
+                    status.text = getString(R.string.tm_saved, path)
+                }.onFailure { status.text = getString(R.string.tm_save_failed, it.message ?: it.javaClass.simpleName) }
+            }
+        }
+    }
+
+    private fun pickFolder() {
+        try {
+            @Suppress("DEPRECATION") startActivityForResult(TranscriptFolder.pickIntent(this), PICK_FOLDER)
+        } catch (_: android.content.ActivityNotFoundException) {
+            saveAfterPick = false
+            Toast.makeText(this, R.string.tm_no_picker, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    @Deprecated("Activity.onActivityResult")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION") super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != PICK_FOLDER) return
+        val uri = data?.data
+        val again = saveAfterPick
+        saveAfterPick = false
+        if (resultCode != RESULT_OK || uri == null) return
+        val ok = runCatching { TranscriptFolder.accept(this, uri) }
+        ok.onFailure { status.text = getString(R.string.tm_save_failed, it.message ?: it.javaClass.simpleName) }
+        showSave()
+        if (ok.isSuccess && again) save()
+    }
+
+    private fun setTitles(on: Boolean) {
+        Prefs.setTitles(this, on)
+        val e = CleanupStore.title(this)
+        if (on && e != null && !CleanupStore.isReady(this, e)) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.tm_titles_ask_title)
+                .setMessage(getString(R.string.tm_titles_ask, e.downloadMb, e.ramMb))
+                .setPositiveButton(R.string.tm_cleanup_download) { _, _ -> CleanupStore.download(this, e); showSave() }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
+        showSave()
+    }
+
+    /** The folder line, and the title switch's line (hidden when this phone or catalogue has no title model). */
+    private fun showSave() {
+        saveLine.text = TranscriptFolder.label(this)?.let { getString(R.string.tm_save_line, it) } ?: getString(R.string.tm_save_no_folder)
+        val e = CleanupStore.title(this)
+        titleBox.visibility = if (e != null) View.VISIBLE else View.GONE
+        if (e == null) return
+        val s = CleanupStore.status
+        val running = s is CleanupStore.Status.Running && s.id == e.id
+        titleLine.text = when {
+            running -> getString(R.string.tm_titles_downloading, (s as CleanupStore.Status.Running).let { if (it.total > 0) (it.done * 100 / it.total).toInt() else 0 })
+            !Prefs.titles(this) -> getString(R.string.tm_titles_off)
+            !CleanupStore.isReady(this, e) -> getString(R.string.tm_titles_missing, e.downloadMb)
+            else -> getString(R.string.tm_titles_ready)
+        }
+        titleProgress.visibility = if (running) View.VISIBLE else View.GONE
+        if (running) (s as CleanupStore.Status.Running).let { titleProgress.progress = if (it.total > 0) (it.done * 1000 / it.total).toInt() else 0 }
     }
 
     private fun chooseParagraphs() {
@@ -928,6 +1097,7 @@ class TranscriptionActivity : Page() {
     companion object {
         private const val REQ_MIC = 11
         private const val REQ_NOTIFY = 12
+        private const val PICK_FOLDER = 13
         private const val PARAGRAPH_S = 30
         private const val CONFIRM_DROP_S = 60f
         private const val CLIP_HOLD_MS = 1500L

@@ -1668,8 +1668,9 @@ Daniel, 2026-10-31 (R-2026-10-31-5; B-75, B-77, B-78). Code: `hebrish/ui/transcr
   clean-up don't evict each other's process; each stops after `IDLE_S`. `cleanup.stop(aid)` stops
   one, `stop()` all (app quit). Choosing another clean-up model stops the previous one's process.
   `cleanup.entries(kind)` / `_all(kind)`: `text_cleanup` by default, `None` for every llama kind
-  (downloads, runtime clean-up, `entry()`). Android reads only `text_cleanup` (CleanupStore.kt),
-  and the title entry has no `android` block.
+  (downloads, runtime clean-up, `entry()`). Android reads an add-on only through its `android` block
+  (CleanupStore.kt, per kind); the title entry has one since B-75a (2026-10-31), and `android`/`phone`
+  in its `platforms`/`devices` don't change `offered()` here (it checks this OS and `runtime`).
 - HF: both third-party models are in the Hebrish collection "Integrated Models"
   (<https://huggingface.co/collections/Hebrish/integrated-models-6ae60b8846603b646d05cc1f>, created
   2026-10-31).

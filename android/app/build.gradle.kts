@@ -142,6 +142,9 @@ tasks.matching { it.name.contains("FdroidRelease") && it.name.contains("ArtProfi
 
 dependencies {
     implementation("com.microsoft.onnxruntime:onnxruntime-android:$onnxRuntimeVersion")
+    // JVM unit tests (src/test: Titles, Transcripts). org.json: android.jar's copy is a stub off-device.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }
 
 // The ORT AAR's headers/ and jni/<abi>/libonnxruntime.so, unpacked to build/onnxruntime (the

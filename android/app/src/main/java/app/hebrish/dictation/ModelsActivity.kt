@@ -114,6 +114,22 @@ class ModelsActivity : Page() {
                 }
             }
         }
+        // The title model (B-75a): the same download path; Transcription Mode's Save uses it when its switch is on.
+        CleanupStore.title(this)?.let { e ->
+            val ready = CleanupStore.isReady(this, e)
+            val state = when {
+                cs is CleanupStore.Status.Running && cs.id == e.id -> getString(R.string.models_post_downloading, pct(cs.done, cs.total))
+                ready -> getString(R.string.models_downloaded, e.version, e.downloadMb)
+                else -> getString(R.string.models_not_downloaded, e.downloadMb)
+            }
+            postCard(e.name, getString(R.string.models_post_title_about, e.ramMb), state) { card ->
+                when {
+                    cs is CleanupStore.Status.Running && cs.id == e.id -> button(getString(R.string.tm_cancel), card) { CleanupStore.cancel() }
+                    ready -> button(getString(R.string.delete), card) { CleanupStore.remove(this, e.id); renderPost() }
+                    cs !is CleanupStore.Status.Running -> button(getString(R.string.models_post_download), card) { CleanupStore.download(this, e); renderPost() }
+                }
+            }
+        }
         if (CleanupStore.status is CleanupStore.Status.Failed) text(getString(R.string.models_post_failed, (cs as CleanupStore.Status.Failed).message), post)
     }
 

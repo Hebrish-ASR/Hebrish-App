@@ -760,10 +760,12 @@
       "download_mb": 292,
       "platforms": [
         "linux",
-        "windows"
+        "windows",
+        "android"
       ],
       "devices": [
-        "desktop"
+        "desktop",
+        "phone"
       ],
       "requirements": {
         "ram_mb": 600,
@@ -771,6 +773,14 @@
       },
       "hardware": "A computer, no graphics card needed; about 600 MB of memory while it runs",
       "technical": "gghfez's fine-tune of Gemma 3 270M for chat titles (Open WebUI's title prompt), GGUF Q8_0 (292 MB), run on the processor by llama.cpp's llama-server (CPU build, 22 to 24 MB download, shared with the clean-up models). Greedy decoding on the first 1,200 words; the title is cut to the length set in Settings.",
+      "android": {
+        "_doc": "The desktop file (Q8_0) as is: 292 MB is fine on a phone. Run in-process by the app's llama.cpp b11982 build (CleanupModel.kt) with a 2,048-token context; ram_mb is an estimate (weights plus a small KV cache), not measured on a phone.",
+        "file": "openwebui-title-generator-270m.q8_0.gguf",
+        "revision": "66dd1cafc854c31ff433a6065dee42e4f6ec29dd",
+        "size": 291546016,
+        "sha256": "94eb69ae85ce0eb508b0acbbf64c3df115eb681938309aad6ccc04517ece75ab",
+        "ram_mb": 450
+      },
       "runtime": {
         "engine": "llama_server",
         "build": "b11982",
