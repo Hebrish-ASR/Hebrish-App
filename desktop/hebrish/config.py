@@ -119,6 +119,8 @@ DEFAULTS = {
                                   # independent of Voice Typing's `vad`; also in the tray menu)
     "tm_save_audio": False,       # keep each transcribed recording (16 kHz mono WAV) in tm_audio_dir
     "tm_audio_dir": "",           # "" = ~/Documents/Hebrish recordings (longform.default_keep_dir)
+    "transcripts_dir": "",        # Save writes here (transcripts.py, B-74): <dir>/YYYY/MM/DD/HH-MM-SS.md;
+                                  # "" = ~/Documents/Hebrish transcripts
     "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad)
     "vad_silero": True,           # with Voice detection on, use Silero VAD (bundled, vad.py,
                                   # 2026-10-29); off = the energy rule

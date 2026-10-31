@@ -36,7 +36,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, 
                                QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import audio, cleanup, dictionary, disfluency, longform, mics, paragraphs
+from .. import audio, cleanup, dictionary, disfluency, longform, mics, paragraphs, transcripts
 from .icons import line_icon
 from .mics import fill_combo
 from .meter import LevelMeter, verdict
@@ -338,7 +338,7 @@ class TranscribePage(QWidget):
         row.addWidget(self.btn_cancel)
         b.addLayout(row)
         row = QHBoxLayout()
-        for label, fn, name in (("Copy", self._copy, "copy"), ("Save…", self._save, "save"),
+        for label, fn, name in (("Copy", self._copy, "copy"), ("Save", self._save, "save"),
                                 ("Clear", self._clear, "clear")):
             btn = QPushButton(label)
             btn.clicked.connect(fn)
@@ -994,16 +994,13 @@ class TranscribePage(QWidget):
         self.ctl.win._copy(self.text.toPlainText(), "Transcript copied.")
 
     def _save(self):
-        name = time.strftime("transcript-%Y-%m-%d-%H%M.txt")
-        path, _ = QFileDialog.getSaveFileName(self, "Save transcript", str(Path.home() / name),
-                                              "Text (*.txt);;Markdown (*.md);;All files (*)")
-        if path:
-            try:
-                Path(path).write_text(self.text.toPlainText() + "\n", encoding="utf-8")
-            except OSError as e:
-                QMessageBox.warning(self, "Couldn't save", f"Couldn't save {path}:\n{e}")
-                return
-            self.ctl.win.status(f"Saved {path}")
+        """B-74: straight to the transcripts folder (Settings → Transcripts), as Markdown."""
+        try:
+            path = transcripts.save(self.text.toPlainText(), self.cfg["transcripts_dir"])
+        except OSError as e:
+            QMessageBox.warning(self, "Couldn't save", f"Couldn't save the transcript:\n{e}")
+            return
+        self.ctl.win.status(f"Saved {path}")
 
     def _clear(self):
         if QMessageBox.question(self, "Clear transcript", "Clear the text box?") == QMessageBox.Yes:

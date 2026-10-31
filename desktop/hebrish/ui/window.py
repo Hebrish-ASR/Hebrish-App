@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, Q
                                QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QTimeEdit,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import __version__, audio, autostart, cleanup, dictionary, model_store, paragraphs, vad
+from .. import __version__, audio, autostart, cleanup, dictionary, model_store, paragraphs, transcripts, vad
 from ..config import APP_NAME, CONFIG_PATH, MODELS_DIR, STATE_PATH, TAGLINE, load_json, threads
 from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
@@ -436,7 +436,7 @@ class MainWindow(QMainWindow):
         row = QHBoxLayout()
         self.btn_copy_text = QPushButton(line_icon("copy"), "Copy")
         self.btn_copy_text.clicked.connect(lambda: self._copy(self.text.toPlainText(), "Text copied."))
-        self.btn_save_text = QPushButton(line_icon("save"), "Save…")
+        self.btn_save_text = QPushButton(line_icon("save"), "Save")
         self.btn_save_text.clicked.connect(self._save_text)
         self.btn_clear_text = QPushButton(line_icon("clear"), "Clear")
         self.btn_clear_text.clicked.connect(self.text.clear)
@@ -556,16 +556,13 @@ class MainWindow(QMainWindow):
             w.setEnabled(bool(t.strip()))
 
     def _save_text(self):
-        name = time.strftime("dictation-%Y-%m-%d-%H%M.txt")
-        path, _ = QFileDialog.getSaveFileName(self, "Save text", str(Path.home() / name),
-                                              "Text (*.txt);;Markdown (*.md);;All files (*)")
-        if path:
-            try:
-                Path(path).write_text(self.text.toPlainText() + "\n", encoding="utf-8")
-            except OSError as e:
-                self.banner(f"Couldn't save {path}: {e}")
-                return
-            self.status(f"Saved {path}")
+        """B-74: straight to the transcripts folder (Settings → Transcripts), as Markdown."""
+        try:
+            path = transcripts.save(self.text.toPlainText(), self.cfg["transcripts_dir"])
+        except OSError as e:
+            self.banner(f"Couldn't save the text: {e}")
+            return
+        self.status(f"Saved {path}")
 
     def _copy(self, text, done="Copied."):
         try:
@@ -1694,6 +1691,25 @@ class MainWindow(QMainWindow):
         b.addWidget(self.app_status_label)
         lay.addWidget(box)
 
+        box, b = card("Transcripts")
+        self.transcripts_label = muted()
+        self.transcripts_label.setTextFormat(Qt.PlainText)   # "<year>" is not a tag
+        self.transcripts_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        b.addWidget(self.transcripts_label)
+        row = QHBoxLayout()
+        change = QPushButton(line_icon("folder"), "Change folder…")
+        change.clicked.connect(self._change_transcripts)
+        self.btn_transcripts_default = QPushButton("Use the default folder")
+        self.btn_transcripts_default.clicked.connect(lambda: self._set_transcripts(""))
+        opener = QPushButton("Open folder")
+        opener.clicked.connect(self._open_transcripts)
+        for w in (change, self.btn_transcripts_default, opener):
+            row.addWidget(w)
+        row.addStretch(1)
+        b.addLayout(row)
+        self._sync_transcripts()
+        lay.addWidget(box)
+
         box, b = card("Local API")
         b.addWidget(self._local_api_row())
         self.api_status_label = muted()
@@ -1713,6 +1729,34 @@ class MainWindow(QMainWindow):
         lay.addWidget(box)
         lay.addStretch(1)
         return page
+
+    # -- transcripts folder (B-74) -------------------------------------------------------
+    def _sync_transcripts(self):
+        base = transcripts.folder(self.cfg["transcripts_dir"])
+        self.transcripts_label.setText(
+            f"Save puts each text in {base}/<year>/<month>/<day>/, named by the time "
+            "(14-05-09.md), as Markdown.")
+        self.btn_transcripts_default.setEnabled(bool(self.cfg["transcripts_dir"]))
+
+    def _change_transcripts(self):
+        base = transcripts.folder(self.cfg["transcripts_dir"])
+        start = str(base if base.exists() else Path.home())
+        path = QFileDialog.getExistingDirectory(self, "Folder for saved transcripts", start)
+        if path:
+            self._set_transcripts(path)
+
+    def _set_transcripts(self, path: str):
+        self.cfg.set("transcripts_dir", path)
+        self._sync_transcripts()
+
+    def _open_transcripts(self):
+        base = transcripts.folder(self.cfg["transcripts_dir"])
+        try:
+            base.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            self.banner(f"Couldn't open {base}: {e}")
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(base)))
 
     def _local_api_row(self):
         """B-73, hebrish.local_api: a switch and the port."""
