@@ -227,12 +227,15 @@ def test_finish_releases_the_rest():
     assert s._release("Hello there friend.", True, now=0.2) == "Hello there friend."
 
 
-def _run_worker(texts, jobs, cfg=None, enter_at=None, hold=False, late=None, sent=None, send_take=0):
+def _run_worker(texts, jobs, cfg=None, enter_at=None, hold=False, late=None, sent=None, send_take=0,
+                heard=0, keys=False):
     """Drive Controller._worker with a scripted Parakeet engine; return (pastes, transcript).
     Skipped where PySide6 isn't installed (Linux CI), as in test_overlay.
     enter_at: the user's send key is pressed while the decode call with that index runs (Enter
     guard), held by the key source if `hold`; words it keeps back go to `late`, presses of a
-    chord (Stop and send, a replayed Enter) to `sent`."""
+    chord (Stop and send, a replayed Enter) to `sent`. A job ("ENTER", False) is Press Enter after
+    silence's marker, queued with the silence clock at 0; `heard` is where the clock is when it
+    runs (not 0: speech since). keys: key presses also go in the pastes, as ("KEY", chord)."""
     import pytest
     pytest.importorskip("PySide6")
     import queue
@@ -260,15 +263,21 @@ def _run_worker(texts, jobs, cfg=None, enter_at=None, hold=False, late=None, sen
         engine=SimpleNamespace(streaming=False, transcribe_after=decode),
         cfg={"vad": False, "trailing_space": True, "all_caps": False, "out_cursor": True, "out_clipboard": False,
              "out_window": False, "paste_chord": "ctrl+v", "send_chord": "enter", "enter_guard": "late",
-             **(cfg or {})},
-        sig=sig, inserter=SimpleNamespace(insert=lambda t, how, chord: pastes.append(t), press=sent.append),
+             "auto_enter": False, **(cfg or {})},
+        sig=sig, inserter=SimpleNamespace(insert=lambda t, how, chord: pastes.append(t),
+                                          press=lambda c: (sent.append(c), keys and pastes.append(("KEY", c)))),
         hotkeys=SimpleNamespace(holding=False, hold_send=lambda on: False),
         _take=1, _dropped=set(), _send_take=send_take, _jobs=queue.Queue(), _pasted_at=0.0,
-        _guard=threading.Lock(), _unfinished={1}, _diverted=set(), _late={}, _enter_held=False, _hold_timer=None)
-    for name in ("_show", "_insert", "_out", "_finish_take", "_sends", "_send", "_release_hold", "_replay_enter"):
+        _guard=threading.Lock(), _unfinished={1}, _diverted=set(), _late={}, _enter_held=False, _hold_timer=None,
+        _typed=False, state="recording", recorder=SimpleNamespace(paused=False), _silence=SimpleNamespace(heard=heard))
+    for name in ("_show", "_insert", "_out", "_finish_take", "_sends", "_send", "_release_hold", "_replay_enter",
+                 "_auto_enter"):
         setattr(ctl, name, getattr(Controller, name).__get__(ctl))
     for pause, final in jobs:
-        ctl._jobs.put((1, np.zeros(SR, np.float32), final, pause))
+        if pause == "ENTER":
+            ctl._jobs.put((1, None, False, 0))
+        else:
+            ctl._jobs.put((1, np.zeros(SR, np.float32), final, pause))
     threading.Thread(target=Controller._worker, args=(ctl,), daemon=True).start()
     assert done.wait(5)
     time.sleep(0.3)               # _finish_take runs after the transcript; a replayed Enter after 0.15 s
@@ -405,3 +414,54 @@ def test_beep_styles_are_well_formed():
     assert all(0 < v <= 0.25 for v in peak.values())
     assert peak["soft"] < 0.6 * peak["classic"]           # soft is clearly quieter
     assert DEFAULTS["quiet_sound"] == "off"               # quiet hours stay silent unless chosen
+
+
+# -- Press Enter after silence (R-2026-10-31-1): the worker's Enter marker -------------------------
+
+ON = {"auto_enter": True}
+
+
+def test_enter_after_silence_follows_the_text_and_its_held_full_stop():
+    pastes, text = _run_worker(["Fix the failing test.", "Thanks."],
+                               [(0.7, False), ("ENTER", False), (None, True)], ON, keys=True)
+    # the held full stop goes out before the Enter; the next words start a new message
+    assert pastes == ["Fix the failing test", ".", ("KEY", "enter"), "Thanks. "]
+    assert text == "Fix the failing test. Thanks."
+
+
+def test_enter_after_silence_presses_the_send_key():
+    sent = []
+    _run_worker(["Ship it.", ""], [(0.7, False), ("ENTER", False), (None, True)],
+                {**ON, "send_chord": "ctrl+enter"}, sent=sent)
+    assert sent == ["ctrl+enter"]
+
+
+def test_no_enter_after_silence_when_off_or_nothing_typed():
+    sent = []
+    _run_worker(["Ship it.", ""], [(0.7, False), ("ENTER", False), (None, True)], sent=sent)
+    assert sent == []                                   # off by default
+    _run_worker(["", ""], [(0.7, False), ("ENTER", False), (None, True)], ON, sent=sent)
+    assert sent == []                                   # nothing typed
+
+
+def test_no_enter_after_silence_once_speech_resumed():
+    sent = []
+    _run_worker(["Ship it.", ""], [(0.7, False), ("ENTER", False), (None, True)], ON, heard=SR, sent=sent)
+    assert sent == []
+
+
+def test_no_enter_after_silence_after_the_users_own_enter():
+    # the user pressed Enter after the text went in: nothing typed since, so no second Enter,
+    # and the held full stop isn't sent on its own
+    sent = []
+    pastes, text = _run_worker(["Ship it.", "", ""], [(0.7, False), (0.7, False), ("ENTER", False), (None, True)],
+                               ON, enter_at=1, sent=sent)
+    assert sent == [] and pastes == ["Ship it"] and text == "Ship it."
+
+
+def test_enter_after_silence_once_per_batch():
+    sent = []
+    _run_worker(["One.", "Two.", ""],
+                [(0.7, False), ("ENTER", False), ("ENTER", False), (0.7, False), ("ENTER", False), (None, True)],
+                ON, sent=sent)
+    assert sent == ["enter", "enter"]                   # the second marker had nothing new to send

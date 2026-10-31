@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated 2026-10-30. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
+Last updated 2026-10-31. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
 `released <version>`. Work is queued in **one sprint per platform** (desktop = Ubuntu + Windows,
 which share `desktop/`; Android). A sprint ends with a release, when the release gate below says so. Parity is the aim (decision
 D-2026-10-22-05): an item done on one platform gets a matching item in the other sprint, unless
@@ -52,6 +52,7 @@ tables below hold the detail and status.
 
 | Id | Item | Status |
 | --- | --- | --- |
+| B-72 | **Press Enter after silence** (Daniel, 2026-10-31, R-2026-10-31-1: dictating into Claude he forgets to hit Enter). Opt-in (off by default, since a stray Enter in another app can send or run something), Settings → Action keys: once text has been typed and the take has been silent (voice detection: Silero, else the energy rule) for 8 s (2–60 s), the Send key is pressed once through the paste inserter (uinput on Linux, X11 and Wayland; pynput on Windows). Once per pause, only with new text since the last Enter; resets when speech resumes; never while paused or after Stop; needs insert-as-you-go. Not yet tried in a live take. `desktop/hebrish/auto_enter.py`; `desktop/docs/maintaining.md`, "Press Enter after silence" | done (unreleased) |
 | B-65 | **Beep styles and soft quiet hours** (Daniel, 2026-10-28: "a less conspicuous beep ... for the evening time ... slightly less jarring", still audible). Settings → Sounds → *Beep*: Soft (default: a fifth lower, pure sine, slow fades, half the level) or Loud (the 0.5.0 to 1.007 pip); changing it plays a test beep. Theme sounds and a Chime style were auditioned and dropped (Daniel, 2026-10-28). Quiet hours can now play *soft beeps only* instead of silence (`quiet_sound`). `audio.BEEP_STYLES`. R-2026-10-28-2 | done (unreleased) |
 | B-66 | **History counts in K; WAL** (Daniel, 2026-10-28, R-2026-10-28-4, -5; D-2026-10-28-01). History tab tiles show words and dictations from 1,000 up to the nearest thousand (`12K words`, `window.kilo`), the exact figures in the tooltip. `history.db` switches to WAL journaling with `synchronous=NORMAL`. Measured on a synthetic 200,000-row database (46 M characters, 170 MB): keyword search 219 ms, stats 126 ms, insert 0.2 ms. Kept on SQLite rather than a document database: the app is embedded and single-user, and SQLite already gives transactions, FTS5 search and a place for B-16 vectors | released desktop 1.009 |
 | B-67 | **Export history to Parquet** (Daniel, 2026-10-28, R-2026-10-28-5): for the failed-transcription loop (find rows the model got wrong, mostly corrected rows with `original`, by `model_rev`). Same columns as JSON Lines, typed, zstd-compressed. Open question: pyarrow adds about 40 MB to the .deb and the Windows zip; options are bundling it, a lazy import with a fallback to JSON Lines, or a small writer of our own | planned |
@@ -102,6 +103,7 @@ tables below hold the detail and status.
 
 | Id | Item | Status |
 | --- | --- | --- |
+| B-72a | **Press Enter after silence on Android** (parity with B-72): the voice keyboard sends its Enter (IME action) once the take is silent for N s after text was committed, opt-in. The floating mic can't (the Enter belongs to the other app) | planned |
 | B-40a | **Clean-up model on Android** (parity with B-40). Daniel, 2026-10-30: quantise and offer it; two models, stock S1-mini by Superwhisper (default, Superwhisper's Q4_K_M) and S1-ASR-Cleanup (experimental, Q4_K_M from v1.0); same choice on desktop; no benchmark. llama.cpp b11982 built into the APK (submodule, `libhebrish-llama-jni.so`, about 2.5 MB compressed), ARMv8.2 dot product required. Transcription Mode *Clean up* switch and model choice; Models > Post-processing (also lists the paragraph model). Same prompt, guard and fallback as desktop; chunks 600 tokens, context 1,536. D-2026-10-30-01; `android/docs/maintaining.md`, "Clean up: S1-mini on the phone" | done (unreleased; not run on a phone) |
 | B-65a | **Beep styles on Android** (parity with B-65): the same Soft (default) / Loud shapes and pitches as `desktop/hebrish/audio.py` `BEEP_STYLES`, and quiet hours with soft beeps, in `Feedback.kt`. R-2026-10-28-2 | planned |
 | B-68a | **History viewer filters and fuzzy search on Android** (parity with B-68; with the History screen of B-19): fuzzy keyword search and date-range presets (today, the past few days, last week). R-2026-10-28-7 | planned |

@@ -24,6 +24,14 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
   then presses the **Send key** (`enter` by default; `ctrl+enter` or `shift+enter` where Enter
   makes a new line). For chat boxes and Claude Code, where an Enter pressed while the last piece
   is still being transcribed would submit without it. Paste output only.
+- **Press Enter after silence** (unreleased, 2026-10-31; off by default; Settings → Action keys,
+  with a delay of 2–60 s, 8 s by default): while Voice Typing records with *Insert as you go* on,
+  once text has been typed and you have been quiet that long, Hebrish presses the **Send key**
+  once, so a message to Claude (chat or Claude Code) goes without reaching for Enter. Silence is
+  what voice detection hears (Silero, or the energy rule). Once per pause: it needs new text
+  since the last Enter (yours or its own), starts again when you speak, and never fires while
+  paused or after Stop. Set the delay longer than your thinking pauses; leave it off for apps
+  where a stray Enter sends or runs something.
 - **Paste last transcription** (1.000, optional action key and a tray item): pastes the last
   take again where the cursor is now, for when it went into the wrong window. Kept in memory;
   after a restart it is History's newest entry.

@@ -54,14 +54,17 @@ class Silero:
         self._det = None
         self._buf = 0.0
 
-    def speech_frames(self, x: np.ndarray, frame: int) -> np.ndarray:
-        """True for each `frame`-sample frame of x inside a speech segment."""
+    def speech_frames(self, x: np.ndarray, frame: int, floor: float = 0.0) -> np.ndarray:
+        """True for each `frame`-sample frame of x inside a speech segment. floor: scale as if x
+        peaked at least this high (auto_enter: a silent window judged by the take's speech level,
+        not blown up to it)."""
         import sherpa_onnx
         n = len(x) // frame
         mask = np.zeros(n, bool)
         peak = float(np.percentile(np.abs(x), 99.9)) if len(x) else 0.0
         if n == 0 or peak < DEAD:
             return mask
+        peak = max(peak, floor)
         y = np.ascontiguousarray(x * (PEAK / peak), dtype=np.float32)
         secs = len(y) / SAMPLE_RATE + 2
         with self._lock:

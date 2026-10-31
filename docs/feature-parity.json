@@ -839,6 +839,27 @@
       "notes": "R-2026-10-27-1, D-2026-10-27-02. Desktop: late words to clipboard by default, hold opt-in (keyboard grab). Android keyboard: hold by default (own key), late words to Insert last after 4 s."
     },
     {
+      "id": "auto-enter",
+      "group": "insertion",
+      "name": "Press Enter after silence (opt-in: once text is typed and the take is silent for N s, press the send key once)",
+      "android": {
+        "status": "missing",
+        "evidence": "no equivalent; planning/backlog.md B-72a"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/auto_enter.py SilenceClock; desktop/hebrish/ui/app.py Controller._auto_enter_tick/_auto_enter"
+      },
+      "windows": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/inserter_win.py WindowsInserter.press",
+        "verified": false
+      },
+      "notes": "R-2026-10-31-1 (Daniel, 2026-10-31). Off by default, 8 s; needs insert-as-you-go."
+    },
+    {
       "id": "floating-overlay",
       "group": "platform-integration",
       "name": "Floating mic / overlay",
@@ -1311,7 +1332,8 @@
       "Disfluency chop (B-38)",
       "Transcription Mode Paragraphs setting (B-44)",
       "Transcription Mode Pause button and levels docked by default (B-45)",
-      "Clean-up model add-on for Transcription Mode (B-40)"
+      "Clean-up model add-on for Transcription Mode (B-40)",
+      "Press Enter after silence (B-72)"
     ]
   },
   "twin_lag": {

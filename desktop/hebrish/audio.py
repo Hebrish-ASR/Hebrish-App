@@ -156,6 +156,12 @@ class Recorder:
         with self._lock:
             return np.concatenate(self._chunks) if self._chunks else np.zeros(0, np.float32)
 
+    def tail(self) -> tuple[np.ndarray, int]:
+        """(the audio not yet consumed, samples recorded in the take so far), read together:
+        the unconsumed audio ends at that sample of the take (Press Enter after silence)."""
+        with self._lock:
+            return (np.concatenate(self._chunks) if self._chunks else np.zeros(0, np.float32)), self._n
+
     def consume(self, n: int) -> np.ndarray:
         """Remove and return the first n unconsumed samples. seconds still counts them."""
         with self._lock:

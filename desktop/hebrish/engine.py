@@ -115,6 +115,11 @@ def _speech_frames(x: np.ndarray, ref: np.ndarray | None = None) -> np.ndarray:
             return silero.speech_frames(x, FRAME)
         except Exception:
             log.exception("Silero VAD failed; using the energy rule")
+    return _energy_frames(x, ref)
+
+
+def _energy_frames(x: np.ndarray, ref: np.ndarray | None = None) -> np.ndarray:
+    """The energy rule alone (also auto_enter's fallback when Silero fails)."""
     rms = _frame_rms(x)
     if not len(rms):
         return rms > 1

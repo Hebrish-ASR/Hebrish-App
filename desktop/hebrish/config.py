@@ -53,6 +53,11 @@ DEFAULTS = {
     # overlay); "hold" also holds the Enter until they are in, then sends it (grabs the keyboard
     # for up to ENTER_HOLD_S); "off" pastes them wherever the cursor is, as before 1.007.
     "enter_guard": "late",
+    # Press Enter after silence (R-2026-10-31-1; auto_enter.py): while recording with insert-as-you-go,
+    # press send_chord once the take has been silent this long after text was typed. Off by default:
+    # an unexpected Enter in another app can send or run something.
+    "auto_enter": False,
+    "auto_enter_s": 8,
     "double_tap_retake": True,    # double tap of the toggle key while recording = Retake
     "double_tap_ms": 300,         # how long a stopping tap waits for the second tap
     "escape_discards": True,      # Esc while recording discards the take

@@ -22,7 +22,7 @@ from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QIcon, QPalett
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from .. import __version__, app_update, audio, autostart, dictionary, disfluency, engine, mics, model_store, vad
+from .. import __version__, app_update, audio, auto_enter, autostart, dictionary, disfluency, engine, mics, model_store, vad
 from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
 from ..engine import REF_S, Engine, after_held_stop, hold_stop, live_split
@@ -196,6 +196,10 @@ class Controller(QObject):
         self._hold_timer: threading.Timer | None = None
         self._jobs: queue.Queue = queue.Queue()
         self._pasted_at = 0.0           # time.monotonic() of the last paste chord (PASTE_GAP_S)
+        # Press Enter after silence (R-2026-10-31-1, auto_enter.py): text of the recording take
+        # pasted since the last Enter (ours or the user's send key), and the take's silence so far.
+        self._typed = False
+        self._silence = auto_enter.SilenceClock()
         threading.Thread(target=self._worker, daemon=True, name="decode").start()
         self._live_timer = QTimer(self, interval=500, timeout=self._live_tick)
 
@@ -273,6 +277,8 @@ class Controller(QObject):
             self.notify("Microphone error", str(e))
             return
         self._take += 1
+        self._typed = False
+        self._silence.reset(0)
         self.recorder.mute(self.cue(cue) + CUE_MARGIN_S)
         self.set_state("recording")
 
@@ -315,6 +321,7 @@ class Controller(QObject):
             played = self.cue("paused" if self.recorder.paused else "resumed")
             if not self.recorder.paused:
                 self.recorder.mute(played + CUE_MARGIN_S)
+                self._silence.reset(self.recorder.tail()[1])    # the silence timer starts again
             self._overlay_push()
             self.win.update_state()
 
@@ -418,6 +425,7 @@ class Controller(QObject):
     def _send_pressed(self, held: bool):
         """The user's send key (key thread). Takes still to finish keep their remaining words
         out of whatever the Enter just sent; held (hold mode), the Enter waits for them."""
+        self._typed = False               # Press Enter after silence: this Enter sent what was typed
         if self.cfg["enter_guard"] == "off" or not self.cfg["out_cursor"]:
             return
         with self._guard:
@@ -470,7 +478,40 @@ class Controller(QObject):
             if job in self._diverted:
                 self._late.setdefault(job, []).append(text)
                 return
-        self._insert(text)
+        if self._insert(text) and job == self._take and text.strip():
+            self._typed = True
+
+    def _auto_enter(self, job, heard):
+        """Press Enter after silence (decode thread, after the pieces queued before it are pasted).
+        heard: the silence clock's last speech when the Enter was queued; speech since then (or a
+        pause, a stop, an Enter already sent) cancels it."""
+        with self._guard:
+            if (not self.cfg["auto_enter"] or not self._typed or job != self._take
+                    or self.state != "recording" or self.recorder.paused or self._silence.heard != heard
+                    or job in self._diverted or self._enter_held or _in_tm_box(getattr(self, "win", None))):
+                return
+            self._typed = False
+        time.sleep(0.15)          # let the target app take the paste before the Enter
+        try:
+            self.inserter.press(self.cfg["send_chord"] or "enter")
+            log.info("pressed %r after silence", self.cfg["send_chord"] or "enter")
+        except Exception:
+            log.exception("Enter after silence failed")
+
+    def _auto_enter_tick(self, buf, total) -> bool:
+        """Press Enter after silence, from _live_tick (GUI thread). Once the take has been silent
+        for auto_enter_s with text to send: hand any speech not yet decoded to the worker, then
+        an Enter marker that runs after it. Returns True when it took the unconsumed audio."""
+        silence = self._silence.update(buf, total, auto_enter.speech_frames)
+        delay = min(auto_enter.MAX_S, max(auto_enter.MIN_S, self.cfg["auto_enter_s"] or auto_enter.DEFAULT_S))
+        untyped = self._silence.untyped(buf, total)
+        if not self._silence.due(delay, silence, self._typed or untyped):
+            return False
+        log.info("%.1f s of silence: Enter after the text so far", silence)
+        if untyped:
+            self._jobs.put((self._take, self.recorder.consume(len(buf)), False, silence))
+        self._jobs.put((self._take, None, False, self._silence.heard))
+        return untyped
 
     def _finish_take(self, job):
         """The decoder is done with a stopped take (decode thread)."""
@@ -542,24 +583,41 @@ class Controller(QObject):
         interval = self.cfg["live_insert_s"]
         if not interval or self.state != "recording" or self.recorder.paused:
             return
+        buf, total = self.recorder.tail()
+        if self.cfg["auto_enter"] and self.cfg["out_cursor"] and self._auto_enter_tick(buf, total):
+            return
         if self.engine.streaming:
             # Shakshuka: everything recorded so far goes to the stream; whole words come back.
-            new = self.recorder.peek()
-            if len(new):
-                self._jobs.put((self._take, self.recorder.consume(len(new)), False, None))
+            if len(buf):
+                self._jobs.put((self._take, self.recorder.consume(len(buf)), False, None))
             return
-        cut = live_split(self.recorder.peek(), interval)
+        cut = live_split(buf, interval)
         if cut:
             self._jobs.put((self._take, self.recorder.consume(cut[0]), False, cut[1]))
 
     def _worker(self):
         take, parts, stream, heard_audio, held, ctx = None, [], None, [], False, None
+        fresh = False         # an Enter after silence was just pressed: the next text starts a new message
         out = str             # how text leaves the app: as is, or ALL CAPS (read once per take)
         fix = str             # the personal dictionary (read once per take)
         while True:
             job, samples, final, pause = self._jobs.get()
+            if samples is None:
+                # Press Enter after silence (_auto_enter_tick): the take's pieces before it are in.
+                # A full stop held back at the last seam goes out first, and what follows is
+                # decoded without that piece as context: it starts the next message.
+                if job == take and job not in self._dropped:
+                    if held and parts:
+                        parts[-1] += "."
+                        self._show(out("."))
+                        if self._typed:       # not after the user's own Enter: "." alone would be sent
+                            self._out(job, out("."))
+                    held, ctx, fresh = False, None, True
+                    self._auto_enter(job, pause)
+                continue
             if job != take:
                 take, parts, stream, heard_audio, held, ctx = job, [], None, [], False, None
+                fresh = False
                 if job not in self._dropped:
                     self.sig.take_began.emit()
                 # ALL CAPS (0.7.2, Daniel 2026-10-22, "just for fun"): applied only to what is pasted
@@ -587,8 +645,10 @@ class Controller(QObject):
                     if text:
                         text = fix(disfluency.chop(text, "".join(parts[-1:])))   # whole words with their own spaces; stream.sent keeps the raw text
                         parts.append(text)
-                        self._show(out(text))
-                        self._out(job, out(text + space))
+                        typed = text.lstrip() if fresh else text   # no leading space in a new message
+                        fresh = False
+                        self._show(out(typed))
+                        self._out(job, out(typed + space))
                     elif space and parts and not stream.sent.endswith(" ") and self.cfg["out_cursor"]:
                         # the last words went out at a pause, without the space after them
                         self._out(job, out(space))
@@ -625,6 +685,7 @@ class Controller(QObject):
                     self._show(out(lead))
                     self._out(job, out(lead))
                 if text:
+                    fresh = False
                     held = not final and hold_stop(text, pause)
                     text = fix(text[:-1] if held else text)
                     parts.append(text)
@@ -650,9 +711,10 @@ class Controller(QObject):
         if self.cfg["out_window"]:
             self.sig.piece.emit(text)
 
-    def _insert(self, text):
+    def _insert(self, text) -> bool:
         """A piece out of the app (decode thread): pasted at the cursor, or, with only the
-        clipboard on, copied. The window is [_show]'s; the whole take's copy is [_done]'s."""
+        clipboard on, copied. The window is [_show]'s; the whole take's copy is [_done]'s.
+        True when it was pasted at the cursor."""
         if self.cfg["out_cursor"] and _in_tm_box(getattr(self, "win", None)):
             # Voice Typing never types into the Transcription box (1.012, Daniel): that box is
             # Transcription Mode's alone. The take goes to History and the clipboard instead.
@@ -665,8 +727,10 @@ class Controller(QObject):
             self.inserter.insert(text, "paste", self.cfg["paste_chord"])
             self._pasted_at = time.monotonic()
             log.info("pasted %d chars", len(text))
+            return True
         elif self.cfg["out_clipboard"]:
             self.inserter.insert(text, "clipboard", self.cfg["paste_chord"])
+        return False
 
     def _copy_take(self, text):
         try:

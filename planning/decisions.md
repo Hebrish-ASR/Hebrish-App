@@ -9,6 +9,21 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-10-31-01: Press Enter after silence is opt-in, 8 s, once per pause, only while recording
+
+- **Decision:** Desktop gets *Press Enter after silence* (B-72), off by default, delay 8 s (2-60 s).
+  It presses the configured Send key (`send_chord`, Enter by default) through the paste inserter,
+  at most once per silence and only when text was typed since the last Enter; new speech resets
+  it; never while paused or after Stop; silence is voice detection's (Silero, else the energy rule).
+- **Why:** Daniel, 2026-10-31: dictating into Claude he forgets to hit Enter, but it must not fire
+  on a thinking pause. Off by default because an Enter nobody expected in another app (a terminal,
+  a mail client) can run or send something; the Send key rather than a fixed Enter so apps where
+  Enter makes a new line work as with Stop and send.
+- **Alternatives:** on by default (rejected: the cost of a stray Enter); firing after Stop as well
+  (Stop and send covers that); a fixed Enter regardless of the Send key.
+- **By:** Daniel (the feature, 8 s, the once-per-batch rules); agent (off by default, Send key).
+- **Links:** R-2026-10-31-1; backlog B-72, B-72a; `desktop/docs/maintaining.md`, "Press Enter after silence".
+
 ### D-2026-10-30-01: Two clean-up models, stock S1-mini by Superwhisper the default; Q4_K_M with llama.cpp built in on Android
 
 - **Decision:** The clean-up add-on offers two models in both apps: stock **S1-mini by

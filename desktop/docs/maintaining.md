@@ -788,6 +788,59 @@ submitted without the last words, which then landed in the next prompt.
 - Only takes already stopped are covered: an Enter during a recording with insert-as-you-go is
   not caught.
 
+## Press Enter after silence (B-72, unreleased, 2026-10-31)
+
+R-2026-10-31-1 (Daniel: dictating into Claude, chat and Claude Code, he forgets to hit Enter).
+Config `auto_enter` (off by default: an Enter nobody expected can send a message or run a
+command in another app) and `auto_enter_s` (8; the spin box allows `auto_enter.MIN_S` 2 to
+`MAX_S` 60). Settings → Action keys, under *Send pressed early*: "Press Enter after silence" and
+the seconds box (disabled while off).
+
+- **Silence signal:** `hebrish/auto_enter.py` `SilenceClock`, updated from `Controller._live_tick`
+  (GUI thread, every 500 ms, only while recording, not paused, with insert-as-you-go on and At the
+  cursor on). Each tick reads `Recorder.tail()` (the unconsumed audio and the take's sample count,
+  under one lock) and runs voice detection on the audio recorded since the last tick plus
+  `OVERLAP_S` 0.3 s: `auto_enter.speech_frames`, which is Silero when `engine.silero` is set
+  (Voice detection with Silero on, the default) and the energy rule `engine._energy_frames`
+  otherwise, with up to `REF_S` 10 s of earlier unconsumed audio as the take's levels. Silence is
+  counted in recorded samples since the last speech frame, so a paused mic (which records nothing)
+  never counts. Silero normalises each call to its own peak, which on a silent window would blow
+  room noise up to speech level; `vad.Silero.speech_frames(floor=)` scales by the loudest speech
+  heard earlier in the take instead (`SilenceClock.level`). Cost: one ~0.8 s Silero call per tick
+  (about 7 ms at the 8.5 ms per audio second measured on 2026-10-29). Mistakes lean safe: noise
+  read as speech only delays the Enter.
+- **When it fires:** `SilenceClock.due(delay, silence, ready)` is true once per silence, when it
+  has lasted `auto_enter_s` and `ready` = text typed since the last Enter (`Controller._typed`) or
+  speech not yet handed to the decoder (`SilenceClock.untyped`). Speech after it resets the clock
+  and allows the next one. `_typed` is set in `_out` when a non-blank piece of the recording take
+  is pasted at the cursor, and cleared by `start()`, by the user's send key (`_send_pressed`, before
+  the Enter guard's early return) and by the auto Enter itself. `pause()` restarts the clock on
+  resume.
+- **Order:** `_auto_enter_tick` queues, on the decode queue, the unconsumed audio as a live piece
+  (if it holds speech the live cut hasn't taken: a short last phrase in a mostly silent buffer may
+  never meet `live_split`'s rules) and then a marker job `(take, None, False, heard)`. The worker
+  runs the marker after every earlier piece is pasted: a full stop held back at the last seam
+  (`hold_stop`) is pasted first, unless the user's own Enter already sent the text (then "." alone
+  would be sent); `held` and the seam context are cleared, so the next words start a new message
+  (streaming: the first release after it loses its leading space). Then `_auto_enter` checks, under
+  `_guard`: still on, `_typed`, the same take, still recording and not paused, no speech since the
+  marker was queued (`_silence.heard` unchanged), not diverted or held by the Enter guard, and not
+  in the Transcription box. Then 150 ms wait and `inserter.press(send_chord)` (Enter by default;
+  the configured Send key, as Stop and send).
+- **Key injection:** the same `press()` Stop and send uses. Linux (X11 and Wayland alike):
+  the `hebrish` uinput device, at the kernel level, so it reaches whatever window has focus.
+  Windows: pynput (`SendInput`). Our own key is never taken for the user's send key: the uinput
+  device is in `IGNORED_DEVICES`, and the Windows hook skips `LLKHF_INJECTED`.
+- **Not covered:** Insert as you go Off (nothing is typed until Stop, and after Stop is out of
+  scope; Stop and send covers it). A user's send key other than `send_chord` (a plain Enter when
+  the Send key is ctrl+enter) isn't seen, so it doesn't reset `_typed`.
+- **Verified:** unit tests, `tests/test_auto_enter.py` (clock, Silero floor on a -60 dBFS window,
+  the GUI tick's flush and marker) and `tests/test_live.py` worker cases (held full stop before the
+  Enter, send key used, off / nothing typed / speech resumed / user's own Enter / once per batch);
+  the settings row rendered off-screen. **Not verified:** a live take on a desktop (agents don't
+  run live record-and-paste tests on Daniel's desktop), Windows on a machine, how often a real
+  thinking pause outlasts 8 s.
+
 ## Voice Typing and the brand (B-51, 1.007, 2026-10-27)
 
 D-2026-10-27-03. The Dictate tab is **Voice Typing** in the UI; `pages["dictate"]`, config keys and

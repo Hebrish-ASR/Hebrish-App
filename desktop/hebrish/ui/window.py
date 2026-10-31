@@ -1558,12 +1558,14 @@ class MainWindow(QMainWindow):
                          "briefly taken over to do this; everything else you type passes straight "
                          "through.")
         form.addRow("Send pressed early", guard)
+        form.addRow("", self._auto_enter_row())
         b.addLayout(form)
         b.addWidget(muted("Stop and send stops recording, waits for the last words to be "
                           "inserted, then presses the send key, so nothing is cut off when you "
                           "submit (a chat box, Claude Code, a terminal). Paste output only. If you "
                           "press the send key yourself before the last words are in, Send pressed "
-                          "early decides what happens to them."))
+                          "early decides what happens to them. Press Enter after silence presses "
+                          "the send key for you when you stop talking (off by default)."))
         lay.addWidget(box)
 
         box, b = card("Speed")
@@ -1721,6 +1723,27 @@ class MainWindow(QMainWindow):
                 then()
         c.currentIndexChanged.connect(changed)
         return c
+
+    def _auto_enter_row(self):
+        """Press Enter after silence (R-2026-10-31-1, hebrish.auto_enter): a switch and its delay."""
+        from .. import auto_enter
+        row = QHBoxLayout()
+        on = self._check("auto_enter", "Press Enter after silence", self.update_state)
+        tip = ("While Voice Typing, once text has been typed and you've been quiet this long, "
+               "Hebrish presses the send key once, for chat boxes such as Claude. Once per pause, "
+               "never while paused or stopped. Needs Insert as you go (Speed). Off by default: in "
+               "other apps an unexpected Enter can send or run something.")
+        on.setToolTip(tip)
+        spin = QSpinBox(minimum=auto_enter.MIN_S, maximum=auto_enter.MAX_S, suffix=" s",
+                        value=self.cfg["auto_enter_s"] or auto_enter.DEFAULT_S)
+        spin.setToolTip(tip)
+        spin.setEnabled(self.cfg["auto_enter"])
+        on.toggled.connect(spin.setEnabled)
+        spin.valueChanged.connect(lambda v: self.cfg.set("auto_enter_s", v))
+        row.addWidget(on)
+        row.addWidget(spin)
+        row.addStretch(1)
+        return row
 
     def _live_row(self):
         """Preset combo, plus a seconds box shown for Custom (any value not in LIVE)."""

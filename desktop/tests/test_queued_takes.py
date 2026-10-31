@@ -14,6 +14,7 @@ import pytest
 pytest.importorskip("PySide6")
 from PySide6.QtCore import QObject  # noqa: E402
 
+from hebrish import auto_enter  # noqa: E402
 from hebrish.ui.app import Controller  # noqa: E402
 
 
@@ -40,6 +41,7 @@ class Ctl(Controller):
         self._pasted_at = 0.0
         self._guard, self._unfinished, self._diverted, self._late = threading.Lock(), set(), set(), {}
         self._enter_held, self._hold_timer = False, None
+        self._typed, self._silence = False, auto_enter.SilenceClock()     # Press Enter after silence
         self.hotkeys = SimpleNamespace(holding=False, hold_send=lambda on: False)
         self.sig = SimpleNamespace(take_began=SimpleNamespace(emit=lambda: self.out.append("|")),
                                    piece=SimpleNamespace(emit=lambda t: None),
