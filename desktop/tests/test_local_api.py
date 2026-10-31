@@ -29,8 +29,16 @@ def _wav(seconds=1.0) -> bytes:
     return buf.getvalue()
 
 
+def _read_wav(path):
+    """Stands in for audio.load_file: CI has neither ffmpeg nor soundfile, and these tests are
+    about the HTTP layer (desktop-v1.014's second tag failed on this, 2026-10-31)."""
+    with wave.open(path, "rb") as w:
+        return np.frombuffer(w.readframes(w.getnframes()), "<i2").astype(np.float32) / 32768
+
+
 @pytest.fixture
-def api():
+def api(monkeypatch):
+    monkeypatch.setattr(local_api.audio, "load_file", _read_wav)
     got = []
     info = {"id": "sabich", "name": "Sabich v2.3", "version": "v2.3", "streaming": False}
     state = {"info": info}
