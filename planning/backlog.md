@@ -12,7 +12,7 @@ Apps 1.001 closed the first post-processing sprint on 2026-10-24 (Daniel: "get t
 Apps 1.002 closed part 2 the same day (Daniel: "once that's implemented and integrated, then the sprint is done"; B-44/B-44a shipped, B-39 and B-40 carried over again).
 Set 2026-10-24 by Daniel: "I'll let you know when we finish this sprint … I don't want to keep
 creating tiny point releases every time we just have one change." Work is committed and pushed as
-it is done; versions are released only when this gate is met (maintainer skill `release-gate`).
+it is done; versions are released only when this gate is met (maintainer skill: flow-control `ship-gate`).
 Contributors: this is why a merged change may wait for the next release.
 
 | Field | Value |

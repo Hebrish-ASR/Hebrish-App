@@ -15,8 +15,8 @@ One file per sprint, `YYYY-MM-DD-<slug>.md` (the date it was defined): front mat
 never shown as results), **Task lists** (one per platform or area: id, item, check, status),
 **Out of this sprint, related**, **Done when**. Status words as in `../README.md`.
 
-Agents: the private planning skills `define-sprint` (new sprint), `add-sprint-tasklist` (another
-task list on an existing sprint) and `init-planning` (this layout in a repo that has none).
+Agents: the flow-control plugin's `plan-sprint` (define a sprint, or add a task list to one) and
+`capture` (file new asks mid-task); `setup` creates a planning layout in a repo that has none.
 Contributors without them: copy the newest file and follow the format above.
 
 ## Index
