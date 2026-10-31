@@ -1159,7 +1159,7 @@ class Controller(QObject):
         offered clean-up model has its own (they share one llama.cpp runtime)."""
         from .. import cleanup, paragraphs
         out = {paragraphs.MODEL_ID: paragraphs.download}
-        for e in cleanup.entries():
+        for e in cleanup.entries(None):          # clean-up and title models (B-75)
             out[e["id"]] = lambda p, c, a=e["id"]: cleanup.download(a, p, c)
         return out
 

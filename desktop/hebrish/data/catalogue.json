@@ -739,6 +739,53 @@
           "sha256": "20cd898fafc269657df8de946b06ef37dcf6b783dfa43d28ac6d187bb6ebfe1e"
         }
       }
+    },
+    {
+      "_doc": "kind text_title (B-75, 2026-10-31): a GGUF model that writes a short title for a saved transcript (desktop/hebrish/titles.py), on the same llama-server runtime as the clean-up models. Chosen 2026-10-31 over Supra-Title-350M-exp and Supra-Title-50M: it kept romanized Hebrew and names (Vaad Bayit, Hebrish) where they did not, under 2 s for 1,200 words on a laptop CPU. It answers in JSON with emojis; titles.py keeps only the words. Desktop only (no android block).",
+      "id": "title-gemma-270m",
+      "kind": "text_title",
+      "name": "Title model (OpenWebUI Title Generator, Gemma 3 270M)",
+      "short_name": "Title model",
+      "default": true,
+      "experimental": false,
+      "base_model": "google/gemma-3-270m",
+      "base_label": "Gemma 3 270M",
+      "licence": "Gemma Terms of Use",
+      "version": "v1",
+      "repo": "gghfez/openwebui-title-generator-270m-gguf",
+      "revision": "66dd1cafc854c31ff433a6065dee42e4f6ec29dd",
+      "card": "https://huggingface.co/gghfez/openwebui-title-generator-270m-gguf",
+      "file": "openwebui-title-generator-270m.q8_0.gguf",
+      "size": 291546016,
+      "sha256": "94eb69ae85ce0eb508b0acbbf64c3df115eb681938309aad6ccc04517ece75ab",
+      "download_mb": 292,
+      "platforms": [
+        "linux",
+        "windows"
+      ],
+      "devices": [
+        "desktop"
+      ],
+      "requirements": {
+        "ram_mb": 600,
+        "gpu": null
+      },
+      "hardware": "A computer, no graphics card needed; about 600 MB of memory while it runs",
+      "technical": "gghfez's fine-tune of Gemma 3 270M for chat titles (Open WebUI's title prompt), GGUF Q8_0 (292 MB), run on the processor by llama.cpp's llama-server (CPU build, 22 to 24 MB download, shared with the clean-up models). Greedy decoding on the first 1,200 words; the title is cut to the length set in Settings.",
+      "runtime": {
+        "engine": "llama_server",
+        "build": "b11982",
+        "linux": {
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11982/llama-b11982-bin-ubuntu-x64.tar.gz",
+          "size": 22692196,
+          "sha256": "a7e6cc16d423fc88c204a8d8e646c1d11b1d0de9ec4a56942f6c02936e9bf09c"
+        },
+        "windows": {
+          "url": "https://github.com/ggml-org/llama.cpp/releases/download/b11982/llama-b11982-bin-win-cpu-x64.zip",
+          "size": 24408458,
+          "sha256": "20cd898fafc269657df8de946b06ef37dcf6b783dfa43d28ac6d187bb6ebfe1e"
+        }
+      }
     }
   ]
 }

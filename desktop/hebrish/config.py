@@ -119,6 +119,10 @@ DEFAULTS = {
                                   # independent of Voice Typing's `vad`; also in the tray menu)
     "tm_save_audio": False,       # keep each transcribed recording (16 kHz mono WAV) in tm_audio_dir
     "tm_audio_dir": "",           # "" = <files_dir>/recordings (recordings_folder)
+    "titles": True,               # Save asks the title model for a title when it is downloaded (B-75)
+    "title_max_chars": 60,        # titles are cut to this many characters (titles.limit: 16..120)
+    "tm_next": "append",          # a new recording or file: append (added to the transcript in the box) |
+                                  # new (replaces it; the old one stays in History). 2026-10-31
     "transcripts_dir": "",        # Save writes here (transcripts.py, B-74): <dir>/YYYY/MM/DD/HH-MM-SS.md;
                                   # "" = <files_dir>/transcripts (transcripts_folder)
     "files_dir": "",              # the Hebrish folder for the user's own files (2026-10-31): transcripts/

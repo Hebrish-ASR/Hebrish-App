@@ -1,5 +1,7 @@
 """Transcription tab (Transcription Mode, R-2026-10-24-5): record a long take, or drop or pick an
-audio file, and the transcript fills an editable text box piece by piece.
+audio file, and the finished transcript lands in an editable text box in one go (2026-10-31, Daniel:
+no piece-by-piece filling; a "Transcribing… m:ss" bar appears only when the job runs past
+SHOW_PROGRESS_S).
 
 The recorder (longform.TapeRecorder) has its own mic, a Levels panel (digital gain + level meter:
 docked = hidden by default, shown in the card, or floating in its own small window; B-45), and
@@ -25,7 +27,17 @@ Long sessions (2026-10-29): a small Recording light and timer by the controls, V
 this tab (`tm_vad`, on by default, also in the tray menu), Save audio (`tm_save_audio`: the recording
 is moved to <Hebrish folder>/recordings instead of deleted; the folder is set in Settings),
 "Transcripts are saved to: <folder>" with Open and Change… under the text box (2026-10-31), and the recorder's disk and stalled-stream checks in
-`_tick` (longform.py)."""
+`_tick` (longform.py).
+
+Next recording (2026-10-31, `tm_next`): a new recording or file is either added to the end of the
+transcript in the box (append, the default) or replaces it (new; the old one is in History).
+
+Saving (B-74, B-75, 2026-10-31): Save writes Markdown with YAML front matter, the title as H1 and
+the time as H2 (transcripts.py). With the title model downloaded (Models → Utilities; `titles`
+on) it writes the title first (titles.py, cut to `title_max_chars`). The transcript's raw text (as
+transcribed, before clean-up and edits) is kept beside it when it differs. *Save cleaned copy*
+runs the chosen clean-up model over the box and saves the result as another version
+(<stem>.cleaned.md), saving the original first if needed; <stem>.json links the versions."""
 
 import threading
 import time
@@ -37,19 +49,23 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, 
                                QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import audio, cleanup, config, dictionary, disfluency, longform, mics, paragraphs, transcripts
+from .. import (__version__, audio, cleanup, config, dictionary, disfluency, longform, mics, model_store,
+               paragraphs, titles, transcripts)
 from .icons import line_icon
 from .mics import fill_combo
 from .meter import LevelMeter, verdict
 
 PARAGRAPH_S = 30
+SHOW_PROGRESS_S = 5      # the progress bar shows only once a transcription has run this long
+NEXT_MODES = (("Adds to this transcript", "append"), ("Starts a new transcript", "new"))
 CONFIRM_DROP_S = 60      # Retake / Discard ask first when the recording is longer than this
 LEVELS = ("docked", "shown", "floating")     # cfg tm_levels (B-45)
 LIGHT = {"rec": ("● Recording", "#c0392b"), "paused": ("❚❚ Paused", "#b7791f")}
 
 
 class _Sig(QObject):
-    chunk = Signal(str)
+    saved = Signal(object, object)     # Save: (path, title) or exception; what was saved
+    copied = Signal(object)            # Save cleaned copy: (path, Result) or exception
     progress = Signal(float)
     done = Signal(object)
     loaded = Signal(object, str)       # samples or exception, file name
@@ -113,7 +129,8 @@ class TranscribePage(QWidget):
         self.ctl, self.cfg = ctl, ctl.cfg
         self.cancel = None
         self.sig = _Sig()
-        self.sig.chunk.connect(self._append)
+        self.sig.saved.connect(self._saved)
+        self.sig.copied.connect(self._copied)
         self.sig.progress.connect(lambda f: self.pbar.setValue(int(f * 1000)))
         self.sig.done.connect(self._finished)
         self.sig.loaded.connect(self._file_loaded)
@@ -123,8 +140,9 @@ class TranscribePage(QWidget):
         self.sig.dl_done.connect(self._dl_done)
         self.sig.stage.connect(lambda t: self.ctl.win.status(t))
         self._last = None                # the last transcript, while it can be re-flowed (see _finished)
-        self._live = None                # the box as the app last wrote it, while transcribing
-        self._edited = False             # the user typed in the box while it was transcribing
+        self._doc = None                 # the transcript in the box, for Save (_new_doc)
+        self._saving = False
+        self._t0 = None                  # when the running transcription started
         self._flow_gen = 0
         self._dl = None                  # cancel event of a paragraph-model download
         self.setAcceptDrops(True)
@@ -297,6 +315,16 @@ class TranscribePage(QWidget):
         self.dl_bar.setMaximumWidth(160)
         self.dl_bar.setVisible(False)
         head.addWidget(self.dl_bar)
+        head.addWidget(QLabel("Next recording"))
+        self.next = QComboBox()
+        for label, mode in NEXT_MODES:
+            self.next.addItem(label, mode)
+        self.next.setCurrentIndex(max(0, self.next.findData(self.cfg["tm_next"])))
+        self.next.setToolTip("What a new recording or file does with the transcript in the box: add to "
+                             "the end of it, or replace it (the earlier one stays in History).")
+        self.next.currentIndexChanged.connect(lambda _i: self.cfg.set("tm_next", self.next.currentData()))
+        head.addWidget(self.next)
+        head.addSpacing(8)
         head.addWidget(QLabel("Paragraphs"))
         self.para = QComboBox()
         for label, mode in PARAGRAPH_MODES:
@@ -329,7 +357,8 @@ class TranscribePage(QWidget):
             lambda _old, new: setattr(self, "box_focused", new is self.text))
         row = QHBoxLayout()
         self.pbar = QProgressBar(maximum=1000)
-        self.pbar.setFormat("Transcribing… %p%")
+        self.pbar.setFormat("Transcribing…")
+        self._pbar_timer = QTimer(self, interval=500, timeout=self._pbar_tick)
         self.btn_cancel = QPushButton("Cancel")
         self.btn_cancel.clicked.connect(lambda: self.cancel and self.cancel.set())
         row.addWidget(self.pbar, 1)
@@ -337,12 +366,24 @@ class TranscribePage(QWidget):
         b.addLayout(row)
         row = QHBoxLayout()
         for label, fn, name in (("Copy", self._copy, "copy"), ("Save", self._save, "save"),
+                                ("Save cleaned copy", self._clean_copy, "clean_copy"),
                                 ("Clear", self._clear, "clear")):
             btn = QPushButton(label)
             btn.clicked.connect(fn)
             setattr(self, f"btn_{name}", btn)
             row.addWidget(btn)
+            if name == "clean_copy":
+                self.copy_model = QComboBox()
+                self.copy_model.setMaximumWidth(240)
+                self.copy_model.setToolTip("The clean-up model for Save cleaned copy")
+                row.addWidget(self.copy_model)
+        self.btn_save.setToolTip("Save to the transcripts folder as Markdown (title, date and the model "
+                                 "in the header). With the title model downloaded, it writes a title first.")
+        self.btn_clean_copy.setToolTip("Run the clean-up model chosen here over the transcript and save the "
+                                       "result as a separate file beside the original, which is kept as it is "
+                                       "(saved first if it isn't yet).")
         row.addStretch(1)
+
         self.words = muted()
         row.addWidget(self.words)
         b.addLayout(row)
@@ -363,6 +404,7 @@ class TranscribePage(QWidget):
         row.addWidget(self.btn_change_saved)
         b.addLayout(row)
         self.sync_saved_to()
+        self._fill_copy_models()
         self.text.textChanged.connect(self._count)
         lay.addWidget(box, 1)
 
@@ -721,8 +763,6 @@ class TranscribePage(QWidget):
         cancel = self.cancel
         self._source = source
         self._last = None
-        self._live, self._edited = self.text.toPlainText(), False
-        self._from = len(self._live)     # History gets this transcript, not the whole box
         self._busy(True)
         if self.cfg["tm_vad"] and len(samples) > 10 * 60 * audio.SAMPLE_RATE:
             self.ctl.win.status(f"Finding the speech in {_clock(len(samples) / audio.SAMPLE_RATE)} of "
@@ -747,9 +787,7 @@ class TranscribePage(QWidget):
                 for text in self.ctl.engine.transcribe_chunks(samples, cancel, vad=self.cfg["tm_vad"]):
                     done, total = self.ctl.engine.last_progress
                     text = fix(disfluency.chop(text))
-                    sep = pieces.add(text, done, mode)
-                    if sep is not None:      # the first piece is set off from what's in the box
-                        self.sig.chunk.emit(("\n\n" if len(pieces.items) == 1 else sep) + text)
+                    pieces.add(text, done, mode)     # shown when it is all done (2026-10-31)
                     self.sig.progress.emit(done / total)
                 body, err, tidied = None, None, None
                 if tidy and pieces.items and not cancel.is_set():
@@ -769,54 +807,46 @@ class TranscribePage(QWidget):
                 self.sig.done.emit(e)
         threading.Thread(target=work, daemon=True).start()
 
-    def _append(self, text):
-        if self._live is not None and self.text.toPlainText() != self._live:
-            self._edited = True
-        if not self.text.toPlainText().strip():
-            text = text.lstrip()
-        self.text.moveCursor(self.text.textCursor().MoveOperation.End)
-        self.text.insertPlainText(text)
-        self.text.ensureCursorVisible()
-        if self._live is not None:
-            self._live = self.text.toPlainText()
-
     def _finished(self, result):
         self.cancel = None
         source, self._source = self._source, None
         if source is not None and source == self._held:
             self._held = None                # transcribed or not, it's no longer "stopped"
         self._busy(False)
-        live, self._live = self._live, None
         if isinstance(result, Exception):
             self._show_leftover()            # the recording stays on disk, offered again
             QMessageBox.warning(self, "Transcription failed", str(result))
             return
         audio_s, took, cancelled, pieces, mode, body, err, note, tidied = result
-        unedited = not self._edited and self.text.toPlainText() == live
-        if unedited and pieces.items:
-            self._last = {"from": self._from, "pieces": pieces, "mode": mode,
-                          "shown": self.text.toPlainText(), "rid": None}
+        cleaned = tidied is not None and tidied.cleaned
+        flow = mode
+        if mode == paragraphs.MODEL and pieces.items:
+            flow = paragraphs.TIME if (err or body is None or cleaned) else paragraphs.MODEL
+        raw = pieces.text(paragraphs.TIME if flow == paragraphs.MODEL and cleaned else flow) if pieces.items else ""
+        if cleaned:
+            shown = body
+        elif mode == paragraphs.MODEL and pieces.items and body is not None:
+            shown = body
+        else:
+            shown = pieces.text(mode if mode != paragraphs.MODEL else paragraphs.TIME) if pieces.items else ""
         extra = None
-        if tidied is not None and tidied.cleaned:
-            if self._last:
-                self._show_body(body, "cleanup")
-                self._last = None            # the model's own words and paragraphs: never re-flowed
-                extra = {"cleanup": f"{tidied.model} {tidied.version}",     # id and version that ran
-                         "cleanup_kept_raw": tidied.kept_raw}
-                note += (f" Cleaned up with {tidied.name}." if not tidied.kept_raw else
-                         f" Cleaned up, except {tidied.kept_raw} of {tidied.chunks} parts kept as "
-                         f"transcribed ({tidied.error}).")
-            else:
-                note += " You edited the transcript while it was transcribing, so it wasn't cleaned up."
+        if cleaned:
+            extra = {"cleanup": f"{tidied.model} {tidied.version}",     # id and version that ran
+                     "cleanup_kept_raw": tidied.kept_raw}
+            note += (f" Cleaned up with {tidied.name}." if not tidied.kept_raw else
+                     f" Cleaned up, except {tidied.kept_raw} of {tidied.chunks} parts kept as "
+                     f"transcribed ({tidied.error}).")
         elif tidied is not None:
             note += f" Clean-up failed ({tidied.error}), so the transcript is as transcribed."
-        if not (tidied is not None and tidied.cleaned) and mode == paragraphs.MODEL and pieces.items:
-            if self._last:
-                self._show_body(body, paragraphs.TIME if err else mode)
-                if err:
-                    note += f" The paragraph model failed ({err}), so paragraphs are time-based."
-            else:
-                note += " You edited the transcript while it was transcribing, so the paragraph model wasn't applied."
+        if not cleaned and mode == paragraphs.MODEL and err:
+            note += f" The paragraph model failed ({err}), so paragraphs are time-based."
+        self._from = self._place(shown)
+        if pieces.items and not cleaned:     # the model's own words and paragraphs: never re-flowed
+            self._last = {"from": self._from, "pieces": pieces, "mode": flow,
+                          "shown": self.text.toPlainText(), "rid": None}
+        if shown.strip():
+            self._note_doc(raw, audio_s, "recording" if source else "file",
+                           f"{tidied.name} {tidied.version}" if cleaned else None)
         if not cancelled:
             rid = self.ctl.remember(self.text.toPlainText()[self._from:].strip(),
                                     source="record" if source else "file",
@@ -831,6 +861,60 @@ class TranscribePage(QWidget):
         if self._last and (self._para_mode() != self._asked or (     # changed while transcribing,
                 mode != self._asked and err is None and paragraphs.installed() is not None)):
             self._reflow()                   # or the model finished downloading meanwhile
+
+    def _place(self, text: str) -> int:
+        """Put a finished transcript in the box, in one go: after what is there (Next recording:
+        append) or in its place (new). Returns where it starts, for History and re-flowing."""
+        box = self.text.toPlainText()
+        text = text.strip()
+        if not text:                         # nothing transcribed (cancelled early): box untouched
+            return len(box)
+        new = self.cfg["tm_next"] == "new" or not box.strip()
+        if new:
+            self._doc = None
+            start, full = 0, text
+        else:
+            head = box.rstrip()
+            start, full = len(head) + 2, head + "\n\n" + text
+        c = self.text.textCursor()
+        c.select(QTextCursor.SelectionType.Document)
+        c.insertText(full)                   # one undo step
+        c.movePosition(QTextCursor.MoveOperation.End)
+        self.text.setTextCursor(c)
+        self.text.ensureCursorVisible()
+        return min(start, len(self.text.toPlainText()))
+
+    def _note_doc(self, raw: str, seconds: float, source: str, cleanup_model: str | None):
+        """Remember what Save needs about the transcript in the box: its time (the first part's),
+        the raw text of each part, the speech model, audio length, source and clean-up model."""
+        cur = model_store.active()
+        model = cur[1].version if cur else ""
+        d = self._doc
+        if d is None:
+            d = self._doc = {"when": time.time(), "raw": [], "models": [], "sources": [], "cleanup": [],
+                             "seconds": 0.0, "saved": None}
+        d["raw"].append(raw.strip())
+        d["seconds"] += seconds
+        for key, v in (("models", model), ("sources", source), ("cleanup", cleanup_model)):
+            if v and v not in d[key]:
+                d[key].append(v)
+
+    def _meta(self) -> dict:
+        d = self._doc or {}
+        meta = {"generator": f"Hebrish {__version__}"}
+        if d.get("models"):
+            meta["model"] = ", ".join(d["models"])
+        else:
+            cur = model_store.active()
+            if cur:
+                meta["model"] = cur[1].version
+        if d.get("seconds"):
+            meta["audio_seconds"] = round(d["seconds"], 1)
+        if d.get("sources"):
+            meta["source"] = ", ".join(d["sources"])
+        if d.get("cleanup"):
+            meta["cleanup_model"] = ", ".join(d["cleanup"])
+        return meta
 
     def _dispose(self, source: Path) -> str:
         """A transcribed recording: moved to the Save audio folder when that is on, else deleted.
@@ -864,11 +948,29 @@ class TranscribePage(QWidget):
             ": punctuation, capitals, filler and repeated words, numbers, and paragraphs (they replace "
             "the Paragraphs setting).\nRuns on this computer after the transcript is done. If it fails, "
             "the transcript stays as transcribed. Choose and download the model in Models → Utilities.")
+        self._fill_copy_models()
         on = self._cleanup_on() is not None
         self.para.setEnabled(not on)
         self.para.setToolTip(self.para.toolTip().split("\n\nClean-up is on")[0] +
                              ("\n\nClean-up is on, so the clean-up model sets the paragraphs; this "
                               "applies only if it fails." if on else ""))
+
+    def _fill_copy_models(self):
+        """Save cleaned copy: the downloaded clean-up models, the chosen one first selected."""
+        if not hasattr(self, "copy_model"):        # sync_cleanup runs once before the row exists
+            return
+        have = [e for e in cleanup.entries() if cleanup.installed(e["id"]) is not None]
+        cur = self.copy_model.currentData() or (cleanup.ready(self.cfg["tm_cleanup_model"]) or {}).get("id")
+        self.copy_model.blockSignals(True)
+        self.copy_model.clear()
+        for e in have:
+            self.copy_model.addItem(cleanup.label(e), e["id"])
+        i = self.copy_model.findData(cur)
+        self.copy_model.setCurrentIndex(i if i >= 0 else 0)
+        self.copy_model.blockSignals(False)
+        for w in (self.btn_clean_copy, self.copy_model):
+            w.setVisible(bool(have))
+        self.copy_model.setVisible(len(have) > 1)
 
     def _on_tidy(self, on: bool):
         self.cfg.set("tm_cleanup", on)
@@ -989,33 +1091,122 @@ class TranscribePage(QWidget):
             self._reflow()
 
     def _busy(self, on: bool):
-        self.pbar.setVisible(on)
+        self._t0 = time.monotonic() if on else None
+        self.pbar.setVisible(False)          # _pbar_tick shows it after SHOW_PROGRESS_S
         self.btn_cancel.setVisible(on)
         self.pbar.setValue(0)
+        if on:
+            self._pbar_timer.start()
+            self.ctl.win.status("Transcribing…")
+        else:
+            self._pbar_timer.stop()
         if hasattr(self, "btn_rec"):
             self._sync()
+
+    def _pbar_tick(self):
+        if self._t0 is None:
+            return
+        took = time.monotonic() - self._t0
+        if took >= SHOW_PROGRESS_S:
+            self.pbar.setFormat(f"Transcribing… {_clock(took)}")
+            self.pbar.setVisible(True)
 
     # -- output ----------------------------------------------------------------------
     def _count(self):
         t = self.text.toPlainText()
         n = len(t.split())
         self.words.setText(f"{n} word{'s' if n != 1 else ''}" if n else "")
-        for b in (self.btn_copy, self.btn_save, self.btn_clear):
-            b.setEnabled(bool(t.strip()))
+        for b in (self.btn_copy, self.btn_save, self.btn_clean_copy, self.btn_clear):
+            b.setEnabled(bool(t.strip()) and not (self._saving and b in (self.btn_save, self.btn_clean_copy)))
 
     def _copy(self):
         self.ctl.win._copy(self.text.toPlainText(), "Transcript copied.")
 
+    def _save_now(self, text: str) -> tuple[Path, str | None]:
+        """Worker thread: save `text` (title first, when the title model is there), or return the
+        file it was already saved as, unchanged. Raises OSError."""
+        d = self._doc
+        if d and d["saved"] and d["saved"][1] == text:
+            return d["saved"][0], d["saved"][2]
+        title = None
+        if self.cfg["titles"] and titles.ready() is not None:
+            self.sig.stage.emit("Writing a title…")
+            title = titles.title(text, titles.limit(self.cfg["title_max_chars"]))
+        raw = "\n\n".join(r for r in d["raw"] if r) if d else None
+        path = transcripts.save(text, str(config.transcripts_folder(self.cfg)), title=title,
+                                when=d["when"] if d else None, meta=self._meta(), raw=raw)
+        if d is not None:
+            d["saved"] = (path, text, title)
+        else:
+            self._doc = {"when": time.time(), "raw": [], "models": [], "sources": [], "cleanup": [],
+                         "seconds": 0.0, "saved": (path, text, title)}
+        return path, title
+
+    def _set_saving(self, on: bool):
+        self._saving = on
+        self._count()
+
     def _save(self):
-        """B-74: straight to the transcripts folder (shown under the box), as Markdown."""
-        try:
-            path = transcripts.save(self.text.toPlainText(), str(config.transcripts_folder(self.cfg)))
-        except OSError as e:
-            QMessageBox.warning(self, "Couldn't save", f"Couldn't save the transcript:\n{e}")
+        """B-74/B-75: straight to the transcripts folder (shown under the box), as Markdown."""
+        if self._saving:
             return
-        self.ctl.win.status(f"Saved {path}")
+        text = self.text.toPlainText()
+        d = self._doc
+        if d and d["saved"] and d["saved"][1] == text:
+            self.ctl.win.status(f"Already saved: {d['saved'][0]}")
+            return
+        self._set_saving(True)
+
+        def work():
+            try:
+                self.sig.saved.emit(*self._save_now(text))
+            except Exception as e:
+                self.sig.saved.emit(e, None)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _saved(self, path, title):
+        self._set_saving(False)
+        if isinstance(path, Exception):
+            QMessageBox.warning(self, "Couldn't save", f"Couldn't save the transcript:\n{path}")
+            return
+        self.ctl.win.status(f"Saved {path}" + (f" ({title})" if title else ""))
+
+    def _clean_copy(self):
+        """Save cleaned copy: the original saved (or already saved), then the clean-up model's
+        version of it as <stem>.cleaned.md beside it. The box is left as it is."""
+        aid = self.copy_model.currentData()
+        if self._saving or not aid:
+            return
+        text = self.text.toPlainText()
+        keep = tuple(e["word"] for e in dictionary.load())
+        self._set_saving(True)
+
+        def work():
+            try:
+                path, _title = self._save_now(text)
+                self.sig.stage.emit("Cleaning up a copy…")
+                r = cleanup.run(text, keep=keep, aid=aid)
+                if not r.cleaned:
+                    raise RuntimeError(f"the clean-up model failed ({r.error})")
+                extra = {"cleanup_model": f"{r.name} {r.version}"}
+                if r.kept_raw:
+                    extra["cleanup_kept_raw"] = f"{r.kept_raw} of {r.chunks} parts"
+                self.sig.copied.emit((transcripts.add_version(path, "cleaned", r.text, extra), r))
+            except Exception as e:
+                self.sig.copied.emit(e)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _copied(self, result):
+        self._set_saving(False)
+        if isinstance(result, Exception):
+            QMessageBox.warning(self, "Couldn't save a cleaned copy", str(result))
+            return
+        path, r = result
+        self.ctl.win.status(f"Cleaned copy saved: {path}" + (
+            f" ({r.kept_raw} of {r.chunks} parts kept as transcribed)" if r.kept_raw else ""))
 
     def _clear(self):
         if QMessageBox.question(self, "Clear transcript", "Clear the text box?") == QMessageBox.Yes:
             self.text.clear()
             self._last = None
+            self._doc = None

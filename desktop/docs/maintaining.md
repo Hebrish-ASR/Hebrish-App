@@ -1569,8 +1569,8 @@ Daniel, 2026-10-31 (R-2026-10-31-3, R-2026-10-31-4; B-74, B-76):
 
 - **Save** (Dictate and Transcription tabs) writes straight to the transcripts folder, no file
   dialog: `<transcripts_dir>/YYYY/MM/DD/HH-MM-SS.md`, Markdown; `-2`, `-3`, … instead of
-  overwriting (`hebrish/transcripts.py`). With a title (B-75, the title model, not built)
-  the name is `<snake_case_title>_HH-MM-SS.md` and the file starts with `# Title`. Under the
+  overwriting (`hebrish/transcripts.py`). With a title (B-75, next section)
+  the name is `<snake_case_title>_HH-MM-SS.md`; the file format is in the next section. Under the
   Transcription tab's text box: "Transcripts are saved to: <folder>" with **Open** and **Change…**
   (`TranscribePage.sync_saved_to`; the buttons call the window's `_open_transcripts` /
   `_change_transcripts`, the same as Settings).
@@ -1604,6 +1604,74 @@ Daniel, 2026-10-31 (R-2026-10-31-3, R-2026-10-31-4; B-74, B-76):
   (large). Written to `<name>.part` and renamed, so a failed backup leaves no half file. No
   restore yet.
 - Tests: `tests/test_transcripts.py`, `tests/test_backup.py` (both formats, an open WAL database).
+
+## Transcript in one go, Next recording, titles, versions (unreleased, 2026-10-31)
+
+Daniel, 2026-10-31 (R-2026-10-31-5; B-75, B-77, B-78). Code: `hebrish/ui/transcribe.py`,
+`hebrish/transcripts.py`, `hebrish/titles.py`, `hebrish/cleanup.py`.
+
+- **In one go (B-77).** The Transcription tab no longer fills the box piece by piece: the worker
+  collects the pieces and `_finished` puts the finished transcript (paragraphs or clean-up already
+  applied) in the box in one edit (`_place`, one undo step). The progress bar stays hidden for
+  `SHOW_PROGRESS_S` (5 s), then shows "Transcribing… m:ss" (elapsed, no percentage; the bar still
+  fills by progress). Cancel shows from the start. Side effect: the old "you edited the transcript
+  while it was transcribing, so it wasn't cleaned up / re-flowed" cases are gone, because nothing
+  is in the box until the end (`_live`, `_edited` removed).
+- **Next recording (B-77, `tm_next`).** In the Transcript card's header: *Adds to this transcript*
+  (default; after a blank line) or *Starts a new transcript* (replaces the box; the earlier one is
+  already in History). A transcription that produced no text leaves the box alone either way.
+- **The document behind the box** (`TranscribePage._doc`): the first part's time, each part's raw
+  text (as transcribed, before clean-up), speech model(s), audio seconds, sources, clean-up model,
+  and what was last saved. Reset by Clear and by *Starts a new transcript*. Typing into an empty
+  box and saving still works (no `_doc`: saved with the current model and now).
+- **File format (B-78, `transcripts.render`).** YAML front matter (`title`, `date` ISO with offset,
+  `version`, `generator` "Hebrish <version>", `model`, `audio_seconds`, `source`, `cleanup_model`,
+  `versions` = the manifest's name; empty keys left out; strings JSON-quoted, which is valid YAML),
+  then `# <title>` (or `# Transcript`), `## <Weekday> <d Month yyyy>, HH:MM`, and a credit line
+  "*Transcribed by Hebrish 1.014 with Sabich v2.3 on 31 October 2026.*", then the text. The Dictate
+  tab's Save writes the same format (source "voice typing", no title).
+- **Versions (B-78).** Never overwritten: `<stem>.md` is what was in the box (edits included);
+  `<stem>.raw.md` the raw transcription, written only when its words differ from the box (compared
+  with whitespace collapsed, so a re-flow alone doesn't count); `<stem>.cleaned.md` (`-2`, … on
+  repeats) from **Save cleaned copy**. `<stem>.json` (schema 1) holds the shared fields and one
+  entry per version (`kind`, `file`, `written`, `words`; cleaned: `of`, `cleanup_model`,
+  `cleanup_kept_raw`). A stem is free only when both its .md and .json are. Save on an unchanged
+  box says "Already saved" instead of writing a second set.
+- **Save cleaned copy.** Button plus a model picker (the downloaded clean-up models; the picker
+  hides when only one is downloaded, the button when none is). Saves the original first if
+  needed, runs `cleanup.run` on the box text with that model, writes `<stem>.cleaned.md`; the box
+  is not changed. A clean-up that kept every chunk raw is an error, not a copy.
+- **Titles (B-75, `titles.py`).** The title model is a catalogue add-on of kind `text_title`
+  (`title-gemma-270m`: gghfez/openwebui-title-generator-270m-gguf, Q8_0, 292 MB, pinned by commit
+  and SHA-256), downloaded and served exactly like the clean-up models (same llama-server build).
+  Models → Utilities → Post-processing shows its row, a *Give saved transcripts a title* switch
+  (`titles`) and *Longest title* (`title_max_chars`, 16–120, default 60). Save writes the title
+  first ("Writing a title…") on the worker thread; any failure saves without one.
+  Prompt: Open WebUI's default title prompt, which the model was trained on, in Gemma's template,
+  first 1,200 words, greedy, 40 tokens. Its reply is JSON with emojis; `titles.clean` keeps the
+  title's letters, digits and `& - ' , : + / . #`, strips quotes and a final full stop, and `fit`
+  cuts at a word end without a dangling "and"/"&"/"the".
+- **How the title model was picked (2026-10-31, laptop CPU, llama-server b11982, greedy).** Four
+  transcripts (a shopping note with makolet/Shufersal, a Hebrish release note, a vaad bayit /
+  arnona / iriya note, 1,200 words of the 2026-10-22 voice note). S1-mini by Superwhisper with a
+  title prompt: echoed and cleaned the transcript (it is trained only to clean), so it can't double
+  as the title model. Supra-Title-350M-exp: good phrasing but "Hebrish" became "Hebride".
+  Supra-Title-50M: "Hbrish". OpenWebUI 270M: "Milk & Shufersal Order", "Hebrish Android Mic Fix",
+  "Vaad Bayit Elevator Repair", 0.3–1.9 s each. Not tried: TitleOS Lightning 1.7B (1.1 GB, more
+  than a title needs). Through the app's code path: "Milk & Shufersal Ordering" (60 chars) and
+  "Milk & Shufersal" (20).
+- **One llama-server per add-on.** `cleanup._servers` is keyed by add-on id, so a title and a
+  clean-up don't evict each other's process; each stops after `IDLE_S`. `cleanup.stop(aid)` stops
+  one, `stop()` all (app quit). Choosing another clean-up model stops the previous one's process.
+  `cleanup.entries(kind)` / `_all(kind)`: `text_cleanup` by default, `None` for every llama kind
+  (downloads, runtime clean-up, `entry()`). Android reads only `text_cleanup` (CleanupStore.kt),
+  and the title entry has no `android` block.
+- HF: both third-party models are in the Hebrish collection "Integrated Models"
+  (<https://huggingface.co/collections/Hebrish/integrated-models-6ae60b8846603b646d05cc1f>, created
+  2026-10-31).
+- Tests: `tests/test_titles.py`, `tests/test_transcripts.py`, `tests/test_cleanup.py` (the last two
+  tests: one-go text and Next recording; Save with a title, Already saved, Save cleaned copy).
+  Not yet tried in the running app or on Windows.
 
 ## Testing
 

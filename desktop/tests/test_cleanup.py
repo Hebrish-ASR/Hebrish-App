@@ -403,7 +403,7 @@ def test_size_and_sha_from_hugging_face_when_not_pinned(monkeypatch):
 
 def test_remove_keeps_the_runtime_until_the_last_model_goes(fake_fetch, monkeypatch):
     stopped = []
-    monkeypatch.setattr(C, "stop", lambda: stopped.append(1))
+    monkeypatch.setattr(C, "stop", lambda *a: stopped.append(1))
     C.download(C.DEFAULT_ID)
     C.download(C.LEGACY_ID)
     C.remove(C.LEGACY_ID)
@@ -461,12 +461,15 @@ def test_server_restarts_when_the_model_changes(fake_fetch, monkeypatch):
     C.download(C.LEGACY_ID)
     stopped = []
     monkeypatch.setattr(C.Server, "stop", lambda self: stopped.append(self.gguf.name))
-    monkeypatch.setattr(C, "_server", None)
+    monkeypatch.setattr(C, "_servers", {})
     a = C.server(C.DEFAULT_ID)
     assert C.server(C.DEFAULT_ID) is a and not stopped, "same model: same process"
     b = C.server(C.LEGACY_ID)
-    assert b is not a and b.gguf.name == TUNE["file"] and stopped == [STOCK["file"]]
+    assert b is not a and b.gguf.name == TUNE["file"] and not stopped, "one process per model (2026-10-31)"
     assert b.binary == a.binary, "one shared runtime"
+    assert C.server(C.DEFAULT_ID) is a
+    C.stop(C.DEFAULT_ID)
+    assert stopped == [STOCK["file"]], "stop(aid) stops only that model's server"
 
 
 # -- Server, with the HTTP side faked --------------------------------------------------------
@@ -527,7 +530,7 @@ def test_server_command_line(tmp_path, monkeypatch):
 
 def test_importing_the_app_needs_no_runtime():
     """Nothing llama.cpp-related is imported or started until the add-on is used."""
-    assert C._server is None or C._server.proc is None
+    assert all(s.proc is None for s in C._servers.values())
 
 
 # -- the Transcription tab ---------------------------------------------------------------------
@@ -694,6 +697,7 @@ class Utilities(QWidget):
     UTILITIES = MainWindow.UTILITIES
     CLEANUP_HEADING = MainWindow.CLEANUP_HEADING
     _cleanup_item = staticmethod(MainWindow._cleanup_item)
+    _title_item = staticmethod(MainWindow._title_item)
     for _n in ("_utilities_page", "_utility_row", "_check", "_update_addons", "_use_cleanup", "_delete_addon"):
         locals()[_n] = getattr(MainWindow, _n)
 
@@ -717,6 +721,7 @@ def test_utilities_rows_and_choice(fake_fetch, monkeypatch):
     _install_1013()
     w = Utilities(cfg)
     assert w.cleanup_ids == [C.DEFAULT_ID, C.LEGACY_ID], "a row per offered model, the default first"
+    assert w.title_ids == ["title-gemma-270m"] and "title-gemma-270m" in w.addon_rows, "B-75: the title model's row"
     w.update_model()
     stock, tune = w.addon_rows[C.DEFAULT_ID], w.addon_rows[C.LEGACY_ID]
     assert tune["chip"].isVisibleTo(w.page) and not tune["pick"].isVisibleTo(w.page), "the 1.013 install is in use"
@@ -726,7 +731,7 @@ def test_utilities_rows_and_choice(fake_fetch, monkeypatch):
     w.update_model()
     assert stock["chip"].isVisibleTo(w.page) and tune["pick"].isVisibleTo(w.page), "installed default wins"
     stops = []
-    monkeypatch.setattr(C, "stop", lambda: stops.append(1))
+    monkeypatch.setattr(C, "stop", lambda *a: stops.append(1))
     tune["pick"].click()
     assert cfg["tm_cleanup_model"] == C.LEGACY_ID and stops and w.synced
     assert tune["chip"].isVisibleTo(w.page) and stock["pick"].isVisibleTo(w.page)
@@ -742,3 +747,65 @@ def test_utilities_names_follow_the_licence(cat):
     assert texts[C.DEFAULT_ID][1] == "S1-mini by Superwhisper"
     assert texts[C.LEGACY_ID][1] == TUNE["short_name"] and "Experimental" in texts[C.LEGACY_ID][2]
     assert "Experimental" not in texts[C.DEFAULT_ID][2]
+
+
+# -- 2026-10-31: text in one go, Next recording, Save with a title, Save cleaned copy -----------
+
+def _wait(p, attr="_saving"):
+    end = time.monotonic() + 10
+    while getattr(p, attr) and time.monotonic() < end:
+        app.processEvents()
+        time.sleep(0.01)
+    app.processEvents()
+
+
+def test_text_arrives_in_one_go_and_next_recording(page, monkeypatch):
+    p = page(installed=False)
+    ONE = "so hi there\n\nand then we left"          # Time-based: 40 s pieces
+    shown = []
+    p.text.textChanged.connect(lambda: shown.append(p.text.toPlainText()))
+    _run(p)
+    assert shown == [ONE], "one change, the whole transcript, not piece by piece"
+    assert p.pbar.isHidden(), "a job under SHOW_PROGRESS_S never shows the bar"
+    _run(p)
+    assert p.text.toPlainText() == ONE + "\n\n" + ONE
+    assert len(p._doc["raw"]) == 2
+    p.next.setCurrentIndex(p.next.findData("new"))
+    assert p.cfg["tm_next"] == "new"
+    _run(p)
+    assert p.text.toPlainText() == ONE and len(p._doc["raw"]) == 1
+
+
+def test_save_with_title_and_cleaned_copy(page, monkeypatch, tmp_path):
+    import json
+    p = page(installed=True)
+    p.cfg.set("transcripts_dir", str(tmp_path))
+    monkeypatch.setattr(transcribe.titles, "ready", lambda: {"id": "title-gemma-270m"})
+    asked = []
+    monkeypatch.setattr(transcribe.titles, "title", lambda text, n: asked.append(n) or "Leaving Early")
+    _run(p)
+    p.text.appendPlainText("Edited.")
+    p._save()
+    _wait(p)
+    files = sorted(f.name for f in tmp_path.rglob("*") if f.is_file())
+    assert asked == [60] and any(f.startswith("leaving_early_") and f.endswith(".raw.md") for f in files)
+    md = next(f for f in tmp_path.rglob("leaving_early_*.md") if ".raw" not in f.name)
+    t = md.read_text()
+    assert "# Leaving Early\n" in t and "## " in t and 'generator: "Hebrish ' in t and "Edited." in t
+    p._save()                                    # unchanged: no second file
+    _wait(p)
+    assert len(list(tmp_path.rglob("*.md"))) == 2 and "Already saved" in p.ctl.win.said[-1]
+    monkeypatch.setattr(C, "entries", lambda kind="text_cleanup": [STOCK])
+    monkeypatch.setattr(C, "installed", lambda aid: ("g", "b"))
+    p._fill_copy_models()
+    assert not p.btn_clean_copy.isHidden() and p.copy_model.currentData() == STOCK["id"]
+    monkeypatch.setattr(C, "run", lambda text, keep=(), aid=None: C.Result("So hi there. And then we left.", 1, 0,
+                                                                          model=aid, version="v1", name="S1-mini by Superwhisper"))
+    p._clean_copy()
+    _wait(p)
+    cleaned = md.with_name(md.stem + ".cleaned.md")
+    assert cleaned.is_file() and "So hi there. And then we left." in cleaned.read_text()
+    assert "Edited." in md.read_text(), "the original is kept as it was"
+    doc = json.loads(md.with_suffix(".json").read_text())
+    assert [v["kind"] for v in doc["versions"]] == ["transcript", "raw", "cleaned"]
+    assert doc["title"] == "Leaving Early" and doc["versions"][2]["cleanup_model"] == "S1-mini by Superwhisper v1"

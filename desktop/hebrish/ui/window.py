@@ -566,7 +566,12 @@ class MainWindow(QMainWindow):
     def _save_text(self):
         """B-74: straight to the transcripts folder (Settings → Your data), as Markdown."""
         try:
-            path = transcripts.save(self.text.toPlainText(), str(config.transcripts_folder(self.cfg)))
+            cur = model_store.active()
+            meta = {"generator": f"Hebrish {__version__}", "source": "voice typing"}
+            if cur:
+                meta["model"] = cur[1].version
+            path = transcripts.save(self.text.toPlainText(), str(config.transcripts_folder(self.cfg)),
+                                    meta=meta)
         except OSError as e:
             self.banner(f"Couldn't save the text: {e}")
             return
@@ -1109,6 +1114,17 @@ class MainWindow(QMainWindow):
                 "Paragraphs setting.")
         return e["id"], cleanup.label(e), words, size, tech
 
+    @staticmethod
+    def _title_item(e: dict) -> tuple:
+        """(id, name, words, size, technical text) for the title model's Utilities row (B-75)."""
+        words = ("Gives each saved transcript a short title: in the file name, the front matter and the "
+                 "heading. Without it, transcripts are named by their time.")
+        size = f"{e['download_mb']} MB" if e.get("download_mb") else ""
+        tech = (f"{e.get('technical', '')} Licence: {e.get('licence', '')}: "
+                f"<a href='{e.get('card', '')}'>model card</a>. The llama.cpp runtime (about 23 MB) is "
+                f"shared with the clean-up models. {e.get('hardware', '')}; under two seconds a title.")
+        return e["id"], cleanup.label(e), words, size, tech
+
     def _utilities_page(self) -> QWidget:
         page = QWidget()
         lay = QVBoxLayout(page)
@@ -1118,6 +1134,7 @@ class MainWindow(QMainWindow):
         self.addon_rows = {}
         self.cleanup_ids = []
         self.cleanup_check = None
+        self.title_ids = []
         for heading, items in self.UTILITIES:
             box, b = card(heading)
             for item in items:
@@ -1131,6 +1148,22 @@ class MainWindow(QMainWindow):
                                                      lambda: self.transcribe.sync_cleanup())
                     self.cleanup_check.setContentsMargins(10, 4, 10, 0)
                     b.addWidget(self.cleanup_check)
+                for e in cleanup.entries("text_title"):
+                    self.title_ids.append(e["id"])
+                    b.addWidget(self._utility_row(*self._title_item(e)))
+                if self.title_ids:
+                    row = QHBoxLayout()
+                    row.setContentsMargins(10, 4, 10, 0)
+                    row.addWidget(self._check("titles", "Give saved transcripts a title"))
+                    row.addSpacing(12)
+                    row.addWidget(QLabel("Longest title"))
+                    n = QSpinBox(minimum=16, maximum=120, suffix=" characters", value=int(self.cfg["title_max_chars"]))
+                    n.setToolTip("Titles are cut at a word end to fit")
+                    n.valueChanged.connect(lambda v: self.cfg.set("title_max_chars", v))
+                    self.title_max = n
+                    row.addWidget(n)
+                    row.addStretch(1)
+                    b.addLayout(row)
             lay.addWidget(box)
         lay.addStretch(1)
         return page
@@ -1211,7 +1244,8 @@ class MainWindow(QMainWindow):
                 r["use"].setEnabled(ok)
                 continue
             is_cleanup = aid in getattr(self, "cleanup_ids", ())
-            have = (cleanup.installed(aid) if is_cleanup else paragraphs.installed()) is not None
+            is_llama = is_cleanup or aid in getattr(self, "title_ids", ())
+            have = (cleanup.installed(aid) if is_llama else paragraphs.installed()) is not None
             busy = aid in self.ctl.addon_busy
             if is_cleanup:
                 ready = cleanup.ready(self.cfg["tm_cleanup_model"])
@@ -1233,8 +1267,10 @@ class MainWindow(QMainWindow):
     def _use_cleanup(self, aid):
         """Make `aid` the model *Clean up* runs (`tm_cleanup_model`). The old model's llama-server
         is stopped now; the next clean-up starts one with the new model (cleanup.server)."""
+        old = (cleanup.ready(self.cfg["tm_cleanup_model"]) or {}).get("id")
         self.cfg.set("tm_cleanup_model", aid)
-        cleanup.stop()
+        if old:
+            cleanup.stop(old)
         self.transcribe.sync_cleanup()
         self.update_model()
 
@@ -1247,6 +1283,8 @@ class MainWindow(QMainWindow):
             if self.cfg["tm_cleanup_model"] == aid:
                 self.cfg.set("tm_cleanup_model", None)   # back to chosen()'s rule
             self.transcribe.sync_cleanup()
+        elif aid in getattr(self, "title_ids", ()):
+            cleanup.remove(aid)               # Save goes back to naming by time
         else:
             import shutil
             shutil.rmtree(paragraphs.root(), ignore_errors=True)

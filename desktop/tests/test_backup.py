@@ -31,7 +31,7 @@ def test_archive(data, fmt):
     dest = root / "out" / name
     m = backup.make(dest, history_db=h.path, transcripts_dir=tdir,
                     dictionary=root / "dictionary.json", config=root / "missing.json", app_version="1.015")
-    assert m["history"]["dictations"] == 2 and m["transcripts"]["files"] == 1 and m["config"] is None
+    assert m["history"]["dictations"] == 2 and m["transcripts"]["files"] == 2 and m["config"] is None
     top = name[: -len(fmt) - 1]
     if fmt == "zip":
         with zipfile.ZipFile(dest) as z:

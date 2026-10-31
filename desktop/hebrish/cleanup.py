@@ -193,11 +193,16 @@ def clean(text: str, client, keep: tuple = ()) -> Result:
 
 # -- catalogue entries ----------------------------------------------------------------------
 
-def _all() -> list[dict]:
-    """Every `text_cleanup` add-on in the catalogue, offered or not. A cached catalogue from before
-    the add-on existed has none, so the bundled copy is the fallback."""
+KINDS = ("text_cleanup", "text_title")    # GGUF add-ons on the llama-server runtime (titles.py: B-75)
+
+
+def _all(kind: str | None = "text_cleanup") -> list[dict]:
+    """Every add-on of `kind` in the catalogue (None: every llama-server kind, KINDS), offered or
+    not. A cached catalogue from before the add-on existed has none, so the bundled copy is the
+    fallback."""
+    kinds = KINDS if kind is None else (kind,)
     for doc in (model_store.catalogue(), model_store.bundled_catalogue()):
-        found = [a for a in doc.get("addons", []) if a.get("kind") == "text_cleanup"]
+        found = [a for a in doc.get("addons", []) if a.get("kind") in kinds]
         if found:
             return found
     return []
@@ -216,16 +221,16 @@ def offered(e: dict) -> bool:
     return model_store.PLATFORM in e.get("platforms", []) and model_store.PLATFORM in rt and bool(rt.get("build"))
 
 
-def entries() -> list[dict]:
-    """The clean-up models this computer can use: the `default: true` one first, then catalogue
-    order."""
-    out = [e for e in _all() if offered(e)]
+def entries(kind: str | None = "text_cleanup") -> list[dict]:
+    """The clean-up models (or add-ons of `kind`; None: all) this computer can use: the
+    `default: true` one first, then catalogue order."""
+    out = [e for e in _all(kind) if offered(e)]
     return sorted(out, key=lambda e: not e.get("default"))
 
 
 def entry(aid: str) -> dict:
-    """The offered entry with id `aid`."""
-    for e in entries():
+    """The offered entry with id `aid`, of any llama-server kind."""
+    for e in entries(None):
         if e["id"] == aid:
             return e
     raise RuntimeError(f"the catalogue offers no clean-up model {aid!r}")
@@ -410,7 +415,7 @@ def download(aid: str, on_progress=None, cancel: threading.Event | None = None) 
     for d in root(aid).iterdir():             # older versions (and 1.013's runtime folder, if left)
         if d.is_dir() and d.name != folder.name:
             shutil.rmtree(d, ignore_errors=True)
-    builds = {(a.get("runtime") or {}).get("build") for a in _all()}
+    builds = {(a.get("runtime") or {}).get("build") for a in _all(None)}
     with _runtime_lock:
         for d in runtime_root().iterdir():
             if d.is_dir() and d.name not in builds:
@@ -419,11 +424,11 @@ def download(aid: str, on_progress=None, cancel: threading.Event | None = None) 
 
 
 def remove(aid: str):
-    """Delete model `aid` (stopping llama-server first); the shared runtime goes too once no
-    clean-up model is left."""
-    stop()
+    """Delete model `aid` (stopping its llama-server first); the shared runtime goes too once no
+    llama-server add-on (clean-up or title) is left."""
+    stop(aid)
     shutil.rmtree(root(aid), ignore_errors=True)
-    if not any((_model_dir(e) / "manifest.json").is_file() for e in _all()
+    if not any((_model_dir(e) / "manifest.json").is_file() for e in _all(None)
                if not any(_pending(e.get(k)) for k in ("version", "file"))):
         shutil.rmtree(runtime_root(), ignore_errors=True)
         shutil.rmtree(root(LEGACY_ID) / LEGACY_RUNTIME, ignore_errors=True)
@@ -498,11 +503,12 @@ class Server:
         self.used = time.monotonic()
         return len(self._post("/tokenize", {"content": text}, 30)["tokens"])
 
-    def complete(self, prompt: str, n_predict: int, timeout: float) -> tuple[str, str]:
+    def complete(self, prompt: str, n_predict: int, timeout: float,
+                 stop: tuple = (END_OF_TURN,)) -> tuple[str, str]:
         self.start()
         try:
             r = self._post("/completion", {"prompt": prompt, "n_predict": n_predict, "temperature": 0,
-                                           "top_k": 1, "stop": [END_OF_TURN], "cache_prompt": True},
+                                           "top_k": 1, "stop": list(stop), "cache_prompt": True},
                            timeout)
         except TimeoutError:
             self.stop()                    # don't leave it generating into the next request
@@ -512,44 +518,45 @@ class Server:
         return r.get("content", ""), r.get("stop_type", "eos")
 
 
-_server: Server | None = None
+_servers: dict[str, Server] = {}   # one llama-server per add-on id (clean-up, title), kept between uses
 _server_lock = threading.Lock()
 _reaper: threading.Thread | None = None
 
 
 def server(aid: str) -> Server:
-    """The running (or startable) server for model `aid`, kept between transcripts. Choosing
-    another model stops the old process; the next request starts one with the new GGUF. Raises
-    when `aid` isn't installed."""
-    global _server, _reaper
+    """The running (or startable) server for add-on `aid`, kept between transcripts. A newer
+    install of `aid` (another GGUF or runtime) stops the old process; the next request starts one
+    with the new files. Raises when `aid` isn't installed."""
+    global _reaper
     have = installed(aid)
     if have is None:
-        raise FileNotFoundError("the clean-up model isn't downloaded")
+        raise FileNotFoundError("the model isn't downloaded")
     with _server_lock:
-        if _server is None or (_server.gguf, _server.binary) != tuple(Path(p) for p in have):
-            if _server is not None:
-                _server.stop()
-            _server = Server(*have)
+        s = _servers.get(aid)
+        if s is None or (s.gguf, s.binary) != tuple(Path(p) for p in have):
+            if s is not None:
+                s.stop()
+            s = _servers[aid] = Server(*have)
         if _reaper is None or not _reaper.is_alive():
             _reaper = threading.Thread(target=_reap, daemon=True, name="cleanup-idle")
             _reaper.start()
-        return _server
+        return s
 
 
 def _reap():
-    """Stop llama-server (and free its ~1 GB) after IDLE_S without a request."""
+    """Stop each llama-server (and free its memory) after IDLE_S without a request."""
     while True:
         time.sleep(30)
-        s = _server
-        if s is not None and s.proc is not None and time.monotonic() - s.used > IDLE_S:
+        for s in list(_servers.values()):
+            if s.proc is not None and time.monotonic() - s.used > IDLE_S:
+                s.stop()
+
+
+def stop(aid: str | None = None):
+    """Stop the server for `aid`, or every one (app quit), if it runs."""
+    for k, s in list(_servers.items()):
+        if aid is None or k == aid:
             s.stop()
-
-
-def stop():
-    """Stop the server if it runs (app quit, the add-on deleted)."""
-    s = _server
-    if s is not None:
-        s.stop()
 
 
 def run(text: str, keep: tuple = (), aid: str | None = None) -> Result:
