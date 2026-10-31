@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-10-31",
+      "tag": "Desktop 1.016",
+      "title": "Download models in sets, update them all at once, and the title model downloads again",
+      "summary": "Bundles: the Models tab now starts with three sets you can download in one click. Everything (Sabich, Shakshuka, and the clean-up, title and paragraph models), Voice Typing (Sabich and Shakshuka) and Transcription (Sabich with the clean-up, title and paragraph models).",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-10-31",
       "tag": "Desktop 1.015",
       "title": "Saved transcripts get a folder, a title and a proper header; transcripts arrive in one go",
       "summary": "Save writes straight to a Hebrish folder (Documents, Hebrish, transcripts by default), one folder per year, month and day, as Markdown, and never overwrites.",
@@ -185,15 +194,6 @@
       "summary": "Add the words you want written a certain way: names, brands, Hebrew words in the spelling you use. After each take, Hebrish replaces what the model wrote with your spelling.",
       "platforms": [
         "android",
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-23",
-      "tag": "Desktop 0.7.6",
-      "title": "Desktop: fewer capitals and full stops in the middle of sentences",
-      "summary": "With insert as you go, stopping to think in the middle of a sentence no longer ends it. Each piece of text is now transcribed together with the end of the piece before it, so the model hears that the sentence carries on and writes it the way it would mid-sentence.",
-      "platforms": [
         "desktop"
       ]
     }
