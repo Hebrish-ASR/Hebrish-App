@@ -4,11 +4,12 @@ every transcript in a searchable SQLite file: hebrish.history)."""
 
 import os
 import sqlite3
+import threading
 import time
 
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt, QTime, QTimer, QUrl
+from PySide6.QtCore import QObject, QSize, Qt, QTime, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout,
                                QInputDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit,
@@ -16,8 +17,8 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, Q
                                QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QTimeEdit,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import __version__, audio, autostart, cleanup, dictionary, model_store, paragraphs, transcripts, vad
-from ..config import APP_NAME, CONFIG_PATH, MODELS_DIR, STATE_PATH, TAGLINE, load_json, threads
+from .. import __version__, audio, autostart, backup, cleanup, dictionary, model_store, paragraphs, transcripts, vad
+from ..config import APP_NAME, CONFIG_PATH, DATA_DIR, MODELS_DIR, STATE_PATH, TAGLINE, load_json, threads
 from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
 from . import about
@@ -108,6 +109,11 @@ def stat_tile(title: str) -> tuple[QFrame, QLabel, QLabel]:
 
 HISTORY_PAGE = 100      # rows shown at a time in the History tab; "Show more" adds another page
 CHANGELOG_URL = "https://hebrish.app/changelog"
+
+
+class _BackupDone(QObject):
+    """Backup (B-76) runs on a worker thread; this carries its result back to the GUI thread."""
+    done = Signal(object, object, str)     # manifest, error, destination
 
 
 class MainWindow(QMainWindow):
@@ -333,6 +339,8 @@ class MainWindow(QMainWindow):
             self.update_model()
         if self._history_dirty and self._shown(self.pages["history"]):
             self.show_history(keep_limit=self._history_keep)
+        if self._shown(self.pages["settings"]):
+            self._sync_transcripts()            # Your data: sizes and counts as of now
 
     # -- dictate -------------------------------------------------------------------
     def _dictate_page(self):
@@ -625,8 +633,12 @@ class MainWindow(QMainWindow):
         exp = QPushButton(line_icon("export"), "Export…")
         exp.setToolTip("Every transcript as JSON Lines, oldest first")
         exp.clicked.connect(self._export_history)
+        bak = QPushButton(line_icon("export"), "Back up…")
+        bak.setToolTip("Settings → Your data: history, saved transcripts, dictionary and settings in one archive")
+        bak.clicked.connect(self.back_up)
         row.addWidget(opn)
         row.addWidget(exp)
+        row.addWidget(bak)
         row.addStretch(1)
         b.addLayout(row)
         lay.addWidget(box)
@@ -870,8 +882,9 @@ class MainWindow(QMainWindow):
         self.hist_box.addStretch(1)
         self.btn_clear.setEnabled(bool(total))
         self._show_stats()
-        self.hist_where.setText(f"{hist.path} ({human_size(hist.size_bytes())}). Text only, no audio. "
-                                "Nothing leaves this computer.")
+        self.hist_where.setText(f"History database (SQLite): {hist.path} ({human_size(hist.size_bytes())}). "
+                                "Text only, no audio. Nothing leaves this computer. Every place your "
+                                "data is kept: Settings → Your data.")
 
     def history_maintained(self, out, err):
         """History upkeep finished (Controller.maintain_history): new size in both places."""
@@ -1691,22 +1704,52 @@ class MainWindow(QMainWindow):
         b.addWidget(self.app_status_label)
         lay.addWidget(box)
 
-        box, b = card("Transcripts")
-        self.transcripts_label = muted()
-        self.transcripts_label.setTextFormat(Qt.PlainText)   # "<year>" is not a tag
-        self.transcripts_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        b.addWidget(self.transcripts_label)
+        box, b = card("Your data")
+        b.addWidget(muted("Everything Hebrish keeps about you is in these places on this computer. "
+                          "Nothing leaves it."))
+        form = QFormLayout()
+        self.data_labels = {}
+        for key, title in (("history", "History"), ("transcripts", "Saved transcripts"),
+                           ("dictionary", "Dictionary"), ("config", "Settings"), ("models", "Models")):
+            lbl = muted()
+            lbl.setTextFormat(Qt.PlainText)      # "<year>" is not a tag
+            lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            self.data_labels[key] = lbl
+            form.addRow(QLabel(title), lbl)
+        b.addLayout(form)
         row = QHBoxLayout()
-        change = QPushButton(line_icon("folder"), "Change folder…")
+        change = QPushButton(line_icon("folder"), "Transcripts folder…")
         change.clicked.connect(self._change_transcripts)
         self.btn_transcripts_default = QPushButton("Use the default folder")
         self.btn_transcripts_default.clicked.connect(lambda: self._set_transcripts(""))
-        opener = QPushButton("Open folder")
+        opener = QPushButton("Open transcripts")
         opener.clicked.connect(self._open_transcripts)
-        for w in (change, self.btn_transcripts_default, opener):
+        data = QPushButton("Open data folder")
+        data.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(DATA_DIR))))
+        for w in (change, self.btn_transcripts_default, opener, data):
             row.addWidget(w)
         row.addStretch(1)
         b.addLayout(row)
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Back up as"))
+        self.backup_format = QComboBox()
+        self.backup_format.addItems(list(backup.FORMATS))
+        self.backup_format.setCurrentText(self.cfg["backup_format"] if self.cfg["backup_format"] in backup.FORMATS else "tar.gz")
+        self.backup_format.currentTextChanged.connect(lambda f: self.cfg.set("backup_format", f))
+        row.addWidget(self.backup_format)
+        self.btn_backup = QPushButton(line_icon("export"), "Back up…")
+        self.btn_backup.setToolTip("One archive of your history (database and JSON Lines), saved transcripts, "
+                                   "dictionary and settings, with a manifest. Models and recordings are left out.")
+        self.btn_backup.clicked.connect(self.back_up)
+        row.addWidget(self.btn_backup)
+        row.addStretch(1)
+        b.addLayout(row)
+        self.backup_status = muted()
+        self.backup_status.setTextFormat(Qt.PlainText)
+        self.backup_status.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        b.addWidget(self.backup_status)
+        self._backup_sig = _BackupDone(self)
+        self._backup_sig.done.connect(self._backed_up)
         self._sync_transcripts()
         lay.addWidget(box)
 
@@ -1732,11 +1775,58 @@ class MainWindow(QMainWindow):
 
     # -- transcripts folder (B-74) -------------------------------------------------------
     def _sync_transcripts(self):
+        """Settings → Your data (B-76): where each kind of data lives, with sizes."""
         base = transcripts.folder(self.cfg["transcripts_dir"])
-        self.transcripts_label.setText(
-            f"Save puts each text in {base}/<year>/<month>/<day>/, named by the time "
-            "(14-05-09.md), as Markdown.")
+        hist = self.ctl.history
+        if hist is not None:
+            n = hist.count()
+            h = f"{hist.path}  ({human_size(hist.size_bytes())}, {n} dictation{'s' if n != 1 else ''}, SQLite)"
+        else:
+            h = f"{DATA_DIR / 'history.db'}  (history is off)"
+        self.data_labels["history"].setText(h)
+        self.data_labels["transcripts"].setText(f"{base}/<year>/<month>/<day>/<time>.md  (Save writes here)")
+        self.data_labels["dictionary"].setText(str(dictionary.PATH))
+        self.data_labels["config"].setText(str(CONFIG_PATH))
+        self.data_labels["models"].setText(str(model_store.ROOT))
         self.btn_transcripts_default.setEnabled(bool(self.cfg["transcripts_dir"]))
+
+    def back_up(self):
+        """B-76: pick where, then write the archive on a worker thread."""
+        fmt = self.backup_format.currentText()
+        hist_db = self.ctl.history.path if self.ctl.history is not None else DATA_DIR / "history.db"
+        name = backup.file_name(fmt, backup.count(hist_db))
+        start = Path(self.cfg["backup_dir"]) if self.cfg["backup_dir"] else transcripts.default_dir().parent
+        filt = "Gzipped tar (*.tar.gz)" if fmt == "tar.gz" else "Zip (*.zip)"
+        path, _ = QFileDialog.getSaveFileName(self, "Back up Hebrish data", str(start / name), filt)
+        if not path:
+            return
+        if not path.endswith("." + fmt):
+            path += "." + fmt
+        self.cfg.set("backup_dir", str(Path(path).parent))
+        self.btn_backup.setEnabled(False)
+        self.backup_status.setText("Backing up…")
+        tdir = transcripts.folder(self.cfg["transcripts_dir"])
+
+        def go():
+            try:
+                m = backup.make(Path(path), history_db=hist_db, transcripts_dir=tdir,
+                                dictionary=dictionary.PATH, config=CONFIG_PATH, app_version=__version__)
+                self._backup_sig.done.emit(m, None, path)
+            except Exception as e:
+                self._backup_sig.done.emit(None, e, path)
+        threading.Thread(target=go, daemon=True, name="backup").start()
+
+    def _backed_up(self, m, err, path):
+        self.btn_backup.setEnabled(True)
+        if err:
+            self.backup_status.setText("")
+            self.banner(f"Couldn't back up to {path}: {err}")
+            return
+        h, t = m["history"] or {}, m["transcripts"] or {}
+        self.backup_status.setText(
+            f"Backed up {h.get('dictations', 0)} dictations and {t.get('files', 0)} saved transcripts "
+            f"to {path} ({human_size(m['bytes'])}).")
+        self.status(f"Backed up to {path}")
 
     def _change_transcripts(self):
         base = transcripts.folder(self.cfg["transcripts_dir"])

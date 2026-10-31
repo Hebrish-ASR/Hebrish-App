@@ -1563,6 +1563,31 @@ comes back empty is cut at its quietest 100 ms near the middle and decoded as tw
 quarters at most. Don't remove it because a test file decodes fine without it: the failure
 depends on piece boundaries. Story and measurements: `docs/debug-log/2026-10-31-empty-piece.md`.
 
+## Transcripts folder, Your data, Backup (unreleased, 2026-10-31)
+
+Daniel, 2026-10-31 (R-2026-10-31-3, R-2026-10-31-4; B-74, B-76):
+
+- **Save** (Dictate and Transcription tabs) writes straight to the transcripts folder, no file
+  dialog: `<transcripts_dir>/YYYY/MM/DD/HH-MM-SS.md`, Markdown; `-2`, `-3`, … instead of
+  overwriting (`hebrish/transcripts.py`). Default `~/Documents/Hebrish transcripts` (`~` when there
+  is no Documents), `transcripts_dir` "" = default. With a title (B-75, the title model, not built)
+  the name is `<snake_case_title>_HH-MM-SS.md` and the file starts with `# Title`.
+- **Settings → Your data** lists every place user data lives: history (`DATA_DIR/history.db`,
+  SQLite, with size and count), the transcripts folder, `dictionary.json`, `config.json`, the
+  models folder; refreshed whenever the Settings tab is shown. The History tab's storage card
+  names the database as SQLite and points there.
+- **Back up…** (Your data, and the History tab): `hebrish/backup.py`, on a worker thread. One
+  archive, `tar.gz` (default) or `zip` (`backup_format`), default name
+  `YYYY-MM-DD_HHMM_hebrish-backup_<host>_<n>-dictations.<ext>`, saved where the user picks
+  (`backup_dir` remembers it; default `~/Documents`). Contents under one top folder named like the
+  file: `manifest.json` (app version, time, host, device id, counts, first/last dictation, source
+  paths), `history/history.db` (SQLite backup API from a read-only connection: consistent while
+  the app writes, WAL included), `history/history.jsonl`, `transcripts/…`, `dictionary.json`,
+  `config.json`. Left out: models (re-downloadable) and saved Transcription-tab recordings
+  (large). Written to `<name>.part` and renamed, so a failed backup leaves no half file. No
+  restore yet.
+- Tests: `tests/test_transcripts.py`, `tests/test_backup.py` (both formats, an open WAL database).
+
 ## Testing
 
 - `.venv/bin/python -m pytest tests`: offline tests of the update logic, the hotkey state
