@@ -1284,6 +1284,34 @@ from whatever parent it has before `addView`. Not reproduced; no 1.009 crash rep
 
 Verified: compiles (`compileFdroidDebugKotlin`, `compilePlayDebugKotlin`). Not run on a phone.
 
+## Model freed while the phone sleeps (1.011 hotfix, 2026-10-31)
+
+Follow-up to "Model memory and the drag crash guard" (1.010). Measured on Hannah's Pixel 11 with
+1.010 (the session managing her phone, `dumpsys meminfo`): just after install, Native Heap PSS
+4.8 MB, TOTAL PSS 23.7 MB (no boot preload: works). About 8 minutes later, the same process
+(started 21:05:56) had Native Heap PSS 697,612 KB while dozing, screen off, no field focused and
+no take. So the model had loaded (most likely a field's focus, which preloads) and was not freed.
+
+Cause (I, from the code): the 1.010 idle timer is a `ScheduledExecutorService`, whose delays run
+on `System.nanoTime` (CLOCK_MONOTONIC), which stops while the CPU is suspended. On a dozing phone
+its 5 minutes count only awake time. `onTrimMemory` comes only under memory pressure, which a
+12 GB phone with free RAM doesn't send. Released from `hotfix/android-1.011` off `android-v1.010`
+(Daniel's stability release, same scope); `main` takes the same commit.
+
+Fix:
+- `Transcriber.onScreenOff(takeOpen)`, from an `ACTION_SCREEN_OFF` receiver in both
+  `FloatingMicService` (registered in `onServiceConnected`) and `VoiceImeService` (`onCreate`):
+  frees the model at once unless that service has a take open; a decode in progress finishes
+  first (the free waits for `lock`).
+- `Transcriber.checkIdle()` at the top of `FloatingMicService.onAccessibilityEvent` (no take
+  open): frees the model if `IDLE_UNLOAD_MS` has passed on `elapsedRealtime` (counts sleep). The
+  timer stays as a third path.
+- All frees go through `freeInBackground` (one thread at a time). Loads and frees are logged:
+  `adb logcat -s HebrishModel` shows `model loaded (<dir>, <ms> ms)` and
+  `model freed (<why>, unused <s> s)`.
+
+Verified: compiles (`compileFdroidDebugKotlin`, `compilePlayDebugKotlin`). Not run on a phone.
+
 ## Not yet verified (as of 2026-10-20)
 
 - Robustness pass (2026-10-30) on a device: Try it with no model (Open Models, then back) and

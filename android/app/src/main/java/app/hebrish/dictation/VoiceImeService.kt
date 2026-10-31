@@ -121,9 +121,18 @@ class VoiceImeService : InputMethodService() {
         override fun onAudioDevicesRemoved(removed: Array<out AudioDeviceInfo>) { if (!open) showSource() }
     }
 
+    /** 1.011: free the model when the screen goes off and no take is open (Transcriber.onScreenOff). */
+    private val screenOff = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: android.content.Context?, i: android.content.Intent?) = Transcriber.onScreenOff(takeOpen = state != State.IDLE)
+    }
+
     override fun onCreate() {
         super.onCreate()
         getSystemService(AudioManager::class.java).registerAudioDeviceCallback(devices, main)
+        // A system broadcast: delivered to a not-exported receiver too.
+        val f = android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_OFF)
+        if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(screenOff, f, android.content.Context.RECEIVER_NOT_EXPORTED)
+        else registerReceiver(screenOff, f)
     }
 
     /** Memory pressure (1.010): free the model unless a take is open or it was just used. */
@@ -133,6 +142,7 @@ class VoiceImeService : InputMethodService() {
     }
 
     override fun onDestroy() {
+        runCatching { unregisterReceiver(screenOff) }
         getSystemService(AudioManager::class.java).unregisterAudioDeviceCallback(devices)
         // onFinishInputView normally drops an open take first; if it didn't, don't leave the mic
         // open or a held Enter pending on a dead service. Takes still landing have no field left.

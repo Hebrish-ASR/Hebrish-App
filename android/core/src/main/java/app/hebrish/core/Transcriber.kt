@@ -2,6 +2,7 @@ package app.hebrish.core
 
 import android.content.Context
 import android.os.SystemClock
+import android.util.Log
 import com.k2fsa.sherpa.onnx.FeatureConfig
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
@@ -43,6 +44,9 @@ object Transcriber {
     /** How the model is run, for the history export's `engine` column. */
     const val ENGINE = "sherpa-onnx nemo_transducer int8 greedy_search"
 
+    /** Logcat tag for model load and free (1.011): `adb logcat -s HebrishModel`. */
+    const val TAG = "HebrishModel"
+
     /** Free the model after this long without a load or decode (1.010). */
     const val IDLE_UNLOAD_MS = 5 * 60_000L
 
@@ -56,16 +60,42 @@ object Transcriber {
     private fun touch() {
         lastUse = SystemClock.elapsedRealtime()
         idleCheck?.cancel(false)
-        idleCheck = idleTimer.schedule({ unloadIfIdle(IDLE_UNLOAD_MS) }, IDLE_UNLOAD_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+        idleCheck = idleTimer.schedule({ unloadIfIdle(IDLE_UNLOAD_MS, "idle timer") }, IDLE_UNLOAD_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+    }
+
+    /**
+     * The timer above counts on System.nanoTime, which stops while the phone sleeps, so on a dozing
+     * phone it can run for hours past its 5 minutes (seen on 1.010, Pixel 11, 2026-10-31). These
+     * two make the free independent of it (1.011):
+     * - [checkIdle], from every accessibility event: frees the model if [IDLE_UNLOAD_MS] has passed
+     *   on the elapsedRealtime clock (which counts sleep). Cheap when nothing is due.
+     * - [onScreenOff], from the services' ACTION_SCREEN_OFF receivers: frees it unless a take is
+     *   open (a decode still running finishes first: the free waits for its lock).
+     */
+    fun checkIdle() {
+        if (recognizer != null && SystemClock.elapsedRealtime() - lastUse >= IDLE_UNLOAD_MS) freeInBackground(IDLE_UNLOAD_MS, "idle")
+    }
+
+    fun onScreenOff(takeOpen: Boolean) {
+        if (!takeOpen && recognizer != null) freeInBackground(0L, "screen off")
+    }
+
+    private val freeing = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** Off the caller's thread (it may wait for a decode); one at a time. */
+    private fun freeInBackground(idleMs: Long, why: String) {
+        if (!freeing.compareAndSet(false, true)) return
+        Thread { try { unloadIfIdle(idleMs, why) } finally { freeing.set(false) } }.start()
     }
 
     /**
      * Frees the model if it has not been used for [idleMs]. Waits for a decode in progress (it
      * holds [lock]). The next take loads it again. Returns whether it freed anything.
      */
-    fun unloadIfIdle(idleMs: Long): Boolean = synchronized(lock) {
+    fun unloadIfIdle(idleMs: Long, why: String = "idle"): Boolean = synchronized(lock) {
         if (recognizer == null || SystemClock.elapsedRealtime() - lastUse < idleMs) return false
         unload()
+        Log.i(TAG, "model freed ($why, unused ${(SystemClock.elapsedRealtime() - lastUse) / 1000} s)")
         true
     }
 
@@ -77,7 +107,7 @@ object Transcriber {
      */
     fun onTrimMemory(level: Int, takeOpen: Boolean) {
         val pressure = level in 10..15 || level >= 40
-        if (pressure && !takeOpen && recognizer != null) Thread { unloadIfIdle(30_000L) }.start()
+        if (pressure && !takeOpen && recognizer != null) freeInBackground(30_000L, "memory pressure, level $level")
     }
 
     fun isLoaded(ctx: Context) = recognizer != null && loadedDir == ModelStore.dir(ctx)?.path
@@ -126,12 +156,14 @@ object Transcriber {
                 ),
                 decodingMethod = "greedy_search",
             )
+            val started = SystemClock.elapsedRealtime()
             val rec = OfflineRecognizer(assetManager = null, config = config)
             // Warm-up: the first decode allocates ONNX Runtime's buffers; do it now, not on the user's take.
             runCatching { decode(rec, FloatArray(SAMPLE_RATE / 2)) }
             recognizer = rec
             loadedDir = want
             touch()
+            Log.i(TAG, "model loaded (${java.io.File(want ?: "").name}, ${SystemClock.elapsedRealtime() - started} ms)")
             return rec
         }
     }

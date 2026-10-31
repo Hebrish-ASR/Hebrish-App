@@ -181,6 +181,22 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         remote = Remote.register(this) { main.post { onRemote(it) } }
         // No preload here (1.010): this runs at boot, and the model (~700 MB) then sat unused.
         // It loads when a text field gets focus or a take starts.
+        registerScreenOff()
+    }
+
+    /** 1.011: free the model when the screen goes off and no take is open (Transcriber.onScreenOff). */
+    private val screenOff = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: android.content.Context?, i: android.content.Intent?) = Transcriber.onScreenOff(takeOpen = open)
+    }
+    private var screenOffRegistered = false
+
+    private fun registerScreenOff() {
+        if (screenOffRegistered) return
+        // A system broadcast: delivered to a not-exported receiver too.
+        val f = android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_OFF)
+        if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(screenOff, f, android.content.Context.RECEIVER_NOT_EXPORTED)
+        else registerReceiver(screenOff, f)
+        screenOffRegistered = true
     }
 
     /** Memory pressure (1.010): free the model unless a take is open or it was just used. */
@@ -190,6 +206,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     }
 
     override fun onDestroy() {
+        if (screenOffRegistered) runCatching { unregisterReceiver(screenOff) }
+        screenOffRegistered = false
         Prefs.unlisten(this, this)
         remote?.let { runCatching { unregisterReceiver(it) } }
         remote = null
@@ -259,6 +277,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         // An exception here would crash the service, and Android turns a crashing service off.
         runCatching {
+            // 1.011: the idle free can't rely on the timer while the phone sleeps (Transcriber.checkIdle).
+            if (!open) Transcriber.checkIdle()
             val was = editableFocused
             val source = event.source
             if (source?.isEditable == true && !source.isPassword) lastEditable = source
