@@ -54,6 +54,7 @@ Newest first.
 | Date | Platform | Symptom | Status | Entry |
 | --- | --- | --- | --- | --- |
 | 2026-10-31 | desktop-linux | Crash at start when /dev/uinput doesn't exist (evdev UInputError) | fixed, unreleased (1.017) | [2026-10-31-uinput-missing-crash.md](2026-10-31-uinput-missing-crash.md) |
+| 2026-10-31 | desktop-windows | Local API reported success on a port another app held (SO_REUSEADDR on Windows) | fixed, unreleased | [2026-10-31-windows-local-api-port-reuse.md](2026-10-31-windows-local-api-port-reuse.md) |
 | 2026-10-31 | desktop-linux | The title model's Download fails: a stale cached catalogue hid the bundled add-on (1.015) | fixed in 1.016 | [2026-10-31-title-model-download.md](2026-10-31-title-model-download.md) |
 | 2026-10-31 | desktop-linux | A file transcribed with voice detection on loses its last ~15 s (a whole piece decoded to nothing) | fixed in 1.014 | [2026-10-31-empty-piece.md](2026-10-31-empty-piece.md) |
 | 2026-10-28 | desktop-linux, android | Sentence breaks and capitals mid-sentence after a thinking pause, a filler or a stop and restart (what 0.7.6/0.8.2 left) | unfixed; options and base-model research logged | [2026-10-28-false-sentence-breaks-remain.md](2026-10-28-false-sentence-breaks-remain.md) |

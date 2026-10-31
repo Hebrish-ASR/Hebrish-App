@@ -25,6 +25,7 @@ No clean-up model, no paragraphs, nothing kept in History. Qt-free: the controll
 import json
 import logging
 import os
+import sys
 import tempfile
 import threading
 import time
@@ -34,6 +35,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
 from . import __version__, audio
+
+
+class _Server(ThreadingHTTPServer):
+    # HTTPServer sets SO_REUSEADDR, which on Windows lets a second socket bind a port already in
+    # use (the other app keeps getting the requests and start() wrongly reports success). Found by
+    # test_port_in_use_is_reported on the windows CI job, 2026-10-31.
+    allow_reuse_address = sys.platform != "win32"
 
 log = logging.getLogger(__name__)
 
@@ -67,7 +75,7 @@ def _multipart(body: bytes, content_type: str) -> dict[str, tuple[bytes, str | N
 class LocalApi:
     def __init__(self, transcribe, info, port: int = DEFAULT_PORT):
         self.transcribe, self.info, self.port = transcribe, info, port
-        self._server: ThreadingHTTPServer | None = None
+        self._server: _Server | None = None
         self._thread: threading.Thread | None = None
         self.error: str | None = None          # why the last start failed (port in use, ...)
 
@@ -87,7 +95,7 @@ class LocalApi:
         class Handler(_Handler):
             owner = api
         try:
-            self._server = ThreadingHTTPServer((HOST, self.port), Handler)
+            self._server = _Server((HOST, self.port), Handler)
         except OSError as e:
             self.error = f"Couldn't listen on {HOST}:{self.port}: {e.strerror or e}"
             log.warning(self.error)

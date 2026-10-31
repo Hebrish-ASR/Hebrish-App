@@ -1,6 +1,7 @@
 """hebrish.transcripts (B-74): dated folders, snake_case titles, Markdown, no overwrites."""
 
 import json
+import sys
 import time
 
 from hebrish import transcripts
@@ -91,7 +92,9 @@ def test_hebrish_folder(tmp_path, monkeypatch):
     assert config.transcripts_folder(cfg) == tmp_path / "hebrish" / "transcripts"
     cfg["tm_audio_dir"] = "/elsewhere"
     assert config.recordings_folder(cfg) == config.Path("/elsewhere")
-    # localised Documents from user-dirs.dirs
+    # localised Documents from user-dirs.dirs (Linux only: Windows has no XDG user dirs)
+    if sys.platform == "win32":
+        return
     (tmp_path / "Dokumente").mkdir()
     (tmp_path / ".config").mkdir()
     (tmp_path / ".config" / "user-dirs.dirs").write_text('XDG_DOCUMENTS_DIR="$HOME/Dokumente"\n')
