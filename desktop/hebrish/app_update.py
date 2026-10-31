@@ -14,12 +14,15 @@ Model updates are model_store's job; this is the app itself. No Qt import, so it
    deb-manual the .deb without that file (0.6.1 and earlier, or the user deleted it): link to
               the download page; the new .deb brings the source with it.
    windows    the frozen PyInstaller build: link to the download page.
+   appimage   the AppImage (build-appimage.sh; the runtime sets $APPIMAGE and $APPDIR, 2026-10-31):
+              link to the download page; the version is files.ubuntu's (same tag, same CI run).
    source     a checkout or venv: say a new version exists, nothing else.
 """
 
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -36,7 +39,7 @@ DOWNLOAD_PAGE = "https://hebrish.app/download"
 INSTALL_DIR = Path("/usr/lib/hebrish")              # the .deb's copy of the package
 LAUNCHER = "/usr/bin/hebrish"
 SOURCES = Path("/etc/apt/sources.list.d/hebrish.sources")
-METHODS = ("apt", "deb-manual", "windows", "source")
+METHODS = ("apt", "deb-manual", "windows", "appimage", "source")
 
 # Refresh only the Hebrish source, then upgrade only hebrish (never install it, never touch
 # other packages). Option names checked against apt 3.2.0 on Ubuntu 26.04 (V, 2026-10-21, with
@@ -107,20 +110,33 @@ def fetch(key: str | None = None) -> Release:
 
 def install_method(platform: str = sys.platform, frozen: bool | None = None,
                    module_file: str | None = None, sources: Path = SOURCES,
-                   install_dir: Path = INSTALL_DIR) -> str:
-    """apt | deb-manual | windows | source (see the module docstring). The arguments exist for
-    the tests; the app calls it bare."""
+                   install_dir: Path = INSTALL_DIR, env: dict | None = None) -> str:
+    """apt | deb-manual | windows | appimage | source (see the module docstring). The arguments
+    exist for the tests; the app calls it bare."""
     frozen = getattr(sys, "frozen", False) if frozen is None else frozen
     if platform == "win32":
         return "windows" if frozen else "source"
     here = Path(module_file or __file__).resolve()
+    if appimage_path(env) and Path(env_get(env, "APPDIR")).resolve() in here.parents:
+        return "appimage"
     if install_dir.resolve() not in here.parents:
         return "source"
     return "apt" if sources.is_file() else "deb-manual"
 
 
+def env_get(env: dict | None, key: str) -> str:
+    return (os.environ if env is None else env).get(key, "")
+
+
+def appimage_path(env: dict | None = None) -> str:
+    """The .AppImage file this copy runs from ('' when it isn't one). Only the AppImage runtime
+    sets both variables; a child process inherits them, so APPDIR must hold this module too
+    (install_method checks that)."""
+    return env_get(env, "APPIMAGE") if env_get(env, "APPIMAGE") and env_get(env, "APPDIR") else ""
+
+
 def download_page(method: str) -> str:
-    return f"{DOWNLOAD_PAGE}#{'windows' if method == 'windows' else 'ubuntu'}"
+    return f"{DOWNLOAD_PAGE}#{ {'windows': 'windows', 'appimage': 'appimage'}.get(method, 'ubuntu') }"
 
 
 def apt_command() -> list[str]:
@@ -175,6 +191,7 @@ def relaunch(pid: int | None = None):
     """Start /usr/bin/hebrish once this process (pid) has exited, so the new copy doesn't find the
     old one's single-instance socket and just hand it a "show". The caller then quits."""
     pid = pid or os.getpid()
-    subprocess.Popen(["sh", "-c", f"while kill -0 {pid} 2>/dev/null; do sleep 0.2; done; exec {LAUNCHER}"],
+    launcher = shlex.quote(appimage_path()) if install_method() == "appimage" else LAUNCHER
+    subprocess.Popen(["sh", "-c", f"while kill -0 {pid} 2>/dev/null; do sleep 0.2; done; exec {launcher}"],
                      start_new_session=True, stdin=subprocess.DEVNULL,
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

@@ -1,0 +1,11 @@
+#!/bin/sh
+# AppImage entry point (build-appimage.sh). The runtime sets $APPDIR (the mounted image) and
+# $APPIMAGE (the .AppImage file itself: app_update and autostart use it).
+HERE=${APPDIR:-$(dirname "$(readlink -f "$0")")}
+export PYTHONPATH="$HERE/usr/lib/hebrish"
+export PYTHONNOUSERSITE=1
+# sounddevice dlopens libportaudio.so.2 by name; the bundled xclip/wl-copy use rpath instead.
+export LD_LIBRARY_PATH="$HERE/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+# The system's xclip/wl-copy first; the bundled ones only when there are none.
+export PATH="${PATH:-/usr/bin:/bin}:$HERE/usr/bin"
+exec "$HERE/usr/python/bin/python3" -s -m hebrish "$@"

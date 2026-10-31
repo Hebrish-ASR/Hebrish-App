@@ -277,6 +277,9 @@ class MainWindow(QMainWindow):
         elif method == "windows":
             text = head + " Download the new zip from hebrish.app and replace this folder with it."
             btn = "Download page"
+        elif method == "appimage":
+            text = head + " Download the new AppImage from hebrish.app and replace this file with it."
+            btn = "Download page"
         else:
             text = head + " You're running from source: pull the repository to update."
             btn = ""
@@ -1795,6 +1798,7 @@ class MainWindow(QMainWindow):
                           "to the new .deb. Installing it adds the repository, so updates after "
                           "that install from here.",
             "windows": "The portable Windows build: you'll get a link to the new zip.",
+            "appimage": "The AppImage: you'll get a link to the new one.",
             "source": "Running from source: you'll be told when there's a new version.",
         }[self.ctl.app_method]))
         row = QHBoxLayout()

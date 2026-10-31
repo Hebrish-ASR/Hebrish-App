@@ -127,11 +127,13 @@ Before tagging, add the release's entry to hebrish.app's changelog: `scripts/rel
 (one per app: `shared/updates-android.json` and `desktop/hebrish/data/updates.json`, the last 20 entries for that platform, offline) and commits it with the version.
 Releases: tag `android-vM.NNN` builds the signed APK in CI. Tag `desktop-vM.NNN` builds the
 Ubuntu 26.04 .deb in CI (an `ubuntu:26.04` container), installs and self-tests it, and attaches it
-to the release. The default release is Android and the .deb (Daniel, 2026-10-31); the Windows zip
+to the release, with the AppImage for other distributions (built in `ubuntu:22.04`, self-tested
+in `fedora:43`; since 2026-10-31, first in 1.017). The default release is Android and the .deb (Daniel, 2026-10-31); the Windows zip
 is built only on request: `gh workflow run desktop.yml -R Hebrish-ASR/Hebrish-App -f windows=true
 -f tag=desktop-vM.NNN` attaches it to that release. Then overwrite the one stable file per platform on the Hebrish CDN
-(`https://cdn.hebrish.app/apps/{android,ubuntu,windows}/`: `Hebrish-latest.apk`,
-`hebrish-latest-amd64.deb`, `Hebrish-latest-windows-x64.zip`; since 2026-10-21, old versions
+(`https://cdn.hebrish.app/apps/{android,ubuntu,linux,windows}/`: `Hebrish-latest.apk`,
+`hebrish-latest-amd64.deb`, `Hebrish-latest-x86_64.AppImage` (latest.json key `appimage`),
+`Hebrish-latest-windows-x64.zip`; since 2026-10-21, old versions
 stay only on the GitHub releases) and rewrite `downloads/latest.json` (the `r2-upload` skill in
 `voice-model-training`). hebrish.app needs no edit: its buttons link
 `hebrish.app/get/<platform>`, which redirects to the file `latest.json` names. The F-Droid

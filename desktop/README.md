@@ -156,11 +156,33 @@ on first start it adopts Voice To Hebrish's settings and downloaded model. On
 other Ubuntu releases, run `./install.sh` (a per-user venv; needs uv) or rebuild with
 `./build-deb.sh`.
 
+**Other Linux distributions** (x86_64; Fedora 36+, Debian 12+, Arch, openSUSE, Ubuntu 22.04+...):
+download `Hebrish-<version>-x86_64.AppImage` from the releases, then:
+
+```bash
+chmod +x Hebrish-*-x86_64.AppImage && ./Hebrish-*-x86_64.AppImage
+sudo usermod -aG input $USER     # for the hotkey; log in again afterwards
+```
+
+It bundles its own Python, Qt, PortAudio and clipboard tools; it needs FUSE (every desktop
+distribution has it; without it, add `--appimage-extract-and-run`). The .deb also installs a
+udev rule that lets Hebrish press the paste keys; an AppImage can't, so until you add it,
+transcripts go to the clipboard only (the app says so, with this command):
+
+```bash
+echo 'KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"' |
+  sudo tee /etc/udev/rules.d/70-hebrish-uinput.rules
+sudo udevadm control --reload-rules && sudo udevadm trigger --sysname-match=uinput
+```
+
+To get it in the app menu, use Gear Lever or AppImageLauncher. Not bundled: ffmpeg (for opening
+compressed audio files) and AT-SPI (the "No text field" check), both used from the system if present.
+
 **Updates.** Hebrish checks for a new version at start and about once a day (Settings →
 App updates; turn it off there). On Ubuntu, from 0.6.2 the .deb adds the Hebrish APT
 repository, so *Update now* installs the new version after asking for your password, and
 Software Updater picks it up too; with an older .deb you get a link to the new one. On Windows
-you get a link to the new zip.
+you get a link to the new zip, and as an AppImage a link to the new AppImage.
 
 **Windows 10/11** (x64): download the `-windows-x64.zip` from the releases, unzip it, and
 run `Hebrish.exe`. There is no installer and no admin rights are needed. Turn on

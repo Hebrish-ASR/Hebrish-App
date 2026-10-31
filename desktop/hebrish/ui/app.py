@@ -166,7 +166,7 @@ class Controller(QObject):
         self.sig.all_checked.connect(self._all_checked)
         self.maintaining = False
         self.app_release: app_update.Release | None = None    # newer than this app, else None
-        self.app_method = app_update.install_method()         # apt | deb-manual | windows | source
+        self.app_method = app_update.install_method()         # apt | deb-manual | windows | appimage | source
         self.app_updating = False
         self.app_installed = ""          # version apt installed this session: waits for a restart
 

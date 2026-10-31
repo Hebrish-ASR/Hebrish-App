@@ -1,7 +1,9 @@
 # Tag desktop-vM.NNN -> tests, then the Ubuntu 26.04 .deb (built in an ubuntu:26.04 container,
 # so it is pinned to that release's python3), installed and self-tested in a clean container,
 # attested and attached to the GitHub release. The default release is Android (android.yml) and
-# this .deb (Daniel, 2026-10-31).
+# this .deb (Daniel, 2026-10-31). Beside it, the AppImage for other distributions (Daniel,
+# 2026-10-31): built in ubuntu:22.04 (glibc 2.35, so it runs on 22.04+, Debian 12+, Fedora 36+),
+# self-tested in a clean Fedora container, attested and attached to the same release.
 # Windows is built only on request (Daniel, 2026-10-31: "periodically whenever I request it"):
 # Actions -> desktop -> Run workflow with `windows` ticked and `tag` set to an existing
 # desktop-vM.NNN release; the zip is attached to that release.
@@ -81,21 +83,66 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: deb, path: "desktop/${{ env.DEB }}" }
 
+  appimage:
+    needs: test-linux
+    if: github.event_name != 'workflow_dispatch' || inputs.tag == ''
+    runs-on: ubuntu-latest
+    container: ubuntu:22.04      # the oldest glibc the AppImage supports: desktop/build-appimage.sh
+    defaults: { run: { working-directory: desktop } }
+    steps:
+      - name: Build tools
+        working-directory: /
+        run: |
+          apt-get update -q
+          DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
+            ca-certificates curl file binutils patchelf desktop-file-utils xclip wl-clipboard libportaudio2 git
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Build
+        run: ./build-appimage.sh
+      - name: Name
+        run: echo "APPIMAGE_FILE=$(ls dist/Hebrish-*-x86_64.AppImage)" >> "$GITHUB_ENV"
+      - uses: actions/attest-build-provenance@v2
+        with: { subject-path: "desktop/${{ env.APPIMAGE_FILE }}" }
+      - uses: actions/upload-artifact@v4
+        with: { name: appimage, path: "desktop/${{ env.APPIMAGE_FILE }}" }
+
+  appimage-test:
+    needs: appimage
+    runs-on: ubuntu-latest
+    container: fedora:43         # not the build distro: proves it runs beyond Ubuntu
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: appimage, path: dist }
+      - name: Self-test
+        run: |
+          # The libraries a desktop session already has (the AppImage bundles the rest)
+          dnf install -y -q pulseaudio alsa-lib mesa-libGL mesa-libEGL libxkbcommon fontconfig freetype dbus-libs glib2 libX11
+          pulseaudio -D --system --disallow-exit --exit-idle-time=-1 || true
+          sleep 1
+          chmod +x dist/*.AppImage
+          # No FUSE in a container: the runtime extracts and runs instead (same files)
+          PULSE_SERVER=unix:/var/run/pulse/native QT_QPA_PLATFORM=offscreen \
+            dist/*.AppImage --appimage-extract-and-run --selftest | tee selftest.txt
+          grep -q "install: appimage" selftest.txt
+
   release:
-    needs: deb
+    needs: [deb, appimage-test]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with: { name: deb, path: dist }
+      - uses: actions/download-artifact@v4
+        with: { name: appimage, path: dist }
       - name: Release
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
             gh release create "$GITHUB_REF_NAME" --title "Hebrish for desktop ${GITHUB_REF_NAME#desktop-}" \
               --notes-file .github/desktop-release-notes.md
-          gh release upload "$GITHUB_REF_NAME" dist/*.deb --clobber
+          gh release upload "$GITHUB_REF_NAME" dist/*.deb dist/*.AppImage --clobber
 
   windows:
     needs: test-linux

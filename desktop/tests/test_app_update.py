@@ -102,6 +102,20 @@ def test_windows(tmp_path):
     assert au.install_method("win32", False, "C:/src/desktop/hebrish/app_update.py") == "source"
 
 
+def test_appimage(tmp_path):
+    _, src, inst = _layout(tmp_path)
+    mnt = tmp_path / "tmp/.mount_HebrisXYZ"
+    mod = mnt / "usr/lib/hebrish/hebrish/app_update.py"
+    env = {"APPIMAGE": "/home/me/Apps/Hebrish-1.017-x86_64.AppImage", "APPDIR": str(mnt)}
+    assert au.install_method("linux", False, str(mod), src, inst, env) == "appimage"
+    # a child started from inside the AppImage inherits the variables: a checkout is still source
+    checkout = tmp_path / "home/me/Hebrish-Dictation/desktop/hebrish/app_update.py"
+    assert au.install_method("linux", False, str(checkout), src, inst, env) == "source"
+    assert au.appimage_path(env) == env["APPIMAGE"]
+    assert au.appimage_path({"APPIMAGE": "x"}) == ""
+    assert au.download_page("appimage") == "https://hebrish.app/download#appimage"
+
+
 def test_this_checkout_is_source():
     assert au.install_method() == "source"
 

@@ -8,7 +8,7 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | Module | Role |
 | --- | --- |
 | `model_store.py` | HF check, download/verify, installed versions. No Qt import, so it is testable and also a CLI |
-| `app_update.py` | newer-app check against `latest.json`, how this copy updates (apt / deb-manual / windows / source), the pkexec apt upgrade, relaunch (0.6.2; "App updates in the app") |
+| `app_update.py` | newer-app check against `latest.json`, how this copy updates (apt / deb-manual / windows / appimage / source), the pkexec apt upgrade, relaunch (0.6.2; "App updates in the app") |
 | `engine.py` | sherpa-onnx `OfflineRecognizer` (nemo_transducer) or, for Shakshuka, `OnlineRecognizer` (0.7.0): normalise, cut at pauses (`live_cut`, `split_points`), pad, `transcribe_chunks` generator; `LiveStream` for streaming takes |
 | `paragraphs.py` | Transcription Mode's Paragraphs setting (B-44): `Pieces` layout, the paragraph model (`Breaker`: pure-Python WordPiece + onnxruntime), its CDN download. See "Paragraphs" |
 | `cleanup.py` | the clean-up add-on (B-40): a choice of clean-up models (stock S1-mini by Superwhisper, default; the fine-tune S1-ASR-Cleanup, experimental) on a downloaded, shared `llama-server`; the choice rule, prompt, chunks, guard and fallback, download. See "Clean-up model" |
@@ -296,7 +296,11 @@ each part works there:
    `hebrish --selftest` (offscreen, against a system PulseAudio: PortAudio won't initialise
    without a sound server), attests it, and creates the release with the .deb attached.
    Up to 1.013 the .deb was built by hand on the maintainer's machine; 1.013's never was, so 1.013
-   reached only Windows (found 2026-10-31).
+   reached only Windows (found 2026-10-31). From 1.017 the same tag also builds the AppImage
+   (jobs `appimage` and `appimage-test`, see "AppImage" below); the release needs both. Publish it
+   with the .deb: overwrite `apps/linux/Hebrish-latest-x86_64.AppImage` on the CDN and add
+   `files.appimage` to `downloads/latest.json` (url, name, platform "Linux x86_64, AppImage",
+   size, sha256, version); `/get/appimage` then works with no site change (api/get.mjs reads any key).
 3. **Windows only on request** (Daniel, 2026-10-31): `gh workflow run desktop.yml -R
    Hebrish-ASR/Hebrish-App -f windows=true -f tag=desktop-v<ver>` runs the tests, builds the zip
    with PyInstaller from that tag, runs the frozen exe's `--selftest` and attaches the zip to the
@@ -329,6 +333,43 @@ nothing is downloaded again.
 still running when the new one first starts, the move pulls the model out from under it. The
 old app then sees no model and downloads 660 MB again into its own folder. Quit the old app
 (and purge its package) before the first Hebrish start.
+
+## AppImage (B-80, 2026-10-31, first in 1.017)
+
+One file for Linux beyond Debian/Ubuntu (R-2026-10-31-8). Build: `desktop/build-appimage.sh`,
+launcher `packaging/appimage/AppRun`, CI jobs `appimage` (ubuntu:22.04) and `appimage-test`
+(fedora:43, `--appimage-extract-and-run --selftest`, must print `install: appimage`).
+
+- **Python:** uv's python-build-standalone 3.12, copied whole into `usr/python` (relocatable).
+  Only `strip --strip-debug` on its libraries: `--strip-unneeded`, or stripping the executable,
+  broke it ("symbol lookup error", binutils 2.38). libpython stays ~32 MB.
+- **Packages:** resolved from PyPI into `usr/lib/hebrish` (PYTHONPATH): the app, PySide6-Essentials,
+  numpy, sounddevice, `evdev-binary` (prebuilt wheels of the `evdev` module; plain `evdev` is
+  sdist-only and would need a compiler), sherpa-onnx, onnxruntime.
+- **Qt is an allowlist:** Python modules QtCore/Gui/Widgets/Network/Svg/DBus, desktop plugin
+  directories, platform plugins xcb/wayland/offscreen, then every `libQt6*`/ICU library in their
+  ldd closure. The closure needs `realpath`: plugins resolve their deps as
+  `plugins/<dir>/../../lib/...`, and a plain path match dropped XcbQpa and WaylandClient (first
+  build, 2026-10-31). Quick/Qml stay because a Wayland decoration plugin links them.
+- **PortAudio:** Ubuntu 22.04's `libportaudio.so.2` plus its ldd closure minus glibc, ALSA and the
+  C++ runtime (it needs libjack, which needs libdb-5.3: Fedora 43 failed on that). sounddevice
+  finds it with `ctypes.util.find_library`, which ignores LD_LIBRARY_PATH, so
+  `packaging/appimage/sitecustomize.py` (AppImage only) answers with the bundled file when the
+  system has no PortAudio.
+- **xclip, wl-copy:** bundled with rpath `$ORIGIN/../lib` (+ libXmu), and AppRun puts `usr/bin` at
+  the *end* of PATH, so a system copy wins.
+- **Not possible from an AppImage:** the uinput udev rule (`inserter_linux.UINPUT_RULE_COMMAND` is
+  appended to the "Cannot open /dev/uinput" message when `$APPIMAGE` is set; README "Other Linux
+  distributions"), menu integration (Gear Lever / AppImageLauncher), in-place self-update (the app
+  links to `/download#appimage`; no zsync is published).
+- **In the app:** `app_update.install_method()` is "appimage" when `$APPIMAGE` and `$APPDIR` are set
+  *and* the module lives under `$APPDIR` (a child process inherits the variables). `autostart` and
+  `relaunch` use `$APPIMAGE`, the file, never the mount point (`/tmp/.mount_*` changes each run).
+- **Pinned:** appimagetool 1.9.0 and type2-runtime 20251108, sha256 in the script (unpinned,
+  appimagetool downloads the runtime's moving `continuous` build).
+- **Verified 2026-10-31** (local build of 1.016 + these changes, 103 MB): `--selftest` OK in
+  fedora:43 (extract-and-run, PulseAudio) and natively on Ubuntu 26.04 under FUSE and PipeWire.
+  Not yet seen: the GUI on a real non-Ubuntu desktop, the hotkey and paste there.
 
 ## Version footer and screenshots (0.6.3, 2026-10-21)
 

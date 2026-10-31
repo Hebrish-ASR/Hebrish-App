@@ -97,6 +97,11 @@ def copy_to_clipboard(text: str):
 
 # How long the paste path keeps serving the clipboard after the paste chord. The target app reads
 # the selection as it handles Ctrl+V, well under a second; this leaves room for a slow one.
+# The .deb's packaging/debian/70-hebrish-uinput.rules, for the AppImage (README, "AppImage").
+UINPUT_RULE_COMMAND = ("echo 'KERNEL==\"uinput\", SUBSYSTEM==\"misc\", TAG+=\"uaccess\", "
+                       "OPTIONS+=\"static_node=uinput\"' | sudo tee /etc/udev/rules.d/70-hebrish-uinput.rules "
+                       "&& sudo udevadm control --reload-rules && sudo udevadm trigger --sysname-match=uinput")
+
 PASTE_HOLD_S = 1.5
 FOREGROUND = {"xclip": "-quiet", "wl-copy": "--foreground"}
 
@@ -144,6 +149,8 @@ class LinuxInserter:
             self._ui = UInput({ecodes.EV_KEY: keys}, name=OWN_DEVICE_NAME)
         except OSError as e:
             self.error = f"Cannot open /dev/uinput ({e.strerror}); transcripts go to the clipboard only"
+            if os.environ.get("APPIMAGE"):     # the .deb installs this rule; an AppImage can't
+                self.error += (". To paste at the cursor, run once: " + UINPUT_RULE_COMMAND)
 
     def insert(self, text: str, method: str, chord: str):
         """method "clipboard" (or no uinput): the text stays on the clipboard. "paste": the

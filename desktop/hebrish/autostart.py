@@ -2,7 +2,8 @@
 
 The entry stores the launch command as it was when it was turned on. refresh() rewrites it at
 every start, so it follows the app when that changes: a portable Windows zip unzipped to a new
-folder for a new version, or a switch between a source checkout and the .deb."""
+folder for a new version, an AppImage moved or replaced by a newer file, or a switch between a
+source checkout and the .deb."""
 
 import os
 import shutil
@@ -18,6 +19,9 @@ _DESKTOP = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / 
 def _command() -> str:
     if getattr(sys, "frozen", False):                      # PyInstaller build
         return f'"{sys.executable}" --hidden'
+    from .app_update import install_method, appimage_path
+    if install_method() == "appimage":                     # the .AppImage file, not its mount point
+        return f'"{appimage_path()}" --hidden'
     exe = shutil.which("hebrish")
     if exe:
         return f'"{exe}" --hidden'          # quoted: the path may contain a space
