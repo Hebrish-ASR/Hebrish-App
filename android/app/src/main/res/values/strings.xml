@@ -224,8 +224,9 @@
     <string name="models_not_downloaded">Not downloaded. About %1$d MB.</string>
     <string name="models_unqueue">Don\'t download</string>
     <string name="models_use">Use this model</string>
-    <string name="models_post">Post-processing</string>
-    <string name="models_post_intro">Small models that run after speech is turned into text, in Transcription Mode only. Download them here, then turn them on in Transcription Mode (Paragraphs, Clean up).</string>
+    <string name="models_post">Add-on models</string>
+    <string name="models_addons_jump">Add-on models: paragraphs and clean-up ↓</string>
+    <string name="models_post_intro">Paragraphs and clean-up: small models that run after speech is turned into text, in Transcription Mode only. Download them here, then turn them on in Transcription Mode (Paragraphs, Clean up).</string>
     <string name="models_post_para">Paragraph model</string>
     <string name="models_post_para_about">Finds where paragraphs start in a finished transcript. About 34 MB.</string>
     <string name="models_post_para_missing">Not downloaded. About 34 MB.</string>

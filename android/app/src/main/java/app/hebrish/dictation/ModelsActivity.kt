@@ -30,12 +30,18 @@ class ModelsActivity : Page() {
             if (ModelDownload.status is ModelDownload.Status.Running) ModelDownload.cancel() else ModelDownload.downloadAll(this)
         }
         small(R.string.download_terms)
+        // The add-on models sit below the long list of speech models, so this jumps to them
+        // (Daniel, 2026-10-31: "you have to really dig through to find it").
+        lateinit var addons: TextView
+        button(R.string.models_addons_jump) {
+            (column.parent as? android.widget.ScrollView)?.smoothScrollTo(0, addons.top - dp(8))
+        }
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         column.addView(list)
 
-        // Post-processing (desktop: Models, Utilities): the paragraph model (B-44a) and the
-        // clean-up models (B-40a), switched on in Transcription Mode.
-        heading(R.string.models_post)
+        // Add-on models (was "Post-processing"; desktop: Models, Utilities; catalogue: addons):
+        // the paragraph model (B-44a) and the clean-up models (B-40a), switched on in Transcription Mode.
+        addons = heading(R.string.models_post)
         text(R.string.models_post_intro)
         post = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         column.addView(post)

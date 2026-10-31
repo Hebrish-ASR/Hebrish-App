@@ -1260,6 +1260,13 @@ for this step. Licence: every place a model is named reads "S1-mini" by "Superwh
   model (B-44a; until now only reachable from Transcription Mode's Paragraphs dialog) and each
   clean-up model, with Download / Cancel / Delete and *Use for Clean up*. `ParagraphStore.remove`
   added for its Delete.
+- **Add-on models, easier to find (2026-10-31).** Daniel: the section sat below the long list of
+  speech models, so "you have to really dig through to find it". The heading is now **Add-on
+  models** (string `models_post`; desktop: Models › Utilities; catalogue: `addons`), its intro
+  starts "Paragraphs and clean-up", and a button under Download all (`models_addons_jump`,
+  "Add-on models: paragraphs and clean-up ↓") smooth-scrolls the screen's `ScrollView` (Page's
+  `column.parent`) to that heading. Checked: `./gradlew --offline compileFdroidDebugKotlin`
+  (JDK 21, V); not run on a phone.
 - **Checked (2026-10-30):** `./gradlew --offline :app:compileFdroidDebugKotlin` (JDK 21); the JNI
   library built alone with the pinned NDK (above). Not run on a phone: speed and memory on a real
   device are unknown, and long takes may take a while to clean.
