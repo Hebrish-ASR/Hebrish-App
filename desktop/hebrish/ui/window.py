@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, Q
                                QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QTimeEdit,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import __version__, audio, autostart, backup, cleanup, config, dictionary, model_store, paragraphs, transcripts, vad
+from .. import __version__, audio, autostart, backup, bundles, cleanup, config, dictionary, model_store, paragraphs, transcripts, vad
 from ..config import APP_NAME, CONFIG_PATH, DATA_DIR, MODELS_DIR, STATE_PATH, TAGLINE, load_json, threads
 from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
@@ -943,6 +943,30 @@ class MainWindow(QMainWindow):
         lay = QVBoxLayout(page)
         lay.setContentsMargins(16, 14, 16, 14)
         lay.setSpacing(12)
+        # Bundles (B-79, Daniel 2026-10-31): a named set of models downloaded with one click,
+        # from the catalogue's `bundles` (bundles.py). Rows are refreshed in _update_bundles.
+        box, b = card("Bundles")
+        b.addWidget(muted("Download a set of models in one go. Anything already downloaded is skipped."))
+        self.bundle_rows: dict[str, dict] = {}
+        for bd in bundles.bundles():
+            row = QHBoxLayout()
+            col = QVBoxLayout()
+            col.setSpacing(2)
+            col.addWidget(QLabel(f"<b>{bd['name']}</b>"))
+            words = QLabel(bd.get("summary", ""))
+            words.setWordWrap(True)
+            col.addWidget(words)
+            status = QLabel()
+            status.setStyleSheet("font-size: 12px;")
+            status.setTextFormat(Qt.RichText)
+            col.addWidget(status)
+            row.addLayout(col, 1)
+            btn = QPushButton(line_icon("download", "white"), "Download", objectName="primary")
+            btn.clicked.connect(lambda _=False, i=bd["id"]: self.ctl.download_bundle(i))
+            row.addWidget(btn, 0, Qt.AlignTop)
+            b.addLayout(row)
+            self.bundle_rows[bd["id"]] = {"status": status, "btn": btn}
+        lay.addWidget(box)
         box, b = card("Models")
         top = QHBoxLayout()
         self.models_intro = muted()
@@ -966,12 +990,14 @@ class MainWindow(QMainWindow):
         b.addWidget(self.model_label)
         row = QHBoxLayout()
         self.btn_check = QPushButton("Check for updates")
-        self.btn_check.clicked.connect(lambda: self.ctl.check_updates(manual=True))
+        self.btn_check.clicked.connect(lambda: self.ctl.check_all_updates(manual=True))   # every model (B-79)
         self.btn_update = QPushButton("Update", objectName="primary")
         self.btn_update.clicked.connect(lambda: self.ctl.latest and self.ctl.download(self.ctl.latest))
+        self.btn_update_all = QPushButton("Update all", objectName="primary")      # B-79
+        self.btn_update_all.clicked.connect(self.ctl.update_all)
         self.btn_cancel = QPushButton("Cancel download")
         self.btn_cancel.clicked.connect(lambda: self.ctl.downloading and self.ctl.downloading.set())
-        for w in (self.btn_check, self.btn_update, self.btn_cancel):
+        for w in (self.btn_check, self.btn_update, self.btn_update_all, self.btn_cancel):
             row.addWidget(w)
         row.addStretch(1)
         b.addLayout(row)
@@ -1359,6 +1385,42 @@ class MainWindow(QMainWindow):
         col.addWidget(toggle)
         col.addWidget(body)
 
+    def _addon_name(self, aid: str) -> str:
+        if aid == paragraphs.MODEL_ID:
+            return "Paragraph model"
+        try:
+            return cleanup.entry(aid).get("short_name") or cleanup.entry(aid)["name"]
+        except RuntimeError:
+            return aid
+
+    def _update_bundles(self):
+        """Each bundle's row: what is still missing, or that it is all downloaded (B-79)."""
+        ctl = self.ctl
+        for bid, r in getattr(self, "bundle_rows", {}).items():
+            bd = bundles.get(bid)
+            if bd is None:
+                r["btn"].setEnabled(False)
+                continue
+            models, addons = bundles.missing(bd)
+            running = ([m for m in models if m == ctl.downloading_id
+                        or m in [q if isinstance(q, str) else q.model for q in ctl.model_queue]]
+                       + [a for a in addons if a in ctl.addon_busy])
+            if not models and not addons:
+                r["status"].setText(f"<span style='color:{BRAND_GREEN}'>✓ All downloaded</span>")
+                r["btn"].hide()
+            elif running:
+                r["status"].setText(f"Downloading {len(running)} of {len(models) + len(addons)}…")
+                r["btn"].show()
+                r["btn"].setEnabled(False)
+                r["btn"].setText("Downloading…")
+            else:
+                names = [model_store.get_model(m).name for m in models] + [self._addon_name(a) for a in addons]
+                mb = bundles.size_mb(bd)
+                r["status"].setText(f"To download: {', '.join(names)}" + (f" (about {mb:,} MB)" if mb else ""))
+                r["btn"].show()
+                r["btn"].setEnabled(True)
+                r["btn"].setText("Download")
+
     def _help_choose(self):
         from .choose import ChooseDialog
         ChooseDialog(self, self.ctl).exec()
@@ -1448,6 +1510,7 @@ class MainWindow(QMainWindow):
                     tabs.setCurrentIndex(i)
             self._model_shape = shape
         self._update_addons()
+        self._update_bundles()
         cat = [m for m in model_store.models() if m.available]
         busy = bool(ctl.downloading or ctl.downloading_id)
         rec = model_store.get_model(model_store.recommended_id())
@@ -1502,11 +1565,18 @@ class MainWindow(QMainWindow):
                 text += " <i>(loading…)</i>"
         if ctl.update_available():
             text += f"<br>New version available: <b style='color:{colours()['accent']}'>{ctl.latest.label}</b>"
+        ups = ctl.updates
+        if ups:
+            names = [m.full_label for m in ups.models] + [self._addon_name(a) for a in ups.addons]
+            text += f"<br>Updates for your downloaded models: <b>{', '.join(names)}</b>"
         last = load_json(STATE_PATH).get("last_check")
         if last:
             text += f"<br><small>Last checked {time.strftime('%Y-%m-%d %H:%M', time.localtime(last))}</small>"
         self.model_label.setText(text)
-        self.btn_update.setVisible(not busy and ctl.update_available())
+        self.btn_update.setVisible(not busy and ctl.update_available() and not (ups and len(ups) > 1))
+        self.btn_update_all.setVisible(bool(ups) and len(ups) > 1)
+        if ups:
+            self.btn_update_all.setText(f"Update all ({len(ups)})")
         self.btn_update.setText(f"Update to {ctl.latest.version}" if ctl.latest else "Update")
         self.btn_cancel.setVisible(ctl.downloading is not None)
         self.btn_check.setEnabled(not busy)

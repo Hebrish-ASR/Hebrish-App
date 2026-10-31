@@ -1275,6 +1275,27 @@
         "verified": false,
         "evidence": "shared desktop code (stdlib http.server); not run on Windows"
       }
+    },
+    {
+      "id": "model-bundles",
+      "group": "models",
+      "name": "Model bundles and Update all (B-79): download a named set of models in one click; Check for updates covers every downloaded model and add-on",
+      "android": {
+        "status": "missing",
+        "evidence": "planning/backlog.md (no Android item yet)"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/bundles.py; ui/app.py download_bundle, check_all_updates, update_all"
+      },
+      "windows": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/bundles.py",
+        "verified": false
+      },
+      "notes": "Bundles are the catalogue's `bundles` block (shared/catalogue.json), Daniel 2026-10-31, R-2026-10-31-6."
     }
   ],
   "engine_rules": [

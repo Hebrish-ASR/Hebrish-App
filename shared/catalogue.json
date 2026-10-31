@@ -3,11 +3,11 @@
   "schema": 2,
   "catalogue_v2_url": "https://raw.githubusercontent.com/Hebrish-ASR/Hebrish-App/main/shared/catalogue.json",
   "recommended": "sabich",
- "recommended_by_platform": {
-  "_doc": "Desktop builds 0.7.0+ read this before `recommended`. 0.7.0 shipped with Shakshuka here (D-2026-10-22-12); Daniel reversed that the same day (D-2026-10-22-18): Parakeet (Sabich) dictates better, and Shakshuka stays a choice. Android and older desktop builds read only `recommended`.",
-  "linux": "sabich",
-  "windows": "sabich"
- },
+  "recommended_by_platform": {
+    "_doc": "Desktop builds 0.7.0+ read this before `recommended`. 0.7.0 shipped with Shakshuka here (D-2026-10-22-12); Daniel reversed that the same day (D-2026-10-22-18): Parakeet (Sabich) dictates better, and Shakshuka stays a choice. Android and older desktop builds read only `recommended`.",
+    "linux": "sabich",
+    "windows": "sabich"
+  },
   "version_file": "version.json",
   "sample_rate": 16000,
   "min_trailing_silence_s": 0.6,
@@ -626,8 +626,7 @@
         "runner_how": "code-switching only"
       }
     ]
-  }
-,
+  },
   "addons": [
     {
       "_doc": "Optional add-ons that are not speech models (B-40, B-40a). kind text_cleanup: a GGUF text model run once on a finished Transcription Mode transcript. Desktop (1.013+) runs it with `runtime` (a pinned llama.cpp CPU build of llama-server, per OS, downloaded with the model) and the top-level file; Android (B-40a) reads the `android` block (a smaller quantisation; llama.cpp is built into the APK) and ignores entries without one. Several entries since 2026-10-30 (Daniel): one has `default: true` (offered first and used until the user picks another); `experimental: true` is shown as such. Builds before multi-model support read only the entry with id s1-asr-cleanup. Licence: S1-mini by Superwhisper is Apache 2.0 plus a naming term: wherever an app names or describes it or a fine-tune of it, it is identified as \"S1-mini\" by \"Superwhisper\". desktop/hebrish/cleanup.py, android CleanupStore.kt",
@@ -786,6 +785,49 @@
           "sha256": "20cd898fafc269657df8de946b06ef37dcf6b783dfa43d28ac6d187bb6ebfe1e"
         }
       }
+    }
+  ],
+  "bundles": [
+    {
+      "_doc": "B-79 (Daniel, 2026-10-31, R-2026-10-31-6): named sets downloaded with one click on the desktop Models tab (desktop/hebrish/bundles.py). `models` are speech-model ids, `addons` add-on ids (the catalogue's `addons`, plus `paragraph-breaks`, which has its own manifest). Items this platform can't run are skipped. Android ignores this block for now."
+    },
+    {
+      "id": "complete",
+      "name": "Everything",
+      "summary": "Voice Typing and Transcription together: Sabich, Shakshuka for streaming, and the clean-up, title and paragraph models.",
+      "models": [
+        "sabich",
+        "shakshuka"
+      ],
+      "addons": [
+        "s1-mini",
+        "title-gemma-270m",
+        "paragraph-breaks"
+      ],
+      "default": true
+    },
+    {
+      "id": "voice-typing",
+      "name": "Voice Typing",
+      "summary": "Sabich, the recommended model (code-switching and tech vocabulary), and Shakshuka for words as you speak.",
+      "models": [
+        "sabich",
+        "shakshuka"
+      ],
+      "addons": []
+    },
+    {
+      "id": "transcription",
+      "name": "Transcription",
+      "summary": "Sabich, plus the add-ons that tidy saved transcripts: clean-up, titles and paragraph breaks.",
+      "models": [
+        "sabich"
+      ],
+      "addons": [
+        "s1-mini",
+        "title-gemma-270m",
+        "paragraph-breaks"
+      ]
     }
   ]
 }

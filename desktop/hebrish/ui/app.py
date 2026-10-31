@@ -91,6 +91,7 @@ class Signals(QObject):
     maintained = Signal(object, object)         # history upkeep: result dict or None, error
     addon = Signal(str, object)                 # an add-on download finished: add-on id, error or None
     addon_progress = Signal(str, object, object)  # add-on id, bytes done, total
+    all_checked = Signal(object, object, bool)    # bundles.Updates or None, error, manual (B-79)
 
 
 def _before(pieces: list, n: int):
@@ -122,6 +123,10 @@ class Controller(QObject):
         self.latest: model_store.Manifest | None = None
         self.downloading: threading.Event | None = None
         self.downloading_id: str | None = None     # the model being downloaded
+        # Speech models waiting to download after the current one (B-79: a bundle, Update all):
+        # a model id (download_model) or a Manifest (download). One at a time, as before.
+        self.model_queue: list = []
+        self.updates = None             # bundles.Updates from the last Check for updates
         self.reload_pending = False
         self.loading = False
         self.latencies: deque[float] = deque(maxlen=200)   # stop -> text inserted, seconds
@@ -158,6 +163,7 @@ class Controller(QObject):
         self.sig.maintained.connect(self._history_maintained)
         self.sig.addon.connect(self._addon_done)
         self.sig.addon_progress.connect(self._addon_progress)
+        self.sig.all_checked.connect(self._all_checked)
         self.maintaining = False
         self.app_release: app_update.Release | None = None    # newer than this app, else None
         self.app_method = app_update.install_method()         # apt | deb-manual | windows | source
@@ -1067,6 +1073,9 @@ class Controller(QObject):
                 if model_store.current_id() == was:     # the user hasn't picked another meanwhile
                     self._switch_to_default(mid)
         self.win.progress(-1, "")
+        if isinstance(err, model_store.Cancelled):
+            self.model_queue.clear()             # Cancel download stops the whole bundle
+        self._next_queued()
         self.win.update_model()
         self._update_tray()
 
@@ -1089,13 +1098,98 @@ class Controller(QObject):
             self.downloading_id = None
             self.win.status(f"Couldn't look up the model: {err}")
             self.notify("Model download failed", str(err))
+            self._next_queued()
             self.win.update_model()
         elif model_store.needs_update(manifest):
             self.download(manifest)
         else:
             self.downloading_id = None
             self.win.status(f"{manifest.full_label} is already downloaded.")
+            self._next_queued()
             self.win.update_model()
+
+    # -- bundles and Update all (B-79, bundles.py) ------------------------------------
+    def _next_queued(self):
+        """Start the next queued speech model, if nothing is downloading."""
+        while self.model_queue and not self.downloading and not self.downloading_id:
+            item = self.model_queue.pop(0)
+            if isinstance(item, str):
+                if model_store.installed(item):
+                    continue
+                self.download_model(item)
+            else:
+                self.download(item)
+
+    def _queue_models(self, items):
+        for it in items:
+            key = it if isinstance(it, str) else it.model
+            if key != self.downloading_id and key not in [
+                    q if isinstance(q, str) else q.model for q in self.model_queue]:
+                self.model_queue.append(it)
+        self._next_queued()
+
+    def download_bundle(self, bid: str):
+        """Download what bundle `bid` is missing: its add-ons at once (each on its own thread, as
+        their Download buttons do), its speech models one after another."""
+        from .. import bundles
+        b = bundles.get(bid)
+        if b is None:
+            return
+        models, addons = bundles.missing(b)
+        if not models and not addons:
+            self.win.status(f"{b['name']}: everything is already downloaded.")
+            return
+        self.win.status(f"Downloading {b['name']}…")
+        for a in addons:
+            self.download_addon(a)
+        self._queue_models(models)
+        self.win.update_model()
+
+    def check_all_updates(self, manual=True):
+        """Check every downloaded speech model and add-on (bundles.check), not only the one in use."""
+        from .. import bundles
+        self.win.status("Checking every downloaded model for updates…")
+
+        def work():
+            try:
+                model_store.refresh_catalogue()
+                self.sig.all_checked.emit(bundles.check(), None, manual)
+            except Exception as e:
+                self.sig.all_checked.emit(None, e, manual)
+        threading.Thread(target=work, daemon=True).start()
+
+    def _all_checked(self, ups, err, manual):
+        log.info("update check (all): %s err=%r", ups and (len(ups.models), ups.addons, ups.errors), err)
+        if err:
+            self.updates = None
+            self.win.status(f"Update check failed: {err}")
+            if manual:
+                self.notify("Update check failed", str(err))
+            self.win.update_model()
+            return
+        state = load_json(STATE_PATH)
+        state["last_check"] = time.time()
+        save_json(STATE_PATH, state)
+        self.updates = ups
+        cur = model_store.current_id()
+        self.latest = next((m for m in ups.models if m.model == cur), self.latest)
+        failed = f" Couldn't check {', '.join(i for i, _ in ups.errors)}." if ups.errors else ""
+        if not len(ups):
+            self._said(f"Everything is up to date.{failed}", manual)
+        else:
+            self.win.status(f"{len(ups)} update{'s' if len(ups) > 1 else ''} available.{failed}")
+        self.win.update_model()
+        self._update_tray()
+
+    def update_all(self):
+        """Install every update the last check found."""
+        ups, self.updates = self.updates, None
+        if not ups:
+            return
+        for a in ups.addons:
+            self.download_addon(a)
+        self._queue_models(ups.models)
+        self.win.update_model()
 
     def use_model(self, mid: str):
         """Switch to a model that is already downloaded."""

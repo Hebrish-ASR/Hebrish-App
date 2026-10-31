@@ -1982,3 +1982,29 @@ major site changes are shown on desktop), each with `"platform"` and per-entry `
 `shared/updates.json` is retired. An entry without the attribute falls back to its tag
 (`platforms_from_tag`). Tests: `test_updates_are_well_formed[android|desktop]`,
 `test_bake_keeps_each_apps_own_entries`.
+
+## Model bundles and Update all (unreleased, B-79, 2026-10-31)
+
+Daniel, 2026-10-31 (R-2026-10-31-6): downloading models one row at a time was too fiddly, and
+Check for updates only looked at the model in use.
+
+- **Bundles (`hebrish/bundles.py`).** The catalogue's `bundles` block (shared/catalogue.json):
+  `id`, `name`, `summary`, `models` (speech-model ids), `addons` (GGUF add-on ids and
+  `paragraph-breaks`), one `default: true`. Shipped sets: *Everything* (default), *Voice Typing*
+  (Sabich, Shakshuka), *Transcription* (Sabich, S1-mini, title model, paragraph model). Items this
+  OS can't run are skipped. Edit the sets in the catalogue, not in code; the published catalogue
+  reaches installed apps at their next update check.
+- **Models tab → Bundles card** (top of the Models sub-tab): each set lists what is still missing
+  and its approximate size (catalogue `download_mb`; the shared llama.cpp runtime and the paragraph
+  model's few MB aren't counted); a complete set shows "✓ All downloaded" and no button.
+- **Download a bundle** (`Controller.download_bundle`): the add-ons start at once (each on its own
+  thread, as their own Download buttons do); speech models go through `model_queue` one at a time
+  (`_next_queued` runs after every `_downloaded`/`_fetched`). Cancel download clears the queue.
+- **Check for updates** (the button) now runs `check_all_updates`: `bundles.check()` looks at every
+  downloaded speech model (`fetch_latest` + `needs_update`), every clean-up/title model with an older
+  version folder on disk but not the catalogue's, and the paragraph model's CDN version. One failed
+  lookup is reported and the rest still run. With more than one update, *Update all (N)* replaces
+  the single Update button. The periodic background check still covers only the model in use.
+- Checked 2026-10-31 off-screen against the maintainer's model folder: bundle rows and check-all
+  ("Everything is up to date") rendered and behaved as above (V); a click-through download of a
+  whole bundle was not run.
