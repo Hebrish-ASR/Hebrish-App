@@ -120,6 +120,24 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
   the tray's **Hebrish** submenu, on the About tab, and on each Hebrish model's card in the
   Models tab.
 
+## Local API (unreleased, 2026-10-31)
+
+Off by default; Settings → Local API. When on, Hebrish transcribes audio files sent to it by
+other programs on this computer, with the model it has loaded, so scripts and coding agents get
+on-device transcription without a cloud service. It listens on `127.0.0.1` only (port 8723 by
+default), has no password, and refuses requests from web pages. The endpoint is
+OpenAI-compatible, so OpenAI clients work by pointing their base URL at it:
+
+```bash
+curl -s http://127.0.0.1:8723/health
+curl -s http://127.0.0.1:8723/v1/audio/transcriptions -F file=@note.mp3 -F response_format=text
+```
+
+The text is what Transcription Mode gives for the same file, without paragraphs or the clean-up
+model; nothing is kept in History. For Claude Code and other agents: the `transcribe-with-hebrish`
+skill in [Hebrish-Agent-Skills](https://github.com/Hebrish-ASR/Hebrish-Agent-Skills). Details:
+`docs/maintaining.md`, "Local API".
+
 ## Install
 
 **Ubuntu 26.04** (amd64): download the .deb from the

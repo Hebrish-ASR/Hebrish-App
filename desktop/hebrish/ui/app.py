@@ -22,7 +22,7 @@ from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QIcon, QPalett
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from .. import __version__, app_update, audio, auto_enter, autostart, dictionary, disfluency, engine, mics, model_store, vad
+from .. import __version__, app_update, audio, auto_enter, autostart, dictionary, disfluency, engine, local_api, mics, model_store, vad
 from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
 from ..engine import REF_S, Engine, after_held_stop, hold_stop, live_split
@@ -173,6 +173,9 @@ class Controller(QObject):
         if self.cfg["detect_no_field"]:
             from .. import focus
             focus.enable_bus(True)        # apps register with AT-SPI only while it is on
+        self.api: local_api.LocalApi | None = None
+        self.api_error: str | None = None     # why the local API couldn't start (port in use)
+        self.apply_local_api()
 
         # Decoding runs on one worker, in order: (take, samples, final). Live insertion queues
         # pieces of the take while it is still recording; stop() queues the rest as final.
@@ -1433,8 +1436,41 @@ class Controller(QObject):
         if self.latest:
             self.act_update.setText(f"Install update ({self.latest.version})")
 
+    def api_info(self) -> dict | None:
+        """The loaded model, for the local API; None while nothing is loaded."""
+        if self.engine.loaded_dir is None:
+            return None
+        cur, m = model_store.active(), model_store.current()
+        return {"id": m.id if m else model_store.current_id(),
+                "name": cur[1].full_label if cur else (m.name if m else ""),
+                "version": cur[1].version if cur else None,
+                "streaming": self.engine.streaming}
+
+    def api_transcribe(self, samples) -> str:
+        """A file sent to the local API (HTTP thread): Transcription Mode's text before paragraphs."""
+        fix = dictionary.compile(dictionary.load())
+        return " ".join(fix(disfluency.chop(t))
+                        for t in self.engine.transcribe_chunks(samples, vad=self.cfg["tm_vad"])).strip()
+
+    def apply_local_api(self) -> str | None:
+        """Start, stop or move the local API to match the config; returns why it couldn't start."""
+        want, port = self.cfg["local_api"], int(self.cfg["local_api_port"])
+        if self.api and (not want or self.api.port != port):
+            self.api.stop()
+            self.api = None
+        if want and self.api is None:
+            api = local_api.LocalApi(self.api_transcribe, self.api_info, port)
+            if not api.start():
+                self.api_error = api.error
+                return api.error
+            self.api = api
+        self.api_error = None
+        return None
+
     def quit(self):
         from .. import cleanup
+        if self.api:
+            self.api.stop()
         cleanup.stop()                       # the clean-up model's llama-server, if it runs
         self.hotkeys.hold_send(False)
         self.win.transcribe.tape.stop()      # closed cleanly; offered again on the next start

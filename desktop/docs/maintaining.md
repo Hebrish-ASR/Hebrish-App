@@ -1518,6 +1518,38 @@ each model folder for its size). The rules:
 - Hotkey capture ("Change…") shows the key source's problem instead of waiting when there is no
   key source, and gives up after `CAPTURE_S` (15 s), so the Change buttons can't stay disabled.
 
+## Local API (B-73, unreleased, 2026-10-31)
+
+`hebrish/local_api.py` serves the loaded model over HTTP so scripts and coding agents on the same
+computer can transcribe files (R-2026-10-31-2; client: skill `transcribe-with-hebrish` in
+Hebrish-ASR/Hebrish-Agent-Skills). Config `local_api` (off by default) and `local_api_port`
+(8723); Settings → Local API. `Controller.apply_local_api()` starts, stops or moves it, at start
+and from Settings; a port in use leaves it off and the reason in `Controller.api_error`, shown in
+the card.
+
+- **Bind and auth.** 127.0.0.1 only, no token (Daniel, 2026-10-31: "local, unauthenticated").
+  Because a web page can still POST to localhost (a multipart form is a CORS "simple request"),
+  any request with an `Origin` header is refused (403), and the Host header must be
+  `localhost`, `127.0.0.1` or `[::1]` (DNS rebinding). curl, Python `requests`/`httpx` and the
+  OpenAI SDKs send no `Origin`, so they are unaffected.
+- **Endpoints.** `GET /health` (`status` `ok` or `no_model`, app version, model `{id, name,
+  version, streaming}`); `GET /v1/models`; `POST /v1/audio/transcriptions`, OpenAI-compatible:
+  multipart with `file` (other fields: `response_format` json | text | verbose_json, `model`
+  ignored), or the raw audio as the body with `response_format` in the query string. Errors are
+  OpenAI-shaped `{"error": {"message", "type"}}`: 400 unreadable audio, 403 guard, 413 over 1 GB,
+  503 no model loaded, 500 decode failure.
+- **What the text is.** `Controller.api_transcribe`: `audio.load_file` (ffmpeg, else
+  soundfile), `engine.transcribe_chunks(vad=cfg["tm_vad"])`, then per piece `disfluency.chop`
+  and the personal dictionary, joined by spaces: Transcription Mode's text before paragraphs.
+  No clean-up model and no paragraphs (each adds seconds and a second model; add them as
+  request fields if wanted), nothing written to History, no ALL CAPS.
+- **Concurrency.** `ThreadingHTTPServer`; the engine takes its lock per piece, so a Voice Typing
+  take can slip in between pieces of a long API request, as with Transcription Mode files.
+- **Verified** (V, 2026-10-31, Ubuntu): `tests/test_local_api.py` (fake model: shapes, raw body,
+  guards, no model, port in use); and the real Sabich v2.3 int8 model behind `LocalApi` driven by
+  curl: a 40 s mp3 in 5.1 s on CPU (4 threads), the `Origin` request refused. Not yet run inside
+  the full app, or on Windows.
+
 ## Testing
 
 - `.venv/bin/python -m pytest tests`: offline tests of the update logic, the hotkey state

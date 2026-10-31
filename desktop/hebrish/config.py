@@ -78,6 +78,10 @@ DEFAULTS = {
     # field" with Paste in the overlay (1.000, hebrish.focus). Opt-in: it turns the desktop's
     # accessibility switch on, and some apps report no field when there is one.
     "detect_no_field": False,
+    # Local transcription API (B-73, hebrish.local_api): the loaded model over HTTP on 127.0.0.1
+    # only, unauthenticated, for scripts and coding agents. Off by default.
+    "local_api": False,
+    "local_api_port": 8723,
 
     "paste_chord": "ctrl+v",      # e.g. ctrl+shift+v if you dictate mostly into terminals
     "trailing_space": True,

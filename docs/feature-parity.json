@@ -1255,6 +1255,26 @@
         "verified": false
       },
       "notes": "shared/updates.json by scripts/bake_updates.py, run by scripts/release-tag.sh (2026-10-25)."
+    },
+    {
+      "id": "local-api",
+      "group": "app",
+      "name": "Local transcription API: the loaded model over HTTP on 127.0.0.1 (OpenAI-compatible), opt-in, for scripts and coding agents (B-73)",
+      "android": {
+        "status": "n/a",
+        "evidence": "Desktop request (R-2026-10-31-2): the client is a coding agent on the same computer"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/local_api.py; Settings → Local API (window._local_api_row); tests/test_local_api.py"
+      },
+      "windows": {
+        "status": "present",
+        "since": "unreleased",
+        "verified": false,
+        "evidence": "shared desktop code (stdlib http.server); not run on Windows"
+      }
     }
   ],
   "engine_rules": [

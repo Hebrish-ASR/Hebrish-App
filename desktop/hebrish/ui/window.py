@@ -1694,6 +1694,15 @@ class MainWindow(QMainWindow):
         b.addWidget(self.app_status_label)
         lay.addWidget(box)
 
+        box, b = card("Local API")
+        b.addWidget(self._local_api_row())
+        self.api_status_label = muted()
+        self.api_status_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.api_status_label.setOpenExternalLinks(True)
+        b.addWidget(self.api_status_label)
+        self._sync_api_status()
+        lay.addWidget(box)
+
         box, b = card("System")
         self.chk_autostart = QCheckBox("Start at login, in the tray", checked=autostart.enabled())
         self.chk_autostart.toggled.connect(self.ctl.set_autostart)
@@ -1704,6 +1713,39 @@ class MainWindow(QMainWindow):
         lay.addWidget(box)
         lay.addStretch(1)
         return page
+
+    def _local_api_row(self):
+        """B-73, hebrish.local_api: a switch and the port."""
+        w = QWidget()
+        row = QHBoxLayout(w)
+        row.setContentsMargins(0, 0, 0, 0)
+        on = self._check("local_api", "Serve transcription to apps on this computer", self._on_local_api)
+        on.setToolTip("An OpenAI-compatible endpoint on 127.0.0.1 for scripts and coding agents. "
+                      "No password: anything running on this computer can use it, nothing else can.")
+        port = QSpinBox(minimum=1024, maximum=65535, value=int(self.cfg["local_api_port"]))
+        port.setPrefix("Port ")
+        port.editingFinished.connect(lambda: port.value() != self.cfg["local_api_port"] and (
+            self.cfg.set("local_api_port", port.value()), self._on_local_api()))
+        row.addWidget(on)
+        row.addStretch(1)
+        row.addWidget(port)
+        return w
+
+    def _on_local_api(self):
+        err = self.ctl.apply_local_api()
+        self._sync_api_status(err)
+
+    def _sync_api_status(self, err: str | None = None):
+        api, err = self.ctl.api, err or self.ctl.api_error
+        if err:
+            text = err
+        elif api and api.running:
+            text = (f"Listening on {api.url}. Send audio to <code>POST {api.url}/v1/audio/transcriptions</code> "
+                    f"(OpenAI-compatible); check it with <code>GET {api.url}/health</code>. "
+                    "It answers with the model loaded here.")
+        else:
+            text = "Off. Scripts and coding agents can send audio files here to be transcribed on this computer."
+        self.api_status_label.setText(text)
 
     def _check(self, key, label, then=None):
         c = QCheckBox(label, checked=self.cfg[key])
