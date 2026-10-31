@@ -1,8 +1,8 @@
-**1.013: Optional clean-up model, and a lighter, clearer app.**
+**1.014: Press Enter after silence, a local transcription API, and no more lost pieces.**
 
-- **Clean up (optional, off by default):** download S1-ASR-Cleanup, a fine-tune of S1-mini by Superwhisper, under Models → Utilities → Post-processing (about 660 MB), then turn on Clean up there or in the Transcription tab. Each finished Transcription Mode transcript is tidied once and set out in paragraphs; if anything goes wrong you keep the text as transcribed.
-- **Lighter:** the app does much less work while you dictate, and wakes far less often while it sits in the tray.
-- **No silent failures:** saving, exporting, copying and deleting tell you when something goes wrong; greyed-out buttons say why; warnings at the top of Voice Typing can be dismissed.
-- **Tray:** Check for model update and Paste last answer with a notification when the window is closed.
-- Changing a hotkey no longer gets stuck when the keyboard can't be read. Transcription Mode remembers a gain set by dragging the slider, and Diagnostics keeps updating in long sessions.
-- Ubuntu 26.04 .deb and a portable Windows zip. Not yet tested on Windows hardware. Downloads: [hebrish.app/download](https://hebrish.app/download).
+- **Press Enter after silence (optional, off by default):** Settings → Action keys. While Voice Typing with Insert as you go, once text has been typed and you have been quiet for 8 s (2–60 s), Hebrish presses your Send key once, so a message to Claude goes without reaching for Enter.
+- **Local API (optional, off by default):** Settings → Local API. Other programs on this computer can send audio files to Hebrish and get the transcript back, from an OpenAI-compatible endpoint on 127.0.0.1:8723. No key, and nothing leaves the computer. For coding agents: the `transcribe-with-hebrish` skill in the Hebrish Claude Code marketplace.
+- **Transcription no longer loses pieces:** the model sometimes returned nothing for a whole stretch of a recording or file (about 20 s on one voice note). Such a stretch is now transcribed again in two halves.
+- **Clean-up model choice:** S1-mini by Superwhisper (the default) or S1-ASR-Cleanup (experimental), under Models → Utilities → Post-processing.
+- **Updates:** What's new has its own page, from a button in the header, with every entry newest first.
+- Ubuntu 26.04 .deb. Downloads: [hebrish.app/download](https://hebrish.app/download).

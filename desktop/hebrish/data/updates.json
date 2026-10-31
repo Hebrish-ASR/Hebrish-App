@@ -6,6 +6,15 @@
   "source": "https://hebrish.app/changelog",
   "entries": [
     {
+      "date": "2026-10-31",
+      "tag": "Desktop 1.014",
+      "title": "Press Enter after silence, a local transcription API, and no more lost pieces",
+      "summary": "Press Enter after silence (optional, off by default, Settings, Action keys): while Voice Typing with Insert as you go, once text has been typed and you have been quiet for 8 seconds (2 to 60), Hebrish presses your Send key once, so a message to Claude goes without reaching for…",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
       "date": "2026-10-30",
       "tag": "Models",
       "title": "Sabich v2.3: 20% more recordings",
@@ -186,15 +195,6 @@
       "summary": "The licence table now lists every model line: Jachnun, Sabich and its variants on other bases, Shakshuka, Meorav and the Whisper fine-tunes, each with the licence it was released under.",
       "platforms": [
         "site"
-      ]
-    },
-    {
-      "date": "2026-10-22",
-      "tag": "Desktop 0.7.5",
-      "title": "Desktop: change how dictation is inserted from the tray",
-      "summary": "The tray menu has an Output submenu: paste at the cursor, clipboard only, or the app's own text box, and the paste shortcut (Ctrl+V, or Ctrl+Shift+V for terminals).",
-      "platforms": [
-        "desktop"
       ]
     }
   ]
