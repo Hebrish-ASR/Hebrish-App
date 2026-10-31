@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-10-31",
+      "tag": "Desktop 1.015",
+      "title": "Saved transcripts get a folder, a title and a proper header; transcripts arrive in one go",
+      "summary": "Save writes straight to a Hebrish folder (Documents, Hebrish, transcripts by default), one folder per year, month and day, as Markdown, and never overwrites.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-10-31",
       "tag": "Desktop 1.014",
       "title": "Press Enter after silence, a local transcription API, and no more lost pieces",
       "summary": "Press Enter after silence (optional, off by default, Settings, Action keys): while Voice Typing with Insert as you go, once text has been typed and you have been quiet for 8 seconds (2 to 60), Hebrish presses your Send key once, so a message to Claude goes without reaching for…",
@@ -186,15 +195,6 @@
       "summary": "With insert as you go, stopping to think in the middle of a sentence no longer ends it. Each piece of text is now transcribed together with the end of the piece before it, so the model hears that the sentence carries on and writes it the way it would mid-sentence.",
       "platforms": [
         "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-22",
-      "tag": "Terms",
-      "title": "Terms of use 1.2: every model listed",
-      "summary": "The licence table now lists every model line: Jachnun, Sabich and its variants on other bases, Shakshuka, Meorav and the Whisper fine-tunes, each with the licence it was released under.",
-      "platforms": [
-        "site"
       ]
     }
   ]
