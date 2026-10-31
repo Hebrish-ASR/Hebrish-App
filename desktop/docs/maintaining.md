@@ -1983,7 +1983,7 @@ major site changes are shown on desktop), each with `"platform"` and per-entry `
 (`platforms_from_tag`). Tests: `test_updates_are_well_formed[android|desktop]`,
 `test_bake_keeps_each_apps_own_entries`.
 
-## Model bundles and Update all (unreleased, B-79, 2026-10-31)
+## Model bundles and Update all (1.016, B-79, 2026-10-31)
 
 Daniel, 2026-10-31 (R-2026-10-31-6): downloading models one row at a time was too fiddly, and
 Check for updates only looked at the model in use.

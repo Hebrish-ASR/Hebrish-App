@@ -4,7 +4,7 @@ platform: desktop-linux
 environment: Ubuntu, Hebrish desktop 1.015 (.deb), cached catalogue fetched before 1.015
 component: desktop/hebrish/cleanup.py (_all, entry)
 affected: "1.015"
-fixed_in: "unreleased (next desktop release)"
+fixed_in: "1.016"
 status: fixed
 ---
 
@@ -46,6 +46,6 @@ After the fix, the same lookup on the same machine returns the entry (V).
 
 ## Not verified
 
-The full download through the 1.015 window was not re-run here; the fix ships with the next
-desktop release. Workaround on 1.015: Models → Check for updates (refreshes the cache), then
+The full download through the 1.015 window was not re-run here; the fix shipped in desktop 1.016
+(2026-10-31). Workaround on 1.015: Models → Check for updates (refreshes the cache), then
 Download.

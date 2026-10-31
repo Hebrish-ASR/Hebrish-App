@@ -1286,12 +1286,12 @@
       },
       "ubuntu": {
         "status": "present",
-        "since": "unreleased",
+        "since": "1.016",
         "evidence": "desktop/hebrish/bundles.py; ui/app.py download_bundle, check_all_updates, update_all"
       },
       "windows": {
         "status": "present",
-        "since": "unreleased",
+        "since": "1.016",
         "evidence": "desktop/hebrish/bundles.py",
         "verified": false
       },
