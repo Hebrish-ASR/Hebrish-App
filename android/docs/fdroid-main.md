@@ -153,4 +153,13 @@ Verify locally by building twice from clean checkouts in different paths and dif
    still checks on open; it sends nothing about the user, so no `Tracking` was declared **[I]**.
 4. ~~Add fastlane metadata and a changelog per `versionCode`~~ (done 2026-10-23; phone
    screenshots still missing, optional).
-5. Open the fdroiddata MR with `NonFreeNet`; add `NonFreeAssets` when a CC-BY-NC model ships.
+5. ~~Open the fdroiddata MR~~ (done 2026-11-02):
+   [MR 55464](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/55464) "New app: Hebrish",
+   from fork `mrdanielrosehill/fdroiddata` (project 88404884), branch `app.hebrish.dictation`,
+   metadata as in `fdroid/app.hebrish.dictation.yml` (`NonFreeNet`, `NonFreeAssets`;
+   `IssueTracker` is hebrish.app/feedback, the only place reports are taken). `fdroid lint` and
+   `rewritemeta` clean locally (fdroidserver from PyPI, fdroiddata `config/` copied in). The fork's
+   pipeline failed with no jobs (new account without GitLab identity verification); per the MR
+   template no phone/card was given, and a note on the MR asks maintainers to run CI. The
+   `/label ~"New App"` quick action didn't apply (non-members can't label). Next: answer review
+   comments; after merge, F-Droid's bot adds new `android-v*` tags itself.
