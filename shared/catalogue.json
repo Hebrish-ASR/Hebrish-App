@@ -87,7 +87,7 @@
           "repo": "Hebrish/Sabich-Rolling-sherpa-onnx-int8",
           "subdir": "",
           "card": "https://huggingface.co/Hebrish/Sabich-Rolling",
-          "manifest_url": "https://cdn.hebrish.app/models/parakeet-sabich-rolling/latest.json"
+          "manifest_url": "https://cdn.hebrish.app/models/sabich-rolling/latest.json"
         },
         {
           "id": "sabich",
@@ -121,7 +121,7 @@
           "repo": "Hebrish/Sabich-sherpa-onnx-int8",
           "subdir": "",
           "card": "https://hebrish.app/models/sabich",
-          "manifest_url": "https://cdn.hebrish.app/models/parakeet-sabich/latest.json"
+          "manifest_url": "https://cdn.hebrish.app/models/sabich/latest.json"
         },
         {
           "id": "sabich-qwen3-asr-1.7b",
@@ -229,7 +229,7 @@
           "repo": "Hebrish/Sabich-Parakeet-110M-sherpa-onnx-int8",
           "subdir": "",
           "card": "https://huggingface.co/Hebrish/Sabich-Parakeet-110M",
-          "manifest_url": "https://cdn.hebrish.app/models/parakeet-sabich-110m/latest.json"
+          "manifest_url": "https://cdn.hebrish.app/models/sabich-110m/latest.json"
         },
         {
           "id": "sabich-asr4all-m",
@@ -331,7 +331,7 @@
           "repo": "Hebrish/Jachnun-sherpa-onnx-int8",
           "subdir": "",
           "card": "https://hebrish.app/models/jachnun",
-          "manifest_url": "https://cdn.hebrish.app/models/parakeet-codeswitch/latest.json"
+          "manifest_url": "https://cdn.hebrish.app/models/jachnun/latest.json"
         }
       ]
     },
@@ -378,7 +378,7 @@
           "repo": "Hebrish/Shakshuka-sherpa-onnx-int8",
           "subdir": "",
           "card": "https://hebrish.app/models/shakshuka",
-          "manifest_url": "https://cdn.hebrish.app/models/parakeet-shakshuka/latest.json"
+          "manifest_url": "https://cdn.hebrish.app/models/shakshuka/latest.json"
         }
       ]
     },

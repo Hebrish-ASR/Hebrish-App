@@ -18,7 +18,7 @@
       "repo": "Hebrish/Sabich-sherpa-onnx-int8",
       "subdir": "",
       "card": "https://hebrish.app/models/sabich",
-      "manifest_url": "https://cdn.hebrish.app/models/parakeet-sabich/latest.json"
+      "manifest_url": "https://cdn.hebrish.app/models/sabich/latest.json"
     },
     {
       "id": "codeswitch",
@@ -28,7 +28,7 @@
       "repo": "Hebrish/Jachnun-sherpa-onnx-int8",
       "subdir": "",
       "card": "https://hebrish.app/models/jachnun",
-      "manifest_url": "https://cdn.hebrish.app/models/parakeet-codeswitch/latest.json"
+      "manifest_url": "https://cdn.hebrish.app/models/jachnun/latest.json"
     },
     {
       "id": "stock",

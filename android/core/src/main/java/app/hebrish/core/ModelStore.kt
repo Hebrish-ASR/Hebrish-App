@@ -91,7 +91,7 @@ object ModelStore {
                 ModelFile("joiner.int8.onnx", 1739080, "2afe3966a97ad97488b1e6a1ee32e73b1008e8adedfae10adae4a9c9fad1074a"),
                 ModelFile("tokens.txt", 9384, null),
             ),
-            "https://cdn.hebrish.app/models/parakeet-codeswitch/current/"
+            "https://cdn.hebrish.app/models/jachnun/"
         ),
     )
 

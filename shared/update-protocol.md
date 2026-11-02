@@ -11,7 +11,7 @@ if either app's bundled catalogue drifts from it, or `models.json` from it.
 
 **2026-11-02: `recommended` is `sabich-rolling`** (Daniel: "make this the default model in the app ... I want to use
 it and test it out myself first"). Sabich (Rolling) is Sabich continued from its own weights on more recordings
-(ASR-Training `docs/training.md`, "Sabich (Rolling)"), served from `cdn.hebrish.app/models/parakeet-sabich-rolling/`
+(ASR-Training `docs/training.md`, "Sabich (Rolling)"), served from `cdn.hebrish.app/models/sabich-rolling/`
 and `Hebrish/Sabich-Rolling-sherpa-onnx-int8`, first in the Sabich line. Sabich stays in the line. Only installs with
 no explicit pick follow `recommended`; schema 1 (`models.json`) cannot list the new variant and keeps `sabich`
 (`test_shared.py` allows that one difference). If Daniel's testing passes, Sabich is retired or Rolling takes
@@ -42,7 +42,7 @@ Shape (abridged; `_comment` in the file is the field reference):
                           "requirements": {"ram_mb": 1500, "gpu": null}, "hardware": "Phone or computer, …",
                           "download_mb": 661, "speed": 3, "accuracy": 4,
                           "recommendation": "Start here: …", "repo": "Hebrish/Sabich-sherpa-onnx-int8",
-                          "subdir": "", "card": "…", "manifest_url": "https://cdn.hebrish.app/models/parakeet-sabich/latest.json"}]}]}
+                          "subdir": "", "card": "…", "manifest_url": "https://cdn.hebrish.app/models/sabich/latest.json"}]}]}
 ```
 
 - **Lines** are what a model is trained for: `sabich` (everything), `jachnun` (code-switching
@@ -86,7 +86,7 @@ Shape (abridged; `_comment` in the file is the field reference):
   a desktop install that ran on schema 1's `default` (`stock`) without an explicit pick keeps it.
 - **Publishing a planned variant**: flip its `status` to `available` and push; no app release when
   its engine is already supported. Done for Sabich-Parakeet-110M on 2026-10-21 once
-  `https://cdn.hebrish.app/models/parakeet-sabich-110m/latest.json` returned 200 (V: desktop code
+  `https://cdn.hebrish.app/models/sabich-110m/latest.json` returned 200 (V: desktop code
   path fetched it, downloaded 136 MB, SHA-256 checked, loaded at 80 mels and transcribed
   correctly). The HF sherpa repos of the new variants are **gated** (checked 2026-10-21:
   `…-110M-sherpa-onnx-int8`, `Shakshuka-sherpa-onnx-int8`), so the apps can only use the CDN
@@ -116,12 +116,12 @@ recognizer loads), `version_file`, `default` (the id selected on a fresh install
 | --- | --- | --- | --- |
 | `stock` | `csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8` (k2-fsa's int8 export of NVIDIA's release; static since 2025-08-16) | *(root)* | `v2` |
 | `codeswitch` | `Hebrish/Jachnun-sherpa-onnx-int8` (since 2026-10-19; named `Hebrish/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching-sherpa-onnx-int8` until 2026-10-20, which redirects with 307) | *(root)* | `rev <sha7>` |
-| `sabich` | `Hebrish/Sabich-sherpa-onnx-int8` (Sabich v1.0, run `r7-all`, the kitchen-sink line: code-switching plus tech; added 2026-10-20). Apps 0.2.2+ use its `manifest_url`, `https://cdn.hebrish.app/models/parakeet-sabich/latest.json`; Android has no `BUNDLED` manifest for it, so `checkLatest` resolves it before the first download | *(root)* | from `version.json`: `Sabich v1.0` |
+| `sabich` | `Hebrish/Sabich-sherpa-onnx-int8` (Sabich v1.0, run `r7-all`, the kitchen-sink line: code-switching plus tech; added 2026-10-20). Apps 0.2.2+ use its `manifest_url`, `https://cdn.hebrish.app/models/sabich/latest.json`; Android has no `BUNDLED` manifest for it, so `checkLatest` resolves it before the first download | *(root)* | from `version.json`: `Sabich v1.0` |
 | `tech`, `personal` | not in Hebrish: fine-tunes without Hebrew (Boxty) belong to Parlance | | |
 
 **Since 0.2.2 (2026-10-20): the Hebrish CDN.** A catalogue entry may carry `manifest_url`; apps
 0.2.2+ use it in place of the Hugging Face API. One GET of
-`https://cdn.hebrish.app/models/parakeet-codeswitch/latest.json` returns `{schema, model,
+`https://cdn.hebrish.app/models/jachnun/latest.json` returns `{schema, model,
 version, run, revision, base_url, files: {name: {size, sha256}}}`; each file is fetched from
 `base_url + name` (Range-resumable, SHA-256 checked as before; `tokens.txt` has `sha256: null`,
 checked by size, like the HF tree). `revision` is kept equal to the HF commit the files came
