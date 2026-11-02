@@ -179,7 +179,7 @@ jobs:
           --exclude-module onnxruntime.tools --exclude-module onnxruntime.transformers
           --exclude-module onnxruntime.quantization
           --collect-all _sounddevice_data
-          --collect-all soundfile --collect-all _soundfile_data
+          --collect-all soundfile --collect-all _soundfile_data --collect-all soxr
           --collect-data hebrish
           --hidden-import hebrish.hotkey_win --hidden-import hebrish.inserter_win
           --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32

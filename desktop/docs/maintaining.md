@@ -12,7 +12,7 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | `engine.py` | sherpa-onnx `OfflineRecognizer` (nemo_transducer) or, for Shakshuka, `OnlineRecognizer` (0.7.0): normalise, cut at pauses (`live_cut`, `split_points`), pad, `transcribe_chunks` generator; `LiveStream` for streaming takes |
 | `paragraphs.py` | Transcription Mode's Paragraphs setting (B-44): `Pieces` layout, the paragraph model (`Breaker`: pure-Python WordPiece + onnxruntime), its CDN download. See "Paragraphs" |
 | `cleanup.py` | the clean-up add-on (B-40): a choice of clean-up models (stock S1-mini by Superwhisper, default; the fine-tune S1-ASR-Cleanup, experimental) on a downloaded, shared `llama-server`; the choice rule, prompt, chunks, guard and fallback, download. See "Clean-up model" |
-| `audio.py` | sounddevice capture (pause/resume, level meter, `peek`/`consume` for live insertion), file decoding (ffmpeg, else soundfile), WAV save, beeps |
+| `audio.py` | sounddevice capture (pause/resume, level meter, `peek`/`consume` for live insertion), file decoding (ffmpeg, else soundfile + soxr), WAV save, beeps |
 | `hotkey.py` | the shared state machine for the two keys (toggle, push-to-talk) and the action keys, on evdev-style key names |
 | `hotkey_evdev.py` / `hotkey_win.py` | per-OS key sources: `/dev/input` on Linux, a pynput low-level hook on Windows |
 | `inserter.py` + `inserter_linux.py` / `inserter_win.py` | clipboard, then a paste chord (uinput / SendInput) |
@@ -1766,6 +1766,32 @@ Daniel, 2026-10-31 (R-2026-10-31-5; B-75, B-77, B-78). Code: `hebrish/ui/transcr
 - Tests: `tests/test_titles.py`, `tests/test_transcripts.py`, `tests/test_cleanup.py` (the last two
   tests: one-go text and Next recording; Save with a title, Already saved, Save cleaned copy).
   Not yet tried in the running app or on Windows.
+
+## Audio into the model: 16 kHz mono everywhere (audit and fix, 2026-11-02, unreleased)
+
+Daniel asked (2026-11-02) whether audio is converted to what the models were trained on (16 kHz,
+mono) before inference, on every platform. Audit result, per path:
+
+| Path | What reaches the model | Where |
+| --- | --- | --- |
+| Desktop mic (Voice Typing, Transcription Mode tape) | Opened as 16 kHz, 1 channel, float32; the OS audio stack (PipeWire/Pulse on Linux, MME/WASAPI on Windows) resamples and downmixes | `audio.Recorder._open`, `longform` `sd.InputStream` |
+| Desktop file import, local API | ffmpeg `-ac 1 -ar 16000 -f f32le` when ffmpeg is installed | `audio.load_file` |
+| Desktop file import without ffmpeg (Windows by default: ffmpeg isn't bundled) | soundfile decode, channel mean, then `audio._resample` | `audio.load_file`, `_resample` |
+| Android mic (keyboard, floating mic, Try it, Transcription) | `AudioRecord` at 16 kHz, `CHANNEL_IN_MONO`, PCM 16-bit, `VOICE_RECOGNITION` source | `core/Recorder.kt`, `core/Tape.kt` |
+| Android file import | none: Android has no file import (2026-11-02) | |
+
+The only gap was the last desktop row. `_resample` was a box filter plus linear interpolation:
+measured on a 48 kHz file with a 1 kHz and a 12 kHz tone, the 12 kHz tone folded down to 4 kHz
+only **12.5 dB** below the 1 kHz tone. Fix: `_resample` uses soxr (`HQ`, the resampler ffmpeg
+itself offers) when it is importable; the same measurement gives **-162 dB**. soxr is in the
+`windows` extra in `pyproject.toml`, and the Windows PyInstaller step has `--collect-all soxr`
+(it is imported lazily, so PyInstaller would not find it alone). If soxr is missing, the old
+filter is still used, so a packaging miss degrades and does not break imports. Not yet verified
+on a built Windows installer.
+
+Not changed: the mic paths already ask for the model's format, so no extra stage is needed
+between "Transcribe" and inference. Not tried: loudness normalisation before inference (a
+separate question from format matching).
 
 ## Testing
 

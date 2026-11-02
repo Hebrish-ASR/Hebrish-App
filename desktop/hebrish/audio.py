@@ -240,8 +240,16 @@ class Recorder:
 # -- files -----------------------------------------------------------------------
 
 def _resample(x: np.ndarray, sr: int) -> np.ndarray:
+    """-> SAMPLE_RATE. Only the no-ffmpeg path uses this (Windows: ffmpeg isn't bundled).
+    soxr (HQ, the resampler ffmpeg itself can use) when installed; else the box filter +
+    linear interpolation below, which lets some aliasing through from 44.1/48 kHz files."""
     if sr == SAMPLE_RATE:
-        return x
+        return x.astype(np.float32, copy=False)
+    try:
+        import soxr
+        return soxr.resample(x.astype(np.float32, copy=False), sr, SAMPLE_RATE, "HQ").astype(np.float32, copy=False)
+    except ImportError:
+        pass
     # box-filter before linear interpolation, so downsampling doesn't alias badly
     k = max(1, round(sr / SAMPLE_RATE))
     if k > 1:
