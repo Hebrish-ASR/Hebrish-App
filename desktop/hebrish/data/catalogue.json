@@ -91,7 +91,7 @@
         },
         {
           "id": "sabich",
-          "name": "Sabich",
+          "name": "Sabich (Stable)",
           "base_model": "nvidia/parakeet-tdt-0.6b-v2",
           "base_label": "Parakeet 0.6B v2 by NVIDIA",
           "size_label": "0.6B",
@@ -117,7 +117,7 @@
           "speed": 3,
           "accuracy": 4,
           "gradient": 67,
-          "recommendation": "The default, on a phone or a computer: Hebrew words and tech vocabulary, with text at each pause.",
+          "recommendation": "The established Sabich release. Switch back to it if Sabich (Rolling) does worse for you.",
           "repo": "Hebrish/Sabich-sherpa-onnx-int8",
           "subdir": "",
           "card": "https://hebrish.app/models/sabich",

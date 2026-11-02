@@ -15,7 +15,7 @@ it and test it out myself first"). Sabich (Rolling) is Sabich continued from its
 and `Hebrish/Sabich-Rolling-sherpa-onnx-int8`, first in the Sabich line. Sabich stays in the line. Only installs with
 no explicit pick follow `recommended`; schema 1 (`models.json`) cannot list the new variant and keeps `sabich`
 (`test_shared.py` allows that one difference). If Daniel's testing passes, Sabich is retired or Rolling takes
-its place; if not, set `recommended` back to `sabich`.
+its place; if not, set `recommended` back to `sabich`. Same day the `sabich` variant is shown as **Sabich (Stable)** (Daniel: "the most logical way to present this"); its id, repo and the `Hebrish/Sabich` name (DOI) are unchanged, the line stays Sabich.
 
 [`catalogue.json`](catalogue.json) (`schema: 2`) is what **Android 0.7.0+ and desktop 0.6.0+**
 read; they bundle it (Android: gradle `copyCatalogue` into assets; desktop:

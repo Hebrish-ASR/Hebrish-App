@@ -12,7 +12,7 @@
   "models": [
     {
       "id": "sabich",
-      "name": "Sabich",
+      "name": "Sabich (Stable)",
       "summary": "The complete model: everything in Jachnun, plus tech vocabulary: arnona, Kubernetes, 250 shekels.",
       "status": "available",
       "repo": "Hebrish/Sabich-sherpa-onnx-int8",
