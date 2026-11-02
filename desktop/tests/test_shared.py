@@ -215,3 +215,24 @@ def test_bake_keeps_each_apps_own_entries():
     assert titles("android") == ["Sabich", "Phone"]
     assert titles("desktop") == ["Sabich", "Desk", "Site"]
     assert titles("") == ["Sabich", "Desk", "TTS", "Phone", "Site"]
+
+
+# -- Text transformation prompt library, shipped as data only (2026-11-02, I-18) -------------------
+PROMPTS = os.path.join(ROOT, "shared", "text-transformation-prompts.json")
+
+
+def test_transformation_prompts_are_bundled_by_both_apps():
+    """Written by scripts/import_transformation_prompts.py into shared/ and the desktop package;
+    the APK copies the shared file into its assets at build time."""
+    assert open(os.path.join(ROOT, "desktop", "hebrish", "data", "text-transformation-prompts.json")).read() == open(PROMPTS).read()
+    assert '"../shared/text-transformation-prompts.json"' in open(os.path.join(ANDROID, "build.gradle.kts")).read()
+    assert "data/text-transformation-prompts.json" in open(os.path.join(ROOT, "desktop", "pyproject.toml")).read()
+
+
+def test_transformation_prompts_are_well_formed():
+    doc = json.load(open(PROMPTS))
+    prompts = doc["prompts"]
+    assert doc["schema"] == 1 and doc["count"] == len(prompts) > 0
+    ids = [p["id"] for p in prompts]
+    assert len(ids) == len(set(ids)) and all(re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", i) for i in ids)
+    assert all(p["name"] and p["prompt"] and p["structured_output"] in (True, False, None) for p in prompts)

@@ -16,11 +16,13 @@ val onnxRuntimeVersion = "1.28.0"
 // The model catalogue (shared/catalogue.json, schema 2 since 0.7.0) is shared with the desktop app. It is copied into the
 // APK's assets at build time, never edited or hand-copied here. So is shared/updates-android.json, the What's new list
 // (UpdatesActivity, Android entries only) baked from hebrish.app/changelog by scripts/bake_updates.py before each
-// release, renamed to assets/updates.json.
+// release, renamed to assets/updates.json. And shared/text-transformation-prompts.json, the prompt library shipped as
+// data only (not read by the app yet; planning/backlog.md I-18).
 val catalogueDir = layout.buildDirectory.dir("generated/catalogue")
 val copyCatalogue by tasks.registering(Copy::class) {
     from(rootProject.file("../shared/catalogue.json"))
     from(rootProject.file("../shared/updates-android.json")) { rename { "updates.json" } }
+    from(rootProject.file("../shared/text-transformation-prompts.json"))
     into(catalogueDir)
 }
 tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(copyCatalogue) }

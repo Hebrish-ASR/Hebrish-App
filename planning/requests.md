@@ -6,6 +6,7 @@ credited), or an issue link. Outcome links the backlog item, or says why not.
 
 | Id | Date | From | Platforms | Request | Outcome |
 | --- | --- | --- | --- | --- | --- |
+| R-2026-11-02-1 | 2026-11-02 | Daniel | All | Ship his text transformation prompt library (HF dataset Text-Transformation-Prompts-300525) with the apps as an asset now, and plan its use later: one prompt supplied as the instruction to the post-processing engine, picked from a small index filtered by style and type | Data shipped in `shared/` and both apps (2026-11-02); integration planned as [I-18](backlog.md#ideas-for-future-versions) |
 | R-2026-10-31-9 | 2026-10-31 | Daniel | Desktop, all | Separate release cadence and CI into beta (the default: Android APK and the .deb) and stable (all platforms: adds the AppImage and Windows) | [B-81](backlog.md#sprint-desktop-ubuntu--windows) |
 | R-2026-10-31-8 | 2026-10-31 | Daniel | Linux (not Debian/Ubuntu) | Asked whether the .deb + APT repo is the most efficient Linux distribution and what else to consider; picked an AppImage ("lets add appimage to the build"), then asked to list it where AppImages are found | [B-80](backlog.md#sprint-desktop-ubuntu--windows) |
 | R-2026-10-31-7 | 2026-10-31 | Daniel | Android | Bring the title model to Android, and keep at least some of the transcription features (transcripts folder, titles, transcript in one go) available there | [B-74a](backlog.md#sprint-android) and [B-75a](backlog.md#sprint-android) done, unreleased (2026-10-31); [B-77a](backlog.md#sprint-android) planned |
