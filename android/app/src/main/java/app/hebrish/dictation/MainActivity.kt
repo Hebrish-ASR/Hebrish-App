@@ -80,7 +80,7 @@ class MainActivity : Page() {
         ModelDownload.listener = { render() }
         noteDefaultIme()
         retireModelLocation()
-        ModelDownload.check(this)
+        if (ModelPrefs.autoCheck(this)) ModelDownload.check(this)
         render()
     }
 

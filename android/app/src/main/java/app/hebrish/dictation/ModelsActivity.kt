@@ -49,6 +49,7 @@ class ModelsActivity : Page() {
         heading(R.string.models_updates)
         checkStatus = text()
         checkBtn = button(R.string.check_update) { ModelDownload.check(this, force = true) }
+        switch(R.string.models_auto_check, { ModelPrefs.autoCheck(this) }, { ModelPrefs.setAutoCheck(this, it) })
     }
 
     override fun onResume() {
@@ -56,7 +57,7 @@ class ModelsActivity : Page() {
         ModelDownload.listener = { render() }
         ParagraphStore.listener = { renderPost() }
         CleanupStore.listener = { renderPost() }
-        ModelDownload.check(this)
+        if (ModelPrefs.autoCheck(this)) ModelDownload.check(this)
         render()
         renderPost()
     }

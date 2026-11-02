@@ -1,12 +1,13 @@
 # Draft of metadata/app.hebrish.dictation.yml for the fdroiddata merge request (gitlab.com/fdroid/fdroiddata).
-# Fill in the first Builds entry from the first release made this way (1.000 or later): its tag
-# commit SHA, versionName and versionCode. After the MR is merged, the copy in fdroiddata is the
-# live one and F-Droid's bot appends new versions itself (AutoUpdateMode); this file stays as the
-# reference for what was submitted. See ../fdroid-main.md.
+# First Builds entry: Android 1.012 (tag android-v1.012, CI run 41451023680, apk and repro green;
+# scanner 0 problems; signing cert checked against the release APK, 2026-11-02). After the MR is
+# merged, the copy in fdroiddata is the live one and F-Droid's bot appends new versions itself
+# (AutoUpdateMode); this file stays as the reference for what was submitted. See ../fdroid-main.md.
 AntiFeatures:
   NonFreeAssets:
-    en-US: The recommended speech model, Sabich v2.0, is licensed CC-BY-NC-4.0 (free for
-      non-commercial use). It is downloaded on request.
+    en-US: The Sabich speech models are licensed CC-BY-NC-4.0 (free for non-commercial use), and
+      the optional title model is under the Gemma Terms of Use. Models are downloaded only when
+      the user chooses them.
   NonFreeNet:
     en-US: Speech models and the model catalogue are downloaded from cdn.hebrish.app, Hugging
       Face and raw.githubusercontent.com. Recognition runs offline once a model is installed.
@@ -25,12 +26,12 @@ AutoName: Hebrish
 
 RepoType: git
 Repo: https://github.com/Hebrish-ASR/Hebrish-App.git
-Binaries: https://github.com/Hebrish-ASR/Hebrish-App/releases/download/android-v%v/Hebrish-%v.apk
+Binaries: https://github.com/Hebrish-ASR/Hebrish-App/releases/download/android-v%v/Hebrish-v%v.apk
 
 Builds:
-  - versionName: 1.000
-    versionCode: 24
-    commit: 451a65285ce3e5983dee32392c430a30d5914afb
+  - versionName: 1.012
+    versionCode: 36
+    commit: 85d74f35edf05231f1d88119565c3e09b49dbe67
     subdir: android/app
     submodules: true
     gradle:
@@ -44,5 +45,5 @@ AllowedAPKSigningKeys: 5cf6822350d0b2ff124021a0df10bec1c63a6e5e6159fa6029507134a
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^android-v\d+\.\d+\.\d+$
-CurrentVersion: 1.000
-CurrentVersionCode: 24
+CurrentVersion: 1.012
+CurrentVersionCode: 36

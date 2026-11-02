@@ -4,7 +4,8 @@ Goal: `app.hebrish.dictation` on f-droid.org. Today it is only in the project's 
 `https://fdroid.hebrish.app/repo` (`Hebrish-ASR/Hebrish-FDroid`). Researched 2026-10-20 from
 the F-Droid docs (raw markdown in `gitlab.com/fdroid/fdroid-website`) and a sparse clone of
 `gitlab.com/fdroid/fdroiddata`; merge-request dates from the GitLab API. **[C]** = confirmed in
-a source, **[I]** = inferred. Nothing here has been submitted yet.
+a source, **[I]** = inferred. Submitted 2026-11-02 as a merge request to fdroiddata from
+gitlab.com user `mrdanielrosehill` (token `GITLAB_TOKEN` in Infisical, 1Password item "GitLab"); link under To do, step 5.
 
 **Status 2026-10-23:** to-do step 1 is done for this app (branch `fdroid-from-source`, CI run
 39987070650 green): sherpa-onnx is built from source, and the AAB holds
@@ -144,7 +145,12 @@ Verify locally by building twice from clean checkouts in different paths and dif
 2. ~~Reproducible release APK~~ (done 2026-10-23): NDK r26d, Marmalade's settings, unsigned
    without keystore, CI job `repro` verifies every build. A Gradle lockfile was not added: the
    only dependency is ONNX Runtime at a fixed version.
-3. Make any automatic model-update check opt-in (or accept `Tracking`).
+3. ~~Make any automatic model-update check opt-in~~ (done 2026-11-02, after 1.012): the only
+   request made without a user action was `ModelDownload.check` from `MainActivity.onResume` and
+   `ModelsActivity.onResume` (catalogue + HF/CDN manifests, at most every 6 h, no identifiers
+   sent). Both now run only if `ModelPrefs.autoCheck` is on (switch on the Models screen, off by
+   default). The Check button and choosing a model still check. 1.012, the first Builds entry,
+   still checks on open; it sends nothing about the user, so no `Tracking` was declared **[I]**.
 4. ~~Add fastlane metadata and a changelog per `versionCode`~~ (done 2026-10-23; phone
    screenshots still missing, optional).
 5. Open the fdroiddata MR with `NonFreeNet`; add `NonFreeAssets` when a CC-BY-NC model ships.

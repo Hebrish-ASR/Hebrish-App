@@ -24,6 +24,7 @@
     <string name="download">Download</string>
     <string name="model_downloading_version">Downloading %1$s… %2$d / %3$d MB</string>
     <string name="check_update">Check for update</string>
+    <string name="models_auto_check">Check for model updates automatically when the app opens</string>
     <string name="update_checking">Checking Hugging Face for a newer model…</string>
     <string name="update_available">Update available: %1$s (%2$d MB). %3$s stays in use until the new model is downloaded and verified, then it is deleted.</string>
     <string name="update_button">Update to %1$s</string>

@@ -34,4 +34,12 @@ object ModelPrefs {
     /** Wall-clock ms of the last successful update check. */
     fun lastCheck(ctx: Context) = sp(ctx).getLong("last_check", 0L)
     fun setLastCheck(ctx: Context, v: Long) = sp(ctx).edit().putLong("last_check", v).apply()
+
+    /**
+     * Check for model updates when the app opens (at most every 6 h). Off by default (2026-11-02,
+     * for f-droid.org: no network request without a user action); the "Check for update" button
+     * and choosing a model still check. See android/docs/fdroid-main.md.
+     */
+    fun autoCheck(ctx: Context) = sp(ctx).getBoolean("auto_check", false)
+    fun setAutoCheck(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("auto_check", v).apply()
 }
