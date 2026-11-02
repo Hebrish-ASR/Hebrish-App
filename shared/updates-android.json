@@ -2,9 +2,47 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "android",
-  "built": "2026-10-31",
+  "built": "2026-11-02",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-02",
+      "tag": "Android 1.012",
+      "title": "Clean-up and titles on the phone, and transcripts saved to a folder",
+      "summary": "Clean up: Transcription Mode can tidy a finished transcript with a small model on the phone: S1-mini by Superwhisper (the default) or S1-ASR-Cleanup (experimental), an optional download in Models → Add-on models.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-11-02",
+      "tag": "Sabich (Rolling) r1",
+      "title": "Sabich (Rolling) r1: the new default model in the apps",
+      "summary": "Sabich (Rolling) is Sabich v2.4 trained further from its own weights, for 6 more epochs, on all the recordings collected so far, instead of retraining from stock NVIDIA Parakeet TDT 0.6B v2.",
+      "platforms": [
+        "android",
+        "desktop",
+        "models"
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "tag": "Android 1.011",
+      "title": "Stability release: the speech model is freed while the phone sleeps",
+      "summary": "1.010 freed the speech model (about 700 MB) after 5 minutes without use, but that timer stalls while the phone is asleep, so the model could stay in memory for hours.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-10-31",
+      "tag": "Android 1.010",
+      "title": "Stability release: much less memory when you are not dictating",
+      "summary": "The speech model (about 700 MB) no longer loads when the phone starts. It loads when you focus a text field or start a take, is freed after 5 minutes without use, and is freed straight away when the phone runs short of memory.",
+      "platforms": [
+        "android"
+      ]
+    },
     {
       "date": "2026-10-30",
       "tag": "Models",
@@ -159,43 +197,6 @@
       "summary": "Long takes are transcribed in pieces at your pauses, and each piece used to be treated as a sentence of its own, so a pause mid-sentence could leave \"word. Capital\".",
       "platforms": [
         "android"
-      ]
-    },
-    {
-      "date": "2026-10-23",
-      "tag": "Android 0.8.1",
-      "title": "Android: transcription history, exported as CSV",
-      "summary": "Every take is now kept on your phone: the text, its length, the model, and how long it took to transcribe. Under Dictation, Export CSV saves it through the file picker, so you can put it straight into Google Drive.",
-      "platforms": [
-        "android"
-      ]
-    },
-    {
-      "date": "2026-10-23",
-      "tag": "Android 0.8.0",
-      "title": "Android: minimise the floating mic with a double-tap",
-      "summary": "When the floating mic is in the way of what you are writing, double-tap it and it shrinks to a small dot in the same place.",
-      "platforms": [
-        "android"
-      ]
-    },
-    {
-      "date": "2026-10-23",
-      "tag": "Android 0.7.6",
-      "title": "Android: the floating mic keeps your line breaks",
-      "summary": "With the floating mic, a line break typed before dictating (to start a new paragraph, say) was deleted when the text arrived, and a space put in its place.",
-      "platforms": [
-        "android"
-      ]
-    },
-    {
-      "date": "2026-10-22",
-      "tag": "Apps: desktop 0.7.3, Android 0.7.5",
-      "title": "ALL CAPS, a tidier app, and history you can export",
-      "summary": "ALL CAPS: a setting (Dictation, on both apps) that types everything you dictate in capitals. Just for fun.",
-      "platforms": [
-        "android",
-        "desktop"
       ]
     }
   ]
