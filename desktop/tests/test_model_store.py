@@ -68,7 +68,7 @@ def test_parse_tree():
 def test_label_drops_model_name():
     m = manifest(version="Sabich v2.0")
     m.model = "sabich"
-    assert m.label == "v2.0" and m.full_label == "Sabich v2.0"
+    assert m.label == "v2.0" and m.full_label == f"{ms.get_model('sabich').name} v2.0"   # "Sabich (Stable) v2.0" since 2026-11-02
 
 
 def test_label_without_version_json():

@@ -313,8 +313,12 @@ class Manifest:
         (no version.json) shows nothing."""
         m = get_model(self.model)
         v = self.version
-        if m and v.lower().startswith(m.name.lower() + " "):
-            v = v[len(m.name) + 1:]
+        # The name with and without a qualifier: "Sabich (Stable)" (2026-11-02) still gets
+        # manifests saying "Sabich v2.0".
+        for name in ((m.name, m.name.split(" (")[0]) if m else ()):
+            if v.lower().startswith(name.lower() + " "):
+                v = v[len(name) + 1:]
+                break
         return "" if v.startswith("rev ") else v
 
     @property
