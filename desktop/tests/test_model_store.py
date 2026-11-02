@@ -238,7 +238,7 @@ def test_legacy_voice_to_hebrish_install_is_adopted(monkeypatch):
 
 
 CDN_DOC = {"schema": 1, "model": "codeswitch", "version": "v1.0", "run": "r6-en30",
-           "revision": "b" * 40, "base_url": "https://cdn.hebrish.app/models/parakeet-codeswitch/v1.0/sherpa-onnx-int8",
+           "revision": "b" * 40, "base_url": "https://cdn.hebrish.app/models/parakeet-codeswitch/current",
            "files": {e["path"]: {"size": e["size"], "sha256": (e.get("lfs") or {}).get("oid")}
                      for e in TREE if e["path"] in ms.FILES}}
 
