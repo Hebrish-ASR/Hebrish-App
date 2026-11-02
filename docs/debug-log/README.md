@@ -53,6 +53,7 @@ Newest first.
 
 | Date | Platform | Symptom | Status | Entry |
 | --- | --- | --- | --- | --- |
+| 2026-11-02 | desktop-linux | The transcript is pasted twice when something was on the clipboard (the user's clipboard was never restored; Klipper kept the transcript) | fixed, unreleased | [2026-11-02-transcript-pasted-twice.md](2026-11-02-transcript-pasted-twice.md) |
 | 2026-10-31 | desktop-linux | Crash at start when /dev/uinput doesn't exist (evdev UInputError) | fixed, unreleased (1.017) | [2026-10-31-uinput-missing-crash.md](2026-10-31-uinput-missing-crash.md) |
 | 2026-10-31 | desktop-windows | Local API reported success on a port another app held (SO_REUSEADDR on Windows) | fixed, unreleased | [2026-10-31-windows-local-api-port-reuse.md](2026-10-31-windows-local-api-port-reuse.md) |
 | 2026-10-31 | desktop-linux | The title model's Download fails: a stale cached catalogue hid the bundled add-on (1.015) | fixed in 1.016 | [2026-10-31-title-model-download.md](2026-10-31-title-model-download.md) |

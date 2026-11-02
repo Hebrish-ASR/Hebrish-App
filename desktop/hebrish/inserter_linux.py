@@ -1,5 +1,8 @@
-"""Linux paste: wl-copy (xclip on X11), then the chord through a uinput device."""
+"""Linux paste: wl-copy (xclip on X11), then the chord through a uinput device; the user's
+clipboard is put back after the paste (ClipboardKeeper)."""
 
+import ast
+import logging
 import os
 import shutil
 import socket
@@ -13,6 +16,8 @@ from evdev.uinput import UInputError
 
 from .hotkey_evdev import OWN_DEVICE_NAME
 from .inserter import chord_names
+
+log = logging.getLogger(__name__)
 
 
 def parse_chord(chord: str) -> list[int]:
@@ -93,6 +98,13 @@ def _globals() -> set[str]:
 
 
 def copy_to_clipboard(text: str):
+    """A deliberate copy (Copy buttons, the Clipboard output): the text stays, so a restore
+    still pending from a paste must not replace it."""
+    KEEPER.cancel()
+    _copy(text)
+
+
+def _copy(text: str):
     subprocess.run(clipboard_command(), input=text.encode(), check=True, timeout=5)
 
 
@@ -141,6 +153,146 @@ def release_later(proc: subprocess.Popen, delay: float = PASTE_HOLD_S):
     return t
 
 
+_KLIPPER = ("org.kde.klipper", "/klipper", "org.kde.klipper.klipper")
+
+
+def _klipper_get() -> str | None:
+    """The clipboard text from KDE's clipboard manager (Klipper, in plasmashell) over D-Bus;
+    None if Klipper or gdbus isn't there. gdbus prints the reply as GVariant text, ('…',),
+    whose string escapes Python's literal_eval reads exactly (checked with quotes, tabs,
+    newlines, backslashes and Hebrew, 2026-11-02)."""
+    try:
+        r = subprocess.run(["gdbus", "call", "--session", "--dest", _KLIPPER[0], "--object-path", _KLIPPER[1],
+                            "--method", f"{_KLIPPER[2]}.getClipboardContents"], capture_output=True, timeout=2)
+        if r.returncode:
+            return None
+        return ast.literal_eval(r.stdout.decode().strip())[0]
+    except (OSError, subprocess.SubprocessError, ValueError, SyntaxError, IndexError, TypeError):
+        return None
+
+
+def _klipper_set(text: str) -> bool:
+    """Set the clipboard through Klipper; dbus-send (dbus-bin) passes `string:` text as is.
+    Klipper sets the selection (PRIMARY) to it too."""
+    try:
+        r = subprocess.run(["dbus-send", "--session", "--type=method_call", "--print-reply", f"--dest={_KLIPPER[0]}",
+                            _KLIPPER[1], f"{_KLIPPER[2]}.setClipboardContents", "string:" + text],
+                           capture_output=True, timeout=2)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return r.returncode == 0
+
+
+def _kde() -> bool:
+    return "KDE" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper().split(":")
+
+
+def read_clipboard() -> str | None:
+    """The clipboard's text, read without taking focus; None if it can't be read or holds no
+    text (an image). KDE: Klipper, which follows the Wayland clipboard; KWin's X11 side can hold
+    stale text (docs/debug-log/2026-10-24-xclip-holds-clipboard.md), so on KDE Wayland without
+    Klipper the answer is None, and wl-paste without wlr data-control grabs focus like wl-copy.
+    wlroots/Hyprland: wl-paste. Otherwise (X11 session, GNOME's XWayland): xclip -o."""
+    text = _klipper_get()
+    if text is not None:
+        return text or None
+    wayland = bool(os.environ.get("WAYLAND_DISPLAY"))
+    wlr = wayland and "zwlr_data_control_manager_v1" in _globals()
+    if wlr and shutil.which("wl-paste"):
+        cmd = ["wl-paste", "--no-newline", "--type", "text"]
+    elif wayland and _kde():
+        return None
+    elif shutil.which("xclip") and os.environ.get("DISPLAY"):
+        cmd = ["xclip", "-selection", "clipboard", "-o"]
+    else:
+        return None
+    try:
+        r = subprocess.run(cmd, capture_output=True, timeout=2)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return (r.stdout.decode(errors="replace") or None) if r.returncode == 0 else None
+
+
+def write_clipboard(text: str):
+    """Put the user's text back: through Klipper on KDE (no xclip left owning the X11 side, and
+    Klipper keeps it if the owner goes away), else the usual tool, left serving it."""
+    if not _klipper_set(text):
+        _copy(text)
+
+
+# The restore runs this long after a paste chord: after release_later has ended the paste's
+# clipboard owner, so the target app has read the text. A paste within it (insert as you go)
+# pushes it back and keeps the clipboard saved before the first one.
+RESTORE_AFTER_S = PASTE_HOLD_S + 0.2
+
+
+class ClipboardKeeper:
+    """Puts back what the user had on the clipboard after Hebrish pastes through it.
+
+    The paste sets the clipboard to the transcript for the chord. Before 2026-11-02 nothing put
+    the old content back, and on KDE Klipper kept the transcript as the clipboard even after the
+    paste's xclip was ended (it refills an emptied clipboard from its history), so the user's
+    next Ctrl+V pasted the transcript a second time
+    (docs/debug-log/2026-11-02-transcript-pasted-twice.md).
+
+    One restore per burst of pastes: the first paste saves the clipboard, later ones within
+    RESTORE_AFTER_S keep that save and push the restore back. The restore is skipped when the
+    clipboard holds something other than the last pasted text by then (the user copied
+    something), when nothing could be saved (an image, an empty clipboard), and when a
+    deliberate copy (copy_to_clipboard: the Clipboard output, Copy buttons) came after the paste."""
+
+    def __init__(self, delay: float = RESTORE_AFTER_S):
+        self.delay = delay
+        self._lock = threading.RLock()
+        self._timer: threading.Timer | None = None
+        self._gen = 0
+        self._saved: str | None = None
+        self._pasted = ""
+
+    def before_paste(self):
+        with self._lock:
+            if self._timer is not None:          # a burst in progress: keep the first save
+                self._timer.cancel()
+                self._timer = None
+            else:
+                self._saved = read_clipboard()
+
+    def after_paste(self, text: str):
+        with self._lock:
+            self._gen += 1
+            self._pasted = text
+            self._timer = threading.Timer(self.delay, self._restore, args=(self._gen,))
+            self._timer.daemon = True
+            self._timer.start()
+
+    def cancel(self):
+        with self._lock:
+            self._gen += 1
+            if self._timer is not None:
+                self._timer.cancel()
+            self._timer, self._saved = None, None
+
+    def _restore(self, gen: int):
+        with self._lock:
+            if gen != self._gen:
+                return
+            self._timer = None
+            saved, self._saved = self._saved, None
+            if saved is None or saved == self._pasted:
+                return
+            now = read_clipboard()
+            if now is not None and now.strip() != self._pasted.strip():
+                log.info("clipboard changed since the paste; not restoring it")
+                return
+            try:
+                write_clipboard(saved)
+            except Exception:
+                log.exception("couldn't restore the clipboard")
+
+
+KEEPER = ClipboardKeeper()
+
+
 class LinuxInserter:
     def __init__(self):
         self._ui = None
@@ -158,17 +310,20 @@ class LinuxInserter:
 
     def insert(self, text: str, method: str, chord: str):
         """method "clipboard" (or no uinput): the text stays on the clipboard. "paste": the
-        clipboard holds it only for the paste, then the selection is released (copy_for_paste);
-        the Clipboard output copies the whole take afterwards with copy_to_clipboard."""
+        clipboard holds it only for the paste, then the selection is released (copy_for_paste)
+        and what the user had there before is put back (KEEPER); the Clipboard output copies the
+        whole take afterwards with copy_to_clipboard, which cancels that restore."""
         if method != "paste" or self._ui is None:
             copy_to_clipboard(text)
             return
+        KEEPER.before_paste()
         proc = copy_for_paste(text)
         time.sleep(0.12)          # let the compositor see the new clipboard owner
         try:
             self.press(chord)
         finally:
             release_later(proc)
+            KEEPER.after_paste(text)
 
     def press(self, chord: str):
         """Tap a chord (the paste shortcut, or Stop and send's Enter)."""

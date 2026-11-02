@@ -607,6 +607,32 @@ by `XDG_CURRENT_DESKTOP`: what matters is the protocol the compositor offers, an
 compositor versions. Investigation, protocol trace and what is unverified:
 [`docs/debug-log/2026-10-22-paste-flicker-kde.md`](../../docs/debug-log/2026-10-22-paste-flicker-kde.md).
 
+### The user's clipboard is put back after a paste (2026-11-02, unreleased)
+
+A paste borrows the clipboard: `LinuxInserter.insert(..., "paste", ...)` calls
+`inserter_linux.KEEPER.before_paste()` (saves the clipboard's text) and `after_paste()` (restores
+it `RESTORE_AFTER_S`, 1.7 s, after the chord, once `release_later` has ended the paste's owner).
+Rules that must hold:
+
+- **One save per burst.** Pastes within `RESTORE_AFTER_S` of each other (insert as you go) keep
+  the first save and push the restore back; a second save would capture the previous piece.
+- **A deliberate copy wins.** `copy_to_clipboard()` (the Clipboard output's whole-take copy, Copy
+  buttons, `insert(..., "clipboard", ...)`) cancels a pending restore. Internal writes that must
+  not cancel go through `_copy()`. With *Output → Clipboard* on, the take staying on the
+  clipboard is that setting's job, not a bug.
+- **Never overwrite a newer copy.** The restore runs only if the clipboard still holds the pasted
+  text or is empty (no owner, no clipboard manager); text the user copied meanwhile stays.
+- **Read and write without focus.** KDE: Klipper over D-Bus (`gdbus call … getClipboardContents`,
+  parsed with `ast.literal_eval`; `dbus-send … setClipboardContents string:…`), because KWin's
+  X11 side can hold stale text and wl-paste without wlr data-control grabs focus; on KDE Wayland
+  without Klipper nothing is restored. wlroots/Hyprland: wl-paste. X11 and GNOME: `xclip -o`.
+- **Text only.** An image or an empty clipboard isn't saved, so the transcript stays (as before).
+
+Why: on KDE, Klipper refills an emptied clipboard from its history, so after the paste's xclip
+ended the transcript stayed the clipboard and the user's next Ctrl+V pasted it again
+([`docs/debug-log/2026-11-02-transcript-pasted-twice.md`](../../docs/debug-log/2026-11-02-transcript-pasted-twice.md)).
+Windows has no restore yet.
+
 ### Insert-as-you-go pacing (0.7.1, 2026-10-22)
 
 Daniel, the same evening (R-2026-10-22-39): with both models, insert as you go dumped text at the
