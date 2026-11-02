@@ -698,6 +698,7 @@ class Utilities(QWidget):
     CLEANUP_HEADING = MainWindow.CLEANUP_HEADING
     _cleanup_item = staticmethod(MainWindow._cleanup_item)
     _title_item = staticmethod(MainWindow._title_item)
+    _transform_item = staticmethod(MainWindow._transform_item)
     for _n in ("_utilities_page", "_utility_row", "_check", "_update_addons", "_use_cleanup", "_delete_addon"):
         locals()[_n] = getattr(MainWindow, _n)
 
@@ -722,6 +723,7 @@ def test_utilities_rows_and_choice(fake_fetch, monkeypatch):
     w = Utilities(cfg)
     assert w.cleanup_ids == [C.DEFAULT_ID, C.LEGACY_ID], "a row per offered model, the default first"
     assert w.title_ids == ["title-gemma-270m"] and "title-gemma-270m" in w.addon_rows, "B-75: the title model's row"
+    assert w.transform_ids == ["transform-qwen3-4b"] and "transform-qwen3-4b" in w.addon_rows, "B-82: the transform model's row"
     w.update_model()
     stock, tune = w.addon_rows[C.DEFAULT_ID], w.addon_rows[C.LEGACY_ID]
     assert tune["chip"].isVisibleTo(w.page) and not tune["pick"].isVisibleTo(w.page), "the 1.013 install is in use"

@@ -9,6 +9,31 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-02-01: Transforms on desktop with the shipped prompt library; Qwen3-4B-Instruct-2507 as the model; library in history.db with builtin_/user_ tables
+
+- **Decision:** Desktop gets *Transform…* on the Transcription tab (B-82): a prompt from the text
+  transformation library (206 prompts from Daniel's dataset, tagged by type and style, shipped
+  in `shared/text-transformation-prompts.json`) is run on the transcript by a downloadable
+  general instruct model, **Qwen3-4B-Instruct-2507** (Unsloth GGUF Q4_K_M, 2.5 GB, Apache 2.0,
+  catalogue add-on `transform-qwen3-4b`, kind `text_transform`, experimental), on the existing
+  llama-server runtime. The library is loaded into history.db: `builtin_*` tables are data
+  shipped with the app (rewritten on update, left out of backups), `user_*` tables the user's
+  data. Users edit a shipped prompt, which saves a copy in `user_transform_prompts` and can be
+  reset; no prompts written from scratch yet.
+- **Why:** Daniel, 2026-11-02: ship the library with the app and front-load the index (filter by
+  type and style), try it on desktop first, Android later; editing shipped prompts is the quick
+  win over a full custom-prompt editor. S1-mini can't run instructions: given library prompts it
+  only cleaned the text (12/12 runs, 2026-11-02). Gemma 3 1B followed them but added preambles,
+  garbled romanized Hebrew ("arnona" as "Arnolda") and invented details. Qwen3-4B-Instruct-2507
+  is "the obvious choice" (Daniel) among small instruct models, and has no thinking mode to work
+  around.
+- **Alternatives:** S1-mini (can't); Gemma 3 1B (quality); Qwen3-1.7B and Gemma 3 4B (not compared: Daniel chose the obvious pick); a separate prompt database file
+  (rejected: one app database, prefixes mark ownership); custom prompts from scratch (later).
+- **By:** Daniel (feature, desktop first, edit-as-copy, model "the obvious choice"); agent (table
+  layout, tags, Qwen3-4B-Instruct-2507 as that choice).
+- **Links:** R-2026-11-02-1; backlog B-82, B-82a;
+  `desktop/docs/maintaining.md`, "Transforms".
+
 ### D-2026-10-31-01: Press Enter after silence is opt-in, 8 s, once per pause, only while recording
 
 - **Decision:** Desktop gets *Press Enter after silence* (B-72), off by default, delay 8 s (2-60 s).

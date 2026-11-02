@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, Q
                                QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QTimeEdit,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import __version__, audio, autostart, backup, bundles, cleanup, config, dictionary, model_store, paragraphs, transcripts, vad
+from .. import __version__, audio, autostart, backup, bundles, cleanup, config, dictionary, model_store, paragraphs, transcripts, transforms, vad
 from ..config import APP_NAME, CONFIG_PATH, DATA_DIR, MODELS_DIR, STATE_PATH, TAGLINE, load_json, threads
 from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
@@ -1155,6 +1155,17 @@ class MainWindow(QMainWindow):
                 f"shared with the clean-up models. {e.get('hardware', '')}; under two seconds a title.")
         return e["id"], cleanup.label(e), words, size, tech
 
+    @staticmethod
+    def _transform_item(e: dict) -> tuple:
+        """(id, name, words, size, technical text) for the transform model's Utilities row (B-82)."""
+        words = ("Runs Transform… on the Transcription tab: rewrites a transcript with a prompt from the "
+                 "library (an email, a to-do list, meeting minutes, a post …).")
+        size = f"{e['download_mb']} MB" if e.get("download_mb") else ""
+        tech = (f"{e.get('technical', '')} Licence: {e.get('licence', '')}: "
+                f"<a href='{e.get('card', '')}'>model card</a>. The llama.cpp runtime (about 23 MB) is "
+                f"shared with the clean-up models. {e.get('hardware', '')}.")
+        return e["id"], cleanup.label(e), words, size, tech
+
     def _utilities_page(self) -> QWidget:
         page = QWidget()
         lay = QVBoxLayout(page)
@@ -1165,6 +1176,7 @@ class MainWindow(QMainWindow):
         self.cleanup_ids = []
         self.cleanup_check = None
         self.title_ids = []
+        self.transform_ids = []
         for heading, items in self.UTILITIES:
             box, b = card(heading)
             for item in items:
@@ -1194,6 +1206,9 @@ class MainWindow(QMainWindow):
                     row.addWidget(n)
                     row.addStretch(1)
                     b.addLayout(row)
+                for e in transforms.entries():
+                    self.transform_ids.append(e["id"])
+                    b.addWidget(self._utility_row(*self._transform_item(e), experimental=bool(e.get("experimental"))))
             lay.addWidget(box)
         lay.addStretch(1)
         return page
@@ -1274,7 +1289,8 @@ class MainWindow(QMainWindow):
                 r["use"].setEnabled(ok)
                 continue
             is_cleanup = aid in getattr(self, "cleanup_ids", ())
-            is_llama = is_cleanup or aid in getattr(self, "title_ids", ())
+            is_llama = (is_cleanup or aid in getattr(self, "title_ids", ())
+                        or aid in getattr(self, "transform_ids", ()))
             have = (cleanup.installed(aid) if is_llama else paragraphs.installed()) is not None
             busy = aid in self.ctl.addon_busy
             if is_cleanup:
@@ -1315,6 +1331,8 @@ class MainWindow(QMainWindow):
             self.transcribe.sync_cleanup()
         elif aid in getattr(self, "title_ids", ()):
             cleanup.remove(aid)               # Save goes back to naming by time
+        elif aid in getattr(self, "transform_ids", ()):
+            cleanup.remove(aid)               # Transform… can browse and edit, not run
         else:
             import shutil
             shutil.rmtree(paragraphs.root(), ignore_errors=True)

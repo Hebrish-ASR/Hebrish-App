@@ -193,7 +193,8 @@ def clean(text: str, client, keep: tuple = ()) -> Result:
 
 # -- catalogue entries ----------------------------------------------------------------------
 
-KINDS = ("text_cleanup", "text_title")    # GGUF add-ons on the llama-server runtime (titles.py: B-75)
+KINDS = ("text_cleanup", "text_title", "text_transform")    # GGUF add-ons on the llama-server runtime
+                                                            # (titles.py: B-75; transforms.py: B-82)
 
 
 def _all(kind: str | None = "text_cleanup") -> list[dict]:
@@ -449,8 +450,9 @@ def _free_port() -> int:
 class Server:
     """One llama-server process for the installed model, started on first use."""
 
-    def __init__(self, gguf: Path, binary: Path, threads: int = 0):
+    def __init__(self, gguf: Path, binary: Path, threads: int = 0, ctx: int = 0):
         self.gguf, self.binary = Path(gguf), Path(binary)
+        self.ctx = ctx or CTX          # the catalogue entry's `ctx` (transforms: 8192), else CTX
         self.threads = threads or max(1, (os.cpu_count() or 2) // 2)
         self.proc: subprocess.Popen | None = None
         self.port = 0
@@ -472,7 +474,7 @@ class Server:
                 return
             self.port = _free_port()
             cmd = [str(self.binary), "-m", str(self.gguf), "--host", "127.0.0.1", "--port", str(self.port),
-                   "-c", str(CTX), "-np", "1", "-t", str(self.threads), "--no-webui"]
+                   "-c", str(self.ctx), "-np", "1", "-t", str(self.threads), "--no-webui", "--jinja"]
             kw = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
             self.proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                          stderr=subprocess.DEVNULL, cwd=str(self.binary.parent), **kw)
@@ -522,6 +524,25 @@ class Server:
         return r.get("content", ""), r.get("stop_type", "eos")
 
 
+    def chat(self, system: str, user: str, n_predict: int, timeout: float) -> tuple[str, str]:
+        """One system + user turn through /v1/chat/completions, in the GGUF's own chat template
+        (transforms.py). Near-greedy; Qwen3's thinking is switched off. Returns (text, stop):
+        stop is "limit" when n_predict cut it off."""
+        self.start()
+        try:
+            r = self._post("/v1/chat/completions", {
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+                "max_tokens": n_predict, "temperature": 0.2, "top_k": 20, "cache_prompt": True,
+                "chat_template_kwargs": {"enable_thinking": False}}, timeout)
+        except TimeoutError:
+            self.stop()
+            raise TimeoutError("the model timed out") from None
+        finally:
+            self.used = time.monotonic()
+        c = r["choices"][0]
+        return c["message"].get("content") or "", "limit" if c.get("finish_reason") == "length" else "eos"
+
+
 _servers: dict[str, Server] = {}   # one llama-server per add-on id (clean-up, title), kept between uses
 _server_lock = threading.Lock()
 _reaper: threading.Thread | None = None
@@ -540,7 +561,7 @@ def server(aid: str) -> Server:
         if s is None or (s.gguf, s.binary) != tuple(Path(p) for p in have):
             if s is not None:
                 s.stop()
-            s = _servers[aid] = Server(*have)
+            s = _servers[aid] = Server(*have, ctx=int(entry(aid).get("ctx") or 0))
         if _reaper is None or not _reaper.is_alive():
             _reaper = threading.Thread(target=_reap, daemon=True, name="cleanup-idle")
             _reaper.start()

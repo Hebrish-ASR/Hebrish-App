@@ -12,6 +12,10 @@ Each row has a random `uid` and the database a random `device` id (in `meta`), s
 later be merged across devices or backed up without colliding (Drive backup and accounts are
 planned: planning/backlog.md). Schema changes bump SCHEMA and migrate in _migrate().
 
+Table prefixes (2026-11-02, B-82): `builtin_*` tables are data shipped with the app, rewritten on
+update and left out of backups; `user_*` tables hold the user's edits of them (transforms.py).
+The original tables (dictations, meta) are user data and keep their names.
+
 Only the GUI thread uses a History object. Upkeep (`maintain`, 1.009) runs on its own
 connection in a background thread.
 """
@@ -22,6 +26,8 @@ import sqlite3
 import time
 import uuid
 from pathlib import Path
+
+from . import transforms
 
 
 SCHEMA = 2      # 2 (0.7.3): model_rev and decode, so mistakes can be traced to exact weights
@@ -94,6 +100,10 @@ class History:
         self.db.execute(f"PRAGMA journal_size_limit={WAL_LIMIT}")
         self.db.executescript(_DDL)
         self._migrate()
+        try:                            # the shipped prompt library (B-82); never blocks the history
+            transforms.sync(self.db)
+        except Exception:
+            pass
         if self.audio_dir.is_dir():
             self.drop_audio()
 

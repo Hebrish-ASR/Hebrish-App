@@ -1,0 +1,1444 @@
+{
+ "300-words-or-less": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "300 Words Or Less"
+ },
+ "500-words": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "500 Words"
+ },
+ "acronym-expansion": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Acronym Expansion"
+ },
+ "add-random-accents": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Add Random Accents"
+ },
+ "add-trigger-warnings": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Add Trigger Warnings"
+ },
+ "american-english-standardisation": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "American English Standardisation"
+ },
+ "analysis-document": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Analysis Document"
+ },
+ "appointment-documenter": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Appointment Documenter"
+ },
+ "appointment-summary-creator": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Appointment Summary Creator"
+ },
+ "assertive-text": {
+  "type": "rewrite",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Assertive Text"
+ },
+ "basic-text-fixes": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": true,
+  "label": "Basic Text Fixes"
+ },
+ "blog-outline": {
+  "type": "document",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Blog Outline"
+ },
+ "bluf-email-writer": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "BLUF Email Writer"
+ },
+ "brainstorming-session": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Brainstorming Session"
+ },
+ "brevity": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": true,
+  "label": "Brevity"
+ },
+ "brief": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Brief"
+ },
+ "british-english-standardisation": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "British English Standardisation"
+ },
+ "budget-request": {
+  "type": "document",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Budget Request"
+ },
+ "business-correspondence": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Business Correspondence"
+ },
+ "business-email": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": true,
+  "label": "Business Email"
+ },
+ "business-proposal": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Business Proposal"
+ },
+ "business-tone-general": {
+  "type": "rewrite",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Business Tone (General)"
+ },
+ "calendar-entries-json": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Calendar Entries (JSON)"
+ },
+ "calendar-entry-not-structured": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Calendar Entry (Not Structured)"
+ },
+ "casual-email": {
+  "type": "email",
+  "style": "casual",
+  "language": "en",
+  "featured": true,
+  "label": "Casual Email"
+ },
+ "casual-hebrew": {
+  "type": "rewrite",
+  "style": "casual",
+  "language": "he",
+  "featured": false,
+  "label": "Casual Hebrew"
+ },
+ "checklist-maker": {
+  "type": "list",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Checklist Maker"
+ },
+ "chore-list": {
+  "type": "list",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Chore List"
+ },
+ "civic-engagement-letters": {
+  "type": "email",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Civic Engagement Letters"
+ },
+ "classified-listing": {
+  "type": "message",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Classified Listing"
+ },
+ "clickbait-king": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Clickbait King"
+ },
+ "code-generation-prompt": {
+  "type": "ai-prompt",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Code Generation Prompt"
+ },
+ "cold-pitch": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Cold Pitch"
+ },
+ "contact-creation-json": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Contact Creation (JSON)"
+ },
+ "contract-negotiation": {
+  "type": "document",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Contract Negotiation"
+ },
+ "cover-letter-generator-basic": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Cover Letter Generator (Basic)"
+ },
+ "creative-brief-formatter": {
+  "type": "document",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Creative Brief Formatter"
+ },
+ "cryptic-dispatches": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Cryptic Dispatches"
+ },
+ "daily-work-plan": {
+  "type": "notes",
+  "style": "professional",
+  "language": "en",
+  "featured": true,
+  "label": "Daily Work Plan"
+ },
+ "de-imposter-syndome": {
+  "type": "rewrite",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "De-Imposter Syndrome"
+ },
+ "deadbeat-personality": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Deadbeat Personality"
+ },
+ "debugging-instructions": {
+  "type": "ai-prompt",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Debugging Instructions"
+ },
+ "decision-description-generator": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Decision Description Generator"
+ },
+ "deep-research-prompt": {
+  "type": "ai-prompt",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Deep Research Prompt"
+ },
+ "dejargonizer": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Dejargonizer"
+ },
+ "depressing-text": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Depressing Text"
+ },
+ "development-prompt": {
+  "type": "ai-prompt",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Development Prompt"
+ },
+ "document-generator-json": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Document Generator (JSON)"
+ },
+ "document-summary-generator": {
+  "type": "document",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Document Summary Generator"
+ },
+ "documentation-general": {
+  "type": "document",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Documentation (General)"
+ },
+ "dramatic-style": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Dramatic Style"
+ },
+ "editing-instructions-ai-code-gen": {
+  "type": "ai-prompt",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Editing Instructions (Code Gen)"
+ },
+ "email-generator-structured": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Email Generator (Structured)"
+ },
+ "emergency-procedures-documentor": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Emergency Procedures Documentor"
+ },
+ "emoji-maximiser": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Emoji Maximiser"
+ },
+ "emotionally-sensitive": {
+  "type": "rewrite",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Emotionally Sensitive"
+ },
+ "event-description-creator": {
+  "type": "message",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Event Description Creator"
+ },
+ "expression-of-interest-writer": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Expression Of Interest Writer"
+ },
+ "fact-identification": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Fact Identification"
+ },
+ "family-meeting": {
+  "type": "notes",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Family Meeting"
+ },
+ "fancy-menu-invitation-creator": {
+  "type": "document",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Fancy Menu & Invitation Creator"
+ },
+ "feature-request": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Feature Request"
+ },
+ "financial-review-report-creator": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Financial Review Report Creator"
+ },
+ "firm-but-polite-boundary-setting": {
+  "type": "rewrite",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Firm But Polite Boundaries"
+ },
+ "first-to-third-person": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "First To Third Person"
+ },
+ "flamboyant": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Flamboyant"
+ },
+ "flamboyant-invitation-generator": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Flamboyant Invitation Generator"
+ },
+ "food-journal-creator": {
+  "type": "notes",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Food Journal Creator"
+ },
+ "formal-facebook-responses": {
+  "type": "message",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Formal Facebook Responses"
+ },
+ "formal-hebrew": {
+  "type": "rewrite",
+  "style": "formal",
+  "language": "he",
+  "featured": false,
+  "label": "Formal Hebrew"
+ },
+ "formal-tone-general": {
+  "type": "rewrite",
+  "style": "formal",
+  "language": "en",
+  "featured": true,
+  "label": "Formal Tone (General)"
+ },
+ "format-as-csv": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Format As CSV"
+ },
+ "format-as-log": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Format As Log"
+ },
+ "format-as-yaml": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Format As YAML"
+ },
+ "format-to-shell-commands": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Format To Shell Commands"
+ },
+ "friendly-tech-docs": {
+  "type": "document",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Friendly Tech Docs"
+ },
+ "general-ai-prompt": {
+  "type": "ai-prompt",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "General AI Prompt"
+ },
+ "general-idea-capture": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "General Idea Capture"
+ },
+ "goal-documenter": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Goal Documenter"
+ },
+ "grandpa-text": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Grandpa Text"
+ },
+ "great-news": {
+  "type": "email",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Great News!"
+ },
+ "grey-rocking-text": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Grey Rocking Text"
+ },
+ "haute-cuisine-recipe-generator": {
+  "type": "document",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Haute Cuisine Recipe Generator"
+ },
+ "hebrew-email": {
+  "type": "email",
+  "style": "professional",
+  "language": "he",
+  "featured": false,
+  "label": "Hebrew Email"
+ },
+ "hebrish": {
+  "type": "rewrite",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Hebrish"
+ },
+ "highly-complex-instructions": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Highly Complex Instructions"
+ },
+ "highly-enthusiastic": {
+  "type": "rewrite",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Highly Enthusiastic"
+ },
+ "html-email-tempalte": {
+  "type": "data",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "HTML Email Template"
+ },
+ "humblebrag-this-text": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Humblebrag This Text"
+ },
+ "hyperbolic-corporate-emails": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Hyperbolic Corporate Emails"
+ },
+ "i-failed": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "I Failed"
+ },
+ "impress-the-boss": {
+  "type": "rewrite",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Impress The Boss"
+ },
+ "impressive-job-description": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Impressive Job Description"
+ },
+ "internal-meeting-report-formatter": {
+  "type": "notes",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Internal Meeting Report"
+ },
+ "interview-thank-you": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Interview Thank You"
+ },
+ "inventory-from-speech": {
+  "type": "list",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Inventory From Speech"
+ },
+ "invitation-generator": {
+  "type": "message",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Invitation Generator"
+ },
+ "itinerary": {
+  "type": "document",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Itinerary"
+ },
+ "job-application-response-writer": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Job Application Response Writer"
+ },
+ "job-description": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Job Description"
+ },
+ "journal-entry": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Journal Entry"
+ },
+ "journalistic-style": {
+  "type": "document",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Journalistic Style"
+ },
+ "json-element": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "JSON Element"
+ },
+ "k1-reading-level": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "K1 Reading Level"
+ },
+ "late-night-tv-script": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Late Night TV Script"
+ },
+ "learning-objective": {
+  "type": "document",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Learning Objective"
+ },
+ "light-edits-for-clarity": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": true,
+  "label": "Light Edits for Clarity"
+ },
+ "linkedin-post": {
+  "type": "message",
+  "style": "professional",
+  "language": "en",
+  "featured": true,
+  "label": "LinkedIn Post"
+ },
+ "literary-and-formal": {
+  "type": "rewrite",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Literary And Formal"
+ },
+ "log-format": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Log Format"
+ },
+ "long-social-media-post": {
+  "type": "message",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Long Social Media Post"
+ },
+ "longwinded-messages": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Longwinded messages"
+ },
+ "main-points-with-buillet-points": {
+  "type": "list",
+  "style": "neutral",
+  "language": "en",
+  "featured": true,
+  "label": "Main Points as Bullets"
+ },
+ "marketing-collateral": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Marketing Collateral"
+ },
+ "maximise-formality": {
+  "type": "rewrite",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Maximise Formality"
+ },
+ "medical-problem-documenter": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Medical Problem Documenter"
+ },
+ "meeting-agenda": {
+  "type": "notes",
+  "style": "professional",
+  "language": "en",
+  "featured": true,
+  "label": "Meeting Agenda"
+ },
+ "meeting-debrief": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Meeting Debrief"
+ },
+ "meeting-minutes-external-client-use": {
+  "type": "notes",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Meeting Minutes (External)"
+ },
+ "meeting-minutes-for-internal-use": {
+  "type": "notes",
+  "style": "professional",
+  "language": "en",
+  "featured": true,
+  "label": "Meeting Minutes (Internal)"
+ },
+ "mental-health-journal-entry": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Mental Health Journal Entry"
+ },
+ "minimalist": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Minimalist"
+ },
+ "n8n-workflow-documentation": {
+  "type": "document",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "N8N Workflow Documentation"
+ },
+ "names-to-acronyms": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Names To Acronyms"
+ },
+ "networking-setup-documenter": {
+  "type": "document",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Networking Setup Documenter"
+ },
+ "newsletter": {
+  "type": "document",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Newsletter"
+ },
+ "note-to-self": {
+  "type": "notes",
+  "style": "casual",
+  "language": "en",
+  "featured": true,
+  "label": "Note To Self"
+ },
+ "notes-for-a-meeting": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Notes For A Meeting"
+ },
+ "online-review-generator": {
+  "type": "message",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Online Review Generator"
+ },
+ "op-ed-writer": {
+  "type": "document",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Op-Ed Writer"
+ },
+ "plan-of-action-documenter": {
+  "type": "notes",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Plan of Action Documenter"
+ },
+ "platitude-stuffer": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Platitude Stuffer"
+ },
+ "plot-writer": {
+  "type": "document",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Plot Writer"
+ },
+ "polished-business-email": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Polished Business Email"
+ },
+ "process-document-generator": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Process Document Generator"
+ },
+ "product-description": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Product Description"
+ },
+ "profesesional-materials": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Professional Materials"
+ },
+ "professional-opinion": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Professional Opinion"
+ },
+ "project-plan-generator": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Project Plan Generator"
+ },
+ "pseudobot-text-2": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Pseudobot Text"
+ },
+ "random-all-caps": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Random All Caps"
+ },
+ "random-foreign-words": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Random Foreign Words"
+ },
+ "readme-text": {
+  "type": "document",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "README Text"
+ },
+ "remote-job-application": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Remote Job Application"
+ },
+ "remote-job-pitch": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Remote Job Pitch"
+ },
+ "render-as-icalendar-ics": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Render As ICalendar (.ics)"
+ },
+ "render-as-openapi-compatible-json": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Render As OpenAPI JSON"
+ },
+ "render-as-toml": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Render As TOML"
+ },
+ "request-for-quotation-rfq": {
+  "type": "email",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Request For Quotation (RFQ)"
+ },
+ "resignation-note-writer": {
+  "type": "email",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Resignation Note Writer"
+ },
+ "resume-text": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Resume Text"
+ },
+ "rfp": {
+  "type": "document",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "RFP"
+ },
+ "roster-generator": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Roster Generator"
+ },
+ "rsvp-confirmation": {
+  "type": "email",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "RSVP Confirmation"
+ },
+ "say-nothing-at-length": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Say Nothing At Length"
+ },
+ "screenplay-generator": {
+  "type": "document",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Screenplay Generator"
+ },
+ "shakespearean-emails": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Shakespearean Emails"
+ },
+ "shared-meeting-agenda": {
+  "type": "notes",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Shared Meeting Agenda"
+ },
+ "simplify": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": true,
+  "label": "Simplify"
+ },
+ "situational-report-sitrep": {
+  "type": "document",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Situational Report (SITREP)"
+ },
+ "skillset-documenter": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Skillset Documenter"
+ },
+ "slack-community-intro": {
+  "type": "message",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Slack Community Intro"
+ },
+ "snobby-aristocrat": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Snobby Aristocrat"
+ },
+ "social-media-reply": {
+  "type": "message",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Social Media Reply"
+ },
+ "social-meeting-agenda": {
+  "type": "notes",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Social Meeting Agenda"
+ },
+ "software-research-spec": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Software Research Spec"
+ },
+ "sop-creator": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "SOP Creator"
+ },
+ "speechwriter-on-demand": {
+  "type": "document",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Speechwriter On Demand"
+ },
+ "sql-expression": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "SQL Expression"
+ },
+ "statement-of-belief": {
+  "type": "document",
+  "style": "formal",
+  "language": "en",
+  "featured": false,
+  "label": "Statement Of Belief"
+ },
+ "status-update": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Status Update"
+ },
+ "style-inverter": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Style Inverter"
+ },
+ "system-prompt": {
+  "type": "ai-prompt",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "System Prompt"
+ },
+ "talking-points-generator": {
+  "type": "list",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Talking Points Generator"
+ },
+ "task-planner": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Task Planner"
+ },
+ "task-progress-report-for-own-systems": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Task Progress Report (Own)"
+ },
+ "task-retrospective": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Task Retrospective"
+ },
+ "team-management-email": {
+  "type": "email",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Team Management Email"
+ },
+ "tech-documentation": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Tech Documentation"
+ },
+ "tech-inquiries": {
+  "type": "message",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Tech Inquiries"
+ },
+ "tech-planning-doc": {
+  "type": "ai-prompt",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Tech Planning Doc"
+ },
+ "tech-support-ticket": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Tech Support Ticket"
+ },
+ "technical-documentation": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Technical Documentation"
+ },
+ "teleprompter-text": {
+  "type": "document",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Teleprompter Text"
+ },
+ "template-tony": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Template Tony"
+ },
+ "testimonial-formatter": {
+  "type": "message",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "Testimonial Formatter"
+ },
+ "text-anonymisation-editor": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Text Anonymisation Editor"
+ },
+ "text-to-html": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Text To HTML"
+ },
+ "text-to-image-prompt": {
+  "type": "ai-prompt",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Text To Image Prompt"
+ },
+ "text-to-video-prompt": {
+  "type": "ai-prompt",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Text To Video Prompt"
+ },
+ "therapy-session-prep-doc": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Therapy Session Prep Doc"
+ },
+ "third-to-first-person": {
+  "type": "rewrite",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Third To First Person"
+ },
+ "timesheet-generation": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Timesheet Generation"
+ },
+ "to-do-list-formatter-json": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "To Do List Formatter (JSON)"
+ },
+ "to-do-list-formatter-json-semi-autonomous": {
+  "type": "data",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "To Do List (JSON, Semi-Auto)"
+ },
+ "to-do-list-unstructured": {
+  "type": "list",
+  "style": "neutral",
+  "language": "en",
+  "featured": true,
+  "label": "To Do List (Unstructured)"
+ },
+ "todo-list-document-organise-unstructured": {
+  "type": "list",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Todo List, Organised"
+ },
+ "tweet": {
+  "type": "message",
+  "style": "casual",
+  "language": "en",
+  "featured": true,
+  "label": "Tweet"
+ },
+ "user-context-extractor": {
+  "type": "ai-prompt",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "User Context Extractor"
+ },
+ "victorian": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "Victorian"
+ },
+ "website-page": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Website Page"
+ },
+ "week-planner": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Week Planner"
+ },
+ "wishlist-item-documentor": {
+  "type": "notes",
+  "style": "neutral",
+  "language": "en",
+  "featured": false,
+  "label": "Wishlist Item Documentor"
+ },
+ "working-style-documenter": {
+  "type": "document",
+  "style": "professional",
+  "language": "en",
+  "featured": false,
+  "label": "Working Style Documenter"
+ },
+ "world-weary": {
+  "type": "fun",
+  "style": "playful",
+  "language": "en",
+  "featured": false,
+  "label": "World-Weary"
+ },
+ "youtube-video-description": {
+  "type": "message",
+  "style": "casual",
+  "language": "en",
+  "featured": false,
+  "label": "YouTube Video Description"
+ }
+}

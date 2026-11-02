@@ -45,6 +45,17 @@ def _snapshot(db: Path, dest: Path) -> tuple[dict, sqlite3.Connection]:
         src.backup(out)
     finally:
         src.close()
+    # Shipped data (`builtin_*` tables, e.g. the prompt library, B-82) is not the user's: leave it
+    # out (and its load marker, so a restored file reloads it); the user's edits (`user_*`) stay.
+    try:
+        out.execute("DROP VIEW IF EXISTS transform_prompts")
+        for (name,) in out.execute("SELECT name FROM sqlite_master WHERE type = 'table' "
+                                   "AND substr(name, 1, 8) = 'builtin_'").fetchall():
+            out.execute(f'DROP TABLE "{name}"')
+        out.execute("DELETE FROM meta WHERE key LIKE 'builtin%'")
+        out.commit()
+    except sqlite3.Error:
+        pass
     try:
         r = out.execute("SELECT COUNT(*), COALESCE(SUM(words), 0), MIN(at), MAX(at) FROM dictations").fetchone()
         dev = out.execute("SELECT value FROM meta WHERE key = 'device'").fetchone()

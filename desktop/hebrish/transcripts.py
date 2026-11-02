@@ -47,7 +47,7 @@ from . import config
 SLUG_MAX = 60
 MANIFEST_SCHEMA = 1
 VERSIONS = ("transcript", "raw", "cleaned")
-SUFFIX = {"transcript": "", "raw": ".raw", "cleaned": ".cleaned"}
+SUFFIX = {"transcript": "", "raw": ".raw", "cleaned": ".cleaned", "transformed": ".transformed"}
 UNTITLED = "Transcript"
 
 
@@ -123,11 +123,16 @@ def render(text: str, title: str | None, when: float, meta: dict | None = None,
     lines += [f"# {title.strip() if title and title.strip() else UNTITLED}", "",
               f"## {time.strftime('%A', tm)} {_day(when)}, {time.strftime('%H:%M', tm)}", ""]
     gen, model = meta.get("generator") or "Hebrish", meta.get("model")
-    what = {"raw": "Transcribed", "transcript": "Transcribed", "cleaned": "Cleaned up"}[version]
-    credit = f"*{what} by {gen}" + (f" with {model}" if model and version != "cleaned" else "")
+    what = {"raw": "Transcribed", "transcript": "Transcribed", "cleaned": "Cleaned up",
+            "transformed": "Transformed"}[version]
+    later = version in ("cleaned", "transformed")          # written after the transcript, today
+    credit = f"*{what} by {gen}" + (f" with {model}" if model and not later else "")
     if version == "cleaned" and (extra or {}).get("cleanup_model"):
         credit += f" with {extra['cleanup_model']}"
-    lines += [credit + f" on {_day(time.time() if version == 'cleaned' else when)}.*", "", ""]
+    if version == "transformed" and (extra or {}).get("transform_prompt"):
+        credit += f" ({extra['transform_prompt']})" + (
+            f" with {extra['transform_model']}" if extra.get("transform_model") else "")
+    lines += [credit + f" on {_day(time.time() if later else when)}.*", "", ""]
     return "\n".join(lines) + text.strip() + "\n"
 
 
@@ -167,9 +172,10 @@ def _write_json(path: Path, doc: dict):
     tmp.replace(path)
 
 
-def add_version(md: Path, kind: str, text: str, extra: dict | None = None) -> Path:
-    """Add version `kind` (cleaned) of the transcript saved as `md`: a new file beside it
-    (<stem>.cleaned.md, then -2, …), never overwriting, and an entry in <stem>.json."""
+def add_version(md: Path, kind: str, text: str, extra: dict | None = None, suffix: str | None = None) -> Path:
+    """Add version `kind` (cleaned, transformed) of the transcript saved as `md`: a new file beside
+    it (<stem>.cleaned.md, or <stem><suffix>.md, e.g. .business-email for a transform; then -2, …),
+    never overwriting, and an entry in <stem>.json."""
     md = Path(md)
     man = _manifest_path(md)
     doc = json.loads(man.read_text(encoding="utf-8")) if man.is_file() else {
@@ -180,7 +186,7 @@ def add_version(md: Path, kind: str, text: str, extra: dict | None = None) -> Pa
     except ValueError:
         pass
     meta = {k: doc[k] for k in ("generator", "model", "audio_seconds", "source") if k in doc}
-    base = md.stem + SUFFIX[kind]
+    base = md.stem + (suffix or SUFFIX[kind])
     out, n = md.with_name(base + ".md"), 2
     while out.exists():
         out = md.with_name(f"{base}-{n}.md")

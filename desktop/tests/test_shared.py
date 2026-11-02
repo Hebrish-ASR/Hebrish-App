@@ -232,7 +232,8 @@ def test_transformation_prompts_are_bundled_by_both_apps():
 def test_transformation_prompts_are_well_formed():
     doc = json.load(open(PROMPTS))
     prompts = doc["prompts"]
-    assert doc["schema"] == 1 and doc["count"] == len(prompts) > 0
+    assert doc["schema"] == 2 and doc["count"] == len(prompts) > 0
+    assert all(p["type"] in doc["types"] and p["style"] in doc["styles"] and p["label"] for p in prompts)
     ids = [p["id"] for p in prompts]
     assert len(ids) == len(set(ids)) and all(re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", i) for i in ids)
     assert all(p["name"] and p["prompt"] and p["structured_output"] in (True, False, None) for p in prompts)

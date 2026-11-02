@@ -37,7 +37,9 @@ the time as H2 (transcripts.py). With the title model downloaded (Models → Uti
 on) it writes the title first (titles.py, cut to `title_max_chars`). The transcript's raw text (as
 transcribed, before clean-up and edits) is kept beside it when it differs. *Save cleaned copy*
 runs the chosen clean-up model over the box and saves the result as another version
-(<stem>.cleaned.md), saving the original first if needed; <stem>.json links the versions."""
+(<stem>.cleaned.md), saving the original first if needed; <stem>.json links the versions.
+*Transform…* (B-82, ui/transform.py) rewrites it with a prompt from the library; a result saved
+there becomes another version, <stem>.<prompt-id>.md."""
 
 import threading
 import time
@@ -50,7 +52,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, 
                                QToolButton, QVBoxLayout, QWidget)
 
 from .. import (__version__, audio, cleanup, config, dictionary, disfluency, longform, mics, model_store,
-               paragraphs, titles, transcripts)
+               paragraphs, titles, transcripts, transforms)
 from .icons import line_icon
 from .mics import fill_combo
 from .meter import LevelMeter, verdict
@@ -367,6 +369,7 @@ class TranscribePage(QWidget):
         row = QHBoxLayout()
         for label, fn, name in (("Copy", self._copy, "copy"), ("Save", self._save, "save"),
                                 ("Save cleaned copy", self._clean_copy, "clean_copy"),
+                                ("Transform…", self._transform, "transform"),
                                 ("Clear", self._clear, "clear")):
             btn = QPushButton(label)
             btn.clicked.connect(fn)
@@ -382,6 +385,8 @@ class TranscribePage(QWidget):
         self.btn_clean_copy.setToolTip("Run the clean-up model chosen here over the transcript and save the "
                                        "result as a separate file beside the original, which is kept as it is "
                                        "(saved first if it isn't yet).")
+        self.btn_transform.setToolTip("Rewrite the transcript with a prompt from the library: an email, a "
+                                      "to-do list, meeting minutes, a post … Your transcript isn't changed.")
         row.addStretch(1)
 
         self.words = muted()
@@ -1116,7 +1121,7 @@ class TranscribePage(QWidget):
         t = self.text.toPlainText()
         n = len(t.split())
         self.words.setText(f"{n} word{'s' if n != 1 else ''}" if n else "")
-        for b in (self.btn_copy, self.btn_save, self.btn_clean_copy, self.btn_clear):
+        for b in (self.btn_copy, self.btn_save, self.btn_clean_copy, self.btn_transform, self.btn_clear):
             b.setEnabled(bool(t.strip()) and not (self._saving and b in (self.btn_save, self.btn_clean_copy)))
 
     def _copy(self):
@@ -1204,6 +1209,21 @@ class TranscribePage(QWidget):
         path, r = result
         self.ctl.win.status(f"Cleaned copy saved: {path}" + (
             f" ({r.kept_raw} of {r.chunks} parts kept as transcribed)" if r.kept_raw else ""))
+
+    def _transform(self):
+        """B-82: the prompt library dialog (ui/transform.py) on the text in the box."""
+        from .transform import TransformDialog
+        text = self.text.toPlainText()
+
+        def save_version(out: str, prompt: dict):
+            path, _title = self._save_now(text)      # GUI thread: a title takes a second or two
+            m = transforms.ready()
+            extra = {"transform_prompt": prompt["label"], "transform_prompt_id": prompt["id"],
+                     "transform_model": f"{cleanup.label(m)} {m['version']}" if m else None,
+                     "transform_prompt_edited": True if prompt["prompt"] != prompt.get("original") else None}
+            return transcripts.add_version(path, "transformed", out, extra, suffix="." + prompt["id"])
+
+        TransformDialog(self, self.ctl.history.db, text, save_version).exec()
 
     def _clear(self):
         if QMessageBox.question(self, "Clear transcript", "Clear the text box?") == QMessageBox.Yes:
