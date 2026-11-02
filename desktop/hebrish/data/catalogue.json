@@ -2,7 +2,7 @@
   "_comment": "Model catalogue v2 (schema 2), read by Android 0.7.0+ and desktop 0.6.0+. Builds before those read models.json (schema 1) and reject any other schema, so both files are kept; desktop/tests/test_shared.py checks that every schema-1 model appears here with the same id, repo and manifest_url. Lines are what a model is trained for (Sabich = everything, Jachnun = code-switching only, Shakshuka = streaming); variants are the same line on another base model. A variant is downloadable in an app only if its engine is in that app's supported engines AND its status is 'available'; other variants are listed greyed with runs_on and a card link. What the Models screens show is plain language (2026-10-25): base_label (e.g. Parakeet 0.6B v2 by NVIDIA), hardware, recommendation and runs_on; repo ids, formats and runtimes go in technical (and base_model, repo), shown only under Technical details. Variant ids are permanent (they name the folder models/<id>/); never reuse or rename one. speed and accuracy (1-5) and gradient (0-100) are estimates, the same numbers as hebrish.app/models/choose, not benchmark results; `chooser.rules` is that page's decision list. Protocol: shared/update-protocol.md.",
   "schema": 2,
   "catalogue_v2_url": "https://raw.githubusercontent.com/Hebrish-ASR/Hebrish-App/main/shared/catalogue.json",
-  "recommended": "sabich",
+  "recommended": "sabich-rolling",
   "recommended_by_platform": {
     "_doc": "Desktop builds 0.7.0+ read this before `recommended`. 0.7.0 shipped with Shakshuka here (D-2026-10-22-12); Daniel reversed that the same day (D-2026-10-22-18): Parakeet (Sabich) dictates better, and Shakshuka stays a choice. Android and older desktop builds read only `recommended`.",
     "linux": "sabich",
@@ -55,6 +55,40 @@
       "summary": "The complete model: English with Hebrew words and tech vocabulary: arnona, Kubernetes, 250 shekels.",
       "card": "https://hebrish.app/models/sabich",
       "variants": [
+        {
+          "id": "sabich-rolling",
+          "name": "Sabich (Rolling)",
+          "base_model": "nvidia/parakeet-tdt-0.6b-v2",
+          "base_label": "Parakeet 0.6B v2 by NVIDIA",
+          "size_label": "0.6B",
+          "engine": "sherpa_offline_transducer",
+          "feature_dim": 128,
+          "status": "available",
+          "platforms": [
+            "android",
+            "linux",
+            "windows"
+          ],
+          "devices": [
+            "phone",
+            "desktop"
+          ],
+          "requirements": {
+            "ram_mb": 1500,
+            "gpu": null
+          },
+          "hardware": "Phone or computer, no graphics card needed; about 1.5 GB of memory",
+          "technical": "sherpa-onnx int8 offline transducer on the CPU, about 1.5 GB of RAM, no GPU.",
+          "download_mb": 661,
+          "speed": 3,
+          "accuracy": 4,
+          "gradient": 67,
+          "recommendation": "The newest Sabich, trained on more recordings. Being tested as the default.",
+          "repo": "Hebrish/Sabich-Rolling-sherpa-onnx-int8",
+          "subdir": "",
+          "card": "https://huggingface.co/Hebrish/Sabich-Rolling",
+          "manifest_url": "https://cdn.hebrish.app/models/parakeet-sabich-rolling/latest.json"
+        },
         {
           "id": "sabich",
           "name": "Sabich",

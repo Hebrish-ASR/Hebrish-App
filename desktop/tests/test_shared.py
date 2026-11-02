@@ -83,7 +83,9 @@ def test_schema1_models_match_their_v2_variants():
         for key in ("repo", "subdir", "manifest_url", "version_label", "status"):
             assert m.get(key, "") == v.get(key, ""), (m["id"], key)
         assert v["engine"] == "sherpa_offline_transducer"
-    assert old["recommended"] == v2()["recommended"]
+    # 2026-11-02: schema 1 cannot list Sabich (Rolling), so old builds keep recommending Sabich.
+    assert old["recommended"] in [m["id"] for m in old["models"]]
+    assert old["recommended"] == v2()["recommended"] or v2()["recommended"] == "sabich-rolling"
     assert old["files"] == v2()["engines"]["sherpa_offline_transducer"]["files"]
 
 
@@ -94,12 +96,14 @@ def test_android_offline_fallbacks_are_available_models():
 
 
 def test_hebrish_ships_only_code_switching_lines_and_stock():
-    """Hebrish is the code-switching app: Sabich (everything, recommended, first), Jachnun
+    """Hebrish is the code-switching app: Sabich (everything; Sabich (Rolling) recommended and first), Jachnun
     (code-switching only), Shakshuka (streaming, trained on Sabich's blend) and stock Parakeet last.
     The fine-tunes without Hebrew (Boxty, tech, personal) belong to Parlance
     (danielrosehill/Parlance-Dictation). Schema 1 keeps its three models."""
     assert [ln["id"] for ln in v2()["lines"]] == ["sabich", "jachnun", "shakshuka", "stock"]
-    assert v2()["lines"][0]["variants"][0]["id"] == v2()["recommended"] == "sabich"
+    # Daniel, 2026-11-02: Sabich (Rolling) is the default while he tests it; Sabich stays in the line.
+    assert v2()["lines"][0]["variants"][0]["id"] == v2()["recommended"] == "sabich-rolling"
+    assert "sabich" in [v["id"] for v in v2()["lines"][0]["variants"]]
     assert not any("boxty" in v["id"] or v["id"] in ("tech", "personal") for v in all_variants())
     with open(SHARED_V1) as f:
         assert [m["id"] for m in json.load(f)["models"]] == ["sabich", "codeswitch", "stock"]

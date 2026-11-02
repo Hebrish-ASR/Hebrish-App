@@ -9,6 +9,14 @@ if either app's bundled catalogue drifts from it, or `models.json` from it.
 
 ## Catalogue v2: lines and variants (2026-10-21)
 
+**2026-11-02: `recommended` is `sabich-rolling`** (Daniel: "make this the default model in the app ... I want to use
+it and test it out myself first"). Sabich (Rolling) is Sabich continued from its own weights on more recordings
+(ASR-Training `docs/training.md`, "Sabich (Rolling)"), served from `cdn.hebrish.app/models/parakeet-sabich-rolling/`
+and `Hebrish/Sabich-Rolling-sherpa-onnx-int8`, first in the Sabich line. Sabich stays in the line. Only installs with
+no explicit pick follow `recommended`; schema 1 (`models.json`) cannot list the new variant and keeps `sabich`
+(`test_shared.py` allows that one difference). If Daniel's testing passes, Sabich is retired or Rolling takes
+its place; if not, set `recommended` back to `sabich`.
+
 [`catalogue.json`](catalogue.json) (`schema: 2`) is what **Android 0.7.0+ and desktop 0.6.0+**
 read; they bundle it (Android: gradle `copyCatalogue` into assets; desktop:
 `hebrish/data/catalogue.json`, byte-identical) and re-fetch `catalogue_v2_url` (this file on
