@@ -1,0 +1,11 @@
+Quick update before Erev Shabbat, because this week was a proper balagan.
+
+The arnona website kept throwing a 500 error, and the API was returning malformed JSON, davka on the day the tashlumim were due. I paid at the kupa and got a heshbonit mas kabala.
+
+Then Bituach Leumi wanted an ishur from the kupat cholim. I logged into the Maccabi app with OAuth, downloaded the PDF, and the upload timed out twice. Third time, beseder.
+
+At work, tachles: a pod in the Kubernetes cluster had a memory leak, so I added a limit in the Helm chart and a Grafana alert. I also exported the speech model to ONNX, and latency on the CPU is sababa.
+
+As an osek patur, I wrote a script that pulls invoices from Gmail into a CSV for Mas Hachnasa.
+
+The mazgan is leaking, and the vaad bayit says it's the kablan's problem. Yalla. Shabbat shalom.

@@ -1,0 +1,9 @@
+Quick engineering update. We moved staging from Docker Compose to Kubernetes on Tuesday. The ingress controller was misconfigured, so TLS certificates weren't renewing and Let's Encrypt started rate limiting us. We fixed the annotation and added a Prometheus alert.
+
+PostgreSQL CPU was spiking every night at two a.m. A cron job was doing a full table scan, so we added a composite index, and the query went from ninety seconds to under two hundred milliseconds.
+
+We shipped version two of the webhooks: payloads are signed with HMAC SHA-256, and retries use exponential backoff with a dead letter queue in Redis.
+
+The new speech model finished training on an A100. We exported it to ONNX, quantized it to int8, and it runs in real time on a laptop CPU. Next week we benchmark it against Whisper and push it to Hugging Face.
+
+Finally, GitHub Actions now caches dependencies, which cut three minutes off every pipeline. That's it, questions in Slack.

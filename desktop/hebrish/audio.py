@@ -34,6 +34,20 @@ def input_devices() -> list[str]:
 
 
 VOICE_DIR = Path(__file__).resolve().parent / "data" / "voice"
+# Bundled test recordings (2026-11-02), so anyone can try the model without a recording of their
+# own. The 1-minute ones are read from the script beside them (<id>.txt: the reference
+# transcript); the long one is a real 67-minute voice note (project update, 2026-10-22, public in
+# planning/voice-notes/). Also published as a validation set on Hugging Face (see maintaining.md).
+SAMPLES_DIR = Path(__file__).resolve().parent / "data" / "samples"
+SAMPLES = (("test-codeswitch.flac", "Code-switching (1 min)"),
+           ("test-tech.flac", "Tech vocabulary (1 min)"),
+           ("test-mixed.flac", "Code-switching and tech (1 min)"),
+           ("test.mp3", "Long voice note (67 min)"))
+
+
+def samples() -> list[tuple[Path, str]]:
+    """The bundled samples this install actually has (a build may leave them out)."""
+    return [(SAMPLES_DIR / f, label) for f, label in SAMPLES if (SAMPLES_DIR / f).is_file()]
 VOICE_PROMPTS = ("recording", "paused", "resumed", "transcribing", "discarded", "retake",
                  "copied", "no_speech", "failed")      # data/voice/<voice>/<key>.wav
 # Character voices (0.7.0), made by scripts/make_voice_characters.py. Config `voice`.

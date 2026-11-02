@@ -1793,6 +1793,35 @@ Not changed: the mic paths already ask for the model's format, so no extra stage
 between "Transcribe" and inference. Not tried: loudness normalisation before inference (a
 separate question from format matching).
 
+## Try a sample (unreleased, 2026-11-02)
+
+Daniel (2026-11-02): ship test recordings so anyone can try the model without finding a recording
+of their own. Transcribe tab, **Try a sample** (a menu next to "Open an audio file…"), hidden when
+a build has none. List: `audio.SAMPLES`, files in `hebrish/data/samples/` (package data, so the
+.deb, AppImage and Windows build all carry them):
+
+| File | What | Size |
+| --- | --- | --- |
+| `test-codeswitch.flac` + `.txt` | 1-minute read script, English with romanized Hebrew terms | 0.96 MB |
+| `test-tech.flac` + `.txt` | 1-minute read script, tech vocabulary | 1.09 MB |
+| `test-mixed.flac` + `.txt` | 1-minute read script, both | 0.99 MB |
+| `test.mp3` | Real 67-minute voice note (project update 2026-10-22, `planning/voice-notes/2026-10/`), 16 kHz mono 32 kbps MP3 | 16.1 MB |
+
+- The `.txt` beside each short take is the exact script read, so it is the reference transcript.
+  The three are scripts `cs-01`, `tech-01`, `mixed-01` of validation set v1.0
+  (`Hebrish/Hebrish-Validation`, recorded through the capture app, Voice-Training-Recorder).
+- Short takes: recorded 2026-11-02 on the laptop's internal mic in Chrome with echo cancellation,
+  noise suppression and AGC off (PipeWire source volume 23%, about -38 dB; at 50% the room alone
+  reached full scale), stored lossless (FLAC 16 kHz mono).
+- Long take format, measured 2026-11-02 (Sabich v2.4, revision d0a6f111c670, 5-minute excerpt
+  10:00-15:00, word-level difference from the transcript of the original 48 kHz Opus): MP3 24 kbps
+  13.0%, 32 kbps 6.3%, 48 kbps 7.3%. Any MP3 re-encode moves the transcript a little; 32 kbps was
+  the smallest without the extra 24 kbps loss. Not tried: shipping the original Opus.
+- Sabich v2.4 on the short takes (normalised WER against the script, 2026-11-02, this laptop):
+  codeswitch 3.2% (Hapoalim, tlush, nekudot zikui, Hashana spelling), tech 9.9% (mostly numbers
+  as digits; real misses PostgreSQL, dead letter queue), mixed 1.3% (heshbonit, tachles). A
+  check, not a benchmark result.
+
 ## Testing
 
 - `.venv/bin/python -m pytest tests`: offline tests of the update logic, the hotkey state

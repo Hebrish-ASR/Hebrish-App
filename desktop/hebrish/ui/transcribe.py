@@ -47,7 +47,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QEvent, QObject, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QTextCursor
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel,
+from PySide6.QtWidgets import (QApplication, QMenu, QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel,
                                QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider,
                                QToolButton, QVBoxLayout, QWidget)
 
@@ -303,6 +303,17 @@ class TranscribePage(QWidget):
         self.drop.clicked.connect(self._open)
         row.addWidget(self.drop)
         row.addWidget(muted("or drop one on this tab"), 1)
+        # Bundled test recordings (2026-11-02): hidden if a build left them out
+        self.btn_sample = QPushButton("Try a sample")
+        self.btn_sample.setToolTip("Transcribe a recording that comes with the app: three 1-minute "
+                                   "read scripts, or a real 67-minute voice note to see how long "
+                                   "recordings run on this computer")
+        menu = QMenu(self.btn_sample)
+        for path, label in audio.samples():
+            menu.addAction(label, lambda p=str(path): self.transcribe_file(p))
+        self.btn_sample.setMenu(menu)
+        self.btn_sample.setVisible(bool(menu.actions()))
+        row.addWidget(self.btn_sample)
         b.addLayout(row)
         self.btn_open = self.drop
         lay.addWidget(box)
