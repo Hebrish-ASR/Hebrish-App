@@ -42,6 +42,7 @@ class Ctl(Controller):
         self._guard, self._unfinished, self._diverted, self._late = threading.Lock(), set(), set(), {}
         self._enter_held, self._hold_timer = False, None
         self._typed, self._silence = False, auto_enter.SilenceClock()     # Press Enter after silence
+        self._stopped_by_send, self._maint, self._maint_ready = False, {}, {}   # R-2026-11-02-2/-2
         self.hotkeys = SimpleNamespace(holding=False, hold_send=lambda on: False)
         self.sig = SimpleNamespace(take_began=SimpleNamespace(emit=lambda: self.out.append("|")),
                                    piece=SimpleNamespace(emit=lambda t: None),

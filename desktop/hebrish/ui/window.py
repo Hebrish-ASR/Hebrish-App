@@ -1670,6 +1670,12 @@ class MainWindow(QMainWindow):
         each.setToolTip("Otherwise takes collect, a blank line between them. Every take is in History either way.")
         b.addWidget(each)
         b.addWidget(self._check("keep_history", "Keep a history of every transcript (History tab)", self._on_history_setting))
+        maint = self._check("maintainer_mode", "Maintainer mode: keep each take's audio and seam log")
+        maint.setToolTip("For improving Hebrish: each Voice Typing take's recording (FLAC, about 1 MB a "
+                         "minute) and how it was cut and joined are kept beside its History row, in "
+                         "maintainer/ in the app's data folder. Kept 14 days, at most 3 GB. Deleting all "
+                         "History deletes these too. Stays on this computer. Needs the history on.")
+        b.addWidget(maint)
         lay.addWidget(box)
 
         self.mics_card = MicsCard(self.cfg, self.mics_changed)
@@ -1698,6 +1704,12 @@ class MainWindow(QMainWindow):
                          "briefly taken over to do this; everything else you type passes straight "
                          "through.")
         form.addRow("Send pressed early", guard)
+        stops = self._check("enter_stops", "The send key stops recording")
+        stops.setToolTip("While Voice Typing with Insert as you go, pressing the send key after text "
+                         "was typed stops the recording, so the mic isn't left on after you send. Words "
+                         "still coming follow the setting above. Off by default: in an editor, Enter "
+                         "while dictating is a new line.")
+        form.addRow("", stops)
         form.addRow("", self._auto_enter_row())
         b.addLayout(form)
         b.addWidget(muted("Stop and send stops recording, waits for the last words to be "

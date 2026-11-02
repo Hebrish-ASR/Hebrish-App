@@ -283,13 +283,64 @@ def hold_stop(text: str, pause_s: float | None) -> bool:
     return pause_s is not None and text.endswith(".") and not text.endswith("..")
 
 
-def after_held_stop(text: str, stop: bool | None = None) -> str:
-    """What to paste for text when the previous piece's full stop (and space) was held back.
-    stop: whether the model, decoding the end of the previous piece together with this one, ended
-    it with a sentence mark (Engine.transcribe_after); None when it had no context, and then the
-    CONTINUES rule decides, as in 0.7.1-0.7.5."""
+def held_mark(text: str, pause_s: float | None) -> str:
+    """The sentence mark to hold back at the end of a live piece: ".", "?" or "!", or "" (the last
+    piece, or no mark). 1.018 (R-2026-11-02-4): up to 1.017 only "." was held, so a "?" the piece
+    guessed without hearing what followed stayed even when the sentence went on ("our inference?
+    code as we're running it", Daniel's history 2026-11-02)."""
+    if pause_s is None or not text or text.endswith(".."):
+        return ""
+    return text[-1] if text[-1] in HOLD_MARKS else ""
+
+
+HOLD_MARKS = ".?!"
+SEAM_MARKS = ",;:.?!"
+
+
+def seam_join(text: str, prev: str, held: str, stop: bool | None) -> tuple[str, str, str]:
+    """How a live piece joins the one before it (1.018, R-2026-11-02-4). Returns (lead, text, add):
+    paste lead + text; `add` goes on the end of the previous piece (History's copy of it).
+    prev: the previous piece as pasted (no trailing space: since 1.018 the space after a piece is
+    held back too, and pasted here as part of lead); held: the mark held back at its end ("" none);
+    stop: Engine.transcribe_after's flag.
+
+    A piece decoded after context can start with the mark the model put at the seam (", and the
+    receipt"): seam_split keeps it with the words heard after the cut, where it belongs. Up to 1.017
+    the space after the previous piece had already been pasted, so it came out "form , and", and
+    after a piece that ended in its own mark, "form, , and" (5.5 and 0.6 per 1k words in segmented
+    takes, 2026-11-02). Now the seam's mark goes straight after the previous word, and when that
+    word already has one, the piece's is dropped."""
+    m = text[:1]
+    if m in SEAM_MARKS:
+        rest = text.lstrip(SEAM_MARKS + " ")
+        if not rest:
+            return "", "", ""
+        if held:
+            if m in HOLD_MARKS:                       # the boundary is confirmed: keep the piece's own mark
+                return held + " ", rest[:1].upper() + rest[1:], held
+            return m + " ", rest, m                    # the model heard a clause go on: its comma wins
+        if prev[-1:] in SEAM_MARKS:
+            return " ", rest, ""
+        if m in HOLD_MARKS:
+            return m + " ", rest[:1].upper() + rest[1:], m
+        return m + " ", rest, m
+    if held:
+        seam = after_held_stop(text, stop, held)
+        body = seam.lstrip(held + " ")
+        lead = seam[: len(seam) - len(body)]
+        return lead, body, held if lead.startswith(held) else ""
+    return " ", text, ""
+
+
+def after_held_stop(text: str, stop: bool | None = None, mark: str = ".") -> str:
+    """What to paste for text when the previous piece's sentence mark `mark` (and space) was held
+    back. stop: whether the model, decoding the end of the previous piece together with this one,
+    ended it with a sentence mark (Engine.transcribe_after); None when it had no context, and then
+    the CONTINUES rule decides for a full stop, as in 0.7.1-0.7.5, and a "?" or "!" is kept."""
     if stop is not None:
-        return ". " + text[:1].upper() + text[1:] if stop else " " + text
+        return mark + " " + text[:1].upper() + text[1:] if stop else " " + text
+    if mark != ".":
+        return mark + " " + text
     first = text.split(" ", 1)[0]
     if first[:1].islower():                 # the model already heard it as a continuation
         return " " + text

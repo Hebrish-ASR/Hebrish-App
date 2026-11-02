@@ -228,14 +228,16 @@ def test_finish_releases_the_rest():
 
 
 def _run_worker(texts, jobs, cfg=None, enter_at=None, hold=False, late=None, sent=None, send_take=0,
-                heard=0, keys=False):
+                heard=0, keys=False, stops=None, maint=None):
     """Drive Controller._worker with a scripted Parakeet engine; return (pastes, transcript).
     Skipped where PySide6 isn't installed (Linux CI), as in test_overlay.
     enter_at: the user's send key is pressed while the decode call with that index runs (Enter
     guard), held by the key source if `hold`; words it keeps back go to `late`, presses of a
     chord (Stop and send, a replayed Enter) to `sent`. A job ("ENTER", False) is Press Enter after
     silence's marker, queued with the silence clock at 0; `heard` is where the clock is when it
-    runs (not 0: speech since). keys: key presses also go in the pastes, as ("KEY", chord)."""
+    runs (not 0: speech since). keys: key presses also go in the pastes, as ("KEY", chord).
+    stops: sig.stop emits are counted here (Enter stops recording). maint: filled with the take's
+    maintainer-mode record (cfg maintainer_mode)."""
     import pytest
     pytest.importorskip("PySide6")
     import queue
@@ -249,7 +251,10 @@ def _run_worker(texts, jobs, cfg=None, enter_at=None, hold=False, late=None, sen
     sent = sent if sent is not None else []
     sig = SimpleNamespace(piece=SimpleNamespace(emit=lambda t: None), take_began=SimpleNamespace(emit=lambda: None),
                           late=SimpleNamespace(emit=late.append),
-                          transcribed=SimpleNamespace(emit=lambda t, e, a: (pastes.append(("DONE", t)), done.set())))
+                          stop=SimpleNamespace(emit=lambda: stops is not None and stops.append(1)),
+                          transcribed=SimpleNamespace(emit=lambda t, e, a: (
+                              maint is not None and maint.update(ctl._maint_ready.get(id(a), {})),
+                              pastes.append(("DONE", t)), done.set())))
     it = iter(texts)
     calls = iter(range(10_000))
 
@@ -263,15 +268,16 @@ def _run_worker(texts, jobs, cfg=None, enter_at=None, hold=False, late=None, sen
         engine=SimpleNamespace(streaming=False, transcribe_after=decode),
         cfg={"vad": False, "trailing_space": True, "all_caps": False, "out_cursor": True, "out_clipboard": False,
              "out_window": False, "paste_chord": "ctrl+v", "send_chord": "enter", "enter_guard": "late",
-             "auto_enter": False, **(cfg or {})},
+             "auto_enter": False, "enter_stops": False, "maintainer_mode": False, **(cfg or {})},
         sig=sig, inserter=SimpleNamespace(insert=lambda t, how, chord: pastes.append(t),
                                           press=lambda c: (sent.append(c), keys and pastes.append(("KEY", c)))),
         hotkeys=SimpleNamespace(holding=False, hold_send=lambda on: False),
         _take=1, _dropped=set(), _send_take=send_take, _jobs=queue.Queue(), _pasted_at=0.0,
         _guard=threading.Lock(), _unfinished={1}, _diverted=set(), _late={}, _enter_held=False, _hold_timer=None,
-        _typed=False, state="recording", recorder=SimpleNamespace(paused=False), _silence=SimpleNamespace(heard=heard))
+        _typed=False, state="recording", recorder=SimpleNamespace(paused=False), _silence=SimpleNamespace(heard=heard),
+        _stopped_by_send=False, _maint={}, _maint_ready={})
     for name in ("_show", "_insert", "_out", "_finish_take", "_sends", "_send", "_release_hold", "_replay_enter",
-                 "_auto_enter"):
+                 "_auto_enter", "_maint_end"):
         setattr(ctl, name, getattr(Controller, name).__get__(ctl))
     for pause, final in jobs:
         if pause == "ENTER":
@@ -352,7 +358,8 @@ def test_worker_context_decides_the_seam():
         ["The hardest part is.", ("is the room noise?", False), "That is a sentence.",
          ("So we stop here.", True), ("Then I.", True), ("I think it works.", False), ""],
         [(1.4, False), (0.7, False), (1.2, False), (0.8, False), (2.0, False), (0.7, False), (None, True)])
-    assert pastes == ["The hardest part is", " is the room noise? ", "That is a sentence",
+    # 1.018: the "?" is held back too; with no context for the next piece it stays
+    assert pastes == ["The hardest part is", " is the room noise", "? That is a sentence",
                       ". So we stop here", ". Then I", " I think it works", ". "]
     assert text == ("The hardest part is is the room noise? That is a sentence. So we stop here. "
                     "Then I I think it works.")
@@ -465,3 +472,94 @@ def test_enter_after_silence_once_per_batch():
                 [(0.7, False), ("ENTER", False), ("ENTER", False), (0.7, False), ("ENTER", False), (None, True)],
                 ON, sent=sent)
     assert sent == ["enter", "enter"]                   # the second marker had nothing new to send
+
+
+def test_enter_while_recording_stops_the_take():
+    # R-2026-11-02-3: text of the take was pasted, the user pressed Enter while still recording:
+    # the take is stopped, and what is decoded after the Enter is kept for Paste (enter_guard late)
+    late, stops = [], []
+    pastes, text = _run_worker(["Fix the seam rule.", "Then rerun it."],
+                               [(0.7, False), (None, True)], enter_at=1, late=late, stops=stops,
+                               cfg={"enter_stops": True})
+    assert stops == [1]
+    assert pastes == ["Fix the seam rule"]
+    assert late == ["then rerun it."]
+    assert text == "Fix the seam rule then rerun it."
+
+
+def test_enter_while_recording_off_by_default():
+    stops = []
+    _run_worker(["Fix the seam rule.", "Then rerun it."], [(0.7, False), (None, True)], enter_at=1, stops=stops)
+    assert stops == []
+
+
+def test_enter_with_nothing_typed_yet_does_not_stop():
+    # an Enter before any text of this take was pasted is not a send of this take
+    stops = []
+    _run_worker(["Fix the seam rule."], [(None, True)], enter_at=0, stops=stops, cfg={"enter_stops": True})
+    assert stops == []
+
+
+def test_maintainer_mode_logs_pieces_and_pastes():
+    # R-2026-11-02-2: each piece's cut, context, the model's stop at the seam, raw and joined
+    # text, and every paste, in order
+    maint = {}
+    pastes, text = _run_worker(["Send the arnona form.", ("and the receipt.", False)],
+                               [(0.7, False), (None, True)], maint=maint, cfg={"maintainer_mode": True})
+    assert text == "Send the arnona form and the receipt."
+    p0, p1 = maint["pieces"]
+    assert (p0["start_s"], p0["pause_s"], p0["context"], p0["held_out"]) == (0.0, 0.7, False, ".")
+    assert (p1["start_s"], p1["pause_s"], p1["context"], p1["stop"], p1["held_in"]) == (1.0, None, True, False, ".")
+    assert p1["raw"] == "and the receipt." and p1["lead"] == " "
+    assert [x["text"] for x in maint["pasted"]] == pastes
+    assert not any(x["late"] for x in maint["pasted"])
+
+
+def test_maintainer_mode_off_keeps_nothing():
+    maint = {}
+    _run_worker(["Send the arnona form."], [(None, True)], maint=maint)
+    assert maint == {}
+
+
+def test_seam_mark_goes_after_the_previous_word():
+    # R-2026-11-02-4: a piece decoded after context starts with the model's comma at the seam;
+    # up to 1.017 it was pasted after the space ("form , and the receipt")
+    pastes, text = _run_worker(["Send the arnona form", (", and the receipt.", False)],
+                               [(0.7, False), (None, True)])
+    assert pastes == ["Send the arnona form", ", and the receipt. "]
+    assert text == "Send the arnona form, and the receipt."
+
+
+def test_seam_mark_dropped_after_the_previous_mark():
+    # "contact, , we can": the previous piece already ended in a comma
+    pastes, text = _run_worker(["The best points of contact,", (", we can use it.", False)],
+                               [(0.7, False), (None, True)])
+    assert pastes == ["The best points of contact,", " we can use it. "]
+    assert text == "The best points of contact, we can use it."
+
+
+def test_question_mark_dropped_when_the_sentence_goes_on():
+    # "our inference? code as we're running it": the model, hearing what followed, saw no stop
+    pastes, text = _run_worker(["Is there anything about our inference?", ("code as we run it.", False)],
+                               [(0.7, False), (None, True)])
+    assert pastes == ["Is there anything about our inference", " code as we run it. "]
+    assert text == "Is there anything about our inference code as we run it."
+
+
+def test_question_mark_kept_at_a_real_boundary():
+    pastes, text = _run_worker(["Is it working?", ("then we ship.", True)], [(1.2, False), (None, True)])
+    assert pastes == ["Is it working", "? Then we ship. "]
+    assert text == "Is it working? Then we ship."
+
+
+def test_seam_join_cases():
+    from hebrish.engine import held_mark, seam_join
+    assert seam_join("and more", "word", "", None) == (" ", "and more", "")
+    assert seam_join(", and more", "word", "", False) == (", ", "and more", ",")
+    assert seam_join(", and more", "word,", "", False) == (" ", "and more", "")
+    assert seam_join(". and more", "word", "", None) == (". ", "And more", ".")
+    assert seam_join(", and more", "word", ".", False) == (", ", "and more", ",")   # comma beats the held stop
+    assert seam_join(". so more", "word", "?", True) == ("? ", "So more", "?")
+    assert seam_join(",", "word", "", None) == ("", "", "")
+    assert (held_mark("Done?", 0.7), held_mark("Done!", 0.7), held_mark("Done...", 0.7),
+            held_mark("Done?", None), held_mark("Done", 0.7)) == ("?", "!", "", "", "")

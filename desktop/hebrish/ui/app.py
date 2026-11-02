@@ -22,10 +22,10 @@ from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QIcon, QPalett
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from .. import __version__, app_update, audio, auto_enter, autostart, dictionary, disfluency, engine, local_api, mics, model_store, vad
+from .. import __version__, app_update, audio, auto_enter, autostart, dictionary, disfluency, engine, local_api, maintainer, mics, model_store, vad
 from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
-from ..engine import REF_S, Engine, after_held_stop, hold_stop, live_split
+from ..engine import REF_S, Engine, held_mark, live_split, seam_join
 from ..history import History, maintain
 from ..hotkey import make_listener
 from ..inserter import copy_to_clipboard, make_inserter
@@ -209,6 +209,13 @@ class Controller(QObject):
         # pasted since the last Enter (ours or the user's send key), and the take's silence so far.
         self._typed = False
         self._silence = auto_enter.SilenceClock()
+        # Enter stops recording (R-2026-11-02-3): the stop() the send key asked for (no Enter hold:
+        # the Enter has already gone through).
+        self._stopped_by_send = False
+        # Maintainer mode (R-2026-11-02-2, maintainer.py): per take, its pieces and pastes (decode
+        # thread); at the take's end the record is keyed by id() of the samples _done receives.
+        self._maint: dict[int, dict] = {}
+        self._maint_ready: dict[int, dict] = {}
         threading.Thread(target=self._worker, daemon=True, name="decode").start()
         self._live_timer = QTimer(self, interval=500, timeout=self._live_tick)
 
@@ -287,6 +294,7 @@ class Controller(QObject):
             return
         self._take += 1
         self._typed = False
+        self._stopped_by_send = False
         self._silence.reset(0)
         self.recorder.mute(self.cue(cue) + CUE_MARGIN_S)
         self.set_state("recording")
@@ -434,7 +442,18 @@ class Controller(QObject):
     def _send_pressed(self, held: bool):
         """The user's send key (key thread). Takes still to finish keep their remaining words
         out of whatever the Enter just sent; held (hold mode), the Enter waits for them."""
-        self._typed = False               # Press Enter after silence: this Enter sent what was typed
+        typed, self._typed = self._typed, False   # Press Enter after silence: this Enter sent what was typed
+        if (self.cfg["enter_stops"] and typed and self.state == "recording" and self.cfg["out_cursor"]
+                and not self.recorder.paused):
+            # Enter stops recording (R-2026-11-02-3): text of this take was pasted and the user sent
+            # it, so the take is over. Its words still to come are kept out of the next message now
+            # (enter_guard), not only from the stop, which runs on the GUI thread a moment later.
+            log.info("send key while recording: stopping take %d", self._take)
+            with self._guard:
+                self._stopped_by_send = True
+                if self.cfg["enter_guard"] != "off":
+                    self._diverted.add(self._take)
+            self.sig.stop.emit()
         if self.cfg["enter_guard"] == "off" or not self.cfg["out_cursor"]:
             return
         with self._guard:
@@ -484,7 +503,10 @@ class Controller(QObject):
     def _out(self, job, text):
         """A piece leaving the app (decode thread): kept back if the Enter guard diverted its take."""
         with self._guard:
-            if job in self._diverted:
+            late = job in self._diverted
+            if self.cfg.get("maintainer_mode") and job in self._maint:
+                self._maint[job]["pasted"].append({"text": text, "late": late})
+            if late:
                 self._late.setdefault(job, []).append(text)
                 return
         if self._insert(text) and job == self._take and text.strip():
@@ -578,7 +600,9 @@ class Controller(QObject):
         self.pending += 1
         with self._guard:
             self._unfinished.add(self._take)
-        self._hold_send()
+            by_send, self._stopped_by_send = self._stopped_by_send, False
+        if not by_send:                   # stopped by the send key: that Enter has already gone
+            self._hold_send()
         self.cue("transcribing")
         self.set_state("busy")
         self._jobs.put((self._take, samples, True, None))
@@ -617,16 +641,16 @@ class Controller(QObject):
                 # decoded without that piece as context: it starts the next message.
                 if job == take and job not in self._dropped:
                     if held and parts:
-                        parts[-1] += "."
-                        self._show(out("."))
+                        parts[-1] += held
+                        self._show(out(held))
                         if self._typed:       # not after the user's own Enter: "." alone would be sent
-                            self._out(job, out("."))
-                    held, ctx, fresh = False, None, True
+                            self._out(job, out(held))
+                    held, gap, ctx, fresh = "", False, None, True
                     self._auto_enter(job, pause)
                 continue
             if job != take:
-                take, parts, stream, heard_audio, held, ctx = job, [], None, [], False, None
-                fresh = False
+                take, parts, stream, heard_audio, held, ctx = job, [], None, [], "", None
+                fresh, gap = False, False
                 if job not in self._dropped:
                     self.sig.take_began.emit()
                 # ALL CAPS (0.7.2, Daniel 2026-10-22, "just for fun"): applied only to what is pasted
@@ -641,7 +665,13 @@ class Controller(QObject):
                 except Exception:
                     log.exception("couldn't read the personal dictionary")
                     fix = str
+                if self.cfg.get("maintainer_mode") and job not in self._dropped:
+                    with self._guard:
+                        self._maint[job] = {"pieces": [], "pasted": []}
+            start_s = sum(len(a) for a in heard_audio) / audio.SAMPLE_RATE
             heard_audio.append(samples)
+            mlog = self._maint.get(job)
+            t0, held_in, ctx_used = time.monotonic(), held, ctx is not None
             whole_take = (lambda: np.concatenate(heard_audio)) if final else None
             try:
                 live = job not in self._dropped
@@ -650,6 +680,9 @@ class Controller(QObject):
                     # text exactly (they carry their own spaces), so nothing is added between them.
                     stream = stream or self.engine.live(self.cfg["stream_release"])
                     text = stream.finish(samples) if final else stream.feed(samples)
+                    if mlog is not None:
+                        mlog["pieces"].append({"start_s": round(start_s, 3), "len_s": round(len(samples) / audio.SAMPLE_RATE, 3),
+                                               "pause_s": pause, "raw": text, "decode_s": round(time.monotonic() - t0, 3)})
                     space = " " if final and self.cfg["trailing_space"] else ""
                     if text:
                         text = fix(disfluency.chop(text, "".join(parts[-1:])))   # whole words with their own spaces; stream.sent keeps the raw text
@@ -666,54 +699,88 @@ class Controller(QObject):
                     if final:
                         whole = "".join(parts).strip()
                         heard = whole or len(samples) < audio.SAMPLE_RATE // 2
-                        self.sig.transcribed.emit(whole, None if heard else NO_SPEECH, whole_take())
+                        self.sig.transcribed.emit(whole, None if heard else NO_SPEECH, self._maint_end(job, whole_take()))
                     continue
                 # 0.7.6: each piece is decoded after the end of the one before it (engine.CONTEXT_S),
                 # unless that one was cut without a pause (a forced cut may split a word)
                 ref = _before(heard_audio, REF_S * audio.SAMPLE_RATE)
                 text, stop = (self.engine.transcribe_after(samples, ctx, vad=self.cfg["vad"], ref=ref)
                               if live else ("", None))
+                raw, decode_s = text, time.monotonic() - t0
                 if final:
                     log.info("last piece: %.1f s of audio, %d words", len(samples) / audio.SAMPLE_RATE,
                              len(text.split()))
                 # 1.001: fillers out first, 1.007 repeats too (../shared/disfluencies.md); the piece
                 # before (its held full stop back on) catches a repeat across the seam
-                text = disfluency.chop(text, parts[-1] + ("." if held else "") if parts else "")
+                text = disfluency.chop(text, parts[-1] + held if parts else "")
                 ctx = samples if pause else None
                 end = " " if self.cfg["trailing_space"] else ""
                 lead = ""
-                if text and held:
-                    # the previous piece's full stop and space were held back (engine.hold_stop)
-                    seam = after_held_stop(text, stop)
-                    text = seam.lstrip(". ")
-                    lead = seam[: len(seam) - len(text)]
-                    if lead.startswith("."):
-                        parts[-1] += "."
+                if text and parts and (held or gap):
+                    # 1.018 (R-2026-11-02-4): the previous piece's sentence mark (held) or the space
+                    # after it (gap) was held back; engine.seam_join decides what goes between
+                    lead, text, add = seam_join(text, parts[-1], held, stop)
+                    if add:
+                        parts[-1] += add
                 elif held and final:
-                    lead, parts[-1] = "." + end, parts[-1] + "."
+                    lead, parts[-1] = held + end, parts[-1] + held
                     self._show(out(lead))
                     self._out(job, out(lead))
+                elif gap and final and end:
+                    self._show(out(end))
+                    self._out(job, out(end))
                 if text:
                     fresh = False
-                    held = not final and hold_stop(text, pause)
+                    held = "" if final else held_mark(text, pause)
                     text = fix(text[:-1] if held else text)
                     parts.append(text)
                     self._show(out(lead + text))
-                    space = "" if held else " " if not final else end
-                    self._out(job, out(lead + text + space))
+                    self._out(job, out(lead + text + (end if final else "")))
+                    gap = not final and not held
+                if mlog is not None:
+                    mlog["pieces"].append({
+                        "start_s": round(start_s, 3), "len_s": round(len(samples) / audio.SAMPLE_RATE, 3),
+                        "pause_s": None if final else pause, "context": ctx_used, "stop": stop, "raw": raw,
+                        "text": text, "lead": lead, "held_in": held_in, "held_out": held, "decode_s": round(decode_s, 3)})
                 if final and live and parts and job == self._send_take and self._sends(job):
                     self._send()
                 if final:
                     heard = parts or len(samples) < audio.SAMPLE_RATE // 2 or not live
-                    self.sig.transcribed.emit(" ".join(parts), None if heard else NO_SPEECH, whole_take())
+                    self.sig.transcribed.emit(" ".join(parts), None if heard else NO_SPEECH, self._maint_end(job, whole_take()))
             except Exception as e:
                 if final:
+                    with self._guard:
+                        self._maint.pop(job, None)
                     self.sig.transcribed.emit("".join(parts).strip() if stream else " ".join(parts), e, None)
                 else:
                     log.exception("live piece failed")
             finally:
                 if final:
                     self._finish_take(job)
+
+    # -- Maintainer mode (R-2026-11-02-2) ---------------------------------------------
+    def _maint_end(self, job, samples):
+        """The take's last piece is decoded (decode thread): file its seam log under id(samples),
+        which _done receives with the text. Returns samples."""
+        with self._guard:
+            rec = self._maint.pop(job, None)
+            if rec is not None and samples is not None:
+                self._maint_ready[id(samples)] = rec
+        return samples
+
+    def _maint_save(self, rid, samples):
+        """After the take's History row exists (GUI thread): audio and seam log to maintainer/."""
+        with self._guard:
+            rec = self._maint_ready.pop(id(samples), None) if samples is not None else None
+        if rec is None or not rid or not self.cfg["maintainer_mode"]:
+            return
+        try:
+            rec["decode"] = self._decode_info("dictate")
+            maintainer.save(rid, samples, rec)
+            maintainer.prune(self.cfg["maintainer_keep_days"] or maintainer.KEEP_DAYS,
+                             self.cfg["maintainer_max_gb"] or maintainer.MAX_GB)
+        except Exception:
+            log.exception("maintainer mode: couldn't save take %s", rid)
 
     def _show(self, text):
         """A piece for the Dictate tab's text box, when that output is on (decode thread)."""
@@ -800,7 +867,10 @@ class Controller(QObject):
             self.last_text = text.upper() if self.cfg["all_caps"] else text
             if self.cfg["out_cursor"] and self.cfg["detect_no_field"]:
                 self._check_field(self.last_text)
-            self.remember(text, samples)
+            self._maint_save(self.remember(text, samples), samples)
+        elif samples is not None:
+            with self._guard:
+                self._maint_ready.pop(id(samples), None)
         if self.state != "recording":
             self.set_state("busy" if self.pending else "idle")
         if self.reload_pending and self.state == "idle":
@@ -854,6 +924,7 @@ class Controller(QObject):
     def clear_history(self):
         try:
             self.history.clear()
+            maintainer.clear()        # maintainer mode's audio and seam logs go with the history
         except Exception as e:
             log.exception("clearing the history failed")
             self.win.banner(f"Couldn't clear the history: {e}")

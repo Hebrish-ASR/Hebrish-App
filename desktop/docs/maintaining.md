@@ -2138,3 +2138,72 @@ Decision D-2026-11-02-01.
 - **Verified:** unit tests (`tests/test_transforms.py`, Utilities row in `test_cleanup.py`), the
   dialog driven offscreen (filters, search, edit, reset). **Not yet:** a real transform in the
   running app with the downloaded model.
+
+## Seam join (B-86, unreleased, 2026-11-02)
+
+R-2026-11-02-4. Daniel, 2026-11-02: commas "left in the middle of a couple of spaces", run-ons and
+capitals mid-sentence in his dictation.
+
+- **Evidence (V):** his history, app 1.016-1.017, Sabich v2.3/v2.4/Rolling, `live_insert_s` 6,
+  454 takes, about 25k words, counted by the private `dictation-boundary-audit` skill's
+  `boundary_audit.py`. Per 1k words, segmented takes vs one-piece takes: a mark after a space
+  (" , and") 5.5 vs 0.9; doubled marks (", ,", "? ,") 0.6 vs 0; a sentence mark then a lowercase
+  word ("inference? code") 2.1 vs 0; capitalised function word mid-sentence 3.1 vs 0; sentences of
+  40+ words 7.3 vs 0. Defects that only appear where there are seams are the app's, not the model's.
+- **Causes (V, in code):** (1) `seam_split` rightly leaves the model's mark at the seam with the
+  words heard after the cut, so the piece starts ", and the receipt"; but the previous piece had
+  already been pasted with its trailing space, giving "form , and", and when that piece ended in
+  its own guess at a mark, "contact, , we". (2) `hold_stop` held only "."; a "?" or "!" the piece
+  guessed without hearing what followed was pasted at once and stayed when the next piece, decoded
+  with context, heard the sentence go on.
+- **Change:** the worker now holds back the space after a non-final piece (`gap`) as well as its
+  sentence mark (`held`, now the mark itself: `engine.held_mark` holds ".", "?" and "!"), and
+  `engine.seam_join(text, prev, held, stop)` decides the join: a leading mark goes straight after
+  the previous word (a comma beats a held stop: the model heard the clause go on), is dropped when
+  the previous word already has one, and a leading ".?!" capitalises what follows; otherwise the
+  held mark follows `after_held_stop` (now with the mark; with no context a held "?"/"!" is kept,
+  a "." follows the `CONTINUES` rule as before). The trailing space of the final piece is unchanged
+  (`trailing_space`); a stopped take whose last piece is empty pastes the pending space. Press
+  Enter after silence drops the pending space (nothing trails before the Enter).
+- **Verified:** unit tests (`test_live.py` seam cases, `test_seam_join_cases`; the 0.7.6 context
+  test now expects the held "?"). **Not verified:** `seam_bench.py` with the change (it does not
+  count space-before-mark or doubled marks yet), and real dictation: recheck with
+  `dictation-boundary-audit` (`stats --min-app 1.018`) after a day of use and record the rates here.
+  Android still has the old join (B-86a).
+
+## The send key stops recording (B-85, unreleased, 2026-11-02)
+
+R-2026-11-02-3. Daniel: in Claude Code, text comes back, he presses Enter and forgets the Stop
+shortcut, so recording is left on. `enter_stops` (off by default; in settings under "Send pressed
+early").
+
+- `Controller._send_pressed` (key thread): if recording, not paused, output to the cursor, and
+  text of this take was pasted since the last Enter (`_typed`), it marks the take diverted (when
+  `enter_guard` isn't off, so words decoded after the Enter go to Late words, not the next
+  message), sets `_stopped_by_send` and emits `sig.stop`. `stop()` skips the Enter hold for that
+  take: the Enter has already gone through. `start()` clears the flag.
+- Only the user's keys count: our uinput paster (Press Enter after silence, Stop and send) is in
+  `IGNORED_DEVICES`, so the app's own Enter never stops a take.
+- **Verified:** `test_live.py` (stops, off by default, no stop before any text). **Not verified:**
+  live on a desktop (agents don't run live key tests on Daniel's desktop).
+
+## Maintainer mode (B-84, unreleased, 2026-11-02)
+
+R-2026-11-02-2. Opt-in (`maintainer_mode`, Settings under the History switch). History stays text
+only (D-2026-10-22-20); this is a separate, capped folder for measuring seam and punctuation
+rules on real dictation, since History has no audio and no seam positions.
+
+- **Files:** `DATA_DIR/maintainer/<YYYY-MM-DD>/<history row id, 7 digits>.flac` (16-bit, through
+  soundfile; `.wav` when it's missing) and `.json`, schema 1 (fields: `hebrish/maintainer.py`
+  docstring). Written for Voice Typing takes only, after the History row exists.
+- **Flow:** the decode worker keeps `_maint[take]` (pieces and pastes, `_out` records every paste
+  with `late`); at the take's end `_maint_end` files it under `id(samples)`, the array `_done`
+  receives with the text, so no queue has to stay in step with the signal; `_maint_save` writes
+  after `remember()` returns the row id, then `prune()`.
+- **Size:** about 1 MB of FLAC per minute of dictation; a heavy day (two hours) about 120 MB,
+  logs under 1 MB. Caps: `maintainer_keep_days` 14, `maintainer_max_gb` 3.
+  Deleting all History empties the folder; deleting one row doesn't (its files age out).
+- **Cost:** encoding a take takes milliseconds on the GUI thread after the paste; nothing in the
+  decode path.
+- **Verified:** `tests/test_maintainer.py` (FLAC round trip, prune by age then size, clear),
+  `test_live.py` maintainer cases, off-screen settings render. **Not verified:** a live take.

@@ -1296,6 +1296,69 @@
         "verified": false
       },
       "notes": "Bundles are the catalogue's `bundles` block (shared/catalogue.json), Daniel 2026-10-31, R-2026-10-31-6."
+    },
+    {
+      "id": "maintainer-mode",
+      "group": "history-and-files",
+      "name": "Maintainer mode (B-84): keep each take's audio and seam log beside its History row, capped by age and size",
+      "android": {
+        "status": "missing",
+        "evidence": "not planned: maintainer tool (planning/requests.md R-2026-11-02-2)"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "1.018 (unreleased)",
+        "evidence": "desktop/hebrish/maintainer.py; ui/app.py _maint_end, _maint_save"
+      },
+      "windows": {
+        "status": "present",
+        "since": "1.018 (unreleased)",
+        "evidence": "desktop/hebrish/maintainer.py; ui/app.py _maint_end, _maint_save",
+        "verified": false
+      },
+      "notes": "Daniel 2026-11-02, R-2026-11-02-2. Maintainer tool; Android not planned."
+    },
+    {
+      "id": "enter-stops",
+      "group": "insertion",
+      "name": "The send key stops recording (B-85): a reflex Enter after text was pasted ends the take",
+      "android": {
+        "status": "missing",
+        "evidence": "planning/backlog.md B-85a"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "1.018 (unreleased)",
+        "evidence": "desktop/hebrish/ui/app.py _send_pressed, stop"
+      },
+      "windows": {
+        "status": "present",
+        "since": "1.018 (unreleased)",
+        "evidence": "desktop/hebrish/ui/app.py _send_pressed, stop",
+        "verified": false
+      },
+      "notes": "Daniel 2026-11-02, R-2026-11-02-3. Off by default."
+    },
+    {
+      "id": "seam-join",
+      "group": "insertion",
+      "name": "Seam join (B-86): the model's mark at a seam goes after the previous word; held ? and ! as well as .",
+      "android": {
+        "status": "missing",
+        "evidence": "planning/backlog.md B-86a"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "1.018 (unreleased)",
+        "evidence": "desktop/hebrish/engine.py seam_join, held_mark"
+      },
+      "windows": {
+        "status": "present",
+        "since": "1.018 (unreleased)",
+        "evidence": "desktop/hebrish/engine.py seam_join, held_mark",
+        "verified": false
+      },
+      "notes": "Daniel 2026-11-02, R-2026-11-02-4."
     }
   ],
   "engine_rules": [

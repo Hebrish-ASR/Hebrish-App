@@ -53,6 +53,11 @@ DEFAULTS = {
     # overlay); "hold" also holds the Enter until they are in, then sends it (grabs the keyboard
     # for up to ENTER_HOLD_S); "off" pastes them wherever the cursor is, as before 1.007.
     "enter_guard": "late",
+    # Enter stops recording (R-2026-11-02-3): while recording with insert-as-you-go, the send key
+    # pressed after text of this take was pasted stops the take, so a reflex Enter in a chat box
+    # doesn't leave the mic on. Words still to come follow enter_guard ("late": kept for Paste).
+    # Off by default: in an editor, Enter mid-dictation is a new line.
+    "enter_stops": False,
     # Press Enter after silence (R-2026-10-31-1; auto_enter.py): while recording with insert-as-you-go,
     # press send_chord once the take has been silent this long after text was typed. Off by default:
     # an unexpected Enter in another app can send or run something.
@@ -134,6 +139,12 @@ DEFAULTS = {
                                   # 2026-10-29); off = the energy rule
     "num_threads": 0,             # decoder threads; 0 = auto (physical cores, at most 8)
     "keep_history": True,         # keep every transcript in history.db (History tab); 0.7.0: on
+    # Maintainer mode (R-2026-11-02-2, maintainer.py): keep each Voice Typing take's audio (FLAC)
+    # and a seam log beside its History row, for measuring seam and punctuation rules on real
+    # dictation. Off by default; capped by age and size. History itself stays text only.
+    "maintainer_mode": False,
+    "maintainer_keep_days": 14,
+    "maintainer_max_gb": 3.0,
     "clear_each_take": False,     # the Dictate tab's text box starts empty for each take (0.7.0; off
                                   # since 1.000: takes collect, a blank line between them)
     "models_dir": "",             # where model weights live; "" = DATA_DIR/models
