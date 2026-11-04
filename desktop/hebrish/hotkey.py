@@ -39,7 +39,9 @@ MODIFIERS = {"KEY_LEFTCTRL", "KEY_RIGHTCTRL", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT",
              "KEY_LEFTALT", "KEY_RIGHTALT", "KEY_LEFTMETA", "KEY_RIGHTMETA"}
 ACTIONS = [("start", "Start"), ("stop", "Stop"), ("pause", "Pause / resume"),
            ("retake", "Retake"), ("discard", "Discard"), ("send", "Stop and send"),
-           ("paste_last", "Paste last transcription")]
+           ("paste_last", "Paste last transcription"),
+           ("model_sabich", "Select Sabich"), ("model_shakshuka", "Select Shakshuka"),
+           ("model_toggle", "Toggle model")]
 SLOTS = ["hotkey", "ptt_hotkey"] + [f"key_{a}" for a, _ in ACTIONS]   # one key per slot, at most
 
 

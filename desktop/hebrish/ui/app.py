@@ -34,6 +34,7 @@ from .overlay import OverlayHost
 
 log = logging.getLogger("hebrish")
 ICONS = Path(__file__).resolve().parent.parent / "data" / "icons"
+QUICK_MODELS = ("sabich-rolling", "shakshuka")   # the tray's Active model, the model action keys
 NO_SPEECH = "no speech"        # _worker -> _done: the take had audio but no speech (engine VAD)
 # The beeps mode: start, stop, a falling "doo-doo" for discard, a rising pair for retake
 APP_CHECK_S = 24 * 3600       # app update check while running: about daily (at start too)
@@ -375,6 +376,12 @@ class Controller(QObject):
             self.start(cue="retake")
         elif action == "paste_last":
             self.paste_last()
+        elif action == "model_sabich":
+            self.switch_model(QUICK_MODELS[0])
+        elif action == "model_shakshuka":
+            self.switch_model(QUICK_MODELS[1])
+        elif action == "model_toggle":
+            self.toggle_model()
         elif action == "paste_late":
             self.paste_last(self._late_text)
         elif action == "dismiss_no_field":
@@ -1273,6 +1280,24 @@ class Controller(QObject):
             self.load_model()
             self.win.update_model()
 
+    def switch_model(self, mid: str):
+        """The tray's Active model and the model action keys (Daniel, 2026-11-05). Says what
+        happened in a notification, because the window is usually hidden. During a take the new
+        model loads when the take ends (load_model)."""
+        m = model_store.get_model(mid)
+        name = m.name if m else mid
+        if mid == model_store.current_id():
+            self.notify(f"Already using {name}")
+        elif not model_store.active(mid):
+            self.notify(f"{name} isn't downloaded", "Download it on the Models tab first.")
+        else:
+            self.use_model(mid)
+            self.notify(f"Now using {name}")
+
+    def toggle_model(self):
+        a, b = QUICK_MODELS
+        self.switch_model(a if model_store.current_id() == b else b)
+
     def set_models_dir(self, path: str, move: bool):
         """Point the app at another model folder ("" = default), moving the models there first
         when asked. The move runs off the GUI thread: across disks it copies ~660 MB per model."""
@@ -1483,6 +1508,7 @@ class Controller(QObject):
         self.act_overlay.triggered.connect(self._tray_overlay)
         m.addAction("Show window", self.win.present_tab)
         self._build_output_menu(m.addMenu("Output"))
+        self._build_model_menu(m.addMenu("Active model"))
         self.act_vad = m.addAction("Voice detection")
         self.act_vad.setCheckable(True)
         self.act_vad.setToolTip("Voice detection in every mode: skip silence and trim long pauses")
@@ -1507,6 +1533,30 @@ class Controller(QObject):
         self.tray.activated.connect(self._tray_click)
         self.tray.show()
         self._update_tray()
+
+    def _build_model_menu(self, menu):
+        """Sabich or Shakshuka, one tick. Re-read each time the menu opens, so a switch or a
+        download made elsewhere shows here. A model that isn't downloaded can't be picked."""
+        group = QActionGroup(menu)
+        group.setExclusive(True)
+        acts = {}
+        for mid in QUICK_MODELS:
+            a = menu.addAction(mid)
+            a.setCheckable(True)
+            a.triggered.connect(lambda _on, mid=mid: self.switch_model(mid))
+            group.addAction(a)
+            acts[mid] = a
+
+        def sync():
+            cur = model_store.current_id()
+            for mid, a in acts.items():
+                m, ready = model_store.get_model(mid), bool(model_store.active(mid))
+                name = m.name if m else mid
+                a.setText(name if ready else f"{name} (not downloaded)")
+                a.setEnabled(ready)
+                a.setChecked(mid == cur)
+        menu.aboutToShow.connect(sync)
+        sync()
 
     def _build_output_menu(self, menu):
         """Output switches and paste shortcut, so switching to a terminal (ctrl+shift+v) or to

@@ -47,6 +47,9 @@ DEFAULTS = {
     "key_discard": "",
     "key_send": "",               # Stop and send: stop, insert, then press send_chord
     "key_paste_last": "",         # paste the last transcription again (1.000)
+    "key_model_sabich": "",       # switch the active model (Daniel, 2026-11-05)
+    "key_model_shakshuka": "",
+    "key_model_toggle": "",       # Sabich <-> Shakshuka
     "send_chord": "enter",        # e.g. ctrl+enter for apps where Enter is a new line
     # The send key pressed while a stopped take's last words are still coming (1.007,
     # R-2026-10-22-2): "late" keeps those words out of the next message (clipboard + Paste in the

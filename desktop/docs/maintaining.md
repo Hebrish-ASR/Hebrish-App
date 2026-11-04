@@ -145,6 +145,10 @@ it. Any exception falls back to the energy rule (logged). The take is scaled so 
 sample is 0.5 before Silero sees it (a quiet headset still counts, B-46), and under -70 dBFS is no
 speech. `live_cut` and `stretch_pauses` stay on energy: those cut points are the measured ones.
 
+**Active model (1.020, 2026-11-05, R-2026-11-05-1).** The tray's Active model submenu and the action keys `model_sabich`, `model_shakshuka` and `model_toggle` all go through `Controller.switch_model` (`QUICK_MODELS` in `ui/app.py`), which notifies, because the window is usually hidden. A model that isn't downloaded is greyed out in the menu and refused with a notification, never downloaded from a key press. During a take `load_model` defers the load to the end of the take. Toggle from any other model goes to Shakshuka.
+
+**1.019 was never published (2026-11-05).** Its GitHub beta release exists, but the release was stopped before the CDN and APT steps to add Active model, and tags aren't rewritten, so 1.020 is the first public build with the changes below.
+
 **One Voice detection switch (2026-11-04, R-2026-11-04-2).** Daniel: "if it's on, it should be on for
 all the modes, including the text output at the cursor modes". The tray's item only drove `tm_vad`
 (Transcription Mode), so `vad` (Voice Typing) stayed off on his machine while the tray showed on.
