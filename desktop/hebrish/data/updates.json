@@ -7,6 +7,51 @@
   "entries": [
     {
       "date": "2026-11-05",
+      "tag": "Site",
+      "title": "The training blend, and category charts",
+      "summary": "/models now explains the training blend: the five ingredients, what each one is for, and why LibriSpeech is in the mix, with Corn at the blender.",
+      "platforms": [
+        "site"
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "tag": "Desktop 1.021",
+      "title": "Paste last only pastes what was missed, and Corn on the start-up screen",
+      "summary": "Paste last: after an early Enter kept your last words out of a message, the Paste last key and tray item now paste only those words, not the whole take again.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "tag": "Site",
+      "title": "Licensing in the top menu, a clearer models page, and Corn",
+      "summary": "Licensing is now in the top menu and opens with what each part of Hebrish is licensed under, with the Creative Commons icons.",
+      "platforms": [
+        "site"
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "tag": "Models",
+      "title": "See what each Sabich and Shakshuka version was trained on",
+      "summary": "/models now leads with the two models in active development, Sabich and Shakshuka, with a training explorer: hours of audio at each version, then clips, speakers, the blend and topics for any version you pick.",
+      "platforms": [
+        "site"
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "tag": "Model",
+      "title": "Shakshuka v2.1",
+      "summary": "Shakshuka, the streaming model, is updated for the first time since Release v2. It continues from v2.0 and now knows the same recordings as Sabich: 1,672 minutes of them, up from 642.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-05",
       "tag": "Desktop 1.020",
       "title": "Switch models from the tray, one Sabich, and one Voice detection switch",
       "summary": "Active model: switch between Sabich and Shakshuka from the tray menu, or with the new Select Sabich, Select Shakshuka and Toggle model action keys.",
@@ -140,53 +185,6 @@
       "tag": "Desktop 1.011",
       "title": "Transcription Mode for long sessions",
       "summary": "Built for sessions of 90 minutes and more (a recording can run up to 4 hours).",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-29",
-      "tag": "Desktop 1.010",
-      "title": "Better voice detection, and a tidier Models tab",
-      "summary": "Voice detection now uses Silero VAD, a small voice-activity model included with the app and on by default. It tells speech from fans, traffic and café noise, so silent takes are skipped and long pauses aren't transcribed.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-29",
-      "tag": "Desktop 1.009",
-      "title": "Your history at a glance, and a history that stays lean",
-      "summary": "Diagnostics has a History card: how much you have transcribed all told (rounded: 12K words, 1.2M words), hours of audio, days active and how much space the history takes.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-28",
-      "tag": "Desktop 1.008",
-      "title": "A softer beep, now the default",
-      "summary": "The start and stop beeps are lower, rounder and quieter: easier on the ears, and on the people around you. The old beep is still there as Loud (Settings, Sounds, Beep); choosing one plays it.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-28",
-      "tag": "Models",
-      "title": "Sabich v2.2: more recordings, speed perturbation, and a better score on every measure",
-      "summary": "Sabich v2.2 replaces v2.1 as the recommended model in the apps. It is a Sabich-only update to Release v2; Shakshuka, Jachnun and Meorav are unchanged.",
-      "platforms": [
-        "android",
-        "desktop",
-        "models"
-      ]
-    },
-    {
-      "date": "2026-10-27",
-      "tag": "Desktop 1.007",
-      "title": "Voice Typing, late words kept out of your next message, fewer repeated words",
-      "summary": "If you press Enter after you stop and before the last words are in, those words no longer land in whatever you type next, such as the next prompt in a chat box.",
       "platforms": [
         "desktop"
       ]
