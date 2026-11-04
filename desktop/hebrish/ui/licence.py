@@ -87,7 +87,9 @@ class NoticeOnFirstShow(QObject):
 
     def show(self):
         mark_seen()
-        LicenceNotice(self.win).exec()
+        notice = LicenceNotice(self.win)
+        notice.setAttribute(Qt.WA_DeleteOnClose)
+        notice.open()          # not exec(): a nested loop would hold up --selftest on a clean state
 
 
 def install(win):
