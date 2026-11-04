@@ -2,9 +2,18 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "android",
-  "built": "2026-11-04",
+  "built": "2026-11-05",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-04",
+      "tag": "Android 1.013",
+      "title": "One Sabich",
+      "summary": "The model that was Sabich (Rolling) is now just Sabich, the default. Sabich (Stable) and Jachnun are no longer offered.",
+      "platforms": [
+        "android"
+      ]
+    },
     {
       "date": "2026-11-02",
       "tag": "Android 1.012",
@@ -188,15 +197,6 @@
       "platforms": [
         "android",
         "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-23",
-      "tag": "Android 0.8.2",
-      "title": "Android: fewer capitals and full stops in the middle of sentences",
-      "summary": "Long takes are transcribed in pieces at your pauses, and each piece used to be treated as a sentence of its own, so a pause mid-sentence could leave \"word. Capital\".",
-      "platforms": [
-        "android"
       ]
     }
   ]
