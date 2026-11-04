@@ -602,3 +602,5 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 ## D-2026-11-04-01: Two active models in the apps
 
 Daniel, 2026-11-04: the apps offer Sabich (transcription) and Shakshuka (streaming) and stock Parakeet. Jachnun leaves `shared/catalogue.json`, so it disappears from the download list through the live catalogue with no app release. A selected Jachnun falls back to an installed model, else the recommended one (`current_id`, `Catalogue.selected`); its files stay on disk. `models.json` keeps it for schema-1 builds, and it stays on hebrish.app as an experimental test.
+
+Daniel, 2026-11-04: Sabich (Stable) leaves the apps; the `sabich-rolling` variant is shown as Sabich and is the default on every platform. Id, repo and CDN path of `sabich-rolling` are unchanged so no one re-downloads; details in `shared/update-protocol.md`.

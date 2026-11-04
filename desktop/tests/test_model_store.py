@@ -30,7 +30,7 @@ TREE = [
 # The stock repo also keeps its files at the root, and has no version.json.
 STOCK_TREE = [{"type": "file", "size": e["size"], "path": e["path"].rsplit("/", 1)[-1],
                **({"lfs": e["lfs"]} if "lfs" in e else {})} for e in TREE[1:5]]
-CS = ms.get_model("codeswitch")
+CS = ms.get_model("sabich-rolling")
 
 
 def manifest(sha="a" * 40, version="v4", encoder_oid=None, model=CS):
@@ -52,7 +52,7 @@ def install(m):
 @pytest.fixture(autouse=True)
 def clean():
     shutil.rmtree(ms.MODELS_DIR.parent, ignore_errors=True)
-    ms.select("codeswitch")
+    ms.select("sabich-rolling")
     yield
 
 
@@ -67,8 +67,8 @@ def test_parse_tree():
 
 def test_label_drops_model_name():
     m = manifest(version="Sabich v2.0")
-    m.model = "sabich"
-    assert m.label == "v2.0" and m.full_label == f"{ms.get_model('sabich').name} v2.0"   # "Sabich (Stable) v2.0" since 2026-11-02
+    m.model = "sabich-rolling"
+    assert m.label == "v2.0" and m.full_label == f"{ms.get_model('sabich-rolling').name} v2.0"   # "Sabich v2.0"; was "Sabich (Stable) v2.0" 2026-11-02
 
 
 def test_label_without_version_json():
@@ -109,10 +109,10 @@ def test_active_follows_state_and_prune_keeps_only_new():
     new = install(manifest(sha="2" * 40, version="v4", encoder_oid="9" * 64))
     ms.set_active(old.name)
     assert ms.active()[0] == old
-    (ms.model_dir("codeswitch") / "v5-half").mkdir()      # abandoned partial download
+    (ms.model_dir("sabich-rolling") / "v5-half").mkdir()      # abandoned partial download
     ms.prune_except(new.name)
     assert [d for d, _ in ms.installed()] == [new]
-    assert not (ms.model_dir("codeswitch") / "v5-half").exists()
+    assert not (ms.model_dir("sabich-rolling") / "v5-half").exists()
     assert ms.active()[0] == new                          # state points at a deleted dir
 
 
@@ -135,7 +135,7 @@ def test_download_replace_deletes_old():
 
 
 def test_remove_refuses_paths_outside_models_dir():
-    ms.model_dir("codeswitch").mkdir(parents=True)
+    ms.model_dir("sabich-rolling").mkdir(parents=True)
     with pytest.raises(ValueError):
         ms.remove("../state.json")
     with pytest.raises(ValueError):
@@ -147,13 +147,13 @@ def test_remove_refuses_paths_outside_models_dir():
 def test_models_are_isolated():
     cs = install(manifest())
     stock = install(ms.manifest_from_tree(ms.get_model("stock"), "s" * 40, STOCK_TREE, None))
-    assert sorted(ms.installed_ids()) == ["codeswitch", "stock"]   # catalogue order
-    ms.prune_except(cs.name, "codeswitch")
+    assert sorted(ms.installed_ids()) == ["sabich-rolling", "stock"]   # catalogue order
+    ms.prune_except(cs.name, "sabich-rolling")
     assert stock.exists()                                 # pruning one model never touches another
     ms.select("stock")
-    assert ms.active()[0] == stock and ms.active("codeswitch")[0] == cs
+    assert ms.active()[0] == stock and ms.active("sabich-rolling")[0] == cs
     # same files, different model: never "the same weights"
-    assert not ms.active("stock")[1].same_weights(ms.active("codeswitch")[1])
+    assert not ms.active("stock")[1].same_weights(ms.active("sabich-rolling")[1])
 
 
 def test_planned_models_cannot_be_selected_or_fetched():
@@ -182,7 +182,7 @@ def test_unsupported_engines_are_listed_but_not_models():
     listed = {v.id for v in ms.variants()}
     usable = {m.id for m in ms.models()}
     assert {"sabich-qwen3-asr-1.7b", "sabich-canary-qwen-2.5b", "sabich-asr4all-s"} <= listed - usable
-    assert {"sabich", "codeswitch", "stock", "sabich-parakeet-110m", "shakshuka"} <= usable
+    assert {"sabich-rolling", "stock", "sabich-parakeet-110m", "shakshuka"} <= usable
     assert ms.get_model("sabich-qwen3-asr-1.7b") is None
     with pytest.raises(ValueError):
         ms.select("sabich-qwen3-asr-1.7b")
@@ -192,18 +192,18 @@ def test_no_pick_prefers_a_downloaded_model_then_recommended():
     state = ms.load_json(ms.STATE_PATH)
     state.pop("model", None)
     ms.save_json(ms.STATE_PATH, state)
-    assert ms.recommended_id() == "sabich"                # desktop default again since 0.7.1 (D-2026-10-22-18)
-    assert ms.current_id() == "sabich"                    # nothing on disk: the recommended model
+    assert ms.recommended_id() == "sabich-rolling"                # desktop default again since 0.7.1 (D-2026-10-22-18)
+    assert ms.current_id() == "sabich-rolling"                    # nothing on disk: the recommended model
     install(ms.manifest_from_tree(ms.get_model("stock"), "s" * 40, STOCK_TREE, None))
     assert ms.current_id() == "stock"                     # a 0.5.x user on schema 1's default keeps it
 
 
 @pytest.mark.parametrize("args,first,here", [
-    (("computer", "amd", 16, "accuracy"), "sabich-qwen3-asr-1.7b", "sabich"),
-    (("computer", "nvidia", 4, "accuracy"), "sabich-qwen3-asr-1.7b", "sabich"),   # Q8_0 GGUF fits 4 GB
-    (("computer", "nvidia", 4, "balanced"), "sabich", "sabich"),
-    (("computer", "none", 0, "balanced"), "sabich", "sabich"),
-    (("computer", "none", 0, "speed"), "sabich", "sabich"),
+    (("computer", "amd", 16, "accuracy"), "sabich-rolling", "sabich-rolling"),
+    (("computer", "nvidia", 4, "accuracy"), "sabich-rolling", "sabich-rolling"),   # the PoC Qwen build is never picked
+    (("computer", "nvidia", 4, "balanced"), "sabich-rolling", "sabich-rolling"),
+    (("computer", "none", 0, "balanced"), "sabich-rolling", "sabich-rolling"),
+    (("computer", "none", 0, "speed"), "sabich-rolling", "sabich-rolling"),
     (("phone", "none", 0, "speed"), "sabich-parakeet-110m", "sabich-parakeet-110m"),
     (("wearable", "none", 0, "accuracy"), "sabich-parakeet-110m", "sabich-parakeet-110m"),
     (("wearable", "none", 0, "speed"), "sabich-asr4all-s", "sabich-parakeet-110m"),
@@ -231,13 +231,15 @@ def test_legacy_voice_to_hebrish_install_is_adopted(monkeypatch):
     config.CONFIG_PATH.unlink(missing_ok=True)
     config.migrate_legacy()
     assert json.loads(config.CONFIG_PATH.read_text()) == {"hotkey": "KEY_F14", **{"feedback": "beeps", "keep_history": True, "live_insert_s": 6}}
-    assert ms.current_id() == "codeswitch"
-    assert ms.active()[0].name == m.dirname and ms.active()[1].model == "codeswitch"
+    # Adopted files land in Jachnun's folder, which left the catalogue on 2026-11-04: they stay on
+    # disk, and the pick falls back to the recommended model (planning/decisions.md).
+    assert (config.MODELS_DIR / "codeswitch" / m.dirname / "manifest.json").is_file()
+    assert ms.current_id() == ms.recommended_id()
     shutil.rmtree(old_data)
     shutil.rmtree(old_cfg)
 
 
-CDN_DOC = {"schema": 1, "model": "codeswitch", "version": "v1.0", "run": "r6-en30",
+CDN_DOC = {"schema": 1, "model": "sabich-rolling", "version": "v1.0", "run": "r6-en30",
            "revision": "b" * 40, "base_url": "https://cdn.hebrish.app/models/jachnun",
            "files": {e["path"]: {"size": e["size"], "sha256": (e.get("lfs") or {}).get("oid")}
                      for e in TREE if e["path"] in ms.FILES}}
@@ -265,8 +267,8 @@ def test_custom_model_folder(tmp_path):
     try:
         ms.set_root(tmp_path)
         d = install(manifest())
-        assert tmp_path in d.parents and ms.installed_ids() == ["codeswitch"]
-        ms.remove_model("codeswitch")
+        assert tmp_path in d.parents and ms.installed_ids() == ["sabich-rolling"]
+        ms.remove_model("sabich-rolling")
         assert not d.exists()
     finally:
         ms.set_root(config.MODELS_DIR)
@@ -311,4 +313,10 @@ def test_catalogue_is_read_once_until_the_cache_changes(monkeypatch):
         assert [m.id for m in ms.models()] == ["x"]
     finally:
         ms.CATALOGUE_CACHE.unlink()
-    assert "sabich" in {m.id for m in ms.models()}     # cache gone: the bundled catalogue again
+    assert "sabich-rolling" in {m.id for m in ms.models()}     # cache gone: the bundled catalogue again
+
+
+def test_label_drops_the_old_rolling_qualifier():
+    """sabich-rolling is shown as Sabich since 2026-11-04; its manifests say "Sabich (Rolling) v2.9"."""
+    m = ms.manifest_from_tree(CS, "a" * 40, TREE, {"version": "Sabich (Rolling) v2.9", "run": "r"})
+    assert m.label == "v2.9"

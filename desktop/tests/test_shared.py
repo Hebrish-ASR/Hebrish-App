@@ -79,7 +79,7 @@ def test_schema1_models_match_their_v2_variants():
     assert old["schema"] == 1
     by_id = {v["id"]: v for v in all_variants()}
     for m in old["models"]:
-        if m["id"] == "codeswitch":  # Jachnun: kept here for old builds, out of schema 2 since 2026-11-04
+        if m["id"] in ("codeswitch", "sabich"):  # Jachnun, Sabich (Stable): kept for old builds, out of schema 2 since 2026-11-04
             continue
         v = by_id[m["id"]]
         for key in ("repo", "subdir", "manifest_url", "version_label", "status"):
@@ -105,7 +105,9 @@ def test_hebrish_ships_only_code_switching_lines_and_stock():
     assert [ln["id"] for ln in v2()["lines"]] == ["sabich", "shakshuka", "stock"]
     # Daniel, 2026-11-02: Sabich (Rolling) is the default while he tests it; Sabich stays in the line.
     assert v2()["lines"][0]["variants"][0]["id"] == v2()["recommended"] == "sabich-rolling"
-    assert "sabich" in [v["id"] for v in v2()["lines"][0]["variants"]]
+    assert v2()["lines"][0]["variants"][0]["name"] == "Sabich"
+    assert "sabich" not in [v["id"] for v in v2()["lines"][0]["variants"]]   # Stable left 2026-11-04 (Daniel)
+    assert set(v2()["recommended_by_platform"].values()) - {v2()["recommended_by_platform"]["_doc"]} == {"sabich-rolling"}
     assert not any("boxty" in v["id"] or v["id"] in ("tech", "personal") for v in all_variants())
     with open(SHARED_V1) as f:
         assert [m["id"] for m in json.load(f)["models"]] == ["sabich", "codeswitch", "stock"]
@@ -130,7 +132,7 @@ def test_numbers_and_rules_match_the_website():
     if not os.path.exists(SITE):
         pytest.skip("website repo not checked out")
     site = json.load(open(SITE))
-    idmap = {"jachnun": "codeswitch"}
+    idmap = {"jachnun": "codeswitch", "sabich": "sabich-rolling"}
     by_id = {v["id"]: v for v in all_variants()}
     for sv in site["variants"]:
         if sv["id"] == "jachnun":  # on the site as an experimental test; not in the apps since 2026-11-04

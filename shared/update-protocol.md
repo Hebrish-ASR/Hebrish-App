@@ -17,6 +17,8 @@ no explicit pick follow `recommended`; schema 1 (`models.json`) cannot list the 
 (`test_shared.py` allows that one difference). If Daniel's testing passes, Sabich is retired or Rolling takes
 its place; if not, set `recommended` back to `sabich`. Same day the `sabich` variant is shown as **Sabich (Stable)** (Daniel: "the most logical way to present this"); its id, repo and the `Hebrish/Sabich` name (DOI) are unchanged, the line stays Sabich.
 
+**2026-11-04: Sabich (Stable) leaves the catalogue** (Daniel, consolidating the models; Android 1.013, Desktop 1.019). `sabich-rolling` keeps its id, repo and CDN path and is shown as **Sabich**, the default on every platform (`recommended` and `recommended_by_platform`, bundles, chooser). The id stays so nobody re-downloads. A selected `sabich` falls back as Jachnun does (`current_id`, `Catalogue.selected`): an installed model, else the recommended one; its files stay on disk. `models.json` keeps `sabich` for schema-1 builds, and `Hebrish/Sabich` and `cdn.hebrish.app/models/sabich/` stay up. Manifests still say "Sabich (Rolling) v2.9": both apps show only `v2.9`.
+
 [`catalogue.json`](catalogue.json) (`schema: 2`) is what **Android 0.7.0+ and desktop 0.6.0+**
 read; they bundle it (Android: gradle `copyCatalogue` into assets; desktop:
 `hebrish/data/catalogue.json`, byte-identical) and re-fetch `catalogue_v2_url` (this file on

@@ -4,9 +4,9 @@
   "catalogue_v2_url": "https://raw.githubusercontent.com/Hebrish-ASR/Hebrish-App/main/shared/catalogue.json",
   "recommended": "sabich-rolling",
   "recommended_by_platform": {
-    "_doc": "Desktop builds 0.7.0+ read this before `recommended`. 0.7.0 shipped with Shakshuka here (D-2026-10-22-12); Daniel reversed that the same day (D-2026-10-22-18): Parakeet (Sabich) dictates better, and Shakshuka stays a choice. Android and older desktop builds read only `recommended`.",
-    "linux": "sabich",
-    "windows": "sabich"
+    "_doc": "Desktop builds 0.7.0+ read this before `recommended`. 0.7.0 shipped with Shakshuka here (D-2026-10-22-12); Daniel reversed that the same day (D-2026-10-22-18): Parakeet (Sabich) dictates better, and Shakshuka stays a choice. Android and older desktop builds read only `recommended`. 2026-11-04 (Daniel): both follow `recommended`, sabich-rolling, shown as Sabich; the old Sabich (Stable) is out of the catalogue.",
+    "linux": "sabich-rolling",
+    "windows": "sabich-rolling"
   },
   "version_file": "version.json",
   "sample_rate": 16000,
@@ -57,7 +57,7 @@
       "variants": [
         {
           "id": "sabich-rolling",
-          "name": "Sabich (Rolling)",
+          "name": "Sabich",
           "base_model": "nvidia/parakeet-tdt-0.6b-v2",
           "base_label": "Parakeet 0.6B v2 by NVIDIA",
           "size_label": "0.6B",
@@ -83,45 +83,11 @@
           "speed": 3,
           "accuracy": 4,
           "gradient": 67,
-          "recommendation": "The newest Sabich, trained on more recordings. Being tested as the default.",
+          "recommendation": "The recommended model, updated as new recordings come in.",
           "repo": "Hebrish/Sabich-Rolling-sherpa-onnx-int8",
           "subdir": "",
-          "card": "https://huggingface.co/Hebrish/Sabich-Rolling",
-          "manifest_url": "https://cdn.hebrish.app/models/sabich-rolling/latest.json"
-        },
-        {
-          "id": "sabich",
-          "name": "Sabich (Stable)",
-          "base_model": "nvidia/parakeet-tdt-0.6b-v2",
-          "base_label": "Parakeet 0.6B v2 by NVIDIA",
-          "size_label": "0.6B",
-          "engine": "sherpa_offline_transducer",
-          "feature_dim": 128,
-          "status": "available",
-          "platforms": [
-            "android",
-            "linux",
-            "windows"
-          ],
-          "devices": [
-            "phone",
-            "desktop"
-          ],
-          "requirements": {
-            "ram_mb": 1500,
-            "gpu": null
-          },
-          "hardware": "Phone or computer, no graphics card needed; about 1.5 GB of memory",
-          "technical": "sherpa-onnx int8 offline transducer on the CPU, about 1.5 GB of RAM, no GPU.",
-          "download_mb": 661,
-          "speed": 3,
-          "accuracy": 4,
-          "gradient": 67,
-          "recommendation": "The established Sabich release. Switch back to it if Sabich (Rolling) does worse for you.",
-          "repo": "Hebrish/Sabich-sherpa-onnx-int8",
-          "subdir": "",
           "card": "https://hebrish.app/models/sabich",
-          "manifest_url": "https://cdn.hebrish.app/models/sabich/latest.json"
+          "manifest_url": "https://cdn.hebrish.app/models/sabich-rolling/latest.json"
         },
         {
           "id": "sabich-qwen3-asr-1.7b",
@@ -384,7 +350,7 @@
     }
   ],
   "chooser": {
-    "_doc": "Copied from hebrish.app's data/variants.json `rules` on 2026-10-21 (ids mapped: jachnun -> codeswitch) so the site's chooser and the apps' Help me choose agree. Checked in order; the first rule whose `when` matches wins; an absent key matches anything. Form values: device phone|computer|wearable; gpu none|amd|nvidia|apple; vram 4|8|12|16 (GB, rounded up to a bucket); priority speed|balanced|accuracy; live true|false. `how` names the build or runtime, `note` is an optional caveat.",
+    "_doc": "Copied from hebrish.app's data/variants.json `rules` on 2026-10-21 (re-copied 2026-11-04; ids mapped: sabich -> sabich-rolling) so the site's chooser and the apps' Help me choose agree. Checked in order; the first rule whose `when` matches wins; an absent key matches anything. Form values: device phone|computer|wearable; gpu none|amd|nvidia|apple; vram 4|8|12|16 (GB, rounded up to a bucket); priority speed|balanced|accuracy; live true|false. `how` names the build or runtime, `note` is an optional caveat.",
     "rules": [
       {
         "when": {
@@ -410,7 +376,7 @@
         "pick": "shakshuka",
         "how": "NeMo cache-aware streaming, or the sherpa-onnx int8 and GGUF builds",
         "reason": "Shakshuka is the streaming line: the words appear while you are still talking.",
-        "runner_up": "sabich",
+        "runner_up": "sabich-rolling",
         "runner_how": "if you can wait a moment after you stop speaking: the Hebrish apps",
         "note": "Shakshuka streams in the Hebrish desktop app (0.7.0+, Ubuntu and Windows) as an option for dictation; Sabich is the default. Not on Android yet."
       },
@@ -453,7 +419,7 @@
         "pick": "sabich-parakeet-110m",
         "how": "sherpa-onnx int8 or GGUF Q8_0 in Offline Voice Input",
         "reason": "About a fifth of the size of Sabich, for older and low-end phones. Expect it to be less accurate.",
-        "runner_up": "sabich",
+        "runner_up": "sabich-rolling",
         "runner_how": "in the Hebrish app",
         "note": "Sabich-Parakeet-110M is not in the Hebrish apps yet."
       },
@@ -466,11 +432,11 @@
             "accuracy"
           ]
         },
-        "pick": "sabich",
+        "pick": "sabich-rolling",
         "how": "the Hebrish app for Android (about 660 MB, downloaded once)",
         "reason": "The most accurate model that runs well on a phone, and the default in the Hebrish app.",
-        "runner_up": "sabich-qwen3-asr-1.7b",
-        "runner_how": "transcribe.cpp Q4_K_M GGUF in Offline Voice Input: it runs, but slowly"
+        "runner_up": "shakshuka",
+        "runner_how": "in the Hebrish app: text appears while you speak"
       },
       {
         "when": {
@@ -478,7 +444,7 @@
             "phone"
           ]
         },
-        "pick": "sabich",
+        "pick": "sabich-rolling",
         "how": "the Hebrish app for Android (about 660 MB, downloaded once)",
         "reason": "The default for phones: code-switching plus tech vocabulary, on the device.",
         "runner_up": "sabich-parakeet-110m",
@@ -496,7 +462,7 @@
             "speed"
           ]
         },
-        "pick": "sabich",
+        "pick": "sabich-rolling",
         "how": "the Hebrish app for Ubuntu or Windows (int8, on the CPU)",
         "reason": "It runs on the CPU at dictation speed, so there is no need to go smaller.",
         "runner_up": "sabich-parakeet-110m",
@@ -511,11 +477,11 @@
             "none"
           ]
         },
-        "pick": "sabich",
+        "pick": "sabich-rolling",
         "how": "the Hebrish app for Ubuntu or Windows (int8, on the CPU)",
         "reason": "Without a GPU, Sabich is the best balance: accurate and quick on the CPU.",
-        "runner_up": "sabich-qwen3-asr-1.7b",
-        "runner_how": "GGUF with llama.cpp on the CPU: it runs, but expect it to be slow"
+        "runner_up": "shakshuka",
+        "runner_how": "in the Hebrish app: text appears while you speak"
       },
       {
         "when": {
@@ -526,72 +492,9 @@
             "apple"
           ]
         },
-        "pick": "sabich",
-        "how": "the MLX build (Sabich v1.0; v2.1 has no MLX build yet) with parakeet-mlx on Apple silicon",
-        "reason": "Sabich has an MLX build for Apple silicon; there is no Hebrish app for Mac yet.",
-        "runner_up": "sabich-qwen3-asr-1.7b",
-        "runner_how": "GGUF with llama.cpp's Metal backend (not tested yet)"
-      },
-      {
-        "when": {
-          "device": [
-            "computer"
-          ],
-          "gpu": [
-            "amd",
-            "nvidia"
-          ],
-          "priority": [
-            "speed"
-          ]
-        },
-        "pick": "sabich",
-        "how": "the Hebrish app for Ubuntu or Windows, or the F16 GGUF (v2.1) or ONNX (v1.0) in your own tools",
-        "reason": "Smaller and quicker than the Qwen model, and close behind it on accuracy.",
-        "runner_up": "sabich-qwen3-asr-1.7b",
-        "runner_how": "bf16 in Transformers, about 5 GB of VRAM"
-      },
-      {
-        "when": {
-          "device": [
-            "computer"
-          ],
-          "gpu": [
-            "amd",
-            "nvidia"
-          ],
-          "vram": [
-            "4"
-          ],
-          "priority": [
-            "accuracy"
-          ]
-        },
-        "pick": "sabich-qwen3-asr-1.7b",
-        "how": "GGUF Q8_0 (about 2 GB) with llama.cpp: HIP or Vulkan on AMD, CUDA on NVIDIA",
-        "reason": "The highest accuracy, and the Q8_0 GGUF fits in 4 GB of VRAM.",
-        "runner_up": "sabich",
-        "runner_how": "the Hebrish app, on the CPU",
-        "note": "The bf16 weights need about 5 GB of VRAM; the Q8_0 GGUF needs about 2.2 GB."
-      },
-      {
-        "when": {
-          "device": [
-            "computer"
-          ],
-          "gpu": [
-            "amd",
-            "nvidia"
-          ],
-          "vram": [
-            "4"
-          ]
-        },
-        "pick": "sabich",
-        "how": "the Hebrish app for Ubuntu or Windows",
-        "reason": "With 4 GB of VRAM or less, Sabich is the quicker all-round choice.",
-        "runner_up": "sabich-qwen3-asr-1.7b",
-        "runner_how": "GGUF Q8_0 (about 2 GB) with llama.cpp"
+        "pick": "sabich-rolling",
+        "how": "the MLX build (Sabich v2.3) with parakeet-mlx --fp32 on Apple silicon",
+        "reason": "Sabich has an MLX build for Apple silicon; there is no Hebrish app for Mac yet."
       },
       {
         "when": {
@@ -603,15 +506,15 @@
             "nvidia"
           ]
         },
-        "pick": "sabich-qwen3-asr-1.7b",
-        "how": "bf16 in Transformers (about 5 GB of VRAM; PyTorch ROCm on AMD, CUDA on NVIDIA), or GGUF with llama.cpp",
-        "reason": "Your GPU has room for it, so you get the highest accuracy at a good speed.",
-        "runner_up": "sabich",
-        "runner_how": "the Hebrish app, if you want dictation in every app now"
+        "pick": "sabich-rolling",
+        "how": "the Hebrish app for Ubuntu or Windows, or the F16 GGUF or ONNX (both v2.3) in your own tools",
+        "reason": "Sabich is the recommended model on every computer: it is the one kept up to date, it is in the Hebrish apps, and it is scored on the public benchmark. It is quick on a GPU and still fast on the CPU.",
+        "runner_up": "shakshuka",
+        "runner_how": "in the Hebrish app: text appears while you speak"
       },
       {
         "when": {},
-        "pick": "sabich",
+        "pick": "sabich-rolling",
         "how": "the Hebrish apps",
         "reason": "The default: code-switching plus tech vocabulary.",
         "runner_up": "shakshuka",
@@ -846,7 +749,7 @@
       "name": "Everything",
       "summary": "Voice Typing and Transcription together: Sabich, Shakshuka for streaming, and the clean-up, title and paragraph models.",
       "models": [
-        "sabich",
+        "sabich-rolling",
         "shakshuka"
       ],
       "addons": [
@@ -861,7 +764,7 @@
       "name": "Voice Typing",
       "summary": "Sabich, the recommended model (code-switching and tech vocabulary), and Shakshuka for words as you speak.",
       "models": [
-        "sabich",
+        "sabich-rolling",
         "shakshuka"
       ],
       "addons": []
@@ -871,7 +774,7 @@
       "name": "Transcription",
       "summary": "Sabich, plus the add-ons that tidy saved transcripts: clean-up, titles and paragraph breaks.",
       "models": [
-        "sabich"
+        "sabich-rolling"
       ],
       "addons": [
         "s1-mini",

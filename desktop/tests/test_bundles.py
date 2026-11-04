@@ -18,15 +18,15 @@ def test_default_bundle_first_and_android_only_items_skipped(monkeypatch):
     real = model_store.bundled_catalogue()
     monkeypatch.setattr(model_store, "catalogue", lambda: {**real, "bundles": [
         {"id": "x", "name": "X", "models": ["sabich-asr4all-s"], "addons": []},       # Android only
-        {"id": "a", "name": "A", "models": ["sabich", "sabich-asr4all-s"], "addons": ["nope"]},
-        {"id": "d", "name": "D", "models": ["sabich"], "addons": [], "default": True}]})
+        {"id": "a", "name": "A", "models": ["sabich-rolling", "sabich-asr4all-s"], "addons": ["nope"]},
+        {"id": "d", "name": "D", "models": ["sabich-rolling"], "addons": [], "default": True}]})
     assert [b["id"] for b in B.bundles()] == ["d", "a"]
-    assert B.items(B.get("a")) == (["sabich"], [])
+    assert B.items(B.get("a")) == (["sabich-rolling"], [])
 
 
 def test_missing_lists_only_what_is_not_downloaded(monkeypatch):
-    b = {"id": "t", "models": ["sabich", "shakshuka"], "addons": ["title-gemma-270m", paragraphs.MODEL_ID]}
-    monkeypatch.setattr(model_store, "installed", lambda m=None: [("x", None)] if m == "sabich" else [])
+    b = {"id": "t", "models": ["sabich-rolling", "shakshuka"], "addons": ["title-gemma-270m", paragraphs.MODEL_ID]}
+    monkeypatch.setattr(model_store, "installed", lambda m=None: [("x", None)] if m == "sabich-rolling" else [])
     monkeypatch.setattr(B, "addon_installed", lambda a: a == paragraphs.MODEL_ID)
     assert B.missing(b) == (["shakshuka"], ["title-gemma-270m"])
 
@@ -38,7 +38,7 @@ def test_check_covers_every_downloaded_model_and_keeps_going_after_a_failure(mon
         if mid == "codeswitch":
             raise OSError("offline")
         return M(mid)
-    monkeypatch.setattr(model_store, "installed_ids", lambda: ["sabich", "codeswitch", "shakshuka"])
+    monkeypatch.setattr(model_store, "installed_ids", lambda: ["sabich-rolling", "codeswitch", "shakshuka"])
     monkeypatch.setattr(model_store, "fetch_latest", latest)
     monkeypatch.setattr(model_store, "needs_update", lambda m: m.model == "shakshuka")
     monkeypatch.setattr(B, "_addon_stale", lambda a: a == "title-gemma-270m")

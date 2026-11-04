@@ -26,6 +26,7 @@ once its manifest.json exists (written last, after every file verified).
 
 import hashlib
 import json
+import re
 import shutil
 import sys
 import threading
@@ -313,12 +314,13 @@ class Manifest:
         (no version.json) shows nothing."""
         m = get_model(self.model)
         v = self.version
-        # The name with and without a qualifier: "Sabich (Stable)" (2026-11-02) still gets
-        # manifests saying "Sabich v2.0".
+        # The name with and without a qualifier, on either side: sabich-rolling is shown as
+        # "Sabich" since 2026-11-04, and its manifests still say "Sabich (Rolling) v2.9".
         for name in ((m.name, m.name.split(" (")[0]) if m else ()):
             if v.lower().startswith(name.lower() + " "):
                 v = v[len(name) + 1:]
                 break
+        v = re.sub(r"^\([^)]*\) ", "", v)
         return "" if v.startswith("rev ") else v
 
     @property
