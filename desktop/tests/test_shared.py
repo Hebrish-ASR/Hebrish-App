@@ -79,6 +79,8 @@ def test_schema1_models_match_their_v2_variants():
     assert old["schema"] == 1
     by_id = {v["id"]: v for v in all_variants()}
     for m in old["models"]:
+        if m["id"] == "codeswitch":  # Jachnun: kept here for old builds, out of schema 2 since 2026-11-04
+            continue
         v = by_id[m["id"]]
         for key in ("repo", "subdir", "manifest_url", "version_label", "status"):
             assert m.get(key, "") == v.get(key, ""), (m["id"], key)
@@ -92,15 +94,15 @@ def test_schema1_models_match_their_v2_variants():
 def test_android_offline_fallbacks_are_available_models():
     ids = set(re.findall(r'"(\w+)" to Manifest\(', open(os.path.join(KT, "ModelStore.kt")).read()))
     available = {v["id"] for v in all_variants() if v["status"] == "available"}
-    assert ids and ids <= available
+    assert ids and ids - {"codeswitch"} <= available  # Jachnun stays a fallback until the next Android release
 
 
 def test_hebrish_ships_only_code_switching_lines_and_stock():
-    """Hebrish is the code-switching app: Sabich (everything; Sabich (Rolling) recommended and first), Jachnun
-    (code-switching only), Shakshuka (streaming, trained on Sabich's blend) and stock Parakeet last.
+    """Hebrish is the code-switching app: Sabich (everything; Sabich (Rolling) recommended and first), Shakshuka
+    (streaming, trained on Sabich's blend) and stock Parakeet last. Jachnun left the apps on 2026-11-04 (Daniel: two active models).
     The fine-tunes without Hebrew (Boxty, tech, personal) belong to Parlance
     (danielrosehill/Parlance-Dictation). Schema 1 keeps its three models."""
-    assert [ln["id"] for ln in v2()["lines"]] == ["sabich", "jachnun", "shakshuka", "stock"]
+    assert [ln["id"] for ln in v2()["lines"]] == ["sabich", "shakshuka", "stock"]
     # Daniel, 2026-11-02: Sabich (Rolling) is the default while he tests it; Sabich stays in the line.
     assert v2()["lines"][0]["variants"][0]["id"] == v2()["recommended"] == "sabich-rolling"
     assert "sabich" in [v["id"] for v in v2()["lines"][0]["variants"]]
@@ -131,6 +133,8 @@ def test_numbers_and_rules_match_the_website():
     idmap = {"jachnun": "codeswitch"}
     by_id = {v["id"]: v for v in all_variants()}
     for sv in site["variants"]:
+        if sv["id"] == "jachnun":  # on the site as an experimental test; not in the apps since 2026-11-04
+            continue
         v = by_id[idmap.get(sv["id"], sv["id"])]
         assert (v["speed"], v["accuracy"], v["gradient"]) == (sv["speed"], sv["accuracy"], sv["gradient"]), sv["id"]
     mapped = [{**r, "pick": idmap.get(r["pick"], r["pick"]),

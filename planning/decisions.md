@@ -598,3 +598,7 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 - **Alternatives:** Keeping all planning in a private repo (still used for store accounts and
   submissions, which involve account details).
 - **By:** Daniel.
+
+## D-2026-11-04-01: Two active models in the apps
+
+Daniel, 2026-11-04: the apps offer Sabich (transcription) and Shakshuka (streaming) and stock Parakeet. Jachnun leaves `shared/catalogue.json`, so it disappears from the download list through the live catalogue with no app release. A selected Jachnun falls back to an installed model, else the recommended one (`current_id`, `Catalogue.selected`); its files stay on disk. `models.json` keeps it for schema-1 builds, and it stays on hebrish.app as an experimental test.
