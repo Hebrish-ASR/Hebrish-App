@@ -1495,6 +1495,11 @@ class Controller(QObject):
         return bool(self.latest and model_store.active() and model_store.needs_update(self.latest))
 
     # -- tray ----------------------------------------------------------------------
+    def _add_version_item(self, menu):
+        """The running version, greyed out. It is this process's, not the package's: after an
+        upgrade it stays old until the restart, which is what you want to see."""
+        menu.addAction(f"{APP_NAME} {__version__}").setEnabled(False)
+
     def _build_tray(self):
         self.tray = QSystemTrayIcon(icon("tray-idle"), self)
         self.tray.setToolTip(APP_NAME)
@@ -1527,6 +1532,7 @@ class Controller(QObject):
         for label, url in about.HEBRISH_LINKS:
             hebrish.addAction(label, lambda u=url: QDesktopServices.openUrl(QUrl(u)))
         m.addSeparator()
+        self._add_version_item(m)
         m.addAction("Quit", self.quit)
         self._menu = m
         self.tray.setContextMenu(m)

@@ -78,3 +78,13 @@ def test_tray_menu_ticks_the_active_model_and_greys_a_missing_one(monkeypatch):
     assert used == ["shakshuka"]
     menu.aboutToShow.emit()
     assert shakshuka.isChecked() and not sabich.isChecked()
+
+
+def test_tray_menu_shows_the_running_version():
+    from PySide6.QtWidgets import QApplication, QMenu
+    from hebrish import __version__
+    app = QApplication.instance() or QApplication([])  # noqa: F841
+    menu = QMenu()
+    Controller._add_version_item(None, menu)
+    (item,) = menu.actions()
+    assert item.text() == f"Hebrish {__version__}" and not item.isEnabled()
