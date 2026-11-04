@@ -103,6 +103,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private class Take(val target: AccessibilityNodeInfo?, val decoder: TakeDecoder) {
         /** Everything this take has put in (type-as-you-go), for Prefs.lastTranscript. */
         val text = StringBuilder()
+        /** The pieces that found no field, so Insert last doesn't repeat what went in (B-88). */
+        val unplaced = StringBuilder()
         /** Pieces decoded while an earlier take was still landing; delivered when it has. */
         val waiting = ArrayList<String>()
         /** The decoder's finish callback has come back (result kept until the take's turn). */
@@ -840,7 +842,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             err != null -> toast(getString(R.string.ime_error, err.message ?: err.javaClass.simpleName))
             t.text.isEmpty() -> toast(getString(R.string.ime_nothing_heard))
             else -> {
-                Prefs.setLastTranscript(this, t.text.toString())
+                Prefs.setLastTranscript(this, (if (t.unplaced.isNotEmpty()) t.unplaced else t.text).toString())
                 History.record(this, t.decoder.text, t.decoder.stats(), History.FLOATING)
             }
         }
@@ -863,7 +865,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     private fun deliverNow(t: Take, text: String) {
         t.text.append(TakeDecoder.join(t.text, text))
-        deliver(text, t.target, firstPart = t.text.length <= text.length)
+        if (!deliver(text, t.target, firstPart = t.text.length <= text.length))
+            t.unplaced.append(TakeDecoder.join(t.unplaced, text))
     }
 
     /**
@@ -877,10 +880,12 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
      *    text and selection, then the cursor moved to the end of the insert.
      * 4. Otherwise it is held as [pending] (Insert button) and left on the clipboard.
      */
-    private fun deliver(text: String, to: AccessibilityNodeInfo?, firstPart: Boolean) {
+    private fun deliver(text: String, to: AccessibilityNodeInfo?, firstPart: Boolean): Boolean {
         val node = to?.takeIf { it.refresh() && it.isEditable }
             ?: focusedField()
-        if (node == null || node.isPassword || !insertInto(node, text, firstPart)) hold(text)
+        if (node != null && !node.isPassword && insertInto(node, text, firstPart)) return true
+        hold(text)
+        return false
     }
 
     /**

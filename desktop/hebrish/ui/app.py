@@ -140,6 +140,7 @@ class Controller(QObject):
         self.last_text = ""
         self._no_field = False           # the overlay shows "No text field" with Paste
         self._late_text = ""             # the overlay shows "Late words" with Paste (Enter guard)
+        self._late_last = ""             # the same words for Paste last, after the overlay has closed (B-88)
         # Every transcript (0.7.0): SQLite with a full-text index, hebrish.history. The 0.6.x
         # history.json (last 50) is imported once.
         self.history = History(HISTORY_DB)
@@ -301,6 +302,7 @@ class Controller(QObject):
         self._stopped_by_send = False
         self._silence.reset(0)
         self.recorder.mute(self.cue(cue) + CUE_MARGIN_S)
+        self._late_last = ""
         self.set_state("recording")
 
     @property
@@ -400,7 +402,8 @@ class Controller(QObject):
         pasted."""
         if self.state != "idle":
             return
-        text = text or self.last_text
+        # After an early Enter the rest of the take went in already: only the words kept out (B-88).
+        text = text or self._late_last or self.last_text
         if not text and self.cfg["keep_history"]:
             rows = self.history.recent(1)
             text = rows[0]["text"] if rows else ""
@@ -568,7 +571,7 @@ class Controller(QObject):
     def _show_late(self, text):
         log.info("kept %d chars after an early Enter", len(text))
         self._clear_no_field()
-        self._late_text = text
+        self._late_text = self._late_last = text
         self._copy_take(text)
         self.win.status("Enter was pressed before the last words were in, so they weren't pasted. "
                         "They're on the clipboard, and Paste on the overlay puts them where the cursor is.")

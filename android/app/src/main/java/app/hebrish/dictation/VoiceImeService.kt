@@ -51,6 +51,8 @@ class VoiceImeService : InputMethodService() {
         /** Enter guard: Enter went through before this take landed; the rest waits for Insert last. */
         var diverted = false
         val late = StringBuilder()
+        /** The pieces that found no field, so Insert last doesn't repeat what went in (B-88). */
+        val unplaced = StringBuilder()
     }
 
     private val main = Handler(Looper.getMainLooper())
@@ -388,8 +390,9 @@ class VoiceImeService : InputMethodService() {
         finishing.remove(t)
         val err = t.error
         if (err == null && t.text.isNotEmpty()) {
-            // A diverted take keeps only its late words for Insert last; History gets the whole take.
-            Prefs.setLastTranscript(this, if (t.late.isNotEmpty()) t.late.toString() else t.text.toString())
+            // Insert last gets only what didn't go in (late or missed words); History gets the whole take.
+            val kept = if (t.late.isNotEmpty()) t.late else if (t.unplaced.isNotEmpty()) t.unplaced else t.text
+            Prefs.setLastTranscript(this, kept.toString())
             History.record(this, t.decoder.text, t.decoder.stats(), History.KEYBOARD)
         }
         val next = finishing.firstOrNull() ?: take
@@ -433,7 +436,10 @@ class VoiceImeService : InputMethodService() {
     private fun commitNow(t: Take, text: String) {
         t.text.append(TakeDecoder.join(t.text, text))
         if (t.diverted) t.late.append(TakeDecoder.join(t.late, text))
-        else if (!commit(text)) t.missed = true
+        else if (!commit(text)) {
+            t.missed = true
+            t.unplaced.append(TakeDecoder.join(t.unplaced, text))
+        }
     }
 
     /**

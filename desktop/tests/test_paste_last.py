@@ -25,12 +25,12 @@ def test_action_key_slot_exists():
     assert DEFAULTS["detect_no_field"] is False
 
 
-def _ctl(last="", history=(), state="idle", keep_history=True, visible=True):
+def _ctl(last="", history=(), state="idle", keep_history=True, visible=True, late=""):
     pytest.importorskip("PySide6")
     from hebrish.ui.app import Controller
     pasted, done = [], threading.Event()
     ctl = SimpleNamespace(
-        state=state, last_text=last, _no_field=False,
+        state=state, last_text=last, _late_last=late, _no_field=False,
         cfg={"keep_history": keep_history, "trailing_space": True, "paste_chord": "ctrl+v"},
         history=SimpleNamespace(recent=lambda n: [{"text": t} for t in history][:n]),
         inserter=SimpleNamespace(insert=lambda t, how, chord: (pasted.append((t, how)), done.set())),
@@ -47,6 +47,11 @@ def _ctl(last="", history=(), state="idle", keep_history=True, visible=True):
 
 def test_paste_last_uses_memory():
     assert _ctl(last="Shalom, see you Motzei Shabbat.") == [("Shalom, see you Motzei Shabbat. ", "paste")]
+
+
+def test_paste_last_after_early_enter_is_only_the_late_words():
+    """B-88: the start of the take went in before Enter, so it must not be pasted a second time."""
+    assert _ctl(last="Whole take, already sent, and the end.", late="and the end.") == [("and the end. ", "paste")]
 
 
 def test_paste_last_falls_back_to_history():
