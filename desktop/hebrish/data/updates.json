@@ -2,9 +2,45 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "desktop",
-  "built": "2026-11-02",
+  "built": "2026-11-04",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-04",
+      "tag": "Desktop 1.018",
+      "title": "Let your coding agent read your history, fix recurring errors and update the app",
+      "summary": "Agent control (opt-in): a new switch in Settings → Local API lets coding agents on this computer read and search your transcript history, add find-and-replace rules to the personal dictionary, update the app and its models, switch model and start or stop dictation.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-02",
+      "tag": "Data",
+      "title": "How the training sentences are made",
+      "summary": "A method note, How the Hebrish training sentences are made (PDF, 5 pages, with charts): where the words and sentences come from, how sentences are generated from a target term and its context, which models and batch APIs wrote them, the rejection policy, spelling and…",
+      "platforms": [
+        "site"
+      ]
+    },
+    {
+      "date": "2026-11-02",
+      "tag": "Licensing",
+      "title": "How Hebrish will be licensed to organisations",
+      "summary": "A new Licensing page, also in Hebrew: free for individuals, research, education and small non-profits and volunteer organisations; an institutional licence for health funds, hospitals and public bodies; a commercial licence for businesses.",
+      "platforms": [
+        "site"
+      ]
+    },
+    {
+      "date": "2026-11-02",
+      "tag": "Feedback",
+      "title": "Tell Daniel how Hebrish works for you",
+      "summary": "A short four-step form at the top of Feedback: where you use Hebrish, the model and version, your accent, an accuracy rating, the kinds of words it struggles with and a list of words it gets wrong.",
+      "platforms": [
+        "site"
+      ]
+    },
     {
       "date": "2026-11-02",
       "tag": "Desktop 1.017",
@@ -151,46 +187,6 @@
       "tag": "Android 1.005 · Desktop 1.006",
       "title": "No more half-words where a long dictation is split",
       "summary": "Longer dictations are decoded in pieces cut at your pauses. The first word after a pause sometimes lost its start (\"ividual\" for \"individual\", \"chnically\" for \"technically\"); it now comes out whole, on Android and on the desktop.",
-      "platforms": [
-        "android",
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-25",
-      "tag": "Android 1.003 · Desktop 1.005",
-      "title": "Models in plain words, a What's new list, and the floating mic types instead of pasting",
-      "summary": "Each model now says what it's built on, for example \"Base model: Parakeet 0.6B v2 by NVIDIA\"; the technical detail is under Technical details.",
-      "platforms": [
-        "android",
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-25",
-      "tag": "Models",
-      "title": "Sabich v2.1: more recordings, and no more <unk>",
-      "summary": "Sabich v2.1 replaces v2.0 as the recommended model in the apps. It is a Sabich-only update to Release v2; Shakshuka, Jachnun and Meorav are unchanged.",
-      "platforms": [
-        "android",
-        "desktop",
-        "models"
-      ]
-    },
-    {
-      "date": "2026-10-25",
-      "tag": "Desktop 1.003",
-      "title": "Your microphones in your order, and no more lost words",
-      "summary": "Settings has a Microphones list: every mic Hebrish has seen on this computer, with a name you give it and a type (built-in, headset, wireless headset, shotgun, lav, dynamic and more).",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-24",
-      "tag": "Apps 1.002",
-      "title": "Paragraphs in Transcription Mode, your choice of how",
-      "summary": "Transcription Mode, in both apps, has a Paragraphs setting: None (one block of text), Time-based (a new paragraph about every 30 seconds, as before) or Paragraph model.",
       "platforms": [
         "android",
         "desktop"
