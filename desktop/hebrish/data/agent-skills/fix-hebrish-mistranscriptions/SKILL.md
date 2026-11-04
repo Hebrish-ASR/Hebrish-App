@@ -2,7 +2,7 @@
 name: fix-hebrish-mistranscriptions
 description: 'Find words and phrases the Hebrish desktop app (hebrish.app) keeps getting wrong and add find-and-replace rules for them to its personal dictionary through the local API at http://127.0.0.1:8723, testing each rule against the user''s real transcript history first. Handles names, brands and multi-word phrases, for example My Word Prompts written for My Weird Prompts. Use when a user says Hebrish keeps mishearing or misspelling something, asks to add a replacement or dictionary word, or asks to find recurring errors. Do NOT use for one-off typos in a single transcript, for words the model never produces at all (no rule can create them), or for the Android app.'
 license: MIT
-compatibility: The Hebrish desktop app (Ubuntu or Windows), a version later than 1.017, running with Settings, Local API and its control option on; curl. Works offline.
+compatibility: The Hebrish desktop app (Ubuntu or Windows), 1.018 or later, running with Settings, Local API and its control option on; curl. Works offline.
 ---
 
 # Fix Hebrish mistranscriptions

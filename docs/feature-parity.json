@@ -1286,7 +1286,7 @@
       },
       "ubuntu": {
         "status": "present",
-        "since": "unreleased",
+        "since": "1.018",
         "evidence": "desktop/hebrish/local_api.py (ROUTES), ui/api_control.py, agent_skills.py; Settings → Local API; tests/test_local_api.py, tests/test_agent_skills.py"
       },
       "windows": {

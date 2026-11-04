@@ -1644,7 +1644,7 @@ the card.
   curl: a 40 s mp3 in 5.1 s on CPU (4 threads), the `Origin` request refused. Not yet run inside
   the full app, or on Windows.
 
-### Control endpoints and agent skills (B-87, unreleased, 2026-11-04)
+### Control endpoints and agent skills (B-87, 1.018, 2026-11-04)
 
 Daniel (R-2026-11-04-1): control the app from agents, with skills for updating, pulling history and
 adding find-and-replace rules, shipped with the app. `GET /v1` lists every route (`local_api.ROUTES`).

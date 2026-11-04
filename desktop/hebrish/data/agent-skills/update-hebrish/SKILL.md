@@ -2,7 +2,7 @@
 name: update-hebrish
 description: 'Check for and install updates to the Hebrish desktop app (hebrish.app) and its downloaded speech models through the app''s local API at http://127.0.0.1:8723, and switch model. Use when a user asks to update Hebrish, whether Hebrish or its models are up to date, which model is running, or to change model. Do NOT use for a first install (use install-hebrish-linux), for an app that will not start or a failing APT upgrade (use troubleshoot-hebrish-linux), or for the Android app.'
 license: MIT
-compatibility: The Hebrish desktop app (Ubuntu or Windows), a version later than 1.017, running with Settings, Local API and its control option on; curl. Checks need internet.
+compatibility: The Hebrish desktop app (Ubuntu or Windows), 1.018 or later, running with Settings, Local API and its control option on; curl. Checks need internet.
 ---
 
 # Update Hebrish

@@ -2,7 +2,7 @@
 name: read-hebrish-history
 description: 'Read, search and export what the user dictated from the Hebrish desktop app''s transcript history (hebrish.app) through its local API at http://127.0.0.1:8723. Nothing leaves the computer unless the user asks. Use when a user asks what they dictated, to find or recover something they said, to export or summarise their transcripts, or for dictation stats. Do NOT use for transcribing an audio file (use transcribe-with-hebrish), for correcting recurring errors (use fix-hebrish-mistranscriptions), or for the Android app.'
 license: MIT
-compatibility: The Hebrish desktop app (Ubuntu or Windows), a version later than 1.017, running with Settings, Local API and its control option on; curl. Works offline.
+compatibility: The Hebrish desktop app (Ubuntu or Windows), 1.018 or later, running with Settings, Local API and its control option on; curl. Works offline.
 ---
 
 # Read Hebrish history
