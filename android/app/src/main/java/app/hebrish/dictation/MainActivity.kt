@@ -29,8 +29,31 @@ class MainActivity : Page() {
     private lateinit var setupSummary: TextView
     private lateinit var versionShort: TextView
 
+    /**
+     * Once, on first opening: how Hebrish is licensed, with Corn. A notice rather than a licence
+     * agreement: the app is MIT and the limits are on the models (desktop twin: ui/licence.py).
+     */
+    private fun licenceNotice() {
+        if (Prefs.licenceNoticeShown(this)) return
+        Prefs.setLicenceNoticeShown(this)
+        val body = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(dp(24), dp(12), dp(24), 0)
+            addView(android.widget.ImageView(this@MainActivity).apply { setImageResource(R.drawable.corn) },
+                android.widget.LinearLayout.LayoutParams(dp(90), dp(120)).apply { bottomMargin = dp(10) })
+            addView(ccIcons())
+            addView(TextView(this@MainActivity).apply { setText(R.string.licence_notice_body); setPadding(0, dp(10), 0, 0) })
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.licence_notice_title)
+            .setView(android.widget.ScrollView(this).apply { addView(body) })
+            .setPositiveButton(R.string.licence_notice_ok, null)
+            .show()
+    }
+
     override fun build() {
         // Home (0.10.0): the brand header replaces the bar's title; the rows sit in cards.
+        licenceNotice()
         title = ""
         column.addView(brandHeader(markSize = 52, nameSize = 30f), android.widget.LinearLayout.LayoutParams(
             android.widget.LinearLayout.LayoutParams.MATCH_PARENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(4) })

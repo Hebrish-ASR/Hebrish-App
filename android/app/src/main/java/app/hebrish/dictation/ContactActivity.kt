@@ -18,6 +18,7 @@ class ContactActivity : Page() {
         button(R.string.open_source, r) { open(getString(R.string.url_source)) }
 
         heading(R.string.terms_title)
+        column.addView(ccIcons())
         text(R.string.terms_body)
         button(R.string.open_terms) { open(getString(R.string.url_terms)) }
     }

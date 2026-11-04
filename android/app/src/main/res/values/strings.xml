@@ -8,9 +8,12 @@
     <string name="url_heliboard">https://github.com/HeliBorg/HeliBoard/releases</string>
     <string name="url_source">https://github.com/Hebrish-ASR/Hebrish-App</string>
     <string name="url_terms">https://hebrish.app/terms</string>
-    <string name="download_terms">By downloading the code-switching model you agree to the Hebrish terms of use: free for personal, research, education and non-profit use; commercial use, including telephony, needs a licence.</string>
+    <string name="download_terms">By downloading the code-switching model you agree to the Hebrish terms of use: free for personal use, research, education and small non-profits; commercial use, including telephony, needs a licence.</string>
     <string name="terms_title">Terms of use</string>
-    <string name="terms_body">The Hebrish models are free for personal, research, education and non-profit use. Commercial use, including telephony and call centres, needs a commercial licence: access@hebrish.app. Hebrish is experimental and trained on one speaker\'s voice; transcripts can be wrong, so check them before relying on them. It is provided as is, without warranty. Your audio stays on this phone.</string>
+    <string name="licence_notice_title">How Hebrish is licensed</string>
+    <string name="licence_notice_body">The models are CC BY-NC 4.0 plus the Hebrish terms of use: free for personal use, research, education and small non-profits, with credit.\n\nCommercial use needs a paid licence, and so do health funds and public bodies. Using Hebrish in a commercial project, or not sure? Check first: access@hebrish.app.\n\nThe app itself is open source under MIT. Details: hebrish.app/licensing</string>
+    <string name="licence_notice_ok">Got it</string>
+    <string name="terms_body">The Hebrish models are CC BY-NC 4.0 plus the terms of use: free for personal use, research, education and small non-profits, with credit. Commercial use, including telephony and call centres, needs a paid licence, and so do health funds and public bodies. Not sure? Check first: access@hebrish.app. The app is open source under MIT. Hebrish is experimental and trained on one speaker\'s voice; transcripts can be wrong, so check them before relying on them. It is provided as is, without warranty. Your audio stays on this phone.</string>
     <string name="open_terms">Read the terms of use</string>
 
     <!-- Home (0.10.0): the tagline above already says what it does, so this says where it runs. -->

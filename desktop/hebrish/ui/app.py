@@ -29,7 +29,7 @@ from ..engine import REF_S, Engine, held_mark, live_split, seam_join
 from ..history import History, maintain
 from ..hotkey import make_listener
 from ..inserter import copy_to_clipboard, make_inserter
-from . import about
+from . import about, licence
 from .overlay import OverlayHost
 
 log = logging.getLogger("hebrish")
@@ -232,6 +232,7 @@ class Controller(QObject):
         self.win = MainWindow(self)
         self.sig.progress.connect(self.win.progress)
         self._build_tray()
+        licence.install(self.win)
         self.pending_download: str | None = None   # model the user asked to download
         # (model, model it replaces): the one-time switch to the streaming default (0.7.0)
         self.switch_after_download: tuple[str, str] | None = None

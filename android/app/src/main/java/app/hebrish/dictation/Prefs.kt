@@ -35,6 +35,8 @@ object Prefs {
     fun setLastTranscript(ctx: Context, v: String) = sp(ctx).edit().putString("last_transcript", v).apply()
 
     /** The one-time tip about Android's "pasted from your clipboard" notice has been shown (1.000). */
+    fun licenceNoticeShown(ctx: Context) = sp(ctx).getBoolean("licence_notice_shown", false)
+    fun setLicenceNoticeShown(ctx: Context) = sp(ctx).edit().putBoolean("licence_notice_shown", true).apply()
     fun clipboardTipShown(ctx: Context) = sp(ctx).getBoolean("clipboard_tip_shown", false)
     fun setClipboardTipShown(ctx: Context) = sp(ctx).edit().putBoolean("clipboard_tip_shown", true).apply()
 

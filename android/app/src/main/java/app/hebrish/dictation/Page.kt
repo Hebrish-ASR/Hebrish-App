@@ -262,6 +262,15 @@ abstract class Page : Activity() {
      * A card that groups [nav] rows (home, 0.10.0): pass it as their parent; rows after the first
      * get a hairline above them.
      */
+    /** The Creative Commons icons for the models' licence: CC, BY, NC. */
+    protected fun ccIcons(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        for (icon in intArrayOf(R.drawable.licence_cc, R.drawable.licence_by, R.drawable.licence_nc)) {
+            addView(android.widget.ImageView(this@Page).apply { setImageResource(icon) },
+                LinearLayout.LayoutParams(dp(32), dp(32)).apply { marginEnd = dp(6) })
+        }
+    }
+
     protected fun group(parent: LinearLayout = column) = add(LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setBackgroundResource(R.drawable.card_bg)

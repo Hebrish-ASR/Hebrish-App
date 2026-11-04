@@ -18,6 +18,7 @@ from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget
 
 from .. import __version__, model_store
+from .licence import LICENCE_HTML, cc_icons
 from .style import BLUE, BRAND_GREEN, GOLD, INK, MUTED, PAPER, display_font
 
 HUB = "https://github.com/Hebrish-ASR/English-Hebrew-Codeswitching-Parakeet-Finetune"
@@ -196,13 +197,10 @@ class AboutPage(QScrollArea):
         lay.addWidget(box)
 
         box, b = card("Terms and licences")
+        b.addLayout(cc_icons())
         b.addWidget(_rich(
-            "The Hebrish models are free for personal, research, education and non-profit use. "
-            "Commercial use, including telephony and call centres, needs a commercial licence: "
-            f"<a href='mailto:{ACCESS}'>{ACCESS}</a>. Full terms: <a href='{TERMS}'>hebrish.app/terms</a>. "
-            "Hebrish is experimental: check transcripts before relying on them. It is provided as "
-            "is, without warranty.<br><br>Versions up to v1.0 of Jachnun are CC-BY-4.0, stock "
-            "Parakeet is CC-BY-4.0 (NVIDIA), and the app is MIT."))
+            f"{LICENCE_HTML}<br><br>Each version's licence is listed in the terms. Hebrish is experimental: "
+            "check transcripts before relying on them. It is provided as is, without warranty."))
         lay.addWidget(box)
 
         foot = muted(f"<a href='{HUB}'>Code-switching project</a> · <a href='{MODEL}'>Jachnun on "
