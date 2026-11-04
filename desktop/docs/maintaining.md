@@ -1679,9 +1679,11 @@ adding find-and-replace rules, shipped with the app. `GET /v1` lists every route
 - **Verified** (V, 2026-11-04, Ubuntu): `tests/test_local_api.py`, `tests/test_agent_skills.py`; and the
   real `Controller` (offscreen, isolated HOME, hotkey listener stubbed, no model) with a copy of a
   real history of 4,239 transcripts over HTTP: every route, GUI-thread dispatch confirmed, a tab
-  save keeping a word added behind it, control off giving 403. **Not run:** a real apt upgrade through
-  pkexec, start/stop with a live mic, switching to a downloaded model, a model download, anything on
-  Windows, the packaged .deb. `python -m hebrish` is unusable for this test while the installed app
+  save keeping a word added behind it, control off giving 403. 1.018's .deb: CI's clean-container install and
+  selftest, then 1.017 to 1.018 on Ubuntu with `APT_SCRIPT` run through sudo from the live APT
+  repository, and `hebrish --selftest` on the result (V, 2026-11-04). **Not run:** `POST /v1/app/update`
+  through pkexec, any control route in the installed build, start/stop with a live mic, switching to
+  a downloaded model, a model download, anything on Windows (the beta tag skips the Windows job). `python -m hebrish` is unusable for this test while the installed app
   runs: the single-instance socket hands off to it and shows its window.
 
 ## Empty pieces are decoded again (1.014, 2026-10-31)
