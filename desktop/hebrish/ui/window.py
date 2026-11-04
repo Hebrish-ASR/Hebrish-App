@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, Q
                                QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QTimeEdit,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import __version__, audio, autostart, backup, bundles, cleanup, config, dictionary, model_store, paragraphs, transcripts, transforms, vad
+from .. import __version__, agent_skills, audio, autostart, backup, bundles, cleanup, config, dictionary, model_store, paragraphs, transcripts, transforms, vad
 from ..config import APP_NAME, CONFIG_PATH, DATA_DIR, MODELS_DIR, STATE_PATH, TAGLINE, load_json, threads
 from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
@@ -717,7 +717,8 @@ class MainWindow(QMainWindow):
         if not word:
             return
         heard = [h.strip() for h in self.dict_heard.text().split(",") if h.strip()]
-        entries = [e for e in self.dict_entries if e["word"] != word]   # adding a word again replaces it
+        # From the file, not self.dict_entries: the local API may have added words since (B-87)
+        entries = [e for e in dictionary.load() if e["word"] != word]   # adding a word again replaces it
         entries.append({"word": word, "heard": heard})
         if not self._dict_save(entries):
             return
@@ -730,9 +731,11 @@ class MainWindow(QMainWindow):
         rows = {i.row() for i in self.dict_table.selectedIndexes()}
         if not rows:
             self.status("Select the words to remove first.")
-        elif self._dict_save([e for i, e in enumerate(self.dict_entries) if i not in rows]):
-            self._dict_show()
-            self.toast("Dictionary saved")
+        else:
+            gone = {self.dict_entries[i]["word"] for i in rows}
+            if self._dict_save([e for e in dictionary.load() if e["word"] not in gone]):
+                self._dict_show()
+                self.toast("Dictionary saved")
 
     def _dict_save(self, entries) -> bool:
         try:
@@ -1909,6 +1912,19 @@ class MainWindow(QMainWindow):
 
         box, b = card("Local API")
         b.addWidget(self._local_api_row())
+        ctl = self._check("local_api_control", "Let agents read history and control the app")
+        ctl.setToolTip("Adds history, the dictionary, updates, model choice and start/stop dictation to "
+                       "the local API. No password: anything running on this computer can use it.")
+        b.addWidget(ctl)
+        skills = QHBoxLayout()
+        self.agent_skills_label = muted("Skills teach coding agents to update Hebrish, read history "
+                                        "and add dictionary rules.")
+        self.agent_skills_label.setWordWrap(True)
+        skills.addWidget(self.agent_skills_label, 1)
+        inst = QPushButton("Install agent skills")
+        inst.clicked.connect(self._install_agent_skills)
+        skills.addWidget(inst)
+        b.addLayout(skills)
         self.api_status_label = muted()
         self.api_status_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.api_status_label.setOpenExternalLinks(True)
@@ -2065,6 +2081,12 @@ class MainWindow(QMainWindow):
         row.addStretch(1)
         row.addWidget(port)
         return w
+
+    def _install_agent_skills(self):
+        try:
+            self.agent_skills_label.setText(agent_skills.report(agent_skills.install()))
+        except OSError as e:
+            self.banner(f"Couldn't install the agent skills: {e}")
 
     def _on_local_api(self):
         err = self.ctl.apply_local_api()

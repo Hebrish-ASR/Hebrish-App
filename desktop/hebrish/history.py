@@ -323,6 +323,74 @@ class History:
         self.db.close()
 
 
+FIELDS = "id, uid, at, text, words, seconds, model, source, original"     # what the local API serves
+
+
+def _read_only(path: Path) -> sqlite3.Connection:
+    """For other threads: `History.db` belongs to the GUI thread, sqlite3 refuses it elsewhere. WAL
+    readers never block the app or wait for it."""
+    db = sqlite3.connect(f"{Path(path).as_uri()}?mode=ro", uri=True, timeout=10)
+    db.row_factory = sqlite3.Row
+    return db
+
+
+def query(path: Path, *, q: str = "", limit: int = 50, offset: int = 0, since: float | None = None,
+          until: float | None = None, source: str | None = None, edited: bool = False) -> dict:
+    """Transcripts for the local API, on a connection of its own: newest first, or best match first
+    with `q` (`snippet` marks the matches). `edited`: only those the user corrected by hand, with
+    the model's text in `original`. `total` counts every match, not this page."""
+    if not Path(path).is_file():
+        return {"total": 0, "data": []}
+    query_ = fts_query(q)
+    where, args = [], []
+    for sql, val in (("d.at >= ?", since), ("d.at < ?", until), ("d.source = ?", source)):
+        if val is not None:
+            where.append(sql)
+            args.append(val)
+    if edited:
+        where.append("d.original IS NOT NULL")
+    cols = ", ".join(f"d.{c.strip()}" for c in FIELDS.split(","))
+    if query_:
+        tables, order = "dictations_fts JOIN dictations d ON d.id = dictations_fts.rowid", \
+            "bm25(dictations_fts), d.at DESC"
+        cols += ", snippet(dictations_fts, 0, '[', ']', '…', 24) AS snippet"
+        where.insert(0, "dictations_fts MATCH ?")
+        args.insert(0, query_)
+    else:
+        tables, order = "dictations d", "d.at DESC, d.id DESC"
+    cond = f" WHERE {' AND '.join(where)}" if where else ""
+    db = _read_only(path)
+    try:
+        total = db.execute(f"SELECT count(*) FROM {tables}{cond}", args).fetchone()[0]
+        rows = db.execute(f"SELECT {cols} FROM {tables}{cond} ORDER BY {order} LIMIT ? OFFSET ?",
+                          (*args, limit, offset))
+        return {"total": total, "data": [dict(r) for r in rows]}
+    finally:
+        db.close()
+
+
+def get(path: Path, rid: int) -> dict | None:
+    if not Path(path).is_file():
+        return None
+    db = _read_only(path)
+    try:
+        r = db.execute(f"SELECT {FIELDS} FROM dictations WHERE id = ?", (rid,)).fetchone()
+        return dict(r) if r else None
+    finally:
+        db.close()
+
+
+def texts(path: Path):
+    """(id, at, text) of every transcript, newest first (dictionary.preview)."""
+    if not Path(path).is_file():
+        return
+    db = _read_only(path)
+    try:
+        yield from db.execute("SELECT id, at, text FROM dictations ORDER BY at DESC, id DESC")
+    finally:
+        db.close()
+
+
 def maintain(path: Path) -> dict:
     """Keep history.db from bloating (1.009, B-69). On its own connection, so it can run in a
     background thread while the app writes (WAL; the app's connection waits up to 10 s for the

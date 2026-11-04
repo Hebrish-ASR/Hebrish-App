@@ -1644,6 +1644,46 @@ the card.
   curl: a 40 s mp3 in 5.1 s on CPU (4 threads), the `Origin` request refused. Not yet run inside
   the full app, or on Windows.
 
+### Control endpoints and agent skills (B-87, unreleased, 2026-11-04)
+
+Daniel (R-2026-11-04-1): control the app from agents, with skills for updating, pulling history and
+adding find-and-replace rules, shipped with the app. `GET /v1` lists every route (`local_api.ROUTES`).
+
+- **A second switch.** `local_api_control`, off by default, Settings → Local API. Off: control routes
+  answer 403 and transcription works as before. A separate switch, because someone who turned on
+  transcription in 1.014 did not agree to serve their transcripts after an update. `/health` has
+  `control`: true or false, and no key at all on 1.017 or older, which is how the skills tell.
+  Same guards as transcription and no token, following Daniel's 2026-10-31 decision (D-2026-11-04-01).
+- **Threads.** Requests run on HTTP threads. `History.db` belongs to the GUI thread (sqlite3 refuses
+  it elsewhere), so `history.query/get/texts` open their own `mode=ro` connection; WAL means they
+  neither block nor wait for the app. Anything touching `Controller` goes through
+  `ui/api_control.Control._main`: `Signals.call`, queued to the bound `Controller._call`, 10 s limit.
+  A bound method rather than a lambda: it is sure to run on the GUI thread. Network checks run on
+  the HTTP thread.
+- **Dictionary.** `dictionary.add` merges heard-as phrases (the tab's form replaces them);
+  `dictionary.remove`; both hold one lock over read, change, save. `dictionary.preview` runs a rule
+  over History and counts only real changes. Fixed along the way: the Dictionary tab saved its
+  in-memory list, so a word written to `dictionary.json` by anything else since the window opened
+  was lost on the next tab save. `_dict_add` and `_dict_remove` now start from the file, and
+  `Control.dictionary_changed` refreshes the table. **1.017 and older still have this**: a word added
+  to the file while the app is open needs a restart before the tab is used.
+- **Updates.** `POST /v1/app/update` is the update bar's action: apt only, the user approves pkexec,
+  409 with the download page on other installs. `Controller.app_update_error` keeps the failure for
+  `/v1/app/status`.
+- **Skills.** `hebrish/data/agent-skills/<name>/SKILL.md` are copies from Hebrish-ASR/Hebrish-Agent-Skills
+  (edit there). `hebrish.agent_skills` copies them into `~/.claude/skills`, `~/.codex/skills` and
+  `~/.gemini/skills`, only for agents whose folder exists: Settings → Local API → Install agent
+  skills, or `hebrish --install-agent-skills`. Wrong turn: `~/.agents/skills` was the first target,
+  but no source confirmed it as a user-level path (project-level only, 2026-11-04).
+  `tests/test_agent_skills.py` checks each API path in the skills against `ROUTES`.
+- **Verified** (V, 2026-11-04, Ubuntu): `tests/test_local_api.py`, `tests/test_agent_skills.py`; and the
+  real `Controller` (offscreen, isolated HOME, hotkey listener stubbed, no model) with a copy of a
+  real history of 4,239 transcripts over HTTP: every route, GUI-thread dispatch confirmed, a tab
+  save keeping a word added behind it, control off giving 403. **Not run:** a real apt upgrade through
+  pkexec, start/stop with a live mic, switching to a downloaded model, a model download, anything on
+  Windows, the packaged .deb. `python -m hebrish` is unusable for this test while the installed app
+  runs: the single-instance socket hands off to it and shows its window.
+
 ## Empty pieces are decoded again (1.014, 2026-10-31)
 
 Sabich can return nothing for a whole piece of speech, depending on exactly where the piece

@@ -16,6 +16,27 @@ def test_shared_cases(case):
     assert FIX(case["in"]) == case["out"]
 
 
+def test_multi_word_and_multi_sentence_phrases():
+    # R-2026-11-04-1: the misses in real history were all this clean form; punctuation is literal
+    fix = dictionary.compile([{"word": "My Weird Prompts", "heard": ["my word prompts"]},
+                              {"word": "See you next week.", "heard": ["See you. Next weak."]}])
+    assert fix("On My Word Prompts, today.") == "On My Weird Prompts, today."
+    assert fix("MY WORD\nPROMPTS") == "My Weird Prompts"
+    assert fix("My Weird prompts") == "My Weird Prompts"
+    assert fix("my word, prompts") == "my word, prompts"
+    assert fix("Bye. See you. Next weak. Thanks") == "Bye. See you next week. Thanks"
+
+
+def test_add_merges_and_remove_is_precise(tmp_path):
+    p = tmp_path / "dictionary.json"
+    assert dictionary.add("Hebrish", ["hebrew ish"], p)[1] is True
+    entry, created = dictionary.add("Hebrish", ["HEBREW ISH", "he brish"], p)
+    assert not created and entry["heard"] == ["hebrew ish", "he brish"]
+    assert dictionary.remove("Hebrish", "he brish", p) and dictionary.load(p)[0]["heard"] == ["hebrew ish"]
+    assert not dictionary.remove("Hebrish", "nope", p) and not dictionary.remove("Nope", path=p)
+    assert dictionary.remove("Hebrish", path=p) and dictionary.load(p) == []
+
+
 def test_no_entries_is_identity():
     assert dictionary.compile([]) is str
     assert dictionary.compile([{"word": " ", "heard": ["x"]}]) is str

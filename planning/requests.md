@@ -6,6 +6,7 @@ credited), or an issue link. Outcome links the backlog item, or says why not.
 
 | Id | Date | From | Platforms | Request | Outcome |
 | --- | --- | --- | --- | --- | --- |
+| R-2026-11-04-1 | 2026-11-04 | Daniel | Desktop | Can find and replace handle multi-word replacements reliably (My Word Prompts for My Weird Prompts)? A local API to control the desktop app, with agent skills for updating, pulling history and intelligently adding rules, in the public skills repo and shipped with the app | Desktop [B-87](backlog.md#sprint-desktop-ubuntu--windows-toward-070) |
 | R-2026-11-02-4 | 2026-11-02 | Daniel | All | Seam handling: commas left after a space (" , "), doubled marks, "?" kept when the sentence went on ("inference? code"), seen in his own dictation | Desktop done: [B-86](backlog.md#sprint-desktop-ubuntu--windows-toward-070); Android [B-86a](backlog.md#sprint-android) |
 | R-2026-11-02-3 | 2026-11-02 | Daniel | All | A guard for leaving recording on: pressing Enter (the send key) while recording with insert-as-you-go stops the take | Desktop done: [B-85](backlog.md#sprint-desktop-ubuntu--windows-toward-070); Android [B-85a](backlog.md#sprint-android) |
 | R-2026-11-02-2 | 2026-11-02 | Daniel | Desktop | Maintainer mode: keep a more verbose history (audio and how each take was cut and joined) on his machine, so seam and punctuation handling can be measured and tuned on real dictation | Desktop done: [B-84](backlog.md#sprint-desktop-ubuntu--windows-toward-070); Android not planned (maintainer tool, desktop is where he measures) |

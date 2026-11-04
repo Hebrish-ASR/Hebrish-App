@@ -9,6 +9,18 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-04-01: Control endpoints get their own opt-in, and no token
+
+- **Decision:** History, dictionary, updates, models and dictation on the local API sit behind a
+  second switch, `local_api_control`, off by default. No token, as with transcription.
+- **Why:** An update must not start serving transcripts to someone who only turned on transcription.
+  The existing guards keep web pages out. Agents read no key, in line with D "local, unauthenticated"
+  (Daniel, 2026-10-31). Taken by the agent while building; Daniel can reverse it.
+- **Alternatives:** Everything under `local_api` (exposes transcripts on update). A token in a
+  private file in the config folder: would also keep out other accounts on a shared computer, at the
+  cost of one more step in each skill. Not chosen; the easy next step if that case matters.
+- **By:** Agent, for Daniel's review. Request R-2026-11-04-1, backlog B-87.
+
 ### D-2026-11-02-01: Transforms on desktop with the shipped prompt library; Qwen3-4B-Instruct-2507 as the model; library in history.db with builtin_/user_ tables
 
 - **Decision:** Desktop gets *Transform…* on the Transcription tab (B-82): a prompt from the text

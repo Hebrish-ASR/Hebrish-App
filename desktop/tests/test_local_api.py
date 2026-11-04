@@ -121,3 +121,126 @@ def test_no_model_and_bad_input(api):
 def test_port_in_use_is_reported(api):
     other = local_api.LocalApi(lambda s: "", lambda: None, api.port)
     assert not other.start() and "Couldn't listen" in other.error
+
+
+# -- control endpoints (B-87) ----------------------------------------------------------------
+
+class FakeControl:
+    def __init__(self, path):
+        self.history_path, self.on, self.changed = path, True, 0
+
+    def enabled(self):
+        return self.on
+
+    def dictionary_changed(self):
+        self.changed += 1
+
+    def handle(self, method, path, body):
+        if path == "/v1/app/status":
+            return 200, {"state": "idle"}
+        if path == "/v1/app/update":
+            raise RuntimeError("this install (windows) updates from the download page")
+        if path == "/v1/app/models/select":
+            raise LookupError("no model 'x'")
+        raise ValueError("bad action")
+
+
+@pytest.fixture
+def ctl(tmp_path, monkeypatch):
+    from hebrish import dictionary
+    from hebrish.history import History
+    monkeypatch.setattr(dictionary, "PATH", tmp_path / "dictionary.json")
+    h = History(tmp_path / "history.db")
+    h.add("My Word Prompts is a podcast", at=100.0, model="sabich v2.3")
+    h.add("I listen to my word prompts on the way to the makolet", at=200.0, source="file")
+    h.add("Nothing to see here", at=300.0)
+    h.update_text(3, "Nothing to read here")
+    fake = FakeControl(tmp_path / "history.db")
+    a = local_api.LocalApi(lambda s: "", lambda: None, _free_port(), fake)
+    assert a.start()
+    a.fake = fake
+    yield a
+    a.stop()
+    h.close()
+
+
+def _json(api, method, path, body=None, headers=None):
+    st, _, d = _req(api, method, path, json.dumps(body) if body is not None else None, headers)
+    return st, json.loads(d)
+
+
+def test_routes_are_listed_and_health_says_control(ctl):
+    st, j = _json(ctl, "GET", "/v1")
+    assert st == 200 and j["control"] is True
+    assert {"method": "GET", "path": "/v1/history"}.items() <= next(
+        r for r in j["routes"] if r["path"] == "/v1/history").items()
+    assert _json(ctl, "GET", "/health")[1]["control"] is True
+
+
+def test_control_off_refuses_everything_but_transcription(ctl):
+    ctl.fake.on = False
+    for method, path, body in (("GET", "/v1/history", None), ("GET", "/v1/history/1", None),
+                               ("GET", "/v1/dictionary", None), ("GET", "/v1/app/status", None),
+                               ("POST", "/v1/dictionary", {"word": "X"}), ("DELETE", "/v1/dictionary?word=X", None)):
+        st, j = _json(ctl, method, path, body)
+        assert st == 403 and "Settings" in j["error"]["message"], path
+    assert _json(ctl, "GET", "/health")[0] == 200
+    assert _json(ctl, "GET", "/v1/dictionary")[0] == 403
+
+
+def test_no_control_object_is_the_old_api(api):
+    assert _json(api, "GET", "/v1/history")[0] == 403
+    assert _json(api, "GET", "/health")[1]["control"] is False
+
+
+def test_guards_cover_control(ctl):
+    assert _req(ctl, "GET", "/v1/history", headers={"Origin": "https://example.com"})[0] == 403
+    assert _req(ctl, "GET", "/v1/history", headers={"Host": "evil.example:8723"})[0] == 403
+    assert _req(ctl, "DELETE", "/v1/dictionary?word=X", headers={"Origin": "https://example.com"})[0] == 403
+
+
+def test_history_paging_search_and_filters(ctl):
+    st, j = _json(ctl, "GET", "/v1/history?limit=2")
+    assert st == 200 and j["total"] == 3 and [r["id"] for r in j["data"]] == [3, 2]
+    assert [r["id"] for r in _json(ctl, "GET", "/v1/history?limit=2&offset=2")[1]["data"]] == [1]
+    j = _json(ctl, "GET", "/v1/history?q=makolet")[1]
+    assert j["total"] == 1 and "[makolet]" in j["data"][0]["snippet"]
+    assert _json(ctl, "GET", "/v1/history?since=150&until=250")[1]["total"] == 1
+    assert _json(ctl, "GET", "/v1/history?source=file")[1]["total"] == 1
+    j = _json(ctl, "GET", "/v1/history?edited=1")[1]
+    assert j["total"] == 1 and j["data"][0]["original"] == "Nothing to see here"
+    assert _json(ctl, "GET", "/v1/history/1")[1]["model"] == "sabich v2.3"
+    assert _json(ctl, "GET", "/v1/history/99")[0] == 404
+    assert _json(ctl, "GET", "/v1/history?limit=0")[0] == 400
+    assert _json(ctl, "GET", "/v1/history?limit=x")[0] == 400
+
+
+def test_dictionary_add_merge_remove(ctl):
+    st, j = _json(ctl, "POST", "/v1/dictionary", {"word": "My Weird Prompts", "heard": ["my word prompts"]})
+    assert st == 201 and j["created"] is True
+    st, j = _json(ctl, "POST", "/v1/dictionary", {"word": "My Weird Prompts", "heard": ["MY WORD PROMPTS", "my ward prompts"]})
+    assert st == 200 and j["entry"]["heard"] == ["my word prompts", "my ward prompts"]   # kept, not replaced
+    assert ctl.fake.changed == 2
+    assert _json(ctl, "DELETE", "/v1/dictionary?word=My%20Weird%20Prompts&heard=my%20ward%20prompts")[0] == 200
+    assert _json(ctl, "GET", "/v1/dictionary")[1]["data"][0]["heard"] == ["my word prompts"]
+    assert _json(ctl, "DELETE", "/v1/dictionary?word=My%20Weird%20Prompts")[0] == 200
+    assert _json(ctl, "DELETE", "/v1/dictionary?word=My%20Weird%20Prompts")[0] == 404
+    assert _json(ctl, "POST", "/v1/dictionary", {"heard": ["x"]})[0] == 400
+    assert _json(ctl, "POST", "/v1/dictionary", {"word": "X", "heard": [1]})[0] == 400
+    assert _req(ctl, "POST", "/v1/dictionary", "not json")[0] == 400
+
+
+def test_preview_counts_changes_and_writes_nothing(ctl):
+    st, j = _json(ctl, "POST", "/v1/dictionary/preview", {"word": "My Weird Prompts", "heard": ["my word prompts"]})
+    assert st == 200 and j["rows_scanned"] == 3 and j["rows_changed"] == 2 and j["replacements"] == 2
+    assert j["by_source"] == {"my word prompts": 1, "My Word Prompts": 1}
+    assert "My Weird Prompts" in j["samples"][0]["after"] and "my word prompts" in j["samples"][0]["before"]
+    assert _json(ctl, "GET", "/v1/dictionary")[1]["data"] == []
+
+
+def test_control_errors_map_to_status(ctl):
+    assert _json(ctl, "GET", "/v1/app/status") == (200, {"state": "idle"})
+    assert _json(ctl, "POST", "/v1/app/update", {})[0] == 409
+    assert _json(ctl, "POST", "/v1/app/models/select", {"id": "x"})[0] == 404
+    assert _json(ctl, "POST", "/v1/app/dictation", {"action": "x"})[0] == 400
+    assert _json(ctl, "GET", "/v1/nope")[0] == 404

@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 
 import numpy as np
-from PySide6.QtCore import QObject, QTimer, QUrl, Signal
+from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QIcon, QPalette
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
@@ -92,6 +92,7 @@ class Signals(QObject):
     addon = Signal(str, object)                 # an add-on download finished: add-on id, error or None
     addon_progress = Signal(str, object, object)  # add-on id, bytes done, total
     all_checked = Signal(object, object, bool)    # bundles.Updates or None, error, manual (B-79)
+    call = Signal(object)                         # a callable for the GUI thread (ui.api_control)
 
 
 def _before(pieces: list, n: int):
@@ -164,11 +165,13 @@ class Controller(QObject):
         self.sig.addon.connect(self._addon_done)
         self.sig.addon_progress.connect(self._addon_progress)
         self.sig.all_checked.connect(self._all_checked)
+        self.sig.call.connect(self._call, Qt.QueuedConnection)
         self.maintaining = False
         self.app_release: app_update.Release | None = None    # newer than this app, else None
         self.app_method = app_update.install_method()         # apt | deb-manual | windows | appimage | source
         self.app_updating = False
         self.app_installed = ""          # version apt installed this session: waits for a restart
+        self.app_update_error: str | None = None   # why the last apt upgrade failed (local API status)
 
         self.inserter = make_inserter()
         self.hotkeys = make_listener(self.cfg, self.sig.start.emit, self.sig.stop.emit,
@@ -1443,6 +1446,7 @@ class Controller(QObject):
     def _app_updated(self, ok, msg):
         log.info("app update: ok=%s %s", ok, msg)
         self.app_updating = False
+        self.app_update_error = None if ok else msg
         if not ok:
             self.win.show_app_update(self.app_release, self.app_method, error=msg)
             return
@@ -1601,6 +1605,10 @@ class Controller(QObject):
         if self.latest:
             self.act_update.setText(f"Install update ({self.latest.version})")
 
+    def _call(self, fn):
+        """Signals.call: a bound method, not a lambda, so it is sure to run on the GUI thread."""
+        fn()
+
     def api_info(self) -> dict | None:
         """The loaded model, for the local API; None while nothing is loaded."""
         if self.engine.loaded_dir is None:
@@ -1624,7 +1632,8 @@ class Controller(QObject):
             self.api.stop()
             self.api = None
         if want and self.api is None:
-            api = local_api.LocalApi(self.api_transcribe, self.api_info, port)
+            from .api_control import Control
+            api = local_api.LocalApi(self.api_transcribe, self.api_info, port, Control(self))
             if not api.start():
                 self.api_error = api.error
                 return api.error
@@ -1713,8 +1722,14 @@ def main():
     p = argparse.ArgumentParser(prog="hebrish")
     p.add_argument("--toggle", action="store_true", help="start or stop dictation in the running app")
     p.add_argument("--hidden", action="store_true", help="start in the tray")
+    p.add_argument("--install-agent-skills", action="store_true",
+                   help="copy the bundled agent skills into each coding agent found, then exit")
     p.add_argument("--selftest", action="store_true", help=argparse.SUPPRESS)
     args, qt_args = p.parse_known_args()
+    if args.install_agent_skills:
+        from .. import agent_skills
+        print(agent_skills.report(agent_skills.install()))
+        return
     if sys.stderr is None:                    # Windows --windowed build: log to a file
         from ..config import DATA_DIR
         DATA_DIR.mkdir(parents=True, exist_ok=True)

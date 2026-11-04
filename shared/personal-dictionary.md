@@ -53,6 +53,12 @@ Both apps implement exactly these rules; `dictionary-cases.json` is the shared t
 7. **Empty or whitespace-only words are ignored**, and so are empty heard-as phrases. Leading and
    trailing whitespace is trimmed from both.
 
+**Phrases (R-2026-11-04-1, checked 2026-11-04).** `word` and `heard` may be several words or
+sentences. Across 4,239 real desktop transcripts, all four "My Word Prompts" misses were the clean
+form, none with punctuation between the words, so rule 3 stays literal: `my word prompts` does not
+match `my word, prompts`, and a phrase with a sentence break matches only with that punctuation.
+The real gap is the one above: a phrase cut by a pause during insert-as-you-go is missed.
+
 ## Where the entries come from
 
 **Android** reads the system **personal dictionary** (`UserDictionary.Words`: the list keyboards

@@ -1277,6 +1277,26 @@
       }
     },
     {
+      "id": "local-api-control",
+      "group": "app",
+      "name": "Local API control and agent skills: history, dictionary, updates, models and dictation for coding agents, opt-in (B-87)",
+      "android": {
+        "status": "n/a",
+        "evidence": "Desktop request (R-2026-11-04-1): the client is a coding agent on the same computer"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/local_api.py (ROUTES), ui/api_control.py, agent_skills.py; Settings → Local API; tests/test_local_api.py, tests/test_agent_skills.py"
+      },
+      "windows": {
+        "status": "present",
+        "since": "unreleased",
+        "verified": false,
+        "evidence": "shared desktop code; not run on Windows"
+      }
+    },
+    {
       "id": "model-bundles",
       "group": "models",
       "name": "Model bundles and Update all (B-79): download a named set of models in one click; Check for updates covers every downloaded model and add-on",

@@ -138,6 +138,11 @@ model; nothing is kept in History. For Claude Code and other agents: the `transc
 skill in [Hebrish-Agent-Skills](https://github.com/Hebrish-ASR/Hebrish-Agent-Skills). Details:
 `docs/maintaining.md`, "Local API".
 
+A second switch, *Let agents read history and control the app*, adds history, the personal
+dictionary, updates, model choice and start/stop dictation to the same port (unreleased,
+2026-11-04); `GET /v1` lists the routes. **Install agent skills** in the same card, or
+`hebrish --install-agent-skills`, gives Claude Code, Codex and Gemini CLI the skills that use it.
+
 ## Install
 
 **Ubuntu 26.04** (amd64): download the .deb from the
