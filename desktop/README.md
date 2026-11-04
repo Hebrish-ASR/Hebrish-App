@@ -54,7 +54,7 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
   the clipboard; nothing when the text arrives) or *Off*; one volume, and quiet hours. Since 0.7.0
   the voice is **Herman**, **Corn** or **Hilbert** (the My Weird Prompts podcast characters), and
   the microphone ignores a prompt while it plays, so it never ends up in the transcript.
-- **Voice detection** (Dictate tab, on by default): a take with no speech is not decoded (no
+- **Voice detection** (one switch for every mode, on by default; in the tray, on the Voice Typing tab and in Transcription Mode): a take with no speech is not decoded (no
   stray "Yeah."), and silences longer than 1.5 s are shortened before decoding.
 - Settings apply as you change them; a short *Settings saved* toast confirms it.
 - **Floating overlay** (optional, Settings → Floating overlay, or the tray's *Show overlay*):

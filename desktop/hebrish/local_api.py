@@ -17,7 +17,7 @@ Endpoints (OpenAI-compatible where one exists, so existing clients work unchange
                                    the app's loaded model answers.
 
 The text is what Transcription Mode gives for the same file before paragraphs: voice detection per
-`tm_vad`, then the disfluency chop and the personal dictionary per piece, pieces joined by spaces.
+`vad`, then the disfluency chop and the personal dictionary per piece, pieces joined by spaces.
 No clean-up model, no paragraphs, nothing kept in History. Qt-free: the controller passes in
 `transcribe(samples) -> str` and `info() -> dict | None`.
 

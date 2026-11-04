@@ -123,8 +123,6 @@ DEFAULTS = {
     "tm_cleanup_model": None,     # the clean-up model the user picked (a catalogue addon id, 2026-10-30);
                                   # None = cleanup.chosen(): an installed one, else the default
                                   # (S1-mini by Superwhisper)
-    "tm_vad": True,               # Voice detection for this tab (2026-10-29: on by default here,
-                                  # independent of Voice Typing's `vad`; also in the tray menu)
     "tm_save_audio": False,       # keep each transcribed recording (16 kHz mono WAV) in tm_audio_dir
     "tm_audio_dir": "",           # "" = <files_dir>/recordings (recordings_folder)
     "titles": True,               # Save asks the title model for a title when it is downloaded (B-75)
@@ -137,7 +135,9 @@ DEFAULTS = {
                                   # and recordings/ go in it unless set on their own; "" = <Documents>/Hebrish
     "backup_format": "tar.gz",    # Settings → Your data → Back up (backup.py, B-76): tar.gz | zip
     "backup_dir": "",             # where the last backup was saved; "" = ~/Documents
-    "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad)
+    "vad": True,                  # skip takes with no speech, shorten long silences (engine.vad).
+                                  # One switch for every mode (Daniel, 2026-11-04): Voice Typing,
+                                  # Transcription Mode, the local API; also in the tray menu
     "vad_silero": True,           # with Voice detection on, use Silero VAD (bundled, vad.py,
                                   # 2026-10-29); off = the energy rule
     "num_threads": 0,             # decoder threads; 0 = auto (physical cores, at most 8)
@@ -237,6 +237,11 @@ def migrate_legacy():
 def upgrade(stored: dict) -> dict:
     """0.2.x had one key and a `mode` (hold | toggle | hybrid). From 0.3.0 there are two keys:
     `hotkey` toggles (hybrid when `hold_to_talk`), `ptt_hotkey` is push-to-talk only."""
+    # 1.019 (Daniel, 2026-11-04): `tm_vad` folded into `vad`, one switch for every mode. Either
+    # one on means on: the tray only ever showed `tm_vad`, so that is the one people saw.
+    tm_vad = stored.pop("tm_vad", None)
+    if tm_vad is not None:
+        stored["vad"] = bool(tm_vad or stored.get("vad", DEFAULTS["vad"]))
     mode = stored.pop("mode", None)
     if mode == "hold":
         stored["ptt_hotkey"] = stored.get("hotkey", DEFAULTS["hotkey"])
@@ -392,7 +397,7 @@ class Config(dict):
                                 or "feedback" not in stored or "send_chord" not in stored
                                 or "clear_each_take" not in stored or "insert" in stored
                                 or "tm_show_meter" in stored or "mics" not in stored
-                                or "files_dir" not in stored)
+                                or "files_dir" not in stored or "tm_vad" in stored)
         self.update({k: v for k, v in upgrade(stored).items() if k in DEFAULTS})
         if old or not CONFIG_PATH.exists():
             self.save()

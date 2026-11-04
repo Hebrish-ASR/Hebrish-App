@@ -423,7 +423,10 @@ class MainWindow(QMainWindow):
         self.btn_test.toggled.connect(self._on_test)
         row.addWidget(self.btn_test)
         b.addLayout(row)
-        b.addWidget(self._check("vad", "Voice detection: skip silent takes, trim long pauses"))
+        self.chk_vad = self._check("vad", "Voice detection: skip silent takes, trim long pauses",
+                                   lambda: self.transcribe.set_vad(self.cfg["vad"]))
+        self.chk_vad.setToolTip("One switch for every mode: Transcription has the same box, and it is in the tray menu.")
+        b.addWidget(self.chk_vad)
         top.addWidget(box, 1)
         lay.addLayout(top)
 

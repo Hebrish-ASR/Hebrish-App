@@ -283,11 +283,11 @@ def test_recording_light_and_tray_follow_the_tape(make):
 
 def test_voice_detection_on_by_default_and_shared_with_tray(make):
     _, page, _ = make()
-    assert page.chk_vad.isChecked() and page.cfg["tm_vad"]
+    assert page.chk_vad.isChecked() and page.cfg["vad"]
     page.set_vad(False)                          # what the tray action calls
-    assert not page.chk_vad.isChecked() and not page.cfg["tm_vad"]
+    assert not page.chk_vad.isChecked() and not page.cfg["vad"]
     page.chk_vad.click()
-    assert page.cfg["tm_vad"]
+    assert page.cfg["vad"]
 
 
 def test_stalled_stream_is_reopened_and_disk_error_stops(make):
@@ -311,3 +311,28 @@ def test_save_audio_moves_the_recording(make, tmp_path):
     page.cfg.set("tm_audio_dir", str(tmp_path / "kept"))
     assert "Audio saved" in page._dispose(rec)
     assert (tmp_path / "kept" / "recording-x.wav").exists() and not rec.exists()
+
+
+def test_old_tm_vad_folds_into_the_one_switch():
+    from hebrish import config
+    assert config.upgrade({"vad": False, "tm_vad": True})["vad"] is True    # what the tray showed
+    assert config.upgrade({"vad": True, "tm_vad": False})["vad"] is True
+    assert config.upgrade({"vad": False, "tm_vad": False})["vad"] is False
+    assert "tm_vad" not in config.upgrade({"tm_vad": True})
+
+
+def test_one_switch_reaches_tray_and_voice_typing_box():
+    from types import SimpleNamespace
+
+    from PySide6.QtGui import QAction
+    from PySide6.QtWidgets import QCheckBox
+
+    from hebrish.ui.app import Controller
+    act, box = QAction(), QCheckBox()
+    act.setCheckable(True)
+    ctl = SimpleNamespace(cfg={"vad": True}, act_vad=act, win=SimpleNamespace(chk_vad=box))
+    Controller.sync_tray_vad(ctl)
+    assert act.isChecked() and box.isChecked()
+    ctl.cfg["vad"] = False
+    Controller.sync_tray_vad(ctl)
+    assert not act.isChecked() and not box.isChecked()

@@ -23,8 +23,8 @@ writes its own paragraphs, so while clean-up is on the Paragraphs setting is gre
 only when clean-up fails; a cleaned transcript is not re-flowed. Any failure keeps the text as
 transcribed (cleanup.clean), and the status line says so.
 
-Long sessions (2026-10-29): a small Recording light and timer by the controls, Voice detection for
-this tab (`tm_vad`, on by default, also in the tray menu), Save audio (`tm_save_audio`: the recording
+Long sessions (2026-10-29): a small Recording light and timer by the controls, Voice detection
+(`vad`, one switch for every mode since 2026-11-04, on by default, also in the tray menu), Save audio (`tm_save_audio`: the recording
 is moved to <Hebrish folder>/recordings instead of deleted; the folder is set in Settings),
 "Transcripts are saved to: <folder>" with Open and Change… under the text box (2026-10-31), and the recorder's disk and stalled-stream checks in
 `_tick` (longform.py).
@@ -285,8 +285,8 @@ class TranscribePage(QWidget):
         row = QHBoxLayout()
         self.chk_vad = QCheckBox("Voice detection")
         self.chk_vad.setToolTip("Skip the silent stretches and trim long pauses before transcribing. "
-                                "On by default here; Voice Typing has its own switch. Also in the tray menu.")
-        self.chk_vad.setChecked(bool(self.cfg["tm_vad"]))
+                                "One switch for every mode: Voice Typing has the same box, and it is in the tray menu.")
+        self.chk_vad.setChecked(bool(self.cfg["vad"]))
         self.chk_vad.toggled.connect(self.set_vad)
         row.addWidget(self.chk_vad)
         self.chk_keep = QCheckBox("Save audio")
@@ -452,8 +452,8 @@ class TranscribePage(QWidget):
         self.cfg.set("tm_gain_db", v)
 
     def set_vad(self, on: bool):
-        """The checkbox and the tray menu both land here."""
-        self.cfg.set("tm_vad", bool(on))
+        """Both checkboxes and the tray menu land here."""
+        self.cfg.set("vad", bool(on))
         if self.chk_vad.isChecked() != bool(on):
             self.chk_vad.setChecked(bool(on))
         self.ctl.sync_tray_vad()
@@ -780,7 +780,7 @@ class TranscribePage(QWidget):
         self._source = source
         self._last = None
         self._busy(True)
-        if self.cfg["tm_vad"] and len(samples) > 10 * 60 * audio.SAMPLE_RATE:
+        if self.cfg["vad"] and len(samples) > 10 * 60 * audio.SAMPLE_RATE:
             self.ctl.win.status(f"Finding the speech in {_clock(len(samples) / audio.SAMPLE_RATE)} of "
                                 "audio (about a minute for 90 minutes)…")
         started = time.monotonic()
@@ -800,7 +800,7 @@ class TranscribePage(QWidget):
                 # pieces are ~10-25 s; Time-based starts a paragraph every ~30 s of audio. With
                 # the Paragraph model they are joined with spaces until the end.
                 pieces = paragraphs.Pieces(PARAGRAPH_S * audio.SAMPLE_RATE)
-                for text in self.ctl.engine.transcribe_chunks(samples, cancel, vad=self.cfg["tm_vad"]):
+                for text in self.ctl.engine.transcribe_chunks(samples, cancel, vad=self.cfg["vad"]):
                     done, total = self.ctl.engine.last_progress
                     text = fix(disfluency.chop(text))
                     pieces.add(text, done, mode)     # shown when it is all done (2026-10-31)

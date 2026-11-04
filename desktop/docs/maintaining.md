@@ -144,6 +144,15 @@ speech 0.1 s, min silence 0.25 s), so `has_speech`, `shorten_silences` and the l
 it. Any exception falls back to the energy rule (logged). The take is scaled so its 99.9th-percentile
 sample is 0.5 before Silero sees it (a quiet headset still counts, B-46), and under -70 dBFS is no
 speech. `live_cut` and `stretch_pauses` stay on energy: those cut points are the measured ones.
+
+**One Voice detection switch (2026-11-04, R-2026-11-04-2).** Daniel: "if it's on, it should be on for
+all the modes, including the text output at the cursor modes". The tray's item only drove `tm_vad`
+(Transcription Mode), so `vad` (Voice Typing) stayed off on his machine while the tray showed on.
+`tm_vad` is gone: `vad` drives Voice Typing, Transcription Mode and the local API, and the tray item,
+the Voice Typing box and Transcription's box all go through `TranscribePage.set_vad` and stay in step
+(`Controller.sync_tray_vad`). `config.upgrade` folds an old `tm_vad` in: either one on means on.
+**Exception:** Shakshuka with insert as you go feeds audio straight to the streaming decoder
+(`Controller._worker`, `engine.live`), so voice detection has no effect on that path.
 History's `decode` records `vad_model` (`silero` | `energy`). The .deb bundles sherpa-onnx 2.0.1 (the
 venv has 1.13.8); `VoiceActivityDetector` was checked in the installed package (V).
 

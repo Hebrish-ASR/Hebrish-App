@@ -1483,10 +1483,10 @@ class Controller(QObject):
         self.act_overlay.triggered.connect(self._tray_overlay)
         m.addAction("Show window", self.win.present_tab)
         self._build_output_menu(m.addMenu("Output"))
-        self.act_tm_vad = m.addAction("Voice detection (Transcription)")
-        self.act_tm_vad.setCheckable(True)
-        self.act_tm_vad.setToolTip("Transcription Mode's voice detection: skip silence and trim long pauses")
-        self.act_tm_vad.triggered.connect(lambda on: self.win.transcribe.set_vad(on))
+        self.act_vad = m.addAction("Voice detection")
+        self.act_vad.setCheckable(True)
+        self.act_vad.setToolTip("Voice detection in every mode: skip silence and trim long pauses")
+        self.act_vad.triggered.connect(lambda on: self.win.transcribe.set_vad(on))
         self.act_autostart = m.addAction("Start at login")
         self.act_autostart.setCheckable(True)
         self.act_autostart.triggered.connect(self.set_autostart)
@@ -1549,8 +1549,13 @@ class Controller(QObject):
         self.win.sync_output()
 
     def sync_tray_vad(self):
-        if hasattr(self, "act_tm_vad"):
-            self.act_tm_vad.setChecked(bool(self.cfg["tm_vad"]))
+        """One switch, three places: the tray, the Voice Typing box and Transcription's box."""
+        on = bool(self.cfg["vad"])
+        if hasattr(self, "act_vad"):
+            self.act_vad.setChecked(on)
+        box = getattr(self.win, "chk_vad", None)
+        if box is not None and box.isChecked() != on:
+            box.setChecked(on)
 
     def sync_tray_tape(self):
         """The Transcription recorder started, paused or stopped: the tray shows it too, so a long
@@ -1592,14 +1597,14 @@ class Controller(QObject):
             # Transcription Mode recording (2026-10-29): the listening icon, unless paused
             name = name if tape.paused or name == "nomodel" else "recording"
             tip = "Transcription Mode " + ("paused" if tape.paused else "recording") + \
-                  (", voice detection on" if self.cfg["tm_vad"] else ", voice detection off")
+                  (", voice detection on" if self.cfg["vad"] else ", voice detection off")
         self.tray.setIcon(icon(f"tray-{name}"))
         self.tray.setToolTip(f"{APP_NAME}: {tip}")
         self.act_toggle.setText("Stop dictation" if self.state == "recording" else "Start dictation")
         self.act_toggle.setEnabled(self.state != "busy" or self.queued_ok)
         self.act_overlay.setVisible(self.overlay.available)
         self.act_overlay.setChecked(self.cfg["overlay"] != "off")
-        self.act_tm_vad.setChecked(bool(self.cfg["tm_vad"]))
+        self.act_vad.setChecked(bool(self.cfg["vad"]))
         self.act_update.setVisible(self.update_available() and not self.downloading)
         self.act_restart.setVisible(bool(self.app_installed))
         if self.latest:
@@ -1623,7 +1628,7 @@ class Controller(QObject):
         """A file sent to the local API (HTTP thread): Transcription Mode's text before paragraphs."""
         fix = dictionary.compile(dictionary.load())
         return " ".join(fix(disfluency.chop(t))
-                        for t in self.engine.transcribe_chunks(samples, vad=self.cfg["tm_vad"])).strip()
+                        for t in self.engine.transcribe_chunks(samples, vad=self.cfg["vad"])).strip()
 
     def apply_local_api(self) -> str | None:
         """Start, stop or move the local API to match the config; returns why it couldn't start."""
