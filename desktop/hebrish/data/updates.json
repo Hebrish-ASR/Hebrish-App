@@ -6,10 +6,10 @@
   "source": "https://hebrish.app/changelog",
   "entries": [
     {
-      "date": "2026-11-04",
-      "tag": "Desktop 1.019",
-      "title": "One Sabich, and one Voice detection switch",
-      "summary": "One Sabich: the model that was Sabich (Rolling) is now just Sabich, and it is the default on Ubuntu and Windows too. Sabich (Stable) and Jachnun are no longer offered.",
+      "date": "2026-11-05",
+      "tag": "Desktop 1.020",
+      "title": "Switch models from the tray, one Sabich, and one Voice detection switch",
+      "summary": "Active model: switch between Sabich and Shakshuka from the tray menu, or with the new Select Sabich, Select Shakshuka and Toggle model action keys.",
       "platforms": [
         "desktop"
       ]
