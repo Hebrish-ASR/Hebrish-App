@@ -124,7 +124,7 @@ def bundled_catalogue() -> dict:
     """The catalogue shipped with the app, parsed once (it can't change while the app runs)."""
     global _BUNDLED
     if _BUNDLED is None:
-        _BUNDLED = _parse(json.loads(BUNDLED_CATALOGUE.read_text()))
+        _BUNDLED = _parse(json.loads(BUNDLED_CATALOGUE.read_text(encoding="utf-8")))
     return _BUNDLED
 
 
@@ -437,7 +437,7 @@ def installed(mid: str | None = None) -> list[tuple[Path, Manifest]]:
             mf = d / "manifest.json"
             if mf.is_file():
                 try:
-                    out.append((d, Manifest.from_json(json.loads(mf.read_text()), mid)))
+                    out.append((d, Manifest.from_json(json.loads(mf.read_text(encoding="utf-8")), mid)))
                 except (ValueError, KeyError):
                     continue
     out.sort(key=lambda t: (t[0] / "manifest.json").stat().st_mtime, reverse=True)

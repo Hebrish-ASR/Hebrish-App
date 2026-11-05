@@ -60,7 +60,7 @@ def test_saving_the_original_text_drops_the_copy(h):
 def test_library_update_keeps_edits_and_flags_stale(h, tmp_path):
     transforms.edit(h.db, "tweet", "my version")
     import json
-    doc = json.loads(transforms.BUNDLED.read_text())
+    doc = json.loads(transforms.BUNDLED.read_text(encoding="utf-8"))
     for p in doc["prompts"]:
         if p["id"] == "tweet":
             p["prompt"] = "A newer shipped prompt."

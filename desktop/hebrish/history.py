@@ -199,7 +199,7 @@ class History:
         """The 0.6.x history.json ([{"text", "at"}], newest first). Imported once, then
         renamed to history.json.imported so it isn't read again."""
         try:
-            rows = json.loads(Path(path).read_text())
+            rows = json.loads(Path(path).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return 0
         n = 0

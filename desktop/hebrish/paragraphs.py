@@ -269,12 +269,12 @@ class Breaker:
 def _threshold(folder: Path) -> float:
     mf = folder / "manifest.json"
     try:
-        thr = json.loads(mf.read_text()).get("threshold")
+        thr = json.loads(mf.read_text(encoding="utf-8")).get("threshold")
         if thr is not None:
             return float(thr)
     except (OSError, ValueError):
         pass
-    return float(json.loads((folder / CONFIG_FILE).read_text())["paragraph_threshold"])
+    return float(json.loads((folder / CONFIG_FILE).read_text(encoding="utf-8"))["paragraph_threshold"])
 
 
 # -- on disk and download -------------------------------------------------------------

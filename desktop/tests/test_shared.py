@@ -1,12 +1,15 @@
 """Both apps read the model catalogue from shared/: catalogue.json (schema 2, Android 0.7.0+ and
 desktop 0.6.0+) and models.json (schema 1, older builds, which reject any other schema)."""
 
+import functools
 import json
 import os
 import re
 import sys
 
 import pytest
+
+open = functools.partial(open, encoding="utf-8")     # Windows defaults to cp1252
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "desktop"))
