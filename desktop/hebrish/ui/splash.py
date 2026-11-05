@@ -6,18 +6,17 @@ On Wayland the compositor places it (a client can't), normally centred.
 """
 
 import time
-from pathlib import Path
 
 from PySide6.QtCore import QRectF, Qt, QTimer
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPixmap
+from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QApplication, QWidget
 
 from .. import __version__
 from ..config import APP_NAME, TAGLINE
 from .style import BRAND_GREEN, INK, MUTED, PAPER, display_font
 
-CORN = Path(__file__).resolve().parent.parent / "data" / "corn" / "corn.png"
 W, H = 420, 260
+POP_S, RING_S = 0.45, 1.6
 MIN_S = 0.9                   # long enough to read, so it doesn't just flash
 
 
@@ -27,12 +26,7 @@ class Splash(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setFixedSize(W, H)
         self.setWindowTitle(APP_NAME)
-        # Corn the Sloth (2026-11-05), drawn 88 px high and sharp on HiDPI; the mark if he's missing.
-        self._logo = QPixmap(str(CORN))
-        if self._logo.isNull():
-            self._logo = icon.pixmap(176, 176)
-        else:
-            self._logo = self._logo.scaledToHeight(176, Qt.SmoothTransformation)
+        self._logo = icon.pixmap(176, 176)          # drawn at 88 px, sharp on HiDPI
         self._logo.setDevicePixelRatio(2.0)
         self.message = "Starting…"
         self._t0 = time.monotonic()
@@ -61,6 +55,27 @@ class Splash(QWidget):
                 then()
         QTimer.singleShot(max(0, int((MIN_S - (time.monotonic() - self._t0)) * 1000)), done)
 
+    def _draw_logo(self, p, cx, cy, t):
+        """The mark pops in over POP_S, then a soft ring leaves it every RING_S while loading
+        (Daniel, 2026-11-05: the logo, with a little animation, rather than Corn)."""
+        if t > POP_S:
+            phase = ((t - POP_S) % RING_S) / RING_S
+            half = 44 + 14 * phase
+            ring = QColor(BRAND_GREEN)
+            ring.setAlphaF(0.35 * (1 - phase))
+            p.setPen(QPen(ring, 2))
+            p.setBrush(Qt.NoBrush)
+            p.drawRoundedRect(QRectF(cx - half, cy - half, 2 * half, 2 * half), 20 + 6 * phase, 20 + 6 * phase)
+        x = min(1.0, t / POP_S) - 1                  # ease-out with a slight overshoot
+        scale = 0.7 + 0.3 * (1 + 2.70158 * x ** 3 + 1.70158 * x ** 2)
+        p.save()
+        p.setRenderHint(QPainter.SmoothPixmapTransform)
+        p.setOpacity(min(1.0, t / (POP_S / 2)))
+        p.translate(cx, cy)
+        p.scale(scale, scale)
+        p.drawPixmap(-44, -44, self._logo)
+        p.restore()
+
     def paintEvent(self, _ev):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
@@ -73,7 +88,7 @@ class Splash(QWidget):
         p.setPen(QPen(QColor("#e2dccf"), 1))
         p.drawRoundedRect(r, 16, 16)
 
-        p.drawPixmap(int(r.center().x() - self._logo.width() / 4), int(r.top() + 26), self._logo)
+        self._draw_logo(p, r.center().x(), r.top() + 70, time.monotonic() - self._t0)
         p.setFont(display_font(30))
         p.setPen(QColor(INK))
         p.drawText(QRectF(r.left(), r.top() + 120, r.width(), 40), Qt.AlignCenter, APP_NAME)
