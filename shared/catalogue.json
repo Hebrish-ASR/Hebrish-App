@@ -87,7 +87,7 @@
           "repo": "Hebrish/Sabich-Rolling-sherpa-onnx-int8",
           "subdir": "",
           "card": "https://hebrish.app/models/sabich",
-          "manifest_url": "https://cdn.hebrish.app/models/sabich-rolling/latest.json"
+          "manifest_url": "https://cdn.hebrish.app/models/sabich/latest.json"
         },
         {
           "id": "sabich-qwen3-asr-1.7b",

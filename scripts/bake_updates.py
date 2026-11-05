@@ -52,6 +52,9 @@ OUTS = {"android": (os.path.join(ROOT, "shared", "updates-android.json"), {"andr
         "desktop": (os.path.join(ROOT, "desktop", "hebrish", "data", "updates.json"), {"desktop", "site"})}
 PLATFORMS = ("android", "desktop", "models", "site")
 MAX_SUMMARY = 280
+# Names the apps no longer use (Daniel, 2026-11-05: one Sabich). The website's dated changelog keeps its
+# wording, so these entries stay there and are only left out of the apps' lists.
+RETIRED_NAMES = re.compile(r"Sabich \((?:Stable|Rolling)\)")
 
 
 class Changelog(HTMLParser):
@@ -149,6 +152,8 @@ def bake(page: str, build_date: str, limit: int, source: str, platform: str = ""
             continue
         platforms = [p for p in PLATFORMS if p in e["platforms"]] or platforms_from_tag(clean(e["tag"]))
         if platform and not OUTS[platform][1] & set(platforms):
+            continue
+        if platform and RETIRED_NAMES.search(" ".join((e["tag"], e["title"], e["first"]))):
             continue
         entries.append({"date": e["date"], "tag": clean(e["tag"]), "title": clean(e["title"]),
                         "summary": summarise(e["first"]), "platforms": platforms})

@@ -315,7 +315,7 @@ class Manifest:
         m = get_model(self.model)
         v = self.version
         # The name with and without a qualifier, on either side: sabich-rolling is shown as
-        # "Sabich" since 2026-11-04, and its manifests still say "Sabich (Rolling) v2.9".
+        # "Sabich" since 2026-11-04; installs from before 2026-11-05 recorded "Sabich (Rolling) v2.9".
         for name in ((m.name, m.name.split(" (")[0]) if m else ()):
             if v.lower().startswith(name.lower() + " "):
                 v = v[len(name) + 1:]

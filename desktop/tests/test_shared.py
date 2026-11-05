@@ -82,7 +82,7 @@ def test_schema1_models_match_their_v2_variants():
     assert old["schema"] == 1
     by_id = {v["id"]: v for v in all_variants()}
     for m in old["models"]:
-        if m["id"] in ("codeswitch", "sabich"):  # Jachnun, Sabich (Stable): kept for old builds, out of schema 2 since 2026-11-04
+        if m["id"] in ("codeswitch", "sabich"):  # Jachnun, and the schema-1 Sabich entry: kept for old builds, out of schema 2 since 2026-11-04
             continue
         v = by_id[m["id"]]
         for key in ("repo", "subdir", "manifest_url", "version_label", "status"):
