@@ -21,6 +21,13 @@ object ModelStore {
     /** Optional label file written next to the weights by a training repo's export_sherpa. */
     const val VERSION_FILE = "version.json"
 
+    /**
+     * Written last into every complete version folder, so other on-device apps can tell what a
+     * folder holds without this app's preferences, and an import can adopt it. Its presence means
+     * the folder is complete. Fields: [Manifest.toJson] plus `model` (catalogue id) and `name`.
+     */
+    const val MANIFEST_FILE = "manifest.json"
+
     data class ModelFile(val name: String, val size: Long, val sha256: String?)
 
     /** [baseUrl]: CDN folder the files download from (ends in '/'); null = Hugging Face `resolve`. */
@@ -134,8 +141,64 @@ object ModelStore {
 
     /** Deletes every folder of [model] except its installed version: older versions and abandoned updates. */
     fun pruneOld(ctx: Context, model: Catalogue.Model = sel(ctx)) {
-        val keep = dir(ctx, model = model)?.name
-        base(ctx, model = model).listFiles()?.filter { it.name != keep }?.forEach { it.deleteRecursively() }
+        prunable(base(ctx, model = model), dir(ctx, model = model)?.name, model.id).forEach { it.deleteRecursively() }
+    }
+
+    /** What [pruneOld] deletes in [base]: everything but [keep], except a folder whose manifest names another model. */
+    fun prunable(base: File, keep: String?, modelId: String): List<File> =
+        base.listFiles().orEmpty().filter { f ->
+            f.name != keep && readFolder(f)?.modelId.let { it == null || it == modelId }
+        }
+
+    /** A version folder as its [MANIFEST_FILE] describes it. [modelId] is null in a manifest without one. */
+    data class FolderModel(val dir: File, val modelId: String?, val manifest: Manifest)
+
+    /** [MANIFEST_FILE] as JSON: the manifest plus which model it is. */
+    fun folderJson(m: Manifest, modelId: String, name: String): String =
+        JSONObject(m.toJson()).put("model", modelId).put("name", name).toString(2)
+
+    /**
+     * Writes [MANIFEST_FILE] into [dir] through a temporary file, so a reader never sees half of
+     * it. False if it could not be written: the model still works, and [backfillManifests] tries
+     * again, so this never fails a 660 MB download.
+     */
+    fun writeFolderManifest(dir: File, m: Manifest, modelId: String, name: String): Boolean = runCatching {
+        val tmp = File(dir, "$MANIFEST_FILE.tmp")
+        tmp.writeText(folderJson(m, modelId, name))
+        tmp.renameTo(File(dir, MANIFEST_FILE)) || run { tmp.delete(); false }
+    }.getOrDefault(false)
+
+    /** [dir]'s [MANIFEST_FILE]; null if there is none or it does not parse. */
+    fun readFolder(dir: File): FolderModel? = runCatching {
+        val s = File(dir, MANIFEST_FILE).readText()
+        FolderModel(dir, JSONObject(s).optString("model").ifEmpty { null }, Manifest.fromJson(s))
+    }.getOrNull()
+
+    /** Every file of [m] is in [dir] at its listed size. */
+    fun isComplete(dir: File, m: Manifest) = m.files.all { f -> File(dir, f.name).let { it.exists() && it.length() == f.size } }
+
+    /**
+     * The newest complete version of [modelId] under [base] (one subfolder per version), by when
+     * its manifest was written; null if there is none. A folder counts only if its name is the
+     * manifest's [Manifest.dirName], since that is where the app would look for the files.
+     */
+    fun findComplete(base: File, modelId: String): FolderModel? =
+        base.listFiles().orEmpty().mapNotNull(::readFolder)
+            .filter { it.modelId == modelId && it.dir.name == it.manifest.dirName && isComplete(it.dir, it.manifest) }
+            .maxByOrNull { File(it.dir, MANIFEST_FILE).lastModified() }
+
+    /** Makes the complete copy of [model] under [root] the installed version, if there is one. No download. */
+    fun adopt(ctx: Context, root: String, model: Catalogue.Model): Manifest? =
+        findComplete(base(ctx, root, model), model.id)?.manifest?.also {
+            ModelPrefs.setInstalledManifest(ctx, model.id, it.toJson())
+        }
+
+    /** Writes [MANIFEST_FILE] for ready models installed before it existed. Touches the disk; call from a worker thread. */
+    fun backfillManifests(ctx: Context) {
+        for (model in readyModels(ctx)) {
+            val d = dir(ctx, model = model) ?: continue
+            if (!File(d, MANIFEST_FILE).exists()) writeFolderManifest(d, installed(ctx, model)!!, model.id, model.name)
+        }
     }
 
     /**
@@ -239,6 +302,7 @@ object ModelStore {
             done += f.size
             progress(done)
         }
+        writeFolderManifest(dst, m, model.id, model.name)
         if (from == null) src.deleteRecursively()
     }
 
@@ -248,8 +312,11 @@ object ModelStore {
      * installed model. Blocking; call from a worker thread. [progress] receives bytes done
      * across all files.
      */
-    fun download(ctx: Context, model: Catalogue.Model, m: Manifest, cancelled: () -> Boolean, progress: (Long) -> Unit) =
-        downloadFiles(dir(ctx, model = model, m = m)!!, m.files, { url(model, m, it) }, cancelled, progress)
+    fun download(ctx: Context, model: Catalogue.Model, m: Manifest, cancelled: () -> Boolean, progress: (Long) -> Unit) {
+        val d = dir(ctx, model = model, m = m)!!
+        downloadFiles(d, m.files, { url(model, m, it) }, cancelled, progress)
+        writeFolderManifest(d, m, model.id, model.name)
+    }
 
     /**
      * [download]'s loop for any set of files: each missing file of [files] into [dir] from

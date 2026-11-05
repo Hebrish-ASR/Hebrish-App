@@ -599,6 +599,10 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
   submissions, which involve account details).
 - **By:** Daniel.
 
+## D-2026-11-05-01: Shared model folder comes back, in the `fdroid` build only
+
+Daniel, 2026-11-05: the user-chosen model folder is the cleaner design, so that other apps on the phone can use the same weights. Google Play will not approve all-files access for a dictation app (its policy limits it to file managers, backup, antivirus and similar), so `fdroid` gets it back and `play` stays on app storage with no permission. This reverses the 2026-10-21 retirement for `fdroid` only. Both builds are still produced. Every version folder gets a `manifest.json` that identifies the model, and a folder that already holds a complete model is adopted without a download. See `android/docs/maintaining.md`, "Model location".
+
 ## D-2026-11-04-01: Two active models in the apps
 
 Daniel, 2026-11-04: the apps offer Sabich (transcription) and Shakshuka (streaming) and stock Parakeet. Jachnun leaves `shared/catalogue.json`, so it disappears from the download list through the live catalogue with no app release. A selected Jachnun falls back to an installed model, else the recommended one (`current_id`, `Catalogue.selected`); its files stay on disk. `models.json` keeps it for schema-1 builds, and it stays on hebrish.app as an experimental test.

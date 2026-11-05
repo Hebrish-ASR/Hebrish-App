@@ -128,21 +128,56 @@ on the device). If 0.2.0 still doesn't appear, run `adb shell ime list -a` to se
 the system parsed the service at all, then try adding a second subtype with
 `imeSubtypeMode="keyboard"`.
 
-## Model location (retired in 0.8.0, 2026-10-21)
+## Model location (`fdroid` build only, back in 1.015, 2026-11-05)
 
-**Retired** (Daniel, 2026-10-21: "retire the custom model storage location feature … eke our way
-towards compliance"). Google Play allows all-files access only for file managers, backup and
-similar apps, and the feature needed it, so it went from both builds, not just `play`. Removed:
-`MANAGE_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, `requestLegacyExternalStorage`, the Models
-screen's location section, and setup step `files`. Models live only in `filesDir/models/<id>/<version>`.
-Migration: `MainActivity.retireModelLocation` calls `ModelDownload.relocate(ctx, null)` when
-`model_root` is still set. It copies what is still readable, or, when nothing is (Android revokes
-all-files access once the update drops the permission, I), just switches, and the models
-download again. The root support in `core` (`ModelPrefs.modelRoot`, `ModelStore.base(root)`,
-`relocate`) stays, because Hebrish Keyboard compiles the same sources (it pins `core` at 0.5.0 today).
-Until a user opens the app after updating, the IME and the floating mic report the model as missing.
+**Current state.** The `fdroid` build can keep its models in a folder the user picks, so another
+on-device app can load the same weights instead of downloading its own copy. The `play` build keeps
+them in `filesDir/models/<id>/<version>` and has neither the permission nor the UI
+([Channel.modelLocation], `src/play/AndroidManifest.xml`). It is opt-in: all-files access is requested only when the user taps
+Models → Model location → Choose folder.
 
-How it worked, for the record: `Prefs.modelRoot` was null (app storage, `filesDir/models/<id>/<version>`) or an absolute path
+**Decision** (D-2026-11-05-01). The feature was retired from both builds on 2026-10-21 ("retire the custom model
+storage location feature … eke our way towards compliance"), because Google Play allows all-files
+access only for file managers, backup and similar apps, and declaring it needs Play's approval. Checked again 2026-11-05 against the
+policy page: a dictation app does not qualify, and picking files is listed as an invalid use. But only
+the Play build has to comply, so on 2026-11-05 Daniel brought it back for `fdroid`: one set of
+weights on the phone, a location the user knows, and a path other apps can be pointed at.
+
+**Layout.** `<root>/<repo name>/<version>-<rev12>/` (`ModelStore.sharedFolder`, `Manifest.dirName`), e.g.
+`/storage/emulated/0/Hebrish-Models/Sabich-Rolling-sherpa-onnx-int8/Sabich (Rolling) v2.9-cf99019b3054/`,
+holding `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx`, `tokens.txt` and `manifest.json`.
+The picker can't choose the root of internal storage or of Download on Android 11+, so the root is a subfolder.
+
+**`manifest.json`** (`ModelStore.MANIFEST_FILE`) is a contract with other apps. It is in every version
+folder, private or shared, and is written last through a temporary file, so its presence means the
+folder is complete. Fields: `version`, `revision`, `base_url` (when the model has one), `files` (`name`, `size`,
+`sha256`, null for a file HF gives no hash for), `model` (catalogue id) and `name` (display name). A reader should
+take the newest manifest whose files are all present at the listed sizes. `MainActivity.checkModelLocation`
+backfills it for models installed before 1.015, on each home screen resume (`backfillManifests`). A failed write never fails
+a download; the backfill tries again.
+
+**Import.** `ModelDownload.relocate` adopts a complete copy already in the chosen folder without a download
+(`ModelStore.adopt`, `findComplete`): the manifest must name that model, the folder must be named its `dirName`, and every file
+must be present at its listed size. Sizes only: the hashes are not re-read, which would mean reading 660 MB per
+model. A model that is ready on the phone keeps its version and is moved in, even if the folder holds another
+one (versions have no reliable order; updates go through Update). Choosing the current folder again looks for
+newly copied models.
+
+**Pruning.** `pruneOld` works only inside that model's own subfolder, and skips a folder whose manifest names a
+different model (`ModelStore.prunable`). Repo names in the catalogue are unique today, so this is a guard. An update
+deletes the previous version from the shared folder too, so another app must scan rather than remember a path.
+
+**Moving between builds.** A phone that goes to `play` with a folder set moves back to app storage
+(`checkModelLocation`, then `relocate(ctx, null)`). `core` is also compiled by Hebrish Keyboard (it pins `core` at 0.5.0 today).
+
+**Scope.** Speech models only: the add-on models (`ParagraphStore`, `CleanupStore`) stay in app storage. The setup step
+`files` did not come back, since the screen is optional and reached from Models.
+
+Verified 2026-11-05: `ModelFolderTest`, 9 tests (round trip, contract fields, adoption, pruning) pass (V, JDK 21); merged debug manifests
+of both flavors dumped: `fdroid` has `MANAGE_EXTERNAL_STORAGE` and legacy storage on, `play` neither (V). Not run on a device (I):
+the grant flow, the picker, a download into the folder, and adoption on a real phone.
+
+How the path works: `ModelPrefs.modelRoot` was null (app storage, `filesDir/models/<id>/<version>`) or an absolute path
 the user picked; each model then lives in `<root>/<repo name>/<version>`. `pruneOld` only clears
 that dedicated subfolder, never the user's folder. The picker is `ACTION_OPEN_DOCUMENT_TREE`;
 its tree URI is turned into a path (`primary:X` → `/storage/emulated/0/X`, `<uuid>:X` →
@@ -151,7 +186,7 @@ and `MANAGE_EXTERNAL_STORAGE` is required (API 30+; `WRITE_EXTERNAL_STORAGE` on 
 `ModelDownload.relocate` copies (different filesystems, so no rename) and deletes the source
 only when it was app storage; a shared copy is left for other apps. It unloads the
 recognizer first. If all-files access is later revoked, `isReady` is false and the IME
-reports the model as missing. (I: written 2026-10-18, compiled but not run on a device.)
+reports the model as missing. (I: written 2026-10-18, restored 2026-11-05, not run on a device.)
 
 ## HeliBoard integration
 
@@ -588,9 +623,10 @@ What `play` drops, and why (Play policy, plan §5 to §7):
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | `src/play/AndroidManifest.xml` (`tools:node="remove"`) | Battery buttons open `ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS` (the list), label and text from `src/play/res/values/strings.xml` |
 | `flagRequestFilterKeyEvents`, `canRequestFilterKeyEvents` | `src/play/res/xml/floating_mic.xml` (keep its other attributes identical to main) | Controls → no Learn/Clear per action; intents only |
 | Install screen (F-Droid repo) | code only | Hidden from home and the side menu (Play doesn't allow pointing users at another store) |
+| `MANAGE_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, legacy storage (1.015) | `src/play/AndroidManifest.xml` (`tools:node="remove"`, `tools:replace`) | Models → Model location hidden; models stay in app storage ("Model location") |
 
-All-files access was first dropped from `play` only, then retired from both builds the same day
-("Model location"). Verified 2026-10-21 by building both flavors (JDK 21) and dumping them with
+All-files access was first dropped from `play` only, then retired from both builds the same day, and came
+back in `fdroid` only in 1.015 ("Model location"), so the `fdroid` list below now also has it. Verified 2026-10-21 by building both flavors (JDK 21) and dumping them with
 `aapt2`: `play` has only `INTERNET`, `MODIFY_AUDIO_SETTINGS`, `RECORD_AUDIO`, `VIBRATE`, and
 `accessibilityFlags=0x42` (no key filter). `fdroid` has those plus `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`,
 and `0x62`. `bundlePlayRelease` builds a 12.8 MB AAB.

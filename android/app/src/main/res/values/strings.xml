@@ -27,6 +27,15 @@
     <string name="download">Download</string>
     <string name="model_downloading_version">Downloading %1$s… %2$d / %3$d MB</string>
     <string name="check_update">Check for update</string>
+    <string name="model_moving">Moving models… %1$d / %2$d MB</string>
+    <string name="location_title">Model location</string>
+    <string name="location_private">Default: app storage (private to this app).\n%1$s</string>
+    <string name="location_shared">%1$s\nStandard sherpa-onnx int8 files, each version with a manifest.json: other apps with file access can load them from here. Models already in this folder are used without a download; choose it again after copying more in.</string>
+    <string name="location_no_access">%1$s\nHebrish no longer has All files access, so it can\'t read this folder. Tap Choose folder to allow it again.</string>
+    <string name="location_unusable">Can\'t use that folder. Pick a folder on internal storage or an SD card.</string>
+    <string name="choose_location">Choose folder</string>
+    <string name="reset_location">Back to the default</string>
+    <string name="reset_location_confirm">Move the models back to app storage? They are copied back first; the copies in the shared folder stay there for other apps.</string>
     <string name="models_auto_check">Check for model updates automatically when the app opens</string>
     <string name="update_checking">Checking Hugging Face for a newer model…</string>
     <string name="update_available">Update available: %1$s (%2$d MB). %3$s stays in use until the new model is downloaded and verified, then it is deleted.</string>

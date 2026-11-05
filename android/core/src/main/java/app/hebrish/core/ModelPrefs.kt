@@ -12,7 +12,8 @@ object ModelPrefs {
 
     /**
      * Absolute path of a user-chosen folder for the model, or null for app-private storage.
-     * Shared storage lets other on-device apps load the same files.
+     * Shared storage lets other on-device apps load the same files. Set only in the `fdroid`
+     * build: Google Play refuses the all-files access it needs.
      */
     fun modelRoot(ctx: Context): String? = sp(ctx).getString("model_root", null)
     fun setModelRoot(ctx: Context, v: String?) = sp(ctx).edit().putString("model_root", v).apply()

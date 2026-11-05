@@ -102,20 +102,21 @@ class MainActivity : Page() {
         super.onResume()
         ModelDownload.listener = { render() }
         noteDefaultIme()
-        retireModelLocation()
+        checkModelLocation()
         if (ModelPrefs.autoCheck(this)) ModelDownload.check(this)
         render()
     }
 
     /**
-     * The custom model location was retired in 0.8.0 (all-files access is gone from the manifest,
-     * on the way to Google Play compliance). An install that still points at a shared folder moves
-     * back to app storage: ModelDownload.relocate copies whatever is still readable there and,
-     * if nothing is (Android revokes the permission when the update removes it), just switches,
-     * so the models download again. (I: the revoke-on-update behaviour is not verified on a device.)
+     * The shared model folder exists only in the `fdroid` build (1.015). A phone that moved to the
+     * `play` build still pointing at one goes back to app storage: ModelDownload.relocate copies
+     * whatever is still readable there and, if nothing is, just switches, so the models download
+     * again. Any build then writes the manifest.json a model installed before 1.015 lacks.
      */
-    private fun retireModelLocation() {
-        if (ModelPrefs.modelRoot(this) != null) ModelDownload.relocate(this, null)
+    private fun checkModelLocation() {
+        if (!Channel.modelLocation && ModelPrefs.modelRoot(this) != null) ModelDownload.relocate(this, null)
+        val app = applicationContext
+        Thread { ModelStore.backfillManifests(app) }.start()
     }
 
     override fun onPause() {

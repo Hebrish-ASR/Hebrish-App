@@ -17,6 +17,13 @@
     <!-- The floating mic guide's "Keep it running" step asks to be exempt from battery
          optimisation, so OxygenOS and similar don't kill the accessibility service (0.4.0). -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Only if the user picks a shared folder for the models (Models, Model location), so other
+         apps can use them. sherpa-onnx opens files by path, which SAF URIs can't provide. The
+         play build removes these: src/play/AndroidManifest.xml. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
 
     <!-- Lists launchable apps for "Hide in these apps" (B-90). Android 11+ hides other apps
          without this; it is narrower than QUERY_ALL_PACKAGES, which Play restricts. -->
@@ -31,6 +38,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:requestLegacyExternalStorage="true"
         android:theme="@style/AppTheme">
 
         <activity

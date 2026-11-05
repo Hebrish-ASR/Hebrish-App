@@ -2,8 +2,8 @@ package app.hebrish.dictation
 
 /**
  * Which build this is (0.8.0): the `fdroid` flavor (GitHub release APK, CDN, fdroid.hebrish.app)
- * or the `play` flavor (Google Play). The play manifest drops the battery exemption and
- * hardware-key filtering; these flags hide the UI that needs them.
+ * or the `play` flavor (Google Play). The play manifest drops the battery exemption,
+ * all-files access and hardware-key filtering; these flags hide the UI that needs them.
  */
 object Channel {
     val play = BuildConfig.FLAVOR == "play"
@@ -13,4 +13,6 @@ object Channel {
     val hardwareKeys = !play
     /** Play does not allow pointing users at another store, so no F-Droid screen there. */
     val installScreen = !play
+    /** A shared model folder needs all-files access, which Play refuses for an app like this. */
+    val modelLocation = !play
 }

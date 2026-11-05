@@ -127,15 +127,23 @@ object ModelDownload {
     /**
      * Switches the model location to [to] (null = app storage). Every model ready at the old
      * location is moved there, unless a ready copy is already present at [to] (e.g. put there by
-     * another app or an earlier install), which is simply used.
+     * another app or an earlier install), which is simply used. A model not on the phone yet that
+     * [to] holds complete is adopted without a download ([ModelStore.adopt]). Choosing the current
+     * folder again just looks for new models in it (a manual import).
      */
     fun relocate(ctx: Context, to: String?) {
         val from = ModelPrefs.modelRoot(ctx)
-        if (from == to || status is Status.Running) return
+        if (status is Status.Running) return
         val app = ctx.applicationContext
+        if (from == to) {
+            adoptAll(app, to)
+            publish(Status.Idle)
+            return
+        }
         val toMove = ModelStore.readyModels(app, from).filter { !ModelStore.isReady(app, to, it) }
         if (toMove.isEmpty()) {
             Transcriber.unload()
+            adoptAll(app, to)
             ModelPrefs.setModelRoot(app, to)
             publish(Status.Idle)
             return
@@ -148,8 +156,15 @@ object ModelDownload {
                 ModelStore.move(a, model, from, to, offset, { cancel }, report)
                 offset += ModelStore.installed(a, model)!!.totalBytes
             }
+            adoptAll(a, to)
             ModelPrefs.setModelRoot(a, to)
         }
+    }
+
+    /** Adopts what [root] holds of every model not ready there. A ready model keeps its version: updates go through [update]. */
+    private fun adoptAll(app: Context, root: String?) {
+        if (root == null) return
+        for (m in Catalogue.get(app).models) if (m.available && !ModelStore.isReady(app, root, m)) ModelStore.adopt(app, root, m)
     }
 
     private fun run(ctx: Context, moving: Boolean, total: Long, model: Catalogue.Model? = null,

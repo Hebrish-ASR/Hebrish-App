@@ -68,8 +68,9 @@ form.
      `<chosen folder>/<HF repo name>/<version>/`, one folder per model (e.g.
      `sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8/v2-1ab9323565dd/`), holding
      `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx` and `tokens.txt`: a standard
-     sherpa-onnx NeMo transducer. Already-downloaded models are copied there; a model already
-     present there is used as is.
+     sherpa-onnx NeMo transducer, plus a `manifest.json` naming the model and version.
+     Already-downloaded models are copied there; a complete model already present there is
+     used as is, with no download. Not in the Google Play build, which keeps models in app storage.
    - **Model updates**: when a newer version of the selected model is published on Hugging
      Face, the Models screen shows **Update to vN**. The new model downloads alongside the old one, which you
      keep using until the new files have been downloaded and checked. Then the old one is
