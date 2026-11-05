@@ -1,5 +1,6 @@
 # Tag android-vX.Y.Z -> signed release APK (fdroid flavor) attached to a GitHub release, and the
-# Google Play AAB (play flavor) as a workflow artifact for upload in Play Console (0.8.0).
+# Google Play AAB (play flavor) as a workflow artifact for upload in Play Console (0.8.0). The `cdn`
+# job then overwrites the CDN's latest APK and latest.json (scripts/publish-android-cdn.sh).
 name: android
 on:
   push:
@@ -87,6 +88,29 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" "Hebrish-${VER}.apk" \
             --title "Hebrish for Android ${VER}" --notes-file .github/android-release-notes.md
+
+  # Overwrite the CDN's latest APK and latest.json, so hebrish.app/get/android follows with no manual
+  # step (2026-11-05). After `repro` too: a release f-droid.org would refuse doesn't go out here either.
+  cdn:
+    needs: [apk, repro]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cdn-latest-json
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk
+          path: dist
+      - name: Publish
+        env:
+          HEBRISH_CDN_R2_ACCESS_KEY_ID: ${{ secrets.HEBRISH_CDN_R2_ACCESS_KEY_ID }}
+          HEBRISH_CDN_R2_SECRET_ACCESS_KEY: ${{ secrets.HEBRISH_CDN_R2_SECRET_ACCESS_KEY }}
+        run: |
+          TAG="${GITHUB_REF_NAME#android-}"
+          scripts/publish-android-cdn.sh "dist/Hebrish-${TAG}.apk" "$TAG"
 
   # Reproducible-build check (1.000), the way f-droid.org will check each release: rebuild the
   # same commit unsigned, in another path with another JDK 21 vendor (F-Droid's build server is
