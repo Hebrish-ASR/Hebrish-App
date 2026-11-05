@@ -429,13 +429,17 @@ class MainWindow(QMainWindow):
         b.addWidget(self.chk_vad)
         row = QHBoxLayout()
         row.addWidget(QLabel("Noise filter"))
-        noise = QSlider(Qt.Horizontal, minimum=0, maximum=100, value=self.cfg["vad_noise_filter"])
+        noise = self.noise_slider = QSlider(Qt.Horizontal, minimum=0, maximum=100, value=self.cfg["vad_noise_filter"])
         noise_lbl = QLabel(str(self.cfg["vad_noise_filter"]))
         noise_lbl.setMinimumWidth(28)
         noise.valueChanged.connect(lambda v: noise_lbl.setText(str(v)))
         noise.sliderReleased.connect(lambda: (self.cfg.set("vad_noise_filter", noise.value()), self.ctl.apply_vad()))
         row.addWidget(noise, 1)
         row.addWidget(noise_lbl)
+        btn_cal = QPushButton("Calibrate…")
+        btn_cal.setToolTip("Measure this mic and room, and get a suggested setting")
+        btn_cal.clicked.connect(self._calibrate)
+        row.addWidget(btn_cal)
         b.addLayout(row)
         b.addWidget(muted("Keeps room noise from turning into stray words. Turn it up if words appear "
                           "when you aren't speaking; turn it down if quiet speech gets missed."))
@@ -503,6 +507,15 @@ class MainWindow(QMainWindow):
         if self.ctl.monitor.active:                 # re-open the test on the new mic
             self.ctl.stop_monitor()
             self._on_test(True)
+
+    def _calibrate(self):
+        from .calibrate import CalibrateDialog
+        CalibrateDialog(self, self.ctl, self._set_noise_filter).exec()
+
+    def _set_noise_filter(self, level):
+        self.cfg.set("vad_noise_filter", level)
+        self.noise_slider.setValue(level)
+        self.ctl.apply_vad()
 
     def _on_test(self, on):
         if on:

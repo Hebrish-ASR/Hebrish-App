@@ -617,3 +617,7 @@ Daniel, 2026-11-05: each model has one folder of weights, overwritten when a ver
 
 Daniel, 2026-11-05: stray words were room noise, not the model. The voice detection default gets a little stricter and users get a 0-100 dial with a short explainer, on desktop and Android. Named **Noise filter**, higher is stricter, 50 is the old desktop behaviour, default 60. Android has no Silero, so its dial drives a new loudness check (`VoiceDetection`). Details: `desktop/docs/maintaining.md` and `android/docs/maintaining.md`, "Noise filter".
 
+## D-2026-11-05-04: Calibrate the Noise filter instead of guessing it
+
+Daniel, 2026-11-05: the setting depends on the mic and the room, so a short utility measures it. Two steps (quiet, then speech), two suggestions, nothing applied until the user picks, and a history per mic. Safe is lower, with more chance of stray words; Optimized is closer to the speech, with more chance of clipped words. Per-room profiles wait. Desktop first; Android once the suggestions prove good. Details: `desktop/docs/maintaining.md`, "Noise filter calibration".
+

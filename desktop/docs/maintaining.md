@@ -2335,3 +2335,19 @@ Voice Typing tab, under Voice detection: a 0-100 slider, config `vad_noise_filte
 Not touched: the energy rule (`vad_silero` off), and live cuts, which stay on energy. Why the threshold bites: Silero sees each take scaled to `PEAK`, so noise in a quiet take is scaled up too.
 
 The default of 60 is a judgement call, not a measurement: no benchmark of noise rejection against missed quiet speech has been run (2026-11-05).
+
+## Noise filter calibration (B-93, 2026-11-05)
+
+Voice Typing tab, **Calibrate…** beside the Noise filter (Daniel: the right setting depends on the mic and the room, so measure it). `hebrish/calibrate.py` has the method, `ui/calibrate.py` the dialog. Five seconds of quiet, then ten of speech. Both go through a separate Silero at positions 0, 5, ... 100, as a take would, so it tests the real setting; a loudness figure can't give the dial position, because Silero scales each take first.
+
+`keep_limit` is the highest position keeping 98% of the speech, `noise_limit` the lowest at which the quiet recording stays under `VAD_MIN_SPEECH_S`. **Safe is the lower, Optimized the higher.** If `noise_limit <= keep_limit` a range does both jobs (`clean`), and both options sit 10 inside it, Safe no lower than 30. If not, the gap is the trade-off. Nothing is applied until the user picks. Audio is thrown away; each usable run is one row in `calibrations` (history.db: date, mic, room and speech dB, both suggestions, what was applied). Per-room profiles and switching by mic are deliberately left for later.
+
+**Wrong turns, found by running real speech through it:**
+- Reference = frames twice the room level: in a silent room that takes in breaths. Now also within 20 dB of the speech level.
+- Counting frames kept: silent rooms got the lowest suggestions, since every word tail counted as lost speech. Now whole bursts (`bursts`, `kept_share`): a word either survives or doesn't.
+- Offering 100 when no position beats the room: now no suggestion at all.
+
+**Measured (2026-11-05, bundled voice sample plus synthetic noise, not a real room):** pink noise from -67 to -36 dB gives Safe 30 and Optimized 45 to 90, with all speech kept and no noise heard. Optimized moves that much between two 10-second clips of one voice, because one soft word sets `keep_limit`. A faint second voice is heard as speech at every position, down to a -56 dB room. Below about 10 dB of speech over room it reports that it can't hear enough speech. Not yet run on a real mic, and the crossed-limits path has only run with a fake detector.
+
+**Known gap:** Silero's scaling is why a faint voice gets through. `speech_frames(floor=...)` can already judge a take at a given level (`auto_enter` uses it), so the calibrated speech level could stop this. Not done: it changes every take and needs real recordings first.
+

@@ -63,6 +63,16 @@ CREATE TRIGGER IF NOT EXISTS dictations_au AFTER UPDATE OF text ON dictations BE
     INSERT INTO dictations_fts(rowid, text) VALUES (new.id, new.text);
 END;
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS calibrations (
+    id INTEGER PRIMARY KEY,
+    at REAL NOT NULL,
+    mic TEXT NOT NULL,
+    noise_db REAL NOT NULL,
+    speech_db REAL NOT NULL,
+    safe INTEGER NOT NULL,
+    optimized INTEGER NOT NULL,
+    applied INTEGER            -- the Noise filter position applied; NULL if none was
+);
 """
 
 
@@ -124,6 +134,22 @@ class History:
                     if col not in cols:
                         self.db.execute(f"ALTER TABLE dictations ADD COLUMN {col} TEXT")
             self.set_meta("schema", "2")
+
+    def add_calibration(self, mic: str, noise_db: float, speech_db: float, safe: int, optimized: int,
+                        at: float | None = None) -> int:
+        """One Noise filter calibration run (calibrate.py). Figures only, never the audio."""
+        with self.db:
+            return self.db.execute("INSERT INTO calibrations(at, mic, noise_db, speech_db, safe, optimized) "
+                                   "VALUES (?, ?, ?, ?, ?, ?)",
+                                   (at or time.time(), mic, noise_db, speech_db, safe, optimized)).lastrowid
+
+    def set_calibration_applied(self, rid: int, level: int):
+        with self.db:
+            self.db.execute("UPDATE calibrations SET applied = ? WHERE id = ?", (level, rid))
+
+    def calibrations(self, limit: int = 20) -> list[dict]:
+        rows = self.db.execute("SELECT * FROM calibrations ORDER BY at DESC, id DESC LIMIT ?", (limit,))
+        return [dict(r) for r in rows]
 
     def meta(self, key):
         r = self.db.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()

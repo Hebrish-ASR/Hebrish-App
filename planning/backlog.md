@@ -120,6 +120,8 @@ tables below hold the detail and status.
 
 | Id | Item | Status |
 | --- | --- | --- |
+| B-93 | **Noise filter calibration** (Daniel, 2026-11-05, D-2026-11-05-04). Voice Typing tab, Calibrate…: 5 s quiet, 10 s speech, Safe and Optimized suggestions, Apply, past runs per mic. `desktop/docs/maintaining.md`, "Noise filter calibration". Not yet run on a real mic. | done (unreleased) |
+| B-93a | **Noise filter calibration, Android** (parity with B-93): same two steps and screen, levels mapped directly because Android's filter is loudness-based (`VoiceDetection`). After desktop's suggestions are shown to be good. | planned |
 | B-92 | **Noise filter dial** (Daniel, 2026-11-05, D-2026-11-05-03). Voice Typing tab, 0-100, default 60, drives Silero's threshold. `desktop/docs/maintaining.md`, "Noise filter". | done (unreleased) |
 | B-92a | **Noise filter dial, Android** (parity with B-92). Dictation screen, 0-100, default 60; skips pieces that are background only (`VoiceDetection`, no Silero on Android yet, B-71a). Unit tests on synthetic audio; **not run on a device**. | done (unreleased) |
 | B-91 | **Shared model folder, `fdroid` build** (Daniel, 2026-11-05, R-2026-11-05-3, D-2026-11-05-01). Models → Model location → Choose folder, with all-files access in `fdroid` only; a folder that already holds a complete model is adopted without a download; every version folder gets a `manifest.json` for other apps. `android/docs/maintaining.md`, "Model location". | released, Android 1.015; not run on a device |
