@@ -33,6 +33,7 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
     private lateinit var size: SeekBar
     private lateinit var alpha: SeekBar
     private lateinit var barAlpha: SeekBar
+    private lateinit var hiddenApps: TextView
     /** Colour swatches, by ARGB value; the chosen one has a ring. */
     private val swatches = mutableMapOf<Int, GradientDrawable>()
     private val sideIds = mutableMapOf<String, Int>()
@@ -114,6 +115,7 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
 
         heading(R.string.step_options)
         switch(R.string.bubble_only_typing, { Prefs.bubbleOnlyTyping(this) }, { Prefs.setBubbleOnlyTyping(this, it) })
+        hiddenApps = nav(R.string.title_bubble_apps, {}, FloatingMicAppsActivity::class.java)
         switch(R.string.bubble_clear_placeholder, { Prefs.clearPlaceholder(this) }, { Prefs.setClearPlaceholder(this, it) })
         small(R.string.bubble_clear_placeholder_hint)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
@@ -189,6 +191,9 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
         alpha.progress = Prefs.bubbleAlpha(this) - Prefs.ALPHA_MIN
         barAlpha.progress = Prefs.bubbleBarAlpha(this) - Prefs.BAR_ALPHA_MIN
         barScale.progress = Prefs.bubbleBarScale(this) - Prefs.BAR_SCALE_MIN
+        val hidden = Prefs.bubbleHiddenApps(this).size
+        hiddenApps.text = if (hidden == 0) getString(R.string.bubble_apps_none)
+            else resources.getQuantityString(R.plurals.bubble_apps_count, hidden, hidden)
         val chosen = Prefs.bubbleColor(this)
         for ((c, d) in swatches) d.setStroke(if (c == chosen) dp(3) else 0, getColor(android.R.color.darker_gray))
     }

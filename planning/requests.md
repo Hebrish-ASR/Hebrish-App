@@ -6,6 +6,7 @@ credited), or an issue link. Outcome links the backlog item, or says why not.
 
 | Id | Date | From | Platforms | Request | Outcome |
 | --- | --- | --- | --- | --- | --- |
+| R-2026-11-05-2 | 2026-11-05 | Daniel | Android | A list of apps the floating mic does not appear over while they are in focus, saved locally as a device-level setting | Done on main for the next Android release: [B-90](backlog.md#sprint-android) |
 | R-2026-11-05-1 | 2026-11-05 | Daniel | Desktop | Active model in the tray menu (Sabich, Shakshuka), and action keys to select each and to toggle between them | Done in Desktop 1.020 (`desktop/docs/maintaining.md`, "Active model") |
 | R-2026-11-04-3 | 2026-11-04 | Daniel | All | Consolidate: remove the original Sabich (Stable) from the apps; the Rolling model is just called Sabich and is the default | Done in Android 1.013 and Desktop 1.020 (`shared/update-protocol.md`, 2026-11-04) |
 | R-2026-11-04-2 | 2026-11-04 | Daniel | Desktop | Voice detection as one tray toggle: when on, it applies to every mode, including the modes that type at the cursor | Done on main for the next desktop release: `tm_vad` folded into `vad` (`desktop/docs/maintaining.md`, "One Voice detection switch"). Shakshuka with insert as you go is not covered: audio goes straight to the streaming decoder |

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- FloatingMicService. Focus events are only used for "show only while a text field is focused";
-     window content is read only to find the focused field and put the transcript in it.
+     window content is read only to find the focused field and put the transcript in it, and the
+     package of the focused app to hide the mic in apps the user listed (B-90).
      flagRetrieveInteractiveWindows lets findFocus see fields in dialogs and popups, and lets the
      service see the keyboard's window (the "someone is typing" signal) and search app windows.
      flagIncludeNotImportantViews: custom editors marked not important for accessibility still

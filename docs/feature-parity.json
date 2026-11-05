@@ -882,6 +882,23 @@
       "notes": "Desktop picks in-process or an XWayland child by Qt platform; Windows uses in-process (I)."
     },
     {
+      "id": "floating-overlay-hidden-apps",
+      "group": "platform-integration",
+      "name": "Floating mic / overlay: hide in chosen apps",
+      "android": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "android/app/src/main/java/app/hebrish/dictation/FloatingMicService.kt:320"
+      },
+      "ubuntu": {
+        "status": "missing"
+      },
+      "windows": {
+        "status": "missing"
+      },
+      "notes": "B-90, R-2026-11-05-2 (Daniel, 2026-11-05). Requested for Android only; no desktop item queued."
+    },
+    {
       "id": "global-hotkey-tray-autostart",
       "group": "platform-integration",
       "name": "Global hotkey, tray, start at login",

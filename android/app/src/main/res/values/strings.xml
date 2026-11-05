@@ -127,6 +127,15 @@
     <string name="bubble_free">Anywhere</string>
     <string name="bubble_right">Right edge</string>
     <string name="bubble_only_typing">Show only while a text field is focused</string>
+    <string name="title_bubble_apps">Hide in these apps</string>
+    <string name="bubble_apps_none">Shown in every app</string>
+    <plurals name="bubble_apps_count">
+        <item quantity="one">Hidden in %d app</item>
+        <item quantity="other">Hidden in %d apps</item>
+    </plurals>
+    <string name="bubble_apps_intro">The floating mic stays out of the way while one of these apps is in focus. If a take is already open when you switch to one, the bar stays until the take is finished. This list is saved on this phone only.</string>
+    <string name="bubble_apps_filter">Search apps</string>
+    <string name="bubble_apps_loading">Loading apps…</string>
     <string name="bubble_time">● %1$d:%2$02d</string>
     <string name="bubble_paused_time">Paused %1$d:%2$02d</string>
     <string name="bubble_retake">Retake</string>
@@ -572,7 +581,7 @@
     <string name="title_consent">Before you turn on the floating mic</string>
     <string name="consent_intro">The floating mic uses Android\'s accessibility service. This screen says what that lets Hebrish do and what Hebrish does with it.</string>
     <string name="consent_reads_title">What it reads</string>
-    <string name="consent_reads">Which text field has focus, and the editable fields in the window on screen. Hebrish uses this only to show the mic while you are in a text field and to put your transcript in at the cursor. It never reads or writes password fields.</string>
+    <string name="consent_reads">Which text field has focus, the editable fields in the window on screen, and which app is in focus. Hebrish uses this only to show the mic while you are in a text field, to hide it in apps you chose, and to put your transcript in at the cursor. It never reads or writes password fields.</string>
     <string name="consent_does_title">What it does</string>
     <string name="consent_does">It shows the mic button over other apps and types the text you dictated into the field. It acts only when you tap the mic or one of its buttons, never on its own.</string>
     <string name="consent_keys">It also sees hardware key presses, so a Bluetooth remote or keyboard key can start and stop takes. It acts only on keys you bind on the Sound, microphone and buttons screen; every other key passes through untouched.</string>

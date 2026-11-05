@@ -18,6 +18,15 @@
          optimisation, so OxygenOS and similar don't kill the accessibility service (0.4.0). -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- Lists launchable apps for "Hide in these apps" (B-90). Android 11+ hides other apps
+         without this; it is narrower than QUERY_ALL_PACKAGES, which Play restricts. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -42,6 +51,7 @@
         <activity android:name=".TranscriptionActivity" android:exported="false" android:label="@string/title_transcription" android:parentActivityName=".MainActivity" android:windowSoftInputMode="adjustResize" />
         <service android:name=".TranscriptionService" android:exported="false" android:foregroundServiceType="microphone" />
         <activity android:name=".DictationActivity" android:exported="false" android:label="@string/title_dictation" android:parentActivityName=".MainActivity" />
+        <activity android:name=".FloatingMicAppsActivity" android:exported="false" android:label="@string/title_bubble_apps" android:parentActivityName=".FloatingMicActivity" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".FloatingMicConsentActivity" android:exported="false" android:label="@string/title_consent" android:parentActivityName=".MainActivity" />
         <activity android:name=".InstallActivity" android:exported="false" android:label="@string/title_install" android:parentActivityName=".MainActivity" />
         <activity android:name=".DictionaryActivity" android:exported="false" android:label="@string/title_dictionary" android:parentActivityName=".MainActivity" android:windowSoftInputMode="adjustResize" />

@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated 2026-11-02. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
+Last updated 2026-11-05. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
 `released <version>`. Work is queued in **one sprint per platform** (desktop = Ubuntu + Windows,
 which share `desktop/`; Android). A sprint ends with a release, when the release gate below says so. Parity is the aim (decision
 D-2026-10-22-05): an item done on one platform gets a matching item in the other sprint, unless
@@ -22,7 +22,7 @@ Contributors: this is why a merged change may wait for the next release.
 | Condition | Daniel says the sprint is done |
 | Platforms | Android and desktop (Ubuntu + Windows), released together at the end of the sprint |
 | Sprint items | B-39 / B-39a numbers to digits; B-40 S1-mini by Superwhisper finishing step (desktop); the Transcription Mode follow-ups still open (B-25 tidy-and-save view); B-45 / B-45a Transcription Mode Pause button and levels docked by default |
-| Waiting to ship | Plain model descriptions on the Models page with Technical details, and the What's new list baked from hebrish.app/changelog (both apps, 2026-10-25; `shared/updates-android.json` (one list per platform since 2026-10-31), `scripts/bake_updates.py`) |
+| Waiting to ship | B-90 floating mic hidden in chosen apps (Android, 2026-11-05). Plain model descriptions on the Models page with Technical details, and the What's new list baked from hebrish.app/changelog (both apps, 2026-10-25; `shared/updates-android.json` (one list per platform since 2026-10-31), `scripts/bake_updates.py`) |
 | Hotfix rule | Only a release that is broken for users (won't install, crashes on start, loses data) ships early, and Daniel is told |
 
 ## Cross-platform sprints
@@ -120,6 +120,7 @@ tables below hold the detail and status.
 
 | Id | Item | Status |
 | --- | --- | --- |
+| B-90 | **Floating mic: hide in chosen apps** (Daniel, 2026-11-05, R-2026-11-05-2). Floating mic screen, "Hide in these apps": a searchable list of launchable apps. While a ticked app is in focus the idle mic is hidden and no model is preloaded; an open take, a take still transcribing or a held transcript keeps the bar up. Saved in the phone's prefs (`bubble_hidden_apps`), never backed up or synced. Compiled, **not yet run on a device**. At release: add it to the manual (Hebrish-App `manual-src/docs/android/floating-mic.md`) and say on `/privacy` (floating mic row) that the service reads which app is in focus. | done (unreleased) |
 | B-74a | **Transcripts folder on Android** (parity with B-74): Save writes Markdown to a dated year / month / day folder under a user-chosen folder (Storage Access Framework), named by the time; titles with B-75; the same front matter, H1/H2 and versions as desktop B-78. Built 2026-10-31: Save in Transcription Mode, Folder… picker (persisted grant, no all-files permission), `<stem>.md` + `<stem>.raw.md` + `<stem>.json` (no Save cleaned copy on Android); `TranscriptFolder.kt`, `Transcripts.kt`; `android/docs/maintaining.md`, "Transcripts folder and titles". Not yet tried on a phone | released Android 1.012 |
 | B-75a | **Title model on Android** (parity with B-75, R-2026-10-31-7): `title-gemma-270m` through the existing GGUF clean-up path (`CleanupModel.kt`, `CleanupStore.kt`); needs an `android` block in the catalogue entry and a size/speed check on a mid-range phone; titles the B-74a saved transcripts. Built 2026-10-31: `android` block (the desktop Q8_0 file), `Titles.kt` (titles.py ported, JVM tests on test_titles.py's cases), row in Models › Add-on models, switch *Give saved transcripts a title*. The phone speed/memory check is still open | released Android 1.012 |
 | B-77a | **Transcript in one go and Next recording on Android** (parity with B-77, R-2026-10-31-5): the long-form transcript appears when done, a progress line only after 5 s; add to the transcript or start a new one. (The title model is on Android since B-75a, 2026-10-31.) | planned |

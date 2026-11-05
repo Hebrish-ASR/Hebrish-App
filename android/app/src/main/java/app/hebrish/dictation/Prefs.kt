@@ -129,6 +129,17 @@ object Prefs {
     fun setClearPlaceholder(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("clear_placeholder", v).apply()
 
     // Floating mic (FloatingMicService). Keys start with "bubble_": the service re-places itself on any change.
+
+    /**
+     * Package names of the apps the idle floating mic stays hidden in (B-90). A setting of this
+     * phone only: plain prefs, and the manifest has allowBackup="false", so it is neither backed up nor synced.
+     */
+    fun bubbleHiddenApps(ctx: Context): Set<String> = sp(ctx).getStringSet("bubble_hidden_apps", null) ?: emptySet()
+    fun setBubbleHiddenApp(ctx: Context, pkg: String, hidden: Boolean) {
+        val now = bubbleHiddenApps(ctx)
+        sp(ctx).edit().putStringSet("bubble_hidden_apps", if (hidden) now + pkg else now - pkg).apply()
+    }
+
     const val SIDE_LEFT = "left"
     const val SIDE_RIGHT = "right"
     /** Anywhere: no snapping to an edge; the horizontal place is [bubbleX]. */

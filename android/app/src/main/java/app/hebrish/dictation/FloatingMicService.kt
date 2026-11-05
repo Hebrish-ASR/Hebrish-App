@@ -81,6 +81,10 @@ import android.widget.Toast
  * for the double-tap timeout (~300 ms) before it starts a take; Stop during a take is immediate.
  * Daniel, 2026-10-23: "just make it a bit small, get out of the way".
  *
+ * Hidden in chosen apps (B-90, Daniel 2026-11-05): while an app in Prefs.bubbleHiddenApps is the
+ * one in focus, the idle mic is hidden and no model is preloaded for it. An open take, a take still
+ * transcribing or a held transcript keeps the bar up, because the bar is the only way to end it.
+ *
  * Same engine and process as the voice keyboard, so both share one loaded model. Recording needs
  * no foreground service: see docs/maintaining.md, "Floating mic".
  *
@@ -147,6 +151,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private var stuck = false
     /** The last editable node an event came from: the fallback when findFocus can't see the field. */
     private var lastEditable: AccessibilityNodeInfo? = null
+    /** Package of the app in focus, kept while it can't be told ([focusedApp]). */
+    private var frontApp: String? = null
     private var shownSeconds = -1
     /** Short name of the mic the current take records from, shown in the bar. */
     private var micName = ""
@@ -282,6 +288,9 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             // 1.011: the idle free can't rely on the timer while the phone sleeps (Transcriber.checkIdle).
             if (!open) Transcriber.checkIdle()
             val was = editableFocused
+            val app = if (event.eventType in WINDOW_EVENTS) focusedApp() else null
+            val moved = app != null && app != frontApp
+            if (moved) frontApp = app
             val source = event.source
             if (source?.isEditable == true && !source.isPassword) lastEditable = source
             // The full probe (the windows list, findFocus, up to MAX_NODES nodes per window) only
@@ -292,13 +301,28 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
                 (was && event.eventType !in PROBE_EVENTS) || keyboardShowing() || focusedField() != null
             // Only the rising edge changes what is shown: losing focus leaves the bubble up
             // (stuck), so it can still be moved and tapped (Daniel, 2026-10-22).
-            if (editableFocused && !was) {
+            // Coming out of a hidden app into a field counts as the same edge: the field was
+            // already focused, but nothing has been shown or loaded for it yet.
+            if (editableFocused && (!was || moved) && !inHiddenApp()) {
                 Transcriber.preload(this)
                 stuck = true
-                render()
             }
+            if (moved || (editableFocused && !was)) render()
         }
     }
+
+    /**
+     * The package of the app in focus, or null if it can't be told (no app window listed, as on the
+     * lock screen). Read from the windows list and not event.packageName, which also names the
+     * keyboard, the status bar and this service's own overlay. With split screen it is the active
+     * half; under the notification shade, which isn't an app window, the app on top.
+     */
+    private fun focusedApp(): String? = runCatching {
+        val apps = windows.filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
+        (apps.firstOrNull { it.isActive || it.isFocused } ?: apps.firstOrNull())?.root?.packageName?.toString()
+    }.getOrNull()
+
+    private fun inHiddenApp() = frontApp?.let { it in Prefs.bubbleHiddenApps(this) } == true
 
     /** True while a keyboard window is on screen: the surest sign that someone is typing. */
     private fun keyboardShowing() =
@@ -1062,7 +1086,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private fun render() {
         val r = root ?: return
         val waiting = pending != null && state == State.IDLE
-        val wanted = !Prefs.bubbleOnlyTyping(this) || editableFocused || stuck
+        val wanted = (!Prefs.bubbleOnlyTyping(this) || editableFocused || stuck) && !inHiddenApp()
         val show = wanted || state != State.IDLE || waiting
         r.visibility = if (show) View.VISIBLE else View.GONE
         r.background = if (open || waiting) barBg.apply { cornerRadius = dp(Prefs.bubbleSize(this@FloatingMicService)).toFloat() } else null
@@ -1161,7 +1185,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         /** Most nodes [findFocusedEditable] visits per search. */
         const val MAX_NODES = 1500
         /** Events after which a known-focused field may have lost focus: the full probe runs. */
-        private val PROBE_EVENTS = setOf(AccessibilityEvent.TYPE_VIEW_FOCUSED,
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, AccessibilityEvent.TYPE_WINDOWS_CHANGED)
+        private val WINDOW_EVENTS = setOf(AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, AccessibilityEvent.TYPE_WINDOWS_CHANGED)
+        private val PROBE_EVENTS = WINDOW_EVENTS + AccessibilityEvent.TYPE_VIEW_FOCUSED
     }
 }

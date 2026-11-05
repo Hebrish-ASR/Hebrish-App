@@ -1650,3 +1650,28 @@ microphone and buttons → Buttons now has (F-Droid build only; the Play build h
 Both new keys start with `key_`, so `ControlsActivity`'s preference listener re-renders on them.
 Checked: `./gradlew :app:compileFdroidDebugKotlin :app:compilePlayDebugKotlin` passes (V, JDK 21);
 not run on a device (I).
+
+## Floating mic: hide in chosen apps (B-90, 2026-11-05, unreleased)
+
+Floating mic screen, **Hide in these apps** (`FloatingMicAppsActivity`): a searchable list of apps
+with a launcher icon, ticked ones first. Prefs key `bubble_hidden_apps` (a string set of package
+names). It starts with `bubble_`, so the service re-renders on any tick. It stays on the phone: plain
+prefs with `allowBackup="false"`.
+
+- **Which app is in focus:** `FloatingMicService.focusedApp()` reads the windows list on window
+  events: the active `TYPE_APPLICATION` window, else the top one. `event.packageName` is not used
+  because it also names the keyboard, the status bar and this service's overlay. With no app window
+  listed (lock screen) the last known app is kept.
+- **What stays up:** only the idle mic is hidden. An open take, a take still transcribing or a held
+  transcript keeps the bar, since the bar is the only way to end it. A bound remote still starts a
+  take in a hidden app, and the bar then shows for that take. The voice keyboard is not affected.
+- **No preload, no `stuck`:** a field focused in a hidden app neither loads the model nor sets
+  `stuck`, so the mic doesn't appear on the home screen after leaving a hidden app.
+- **Listing apps:** Android 11+ filters `queryIntentActivities` unless the manifest declares it, so
+  there is a `<queries>` entry for MAIN/LAUNCHER. No `QUERY_ALL_PACKAGES` (restricted on Play), and
+  no new runtime permission. Apps with no launcher icon can't be chosen.
+- **Disclosure:** `consent_reads` now names reading the app in focus. People who accepted the consent
+  screen earlier are not asked again (I: the data stays on the phone and the service could already see it).
+
+Checked: `:app:compileFdroidDebugKotlin :app:compilePlayDebugKotlin` pass (V, JDK 21); not run on a
+device (I).
