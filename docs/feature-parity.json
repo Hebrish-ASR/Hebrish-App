@@ -1407,12 +1407,12 @@
       },
       "ubuntu": {
         "status": "present",
-        "since": "unreleased",
+        "since": "1.025",
         "evidence": "desktop/hebrish/benchmark.py, desktop/hebrish/ui/benchmark.py"
       },
       "windows": {
         "status": "present",
-        "since": "unreleased",
+        "since": "1.025",
         "evidence": "desktop/hebrish/benchmark.py, desktop/hebrish/ui/benchmark.py",
         "verified": false
       },

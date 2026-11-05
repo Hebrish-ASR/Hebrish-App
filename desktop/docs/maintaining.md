@@ -2351,7 +2351,7 @@ Voice Typing tab, **Calibrate…** beside the Noise filter (Daniel: the right se
 
 **Known gap:** Silero's scaling is why a faint voice gets through. `speech_frames(floor=...)` can already judge a take at a given level (`auto_enter` uses it), so the calibrated speech level could stop this. Not done: it changes every take and needs real recordings first.
 
-## Benchmarks window (B-94, unreleased, 2026-11-05)
+## Benchmarks window (B-94, 1.025, 2026-11-05)
 
 Diagnostics > Benchmarks… opens `ui/benchmark.py`, a separate non-modal window; the method is in `benchmark.py` (no Qt). The older Run benchmark button stays: it is a 10-second check that feeds the Diagnostics averages, and nothing it does is saved.
 

@@ -8,7 +8,7 @@ the last N (default 20), and writes for each one its date, tag ("Desktop 1.003",
 title and a summary of one or two sentences in plain text.
 
 Source: hebrish.app/changelog (`changelog.html` in the website repo, Hebrish-ASR's Hebrish-App
-site, checked out next to this repo as ../Hebrish-App). Each entry there is
+site, checked out next to this repo as ../website or ../Hebrish-App). Each entry there is
 `<article class="log">` with `<time datetime>`, `<span class="tag">`, `<h3>` and a `<ul>`; the
 summary is cut from the first `<li>`. The site's other feeds were not usable: data/releases.json
 has only the numbered model releases (two entries) and data/updates/ holds the voice-note
@@ -45,7 +45,10 @@ import urllib.request
 from html.parser import HTMLParser
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOCAL = os.path.join(ROOT, "..", "Hebrish-App", "changelog.html")
+# The website checkout: beside this repo under either folder name, else the live page (which won't
+# have an entry written for this release yet, so a checkout is what a release wants).
+LOCAL = next((p for p in (os.path.join(ROOT, "..", d, "changelog.html") for d in ("website", "Hebrish-App"))
+              if os.path.exists(p)), os.path.join(ROOT, "..", "website", "changelog.html"))
 URL = "https://hebrish.app/changelog"
 # Each app: where its list goes, and which platforms it shows.
 OUTS = {"android": (os.path.join(ROOT, "shared", "updates-android.json"), {"android"}),

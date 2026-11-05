@@ -75,7 +75,7 @@ def test_sampler_sees_load_shorter_than_an_interval():
     s = benchmark.Sampler(every_s=10)
     s.start()
     t = time.monotonic()
-    while time.monotonic() - t < 0.05:
+    while time.monotonic() - t < 0.2:
         pass
     out = s.stop()
     assert out["cpu_avg_cores"] > 0.5 and out["cpu_peak_pct"] >= out["cpu_avg_pct"]
@@ -104,6 +104,7 @@ def test_report_is_markdown_without_the_file_name():
 
 
 def test_window_saves_a_run(tmp_path, monkeypatch):
+    pytest.importorskip("PySide6")                # Linux CI has no PySide6
     from PySide6.QtWidgets import QApplication, QWidget
     from hebrish.ui.benchmark import BenchmarkWindow
     app = QApplication.instance() or QApplication([])
