@@ -7,18 +7,18 @@
   "entries": [
     {
       "date": "2026-11-05",
-      "tag": "Android 1.014",
-      "title": "Insert last only adds what was missed",
-      "summary": "Insert last: if part of a take went in and the rest missed the field, Insert last now adds only the missing words, not the whole take again.",
+      "tag": "Android 1.016",
+      "title": "One Sabich, kept in one place",
+      "summary": "The app now gets Sabich from a single download location, and the older names for it are gone from the app. If you already have the latest Sabich, nothing downloads again.",
       "platforms": [
         "android"
       ]
     },
     {
-      "date": "2026-11-04",
-      "tag": "Android 1.013",
-      "title": "One Sabich",
-      "summary": "The model that was Sabich (Rolling) is now just Sabich, the default. Sabich (Stable) and Jachnun are no longer offered.",
+      "date": "2026-11-05",
+      "tag": "Android 1.014",
+      "title": "Insert last only adds what was missed",
+      "summary": "Insert last: if part of a take went in and the rest missed the field, Insert last now adds only the missing words, not the whole take again.",
       "platforms": [
         "android"
       ]
@@ -30,17 +30,6 @@
       "summary": "Clean up: Transcription Mode can tidy a finished transcript with a small model on the phone: S1-mini by Superwhisper (the default) or S1-ASR-Cleanup (experimental), an optional download in Models → Add-on models.",
       "platforms": [
         "android"
-      ]
-    },
-    {
-      "date": "2026-11-02",
-      "tag": "Sabich (Rolling) r1",
-      "title": "Sabich (Rolling) r1: the new default model in the apps",
-      "summary": "Sabich (Rolling) is Sabich v2.4 trained further from its own weights, for 6 more epochs, on all the recordings collected so far, instead of retraining from stock NVIDIA Parakeet TDT 0.6B v2.",
-      "platforms": [
-        "android",
-        "desktop",
-        "models"
       ]
     },
     {
@@ -196,6 +185,16 @@
       "summary": "The app's screens now use the Hebrish look from this site: the warm paper background, the green accent, the Hebrish logo (it was showing as a plain green square), headings in the Hebrish typeface and grouped settings on the home screen.",
       "platforms": [
         "android"
+      ]
+    },
+    {
+      "date": "2026-10-23",
+      "tag": "Apps: Android 0.9.0, Desktop 0.8.0",
+      "title": "A personal dictionary: your words, written your way",
+      "summary": "Add the words you want written a certain way: names, brands, Hebrew words in the spelling you use. After each take, Hebrish replaces what the model wrote with your spelling.",
+      "platforms": [
+        "android",
+        "desktop"
       ]
     }
   ]

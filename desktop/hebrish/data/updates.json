@@ -7,6 +7,24 @@
   "entries": [
     {
       "date": "2026-11-05",
+      "tag": "Desktop 1.023",
+      "title": "One Sabich, kept in one place",
+      "summary": "Ubuntu and Windows now get Sabich from a single download location, and the older names for it are gone from the app. If you already have the latest Sabich, nothing downloads again.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "tag": "Site",
+      "title": "Home page reordered, and Support the project moves under About",
+      "summary": "The home page now offers the apps before asking for help, and a new section links to the use cases, manual, screenshots, models, blog and roadmap.",
+      "platforms": [
+        "site"
+      ]
+    },
+    {
+      "date": "2026-11-05",
       "tag": "Site",
       "title": "Daniel's story, a new support page, and breadcrumbs on model pages",
       "summary": "About now opens with who makes Hebrish and why, with a real photo and some dictation facts.",
@@ -132,17 +150,6 @@
       ]
     },
     {
-      "date": "2026-11-02",
-      "tag": "Sabich (Rolling) r1",
-      "title": "Sabich (Rolling) r1: the new default model in the apps",
-      "summary": "Sabich (Rolling) is Sabich v2.4 trained further from its own weights, for 6 more epochs, on all the recordings collected so far, instead of retraining from stock NVIDIA Parakeet TDT 0.6B v2.",
-      "platforms": [
-        "android",
-        "desktop",
-        "models"
-      ]
-    },
-    {
       "date": "2026-10-31",
       "tag": "Desktop 1.016",
       "title": "Download models in sets, update them all at once, and the title model downloads again",
@@ -178,15 +185,6 @@
         "android",
         "desktop",
         "models"
-      ]
-    },
-    {
-      "date": "2026-10-30",
-      "tag": "Desktop 1.013",
-      "title": "Optional clean-up model, and a lighter, clearer app",
-      "summary": "Clean up (optional, off by default): download S1-ASR-Cleanup, a fine-tune of S1-mini by Superwhisper, under Models, Utilities, Post-processing (about 660 MB), and turn on Clean up there or in the Transcription tab.",
-      "platforms": [
-        "desktop"
       ]
     }
   ]
