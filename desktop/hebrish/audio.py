@@ -36,8 +36,8 @@ def input_devices() -> list[str]:
 VOICE_DIR = Path(__file__).resolve().parent / "data" / "voice"
 # Bundled test recordings (2026-11-02), so anyone can try the model without a recording of their
 # own. The 1-minute ones are read from the script beside them (<id>.txt: the reference
-# transcript); the long one is a real 67-minute voice note (project update, 2026-10-22, public in
-# planning/voice-notes/). Also published as a validation set on Hugging Face (see maintaining.md).
+# transcript); the long one is a real 67-minute voice note (project update, 2026-10-22, published at
+# https://hebrish.app/updates/2026-10-22). Also published as a validation set on Hugging Face (see maintaining.md).
 SAMPLES_DIR = Path(__file__).resolve().parent / "data" / "samples"
 SAMPLES = (("test-codeswitch.flac", "Code-switching (1 min)"),
            ("test-tech.flac", "Tech vocabulary (1 min)"),

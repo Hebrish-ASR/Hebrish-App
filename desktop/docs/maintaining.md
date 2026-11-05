@@ -1862,7 +1862,7 @@ a build has none. List: `audio.SAMPLES`, files in `hebrish/data/samples/` (packa
 | `test-codeswitch.flac` + `.txt` | 1-minute read script, English with romanized Hebrew terms | 0.96 MB |
 | `test-tech.flac` + `.txt` | 1-minute read script, tech vocabulary | 1.09 MB |
 | `test-mixed.flac` + `.txt` | 1-minute read script, both | 0.99 MB |
-| `test.mp3` | Real 67-minute voice note (project update 2026-10-22, `planning/voice-notes/2026-10/`), 16 kHz mono 32 kbps MP3 | 16.1 MB |
+| `test.mp3` | Real 67-minute voice note (project update 2026-10-22, <https://hebrish.app/updates/2026-10-22>), 16 kHz mono 32 kbps MP3 | 16.1 MB |
 
 - The `.txt` beside each short take is the exact script read, so it is the reference transcript.
   The three are scripts `cs-01`, `tech-01`, `mixed-01` of validation set v1.0

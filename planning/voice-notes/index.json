@@ -1,9 +1,7 @@
 {
- "_comment": "One entry per processed voice note, oldest first. See README.md.",
+ "_comment": "One entry per processed voice note, oldest first. Audio and transcripts are not kept here; `page` is the published episode. See README.md.",
  "notes": [
   {
-   "file": "2026-10/2026-10-22-project-update-next-sprint.opus",
-   "transcript": "2026-10/2026-10-22-project-update-next-sprint.md",
    "recorded": "2026-10-22",
    "processed": "2026-10-22",
    "requests": [
@@ -25,7 +23,8 @@
     "D-2026-10-22-15",
     "D-2026-10-22-16",
     "D-2026-10-22-17"
-   ]
+   ],
+   "page": "https://hebrish.app/updates/2026-10-22"
   }
  ]
 }

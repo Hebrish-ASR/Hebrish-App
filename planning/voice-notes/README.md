@@ -1,46 +1,23 @@
 # Voice notes
 
-Daniel's spoken ideas and updates for the Hebrish apps, kept in the repo as the original record
-of each request. Started 2026-10-22. They are public, like the rest of `planning/`.
+Daniel's spoken ideas and updates for the Hebrish apps, turned into requests and sprint items.
+Started 2026-10-22.
 
-Each note is turned into requests and sprint items with the `queue-sprint` skill (plugin
-`hebrish-maintainers`), and every request it produces links back to its note.
-
-## Adding a note
-
-Put the audio file in `inbox/`. Any name and any common format (mp3, m4a, ogg/opus, wav).
-Compressed formats keep the repo small: opus or mp3 at speech bitrates is about 0.5 MB a minute.
+Raw transcripts and audio are not kept in this public repository (Daniel, 2026-11-05: they were
+removed, and new ones are not added). Each note is published as a written-up podcast episode at
+<https://hebrish.app/updates/podcast>, and that page is what requests link to. The originals stay
+in the project Drive.
 
 ## Processing a note (agents)
 
-1. Transcribe it. The transcript is the source, so keep Daniel's wording, with only obvious
-   ASR errors fixed (Hebrish model names, Hebrew words in the canonical romanization).
-2. Move the audio from `inbox/` to `YYYY-MM/<YYYY-MM-DD>-<slug>.<ext>` (the date it was
-   recorded, else the date it was added) with `git mv`. Write the transcript next to it as
-   `<same name>.md`:
-
-   ```markdown
-   # <YYYY-MM-DD>: <one-line gist>
-
-   - Audio: [<file>](<file>)
-   - Processed: <YYYY-MM-DD>, requests R-…, R-…; decisions D-… (or "none")
-
-   ## Transcript
-
-   <the transcript>
-   ```
-
-3. Queue the asks with `queue-sprint`. In `planning/requests.md`, "From" is
-   `Daniel ([voice note](voice-notes/YYYY-MM/<name>.md))`.
-4. Add a row to `index.json`, then commit the audio, the transcript and the `planning/` edits
-   together: `planning: voice note <date> <slug> -> R-…`.
-
-`inbox/` empty means every note has been processed.
+1. Publish it with the `voice-update` skill. Its page is `https://hebrish.app/updates/<date>`.
+2. Queue the asks with `queue-sprint` (plugin `hebrish-maintainers`). In `planning/requests.md`,
+   "From" is `Daniel ([voice note](https://hebrish.app/updates/<date>))`.
+3. Add an entry to `index.json` and commit the `planning/` edits together:
+   `planning: voice note <date> <slug> -> R-…`.
 
 ## Files
 
 | Path | What |
 | --- | --- |
-| `inbox/` | New notes waiting to be processed |
-| `YYYY-MM/` | Processed notes: the audio and its transcript (`.md`) |
-| `index.json` | One entry per processed note: `file`, `transcript`, `recorded`, `processed`, `requests`, `decisions` |
+| `index.json` | One entry per processed note: `page`, `recorded`, `processed`, `requests`, `decisions` |
