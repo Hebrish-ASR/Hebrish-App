@@ -4,6 +4,7 @@ import android.content.Intent
 import android.widget.TextView
 import android.widget.Toast
 import app.hebrish.core.OutputStyle
+import app.hebrish.core.VoiceDetection
 import app.hebrish.core.Recorder
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -23,6 +24,12 @@ class DictationActivity : Page() {
         small(R.string.dictation_type_as_you_go_hint)
         switch(R.string.dictation_all_caps, { OutputStyle.allCaps(this) }, { OutputStyle.setAllCaps(this, it) })
         small(R.string.dictation_all_caps_hint)
+
+        heading(R.string.dictation_noise_title)
+        val noiseLabel = text("")
+        slider(0, 100, VoiceDetection.level(this), noiseLabel, { getString(R.string.dictation_noise_value, it) },
+            { VoiceDetection.setLevel(this, it) })
+        small(R.string.dictation_noise_hint)
 
         heading(R.string.history_title)
         text(R.string.history_body)

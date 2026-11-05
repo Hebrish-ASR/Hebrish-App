@@ -1711,3 +1711,12 @@ prefs with `allowBackup="false"`.
 
 Checked: `:app:compileFdroidDebugKotlin :app:compilePlayDebugKotlin` pass (V, JDK 21); not run on a
 device (I).
+
+## Noise filter (B-92a, 2026-11-05)
+
+Dictation screen: a 0-100 slider, pref `noise_filter`, default 60, the same dial as desktop with a different rule underneath, because Android has no Silero yet (B-71a). `VoiceDetection.noiseOnly` (core) measures 20 ms frames; `TakeDecoder.piece` skips decoding a piece that is background only, for the keyboard, floating mic and Try screen. The level is read when a `TakeDecoder` is made, like `allCaps`, so a change applies from the next take.
+
+**This is new behaviour, not a retune.** Up to 1.015 a piece with no clear speech was decoded whole (`Transcriber.trim` returns it unchanged), so nothing filtered room noise. 0 restores that. The rule is deliberately milder than `trim`'s (ratio 2.15 at the default against its 3): pieces are cut at pauses, so steady talking holds little silence, and dropping speech is worse than a stray word. `trim` is unchanged at every level. File transcription does not use it.
+
+(V) `VoiceDetectionTest`, synthetic audio only. (I) Not run on a device or on real speech, so the risk to check first is quiet or continuous speech being dropped at 60.
+

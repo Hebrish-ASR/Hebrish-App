@@ -143,6 +143,8 @@ DEFAULTS = {
                                   # Transcription Mode, the local API; also in the tray menu
     "vad_silero": True,           # with Voice detection on, use Silero VAD (bundled, vad.py,
                                   # 2026-10-29); off = the energy rule
+    "vad_noise_filter": 60,       # Noise filter 0-100 (vad.threshold; 50 = the old fixed 0.5). Daniel,
+                                  # 2026-11-05: room noise came out as stray words, so a stricter default
     "num_threads": 0,             # decoder threads; 0 = auto (physical cores, at most 8)
     "keep_history": True,         # keep every transcript in history.db (History tab); 0.7.0: on
     # Maintainer mode (R-2026-11-02-2, maintainer.py): keep each Voice Typing take's audio (FLAC)

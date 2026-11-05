@@ -56,3 +56,23 @@ def test_transcribe_chunks_runs_voice_detection_once(monkeypatch):
     with pytest.raises(RuntimeError):                      # no model: fails at the first piece
         list(e.transcribe_chunks(np.full(5 * engine.SAMPLE_RATE, 0.1, np.float32), vad=True))
     assert len(calls) == 1
+
+
+def test_noise_filter_maps_to_silero_threshold():
+    assert vad.threshold(50) == pytest.approx(vad.THRESHOLD)   # 50 is the old fixed value
+    assert vad.threshold(0) == pytest.approx(0.2) and vad.threshold(100) == pytest.approx(0.8)
+    assert vad.threshold(-5) == vad.threshold(0) and vad.threshold(500) == vad.threshold(100)
+    assert vad.threshold(vad.FILTER_DEFAULT) > vad.THRESHOLD   # the default is stricter
+
+
+def test_default_noise_filter_matches_config():
+    from hebrish import config
+    assert config.DEFAULTS["vad_noise_filter"] == vad.FILTER_DEFAULT
+
+
+def test_set_level_rebuilds_the_detector():
+    s = vad.Silero(vad.BUNDLED)
+    s.speech_frames(np.zeros(16000, np.float32) + 0.1, 320)
+    s.set_level(100)
+    assert s._det is None and s._cfg.silero_vad.threshold == pytest.approx(0.8)
+

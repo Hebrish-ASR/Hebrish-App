@@ -612,3 +612,8 @@ Daniel, 2026-11-04: Sabich (Stable) leaves the apps; the `sabich-rolling` varian
 ## D-2026-11-05-02: One set of weights per model on the CDN
 
 Daniel, 2026-11-05: each model has one folder of weights, overwritten when a version is published; the manifest says which version it is. Sabich is pulled from `models/sabich/` and `models/sabich-rolling/` is gone, along with the stable v2.4 weights (still on HF). The `sabich-rolling` id stays internal so nobody re-downloads. The apps' What's new lists leave out entries naming Sabich (Stable) or Sabich (Rolling); the website changelog keeps them. Details: `shared/update-protocol.md`.
+
+## D-2026-11-05-03: Noise filter dial in the apps
+
+Daniel, 2026-11-05: stray words were room noise, not the model. The voice detection default gets a little stricter and users get a 0-100 dial with a short explainer, on desktop and Android. Named **Noise filter**, higher is stricter, 50 is the old desktop behaviour, default 60. Android has no Silero, so its dial drives a new loudness check (`VoiceDetection`). Details: `desktop/docs/maintaining.md` and `android/docs/maintaining.md`, "Noise filter".
+

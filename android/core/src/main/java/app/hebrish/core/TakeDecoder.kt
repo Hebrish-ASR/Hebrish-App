@@ -30,6 +30,7 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
     private val worker = Executors.newSingleThreadExecutor()
     private val held = StringBuilder()
     private val allCaps = OutputStyle.allCaps(app)
+    private val noiseFilter = VoiceDetection.level(app)
     /**
      * The personal dictionary (0.9.0, [PersonalDictionary]), read on the worker at the take's
      * first piece and kept for the whole take. Applied before ALL CAPS, after the seam rules.
@@ -101,7 +102,9 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
      */
     private fun piece(samples: FloatArray, last: Boolean): String {
         val ctx = context?.takeIf { it.size >= Transcriber.SAMPLE_RATE * MIN_CONTEXT_SECONDS && Transcriber.hasSpeech(it) }
-        val (decoded, stop) = if (ctx != null) {
+        val (decoded, stop) = if (VoiceDetection.noiseOnly(samples, noiseFilter)) {
+            "" to null                                  // background only: decoding could only invent words
+        } else if (ctx != null) {
             contextSamples += ctx.size
             timed { Transcriber.transcribeAfter(app, samples, ctx) }
         } else timed { Transcriber.transcribe(app, samples) } to null

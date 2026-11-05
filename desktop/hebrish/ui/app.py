@@ -1348,7 +1348,10 @@ class Controller(QObject):
             engine.silero = None
         elif engine.silero is None or engine.silero.path != path:
             engine.silero = vad.Silero(path)
-        log.info("voice detection: %s", "silero" if engine.silero else "energy")
+        if engine.silero:
+            engine.silero.set_level(self.cfg["vad_noise_filter"])
+        log.info("voice detection: %s, noise filter %s", "silero" if engine.silero else "energy",
+                 self.cfg["vad_noise_filter"])
 
     @staticmethod
     def addon_fetchers() -> dict:

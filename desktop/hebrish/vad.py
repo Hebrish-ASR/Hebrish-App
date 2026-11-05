@@ -24,11 +24,19 @@ MODEL_ID = "silero-vad"
 BUNDLED = Path(__file__).resolve().parent / "data" / "vad" / "silero_vad.onnx"
 SHA256 = "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6"
 WINDOW = 512                  # samples per Silero step at 16 kHz
-THRESHOLD = 0.5
+THRESHOLD = 0.5              # Silero's own default, and Noise filter 50
+FILTER_DEFAULT = 60          # `vad_noise_filter` (Daniel, 2026-11-05): a little stricter than 50, to keep room noise out
 MIN_SPEECH_S = 0.1
 MIN_SILENCE_S = 0.25
 DEAD = 10 ** (-70 / 20)       # as engine.VAD_DEAD: a muted mic is no speech, whatever Silero says
 PEAK = 0.5                    # loudness Silero is fed at (the take's 99.9th-percentile sample)
+
+
+def threshold(level: int) -> float:
+    """Noise filter 0-100 as Silero's speech probability: 0 = 0.2, 50 = 0.5 (the old fixed value),
+    100 = 0.8. Silero sees each take scaled to PEAK, so room noise in a quiet take is scaled up
+    too; a higher threshold is what keeps that out."""
+    return 0.2 + 0.006 * min(100, max(0, int(level)))
 
 
 def installed() -> Path | None:
@@ -53,6 +61,12 @@ class Silero:
         self._lock = threading.Lock()
         self._det = None
         self._buf = 0.0
+
+    def set_level(self, level: int):
+        """Apply the Noise filter; the detector is rebuilt on its next use."""
+        with self._lock:
+            self._cfg.silero_vad.threshold = threshold(level)
+            self._det = None
 
     def speech_frames(self, x: np.ndarray, frame: int, floor: float = 0.0) -> np.ndarray:
         """True for each `frame`-sample frame of x inside a speech segment. floor: scale as if x
