@@ -1,5 +1,5 @@
-**1.022: Windows catches up.**
+**1.023: One Sabich, kept in one place.**
 
-- **Windows and AppImage:** a new stable build with everything since Windows 1.012.
-- **Windows:** Hebrish now reads its data files as UTF-8, so history imports and model details with non-English text load correctly.
+- **Sabich:** Ubuntu and Windows now get Sabich from a single download location, and the older names for it are gone. If you already have the latest Sabich, nothing downloads again.
+- **Splash:** the logo shows again while the app loads.
 - Not tried on Windows by hand. Downloads: [hebrish.app/download](https://hebrish.app/download).
