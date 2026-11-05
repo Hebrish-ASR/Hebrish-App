@@ -212,6 +212,13 @@ def live_split(x: np.ndarray, interval_s: float) -> tuple[int, float] | None:
     floor, speech = np.percentile(rms, 10), np.percentile(rms, 90)
     quiet = rms < floor + 0.15 * (speech - floor)
     best, i, a, b = 0, lo // FRAME, 0, 0
+    # The quiet this buffer opens with is the lead-in before speech (or the second half of the
+    # pause the last cut was in), not a pause: cut inside it and the piece before the cut is silence,
+    # which Parakeet turns into stock phrases ("I'm sorry.", "Hi."; 2026-11-05, maintaining.md,
+    # "Stray words at the start"). It stays attached to the speech that follows.
+    if i == 0:
+        while i < hi // FRAME and quiet[i]:
+            i += 1
     while i < hi // FRAME:
         if quiet[i]:
             j = i
@@ -223,9 +230,7 @@ def live_split(x: np.ndarray, interval_s: float) -> tuple[int, float] | None:
         else:
             i += 1
     pause, cut = best * FRAME / sr, (a + b) // 2 * FRAME
-    if n >= interval_s * sr and pause >= LIVE_PAUSE_S:
-        return cut, pause
-    if pause >= LIVE_BREAK_S and a > 0 and has_speech(x[:cut]):
+    if (pause >= LIVE_BREAK_S or (n >= interval_s * sr and pause >= LIVE_PAUSE_S)) and has_speech(x[:cut]):
         return cut, pause
     if n >= (interval_s + LIVE_FORCE_S) * sr:
         win = sr // 10

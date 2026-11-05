@@ -2320,6 +2320,14 @@ rules on real dictation, since History has no audio and no seam positions.
 - **Verified:** `tests/test_maintainer.py` (FLAC round trip, prune by age then size, clear),
   `test_live.py` maintainer cases, off-screen settings render. **Not verified:** a live take.
 
+## Stray words at the start (2026-11-05)
+
+**What was broken:** live takes could open with a stock phrase nobody said ("I'm sorry.", "Hi."). `live_split` treated the quiet before speech as a pause, cut inside it, and sent a piece of pure silence to Parakeet, which turned it into words. The same could happen right after a cut, because the second half of that pause opens the next buffer. The model was not at fault.
+
+**The fix:** `live_split` skips the quiet a buffer opens with, so it stays attached to the speech that follows. Both cut paths now need `has_speech` before the cut; up to 1.023 the interval path had no such check, and the long-pause path only had `a > 0`. Forced cuts are unchanged. Tests: `tests/test_live.py`.
+
+This is one cause of stray words, and room noise passing voice detection is another; the Noise filter below covers that. The fix was started in an earlier session on 2026-11-05 and finished without its author, so this records the code and tests, not that session's measurements. It has not been measured on real takes.
+
 ## Noise filter (B-92, 2026-11-05)
 
 Voice Typing tab, under Voice detection: a 0-100 slider, config `vad_noise_filter`, default 60 (Daniel: room noise was coming out as stray words; start a little more aggressive and let people adjust it). `vad.threshold()` maps it to Silero's speech probability: 0 = 0.2, 50 = 0.5 (the fixed value up to 1.023), 100 = 0.8, so the default is 0.56. `Controller.apply_vad` calls `Silero.set_level`, which rebuilds the detector on next use. It also changes what `auto_enter` counts as speech, because that shares the detector.
@@ -2327,4 +2335,3 @@ Voice Typing tab, under Voice detection: a 0-100 slider, config `vad_noise_filte
 Not touched: the energy rule (`vad_silero` off), and live cuts, which stay on energy. Why the threshold bites: Silero sees each take scaled to `PEAK`, so noise in a quiet take is scaled up too.
 
 The default of 60 is a judgement call, not a measurement: no benchmark of noise rejection against missed quiet speech has been run (2026-11-05).
-

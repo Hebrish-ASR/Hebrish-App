@@ -36,6 +36,23 @@ def test_a_long_pause_cuts_before_the_interval():
     assert live_cut(np.concatenate([speech(0.5), silence(1.2)]), 15) is None   # under LIVE_MIN_S
 
 
+def test_the_lead_in_before_speech_is_not_a_pause():
+    # 2026-11-05: a cut in the opening quiet sends a piece of silence to the model, which comes
+    # back as a stock phrase ("I'm sorry.", "Hi.")
+    assert live_cut(np.concatenate([silence(1), speech(2.5)]), 3) is None
+
+
+def test_a_pause_after_the_lead_in_still_cuts():
+    x = np.concatenate([silence(1), speech(2), silence(1.2), speech(0.5)])
+    cut = live_cut(x, 15)
+    assert cut is not None and 3 * SR < cut < 4.2 * SR
+
+
+def test_no_interval_cut_without_speech_before_it():
+    # a click in the room is not speech: the piece before the cut would still be silence
+    assert live_cut(np.concatenate([silence(0.5), speech(0.1), silence(3)]), 3) is None
+
+
 def test_cuts_inside_the_pause():
     x = np.concatenate([speech(12), silence(0.8), speech(4)])
     cut = live_cut(x, 15)
