@@ -71,6 +71,7 @@ def test_default_noise_filter_matches_config():
 
 
 def test_set_level_rebuilds_the_detector():
+    pytest.importorskip("sherpa_onnx")
     s = vad.Silero(vad.BUNDLED)
     s.speech_frames(np.zeros(16000, np.float32) + 0.1, 320)
     s.set_level(100)

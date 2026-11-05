@@ -3,6 +3,7 @@
 import os
 import sys
 import numpy as np
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -123,6 +124,7 @@ def test_a_new_table_arrives_in_an_existing_history(tmp_path):
 
 
 def test_dialog_shows_a_result_and_applies_it(tmp_path):
+    pytest.importorskip("PySide6")
     from PySide6.QtWidgets import QApplication
     from hebrish.ui import calibrate as ui
     QApplication.instance() or QApplication([])
@@ -151,6 +153,7 @@ def test_dialog_shows_a_result_and_applies_it(tmp_path):
 
 
 def test_a_room_the_filter_cant_beat_offers_nothing(tmp_path):
+    pytest.importorskip("PySide6")
     from PySide6.QtWidgets import QApplication
     from hebrish.ui import calibrate as ui
     QApplication.instance() or QApplication([])
@@ -166,6 +169,7 @@ def test_a_room_the_filter_cant_beat_offers_nothing(tmp_path):
 
 
 def test_every_outcome_has_words():
+    pytest.importorskip("PySide6")
     for r in (run(80, 40), run(45, 70), run(60, 500), measure(noise(5), noise(10), Fake(50, 50))):
         from hebrish.ui.calibrate import summary
         assert summary(r)
