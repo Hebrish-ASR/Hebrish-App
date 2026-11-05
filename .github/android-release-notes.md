@@ -1,6 +1,6 @@
-**1.014: Insert last only adds what was missed.**
+**1.015: Keep your models in a folder you choose.**
 
-- **Insert last:** if part of a take went in and the rest missed the field, Insert last now adds only the missing words, not the whole take again.
-- **Licensing:** Hebrish now tells you once, when you first open it, how it is licensed, with the Creative Commons icons. The wording matches [hebrish.app/licensing](https://hebrish.app/licensing).
-- **Corn the Sloth**, the mascot, comes along with that notice.
+- **Model location:** Models → Model location → Choose folder keeps your speech models in a folder you pick, so other apps on your phone can use the same files. It is optional and needs Android's All files access. A folder that already holds a complete model is used without downloading it again. Not in the Google Play build.
+- **Floating mic:** hide it in the apps you choose (Floating mic → Hide in these apps).
+- Each downloaded model now carries a `manifest.json` saying which model and version it is.
 - Not yet tested on a device. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).
