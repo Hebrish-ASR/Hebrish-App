@@ -1687,7 +1687,7 @@ Both new keys start with `key_`, so `ControlsActivity`'s preference listener re-
 Checked: `./gradlew :app:compileFdroidDebugKotlin :app:compilePlayDebugKotlin` passes (V, JDK 21);
 not run on a device (I).
 
-## Floating mic: hide in chosen apps (B-90, 2026-11-05, unreleased)
+## Floating mic: hide in chosen apps (B-90, Android 1.015, 2026-11-05)
 
 Floating mic screen, **Hide in these apps** (`FloatingMicAppsActivity`): a searchable list of apps
 with a launcher icon, ticked ones first. Prefs key `bubble_hidden_apps` (a string set of package
