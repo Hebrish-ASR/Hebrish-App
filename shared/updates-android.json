@@ -7,9 +7,9 @@
   "entries": [
     {
       "date": "2026-11-05",
-      "tag": "Android 1.016",
-      "title": "One Sabich, kept in one place",
-      "summary": "The app now gets Sabich from a single download location, and the older names for it are gone from the app. If you already have the latest Sabich, nothing downloads again.",
+      "tag": "Android 1.017",
+      "title": "A noise filter, and one Sabich",
+      "summary": "Noise filter: room noise no longer turns into stray words as often. A piece of audio that is only background is now skipped.",
       "platforms": [
         "android"
       ]

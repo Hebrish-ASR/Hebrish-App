@@ -7,9 +7,9 @@
   "entries": [
     {
       "date": "2026-11-05",
-      "tag": "Desktop 1.023",
-      "title": "One Sabich, kept in one place",
-      "summary": "Ubuntu and Windows now get Sabich from a single download location, and the older names for it are gone from the app. If you already have the latest Sabich, nothing downloads again.",
+      "tag": "Desktop 1.024",
+      "title": "Calibrate the noise filter for your mic and room",
+      "summary": "Noise filter: a 0 to 100 dial on the Voice Typing tab, set a little stricter than before, to keep room noise from turning into stray words.",
       "platforms": [
         "desktop"
       ]
