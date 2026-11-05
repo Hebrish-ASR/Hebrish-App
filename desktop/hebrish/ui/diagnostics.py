@@ -28,47 +28,10 @@ from PySide6.QtWidgets import (QComboBox, QGridLayout, QHBoxLayout, QHeaderView,
                                QVBoxLayout, QWidget)
 
 from .. import __version__, audio, model_store
+from ..benchmark import cpu_name, rss_mb
 from ..inserter import copy_to_clipboard
 
 WINDOWS = [(10, "Last 10 decodes"), (20, "Last 20"), (50, "Last 50"), (0, "All since start")]
-
-
-def cpu_name() -> str:
-    if sys.platform.startswith("linux"):
-        try:
-            for line in open("/proc/cpuinfo"):
-                if line.startswith("model name"):
-                    return line.split(":", 1)[1].strip()
-        except OSError:
-            pass
-    return platform.processor() or platform.machine()
-
-
-def rss_mb() -> float | None:
-    """Resident memory of this process, MB."""
-    if sys.platform.startswith("linux"):
-        try:
-            for line in open("/proc/self/status"):
-                if line.startswith("VmRSS:"):
-                    return int(line.split()[1]) / 1024
-        except OSError:
-            return None
-    if sys.platform == "win32":
-        import ctypes
-        from ctypes import wintypes
-
-        class PMC(ctypes.Structure):
-            _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD)] + [
-                (n, ctypes.c_size_t) for n in ("PeakWorkingSetSize", "WorkingSetSize",
-                                               "QuotaPeakPagedPoolUsage", "QuotaPagedPoolUsage",
-                                               "QuotaPeakNonPagedPoolUsage", "QuotaNonPagedPoolUsage",
-                                               "PagefileUsage", "PeakPagefileUsage")]
-        c = PMC()
-        c.cb = ctypes.sizeof(c)
-        if ctypes.windll.psapi.GetProcessMemoryInfo(ctypes.windll.kernel32.GetCurrentProcess(),
-                                                    ctypes.byref(c), c.cb):
-            return c.WorkingSetSize / 2**20
-    return None
 
 
 def summarize(stats: list[dict], latencies: list[float]) -> dict:
@@ -164,6 +127,7 @@ class DiagnosticsPage(QScrollArea):
         self.ctl = ctl
         self.setWidgetResizable(True)
         self.setFrameShape(QFrame.NoFrame)
+        self._bench_win = None
         self.sig = _Sig()
         self.sig.bench_done.connect(self._bench_done)
         page = QWidget()
@@ -183,6 +147,10 @@ class DiagnosticsPage(QScrollArea):
         self.btn_bench.setToolTip("Decode ~10 s of bundled speech three times")
         self.btn_bench.clicked.connect(self._bench)
         row.addWidget(self.btn_bench)
+        self.btn_bench_window = QPushButton("Benchmarks…")
+        self.btn_bench_window.setToolTip("Time a long file or a recording, with memory and CPU load, and keep the results")
+        self.btn_bench_window.clicked.connect(self._bench_window)
+        row.addWidget(self.btn_bench_window)
         b.addLayout(row)
         grid = QGridLayout()
         grid.setHorizontalSpacing(18)
@@ -400,6 +368,14 @@ class DiagnosticsPage(QScrollArea):
                 self.table.setItem(i, j, it)
 
     # -- benchmark -------------------------------------------------------------------
+    def _bench_window(self):
+        from .benchmark import BenchmarkWindow
+        if self._bench_win is None:
+            self._bench_win = BenchmarkWindow(self, self.ctl)
+        self._bench_win.show()
+        self._bench_win.raise_()
+        self._bench_win.activateWindow()
+
     def _bench(self):
         eng = self.ctl.engine
         if eng.loaded_dir is None or self.ctl.state != "idle":

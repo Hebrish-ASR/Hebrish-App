@@ -621,3 +621,10 @@ Daniel, 2026-11-05: stray words were room noise, not the model. The voice detect
 
 Daniel, 2026-11-05: the setting depends on the mic and the room, so a short utility measures it. Two steps (quiet, then speech), two suggestions, nothing applied until the user picks, and a history per mic. Safe is lower, with more chance of stray words; Optimized is closer to the speech, with more chance of clipped words. Per-room profiles wait. Desktop first; Android once the suggestions prove good. Details: `desktop/docs/maintaining.md`, "Noise filter calibration".
 
+## D-2026-11-05-05: Benchmarks measured inside the app, against one reference file
+
+**Decision:** The desktop app gets a separate Benchmarks window (B-94). Timing and resource sampling happen in-process around `Engine.transcribe_chunks`. Podcast episode 1 is the reference file, recognised by SHA-256, so results compare across machines.
+**Why:** Daniel, 2026-11-05: useful to a few people, so it stays out of the way; a known file needs no length calculation and gives a like-for-like figure.
+**Alternatives:** A command-line timer such as hyperfine, which can only time a whole command: it would mix model load into the result and can't see memory during the decode. `psutil`, a new dependency for what the standard library and `/proc` already give.
+**By:** Daniel (the feature), the agent (in-process measurement).
+**Links:** R-2026-11-05-4, B-94, B-94a.

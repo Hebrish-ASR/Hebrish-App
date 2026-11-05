@@ -6,6 +6,7 @@ credited), or an issue link. Outcome links the backlog item, or says why not.
 
 | Id | Date | From | Platforms | Request | Outcome |
 | --- | --- | --- | --- | --- | --- |
+| R-2026-11-05-4 | 2026-11-05 | Daniel | Desktop, then Android | A separate benchmark tool for inference: run a reference file recognised by its hash, any audio file, or a recording; save machine, engine, real-time factor, RAM and CPU load to a `benchmarks` table; show the latest result as copyable Markdown, the transcript collapsed | [B-94](backlog.md#sprint-android), Android [B-94a](backlog.md#sprint-android) |
 | R-2026-11-05-3 | 2026-11-05 | Daniel | Android | A user-chosen model folder again, or import from the filesystem, with metadata so a model identifies its version, so another app on the phone can be pointed at the same weights; only the non-Play build needs all-files access | [B-91](backlog.md#sprint-android), Android 1.015 |
 | R-2026-11-05-2 | 2026-11-05 | Daniel | Android | A list of apps the floating mic does not appear over while they are in focus, saved locally as a device-level setting | Done in Android 1.015: [B-90](backlog.md#sprint-android) |
 | R-2026-11-05-1 | 2026-11-05 | Daniel | Desktop | Active model in the tray menu (Sabich, Shakshuka), and action keys to select each and to toggle between them | Done in Desktop 1.020 (`desktop/docs/maintaining.md`, "Active model") |

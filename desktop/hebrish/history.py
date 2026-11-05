@@ -73,6 +73,46 @@ CREATE TABLE IF NOT EXISTS calibrations (
     optimized INTEGER NOT NULL,
     applied INTEGER            -- the Noise filter position applied; NULL if none was
 );
+CREATE TABLE IF NOT EXISTS benchmarks (     -- benchmark.py: figures only, no transcript or audio
+    id INTEGER PRIMARY KEY,
+    at REAL NOT NULL,
+    mode TEXT NOT NULL,                     -- reference | file | recording
+    file_name TEXT,
+    file_sha256 TEXT,
+    client_os TEXT,
+    app_version TEXT,
+    cpu_name TEXT,
+    cpu_type TEXT,                          -- architecture, e.g. x86_64
+    cpu_logical INTEGER,
+    ram_total_mb INTEGER,
+    gpu_name TEXT,
+    gpu_accel INTEGER NOT NULL,             -- 1 when inference ran on the GPU
+    inference_engine TEXT,
+    inference_device TEXT,
+    threads INTEGER,
+    model TEXT,
+    model_id TEXT,
+    model_rev TEXT,
+    quantization TEXT,
+    streaming INTEGER,
+    model_load_s REAL,
+    read_s REAL,                            -- reading and decoding the file; not in inference_s
+    audio_s REAL NOT NULL,
+    inference_s REAL NOT NULL,
+    rtf REAL NOT NULL,                      -- inference_s / audio_s: under 1 is faster than real time
+    speed_x REAL NOT NULL,
+    first_text_s REAL,
+    words INTEGER,
+    words_per_s REAL,
+    ram_start_mb INTEGER,
+    ram_avg_mb INTEGER,
+    ram_peak_mb INTEGER,
+    cpu_avg_cores REAL,
+    cpu_avg_pct REAL,                       -- this process, as a share of all logical CPUs
+    cpu_peak_pct REAL,
+    system_cpu_avg_pct REAL,
+    disturbed INTEGER NOT NULL DEFAULT 0    -- another transcription ran during the measurement
+);
 """
 
 
@@ -149,6 +189,18 @@ class History:
 
     def calibrations(self, limit: int = 20) -> list[dict]:
         rows = self.db.execute("SELECT * FROM calibrations ORDER BY at DESC, id DESC LIMIT ?", (limit,))
+        return [dict(r) for r in rows]
+
+    def add_benchmark(self, row: dict) -> int:
+        """One benchmark run (benchmark.py). Keys that aren't columns are ignored."""
+        cols = {r[1] for r in self.db.execute("PRAGMA table_info(benchmarks)")} - {"id"}
+        keys = [k for k in row if k in cols]
+        with self.db:
+            return self.db.execute(f"INSERT INTO benchmarks({', '.join(keys)}) VALUES ({', '.join('?' * len(keys))})",
+                                   [row[k] for k in keys]).lastrowid
+
+    def benchmarks(self, limit: int = 20) -> list[dict]:
+        rows = self.db.execute("SELECT * FROM benchmarks ORDER BY at DESC, id DESC LIMIT ?", (limit,))
         return [dict(r) for r in rows]
 
     def meta(self, key):

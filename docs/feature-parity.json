@@ -1396,6 +1396,27 @@
         "verified": false
       },
       "notes": "Daniel 2026-11-02, R-2026-11-02-4."
+    },
+    {
+      "id": "inference-benchmarks",
+      "group": "transcription-engine",
+      "name": "Benchmarks window (B-94): reference file, own file or recording; speed, RAM and CPU load, saved to a benchmarks table, Markdown result",
+      "android": {
+        "status": "missing",
+        "evidence": "planning/backlog.md B-94a"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/benchmark.py, desktop/hebrish/ui/benchmark.py"
+      },
+      "windows": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/benchmark.py, desktop/hebrish/ui/benchmark.py",
+        "verified": false
+      },
+      "notes": "Desktop first (Daniel, 2026-11-05); Android would be interesting but comes after."
     }
   ],
   "engine_rules": [

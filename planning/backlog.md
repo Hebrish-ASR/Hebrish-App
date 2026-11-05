@@ -120,6 +120,8 @@ tables below hold the detail and status.
 
 | Id | Item | Status |
 | --- | --- | --- |
+| B-94 | **Benchmarks window** (Daniel, 2026-11-05, R-2026-11-05-4, D-2026-11-05-05). Diagnostics > Benchmarks…: the reference file (podcast episode 1, recognised by SHA-256), any audio file, or a recording; speed, RAM and CPU load; `benchmarks` table; Markdown result; transcript collapsed. `desktop/docs/maintaining.md`, "Benchmarks window" | done (unreleased); the full reference file has not been run end to end; Windows not run |
+| B-94a | **Benchmarks, Android** (parity with B-94): same reference file, hash and figures, so phones and computers compare. After desktop | planned |
 | B-93 | **Noise filter calibration** (Daniel, 2026-11-05, D-2026-11-05-04). Voice Typing tab, Calibrate…: 5 s quiet, 10 s speech, Safe and Optimized suggestions, Apply, past runs per mic. `desktop/docs/maintaining.md`, "Noise filter calibration". Not yet run on a real mic. | done (unreleased) |
 | B-93a | **Noise filter calibration, Android** (parity with B-93): same two steps and screen, levels mapped directly because Android's filter is loudness-based (`VoiceDetection`). After desktop's suggestions are shown to be good. | planned |
 | B-92 | **Noise filter dial** (Daniel, 2026-11-05, D-2026-11-05-03). Voice Typing tab, 0-100, default 60, drives Silero's threshold. `desktop/docs/maintaining.md`, "Noise filter". | done (unreleased) |
