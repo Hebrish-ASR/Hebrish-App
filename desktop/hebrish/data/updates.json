@@ -8,10 +8,28 @@
     {
       "date": "2026-11-05",
       "tag": "Site",
+      "title": "Daniel's story, a new support page, and breadcrumbs on model pages",
+      "summary": "About now opens with who makes Hebrish and why, with a real photo and some dictation facts.",
+      "platforms": [
+        "site"
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "tag": "Site",
       "title": "The training blend, and category charts",
       "summary": "/models now explains the training blend: the five ingredients, what each one is for, and why LibriSpeech is in the mix, with Corn at the blender.",
       "platforms": [
         "site"
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "tag": "Desktop 1.022",
+      "title": "Windows catches up",
+      "summary": "Windows and AppImage: a new stable build with everything since Windows 1.012.",
+      "platforms": [
+        "desktop"
       ]
     },
     {
@@ -167,24 +185,6 @@
       "tag": "Desktop 1.013",
       "title": "Optional clean-up model, and a lighter, clearer app",
       "summary": "Clean up (optional, off by default): download S1-ASR-Cleanup, a fine-tune of S1-mini by Superwhisper, under Models, Utilities, Post-processing (about 660 MB), and turn on Clean up there or in the Transcription tab.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-29",
-      "tag": "Desktop 1.012",
-      "title": "New recording controls in Transcription",
-      "summary": "The Transcription tab's controls are round icon buttons with one colour for each action: Record red, Pause amber, Stop slate, Retake blue, Discard grey, and Transcribe a green send arrow.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-29",
-      "tag": "Desktop 1.011",
-      "title": "Transcription Mode for long sessions",
-      "summary": "Built for sessions of 90 minutes and more (a recording can run up to 4 hours).",
       "platforms": [
         "desktop"
       ]
