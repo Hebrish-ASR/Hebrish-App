@@ -1,8 +1,6 @@
-**1.024: Calibrate the noise filter for your mic and room.**
+**1.025: Benchmarks, to see how Hebrish runs on your computer.**
 
-- **Noise filter:** a 0 to 100 dial on the Voice Typing tab, set a little stricter than before, to keep room noise from turning into stray words.
-- **Calibrate:** stay quiet for 5 seconds, speak for 10, and Hebrish suggests a Safe and an Optimized setting. Nothing changes until you apply one. Past runs are listed by microphone, and the recordings aren't kept.
-- **Stray words:** a fix for phrases such as "I'm sorry." appearing at the start of a take when nobody said them.
-- **Sabich:** it now downloads from a single location, and the older names for it are gone. If you already have the latest Sabich, nothing downloads again.
-- **Splash:** the logo shows again while the app loads.
-- Not tried on Windows by hand. Downloads: [hebrish.app/download](https://hebrish.app/download).
+- **Benchmarks:** a new window, opened from Diagnostics, measures how fast Hebrish transcribes and how much memory and CPU it uses. Only the figures are saved.
+- **Three ways to run it:** the reference file (the first Hebrish podcast episode, which Hebrish recognises, so your result compares directly with other computers), any audio file, or a recording.
+- **Results:** the latest run shows as Markdown you can copy, with past runs listed below it. The transcript stays folded away until you open it.
+- Not tried on Windows by hand. Recording and the full 67-minute reference run haven't been tried by hand yet. Downloads: [hebrish.app/download](https://hebrish.app/download).

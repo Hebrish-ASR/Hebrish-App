@@ -7,6 +7,33 @@
   "entries": [
     {
       "date": "2026-11-05",
+      "tag": "Site",
+      "title": "Home page second pass, and a dataset index",
+      "summary": "The home page leads with what Hebrish is, and regular speech recognition and Hebrish are side by side at the top again.",
+      "platforms": [
+        "site"
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "tag": "Site",
+      "title": "Just Sabich, and quicker Android downloads",
+      "summary": "The home page now says Sabich, with no version number. The model page shows the version in the apps, read live, and the latest benchmarked release.",
+      "platforms": [
+        "site"
+      ]
+    },
+    {
+      "date": "2026-11-05",
+      "tag": "Desktop 1.025",
+      "title": "Benchmarks, to see how Hebrish runs on your computer",
+      "summary": "Benchmarks: a new window, opened from Diagnostics, measures how fast Hebrish transcribes and how much memory and CPU it uses.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-05",
       "tag": "Desktop 1.024",
       "title": "Calibrate the noise filter for your mic and room",
       "summary": "Noise filter: a 0 to 100 dial on the Voice Typing tab, set a little stricter than before, to keep room noise from turning into stray words.",
@@ -156,35 +183,6 @@
       "summary": "Bundles: the Models tab now starts with three sets you can download in one click. Everything (Sabich, Shakshuka, and the clean-up, title and paragraph models), Voice Typing (Sabich and Shakshuka) and Transcription (Sabich with the clean-up, title and paragraph models).",
       "platforms": [
         "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-31",
-      "tag": "Desktop 1.015",
-      "title": "Saved transcripts get a folder, a title and a proper header; transcripts arrive in one go",
-      "summary": "Save writes straight to a Hebrish folder (Documents, Hebrish, transcripts by default), one folder per year, month and day, as Markdown, and never overwrites.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-31",
-      "tag": "Desktop 1.014",
-      "title": "Press Enter after silence, a local transcription API, and no more lost pieces",
-      "summary": "Press Enter after silence (optional, off by default, Settings, Action keys): while Voice Typing with Insert as you go, once text has been typed and you have been quiet for 8 seconds (2 to 60), Hebrish presses your Send key once, so a message to Claude goes without reaching for…",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-30",
-      "tag": "Models",
-      "title": "Sabich v2.3: 20% more recordings",
-      "summary": "Sabich v2.3 replaces v2.2 as the recommended model in the apps. It is a Sabich-only update to Release v2, trained the same way as v2.2 on 1,296 minutes of audio (522.8 minutes of English with Hebrew words in it, up from 471.4).",
-      "platforms": [
-        "android",
-        "desktop",
-        "models"
       ]
     }
   ]
