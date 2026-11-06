@@ -8,8 +8,6 @@ import android.text.InputType
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.RadioButton
-import android.widget.RadioGroup
 import android.widget.TextView
 
 /**
@@ -21,13 +19,13 @@ import android.widget.TextView
  * saved sets of bindings by name (Use replaces the current ones; [Remote.saveProfile]).
  */
 class ControlsActivity : Page(), SharedPreferences.OnSharedPreferenceChangeListener {
-    private lateinit var mics: RadioGroup
+    private lateinit var mics: MicOrderView
+    private lateinit var micReport: TextView
     private lateinit var micNow: TextView
     private lateinit var bubbleWarning: TextView
     private val keyLabels = mutableMapOf<Remote.Action, TextView>()
     private var profileList: LinearLayout? = null
     private var profileName: EditText? = null
-    private val micKeys = mutableMapOf<Int, String>()
     private val am by lazy { getSystemService(AudioManager::class.java) }
     private val devices = object : AudioDeviceCallback() {
         override fun onAudioDevicesAdded(added: Array<out AudioDeviceInfo>) = renderMics()
@@ -47,11 +45,11 @@ class ControlsActivity : Page(), SharedPreferences.OnSharedPreferenceChangeListe
 
         heading(R.string.controls_mic)
         text(R.string.controls_mic_body)
-        mics = RadioGroup(this)
+        mics = MicOrderView(this) { Mic.setOrder(this, it); renderMics() }
         column.addView(mics)
-        mics.setOnCheckedChangeListener { _, id -> micKeys[id]?.let { if (it != Prefs.micChoice(this)) Prefs.setMicChoice(this, it) } }
         micNow = text(top = 8)
         small(R.string.controls_mic_hint)
+        micReport = text(top = 8)
 
         heading(R.string.controls_buttons)
         text(R.string.controls_buttons_body)
@@ -165,23 +163,14 @@ class ControlsActivity : Page(), SharedPreferences.OnSharedPreferenceChangeListe
 
     private fun toast(msg: String) = android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
 
-    /** Automatic first, then every connected mic; a chosen mic that is disconnected stays listed. */
+    /** The standing order, what is connected for each type, and what Android reports. */
     private fun renderMics() {
-        mics.setOnCheckedChangeListener(null)
-        mics.removeAllViews()
-        micKeys.clear()
-        val choice = Prefs.micChoice(this)
-        fun add(key: String, label: String) {
-            val id = View.generateViewId()
-            micKeys[id] = key
-            mics.addView(RadioButton(this).apply { this.id = id; text = label })
-            if (key == choice) mics.check(id)
-        }
-        add(Mic.AUTO, getString(R.string.controls_mic_auto))
         val inputs = Mic.inputs(this)
-        for (d in inputs) add(Mic.key(d), Mic.label(this, d))
-        if (choice != Mic.AUTO && inputs.none { Mic.key(it) == choice }) add(choice, getString(R.string.controls_mic_gone, choice.substringAfter(':')))
-        mics.setOnCheckedChangeListener { _, id -> micKeys[id]?.let { if (it != Prefs.micChoice(this)) Prefs.setMicChoice(this, it) } }
+        mics.show(Mic.order(this)) { kind ->
+            val names = inputs.filter { Mic.kind(it) == kind }.map { it.productName.toString() }.distinct()
+            if (names.isEmpty()) getString(R.string.controls_mic_none) else getString(R.string.controls_mic_connected, names.joinToString(", "))
+        }
         micNow.text = getString(R.string.controls_mic_next, Mic.label(this, Mic.preferred(this)))
+        micReport.text = getString(R.string.controls_mic_report, Mic.report(this))
     }
 }

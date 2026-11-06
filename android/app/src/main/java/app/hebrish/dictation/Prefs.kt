@@ -65,7 +65,6 @@ object Prefs {
     fun vibrate(ctx: Context) = sp(ctx).getBoolean("vibrate", true)
     fun setVibrate(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("vibrate", v).apply()
 
-    /** Mic.AUTO (Bluetooth first) or a Mic.key of a chosen microphone. */
     /** Transcription Mode (R-2026-10-24-5): its own mic (Mic.key or Mic.AUTO), gain in dB, level meter shown. */
     fun tmMic(ctx: Context): String = sp(ctx).getString("tm_mic", Mic.AUTO) ?: Mic.AUTO
     fun setTmMic(ctx: Context, v: String) = sp(ctx).edit().putString("tm_mic", v).apply()
@@ -99,8 +98,11 @@ object Prefs {
     fun setTitles(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("titles", v).apply()
     /** Longest title in characters (desktop `title_max_chars`); no setting on Android yet. */
     fun titleMaxChars(ctx: Context) = Titles.limit(sp(ctx).getInt("title_max_chars", Titles.MAX_CHARS))
-    fun micChoice(ctx: Context): String = sp(ctx).getString("mic_choice", Mic.AUTO) ?: Mic.AUTO
-    fun setMicChoice(ctx: Context, v: String) = sp(ctx).edit().putString("mic_choice", v).apply()
+    /** The standing mic order, as MicOrder.encode, or null until one is saved. Read it through Mic.order. */
+    fun micOrder(ctx: Context): String? = sp(ctx).getString("mic_order", null)
+    fun setMicOrder(ctx: Context, v: String) = sp(ctx).edit().putString("mic_order", v).apply()
+    /** The single saved mic of 1.017 and before: only read to seed Mic.order. */
+    fun oldMicChoice(ctx: Context): String = sp(ctx).getString("mic_choice", Mic.AUTO) ?: Mic.AUTO
 
     /** Key code bound to a remote action, or 0 (KEYCODE_UNKNOWN) for none. */
     fun keyFor(ctx: Context, a: Remote.Action) = sp(ctx).getInt("key_" + a.name, 0)

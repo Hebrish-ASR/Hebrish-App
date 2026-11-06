@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- TalkBack actions on the mic order list (MicOrderView), which can't be dragged by screen reader. -->
+    <item name="mic_move_up" type="id" />
+    <item name="mic_move_down" type="id" />
+</resources>

@@ -1,0 +1,20 @@
+name: mic-order-check
+on:
+  push:
+    branches: [mic-order]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :app:testFdroidDebugUnitTest --tests '*MicOrderTest' -x lint

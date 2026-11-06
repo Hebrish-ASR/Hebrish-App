@@ -63,7 +63,7 @@
 
         <!-- Mic source chip (1.008, Daniel 2026-10-30: "a one touch operation ... to toggle
              between internal mic and BT audio source"): names the mic the next or current take
-             uses; one tap switches Phone <-> Bluetooth, mid-take too (VoiceImeService.switchMic). -->
+             uses; a tap opens the mic icons beside it, mid-take too (VoiceImeService.openPicker, 1.018). -->
         <TextView
             android:id="@+id/source"
             android:layout_width="wrap_content"
@@ -80,6 +80,15 @@
             android:paddingHorizontal="10dp"
             android:textColor="@color/ime_text"
             android:textSize="12sp" />
+
+        <LinearLayout
+            android:id="@+id/source_picker"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone" />
 
         <ImageButton
             android:id="@+id/settings"

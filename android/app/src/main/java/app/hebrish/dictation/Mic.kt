@@ -4,12 +4,17 @@ import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Build
+import android.os.SystemClock
 import app.hebrish.core.Recorder
 
 /**
- * Which microphone a take uses. Prefs.micChoice is [AUTO] (the default) or a device key from
- * [key]. Automatic always prefers a Bluetooth headset mic when one is connected, then a wired or
- * USB headset, then the phone's own mic.
+ * Which microphone a take uses. The standing preference is an order of mic *types*
+ * ([MicOrder], Prefs.micOrder, set on the Controls screen): the first type with a mic connected
+ * wins. A source chip's picker overrides that for the session ([choose]). Transcription Mode
+ * keeps its own choice, Prefs.tmMic: [AUTO] (follow the order) or a device key from [key].
+ *
+ * USB mics need no permission beyond RECORD_AUDIO: Android's own USB audio stack exposes them as
+ * ordinary input devices, so `setPreferredDevice` reaches them like any other mic.
  *
  * A classic Bluetooth headset mic (TYPE_BLUETOOTH_SCO) only carries audio while the phone holds
  * a call-audio link to it, so [route] opens that link (setCommunicationDevice on Android 12+,
@@ -33,17 +38,83 @@ object Mic {
 
     fun isBluetooth(d: AudioDeviceInfo) = d.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO || d.type == TYPE_BLE_HEADSET
 
-    /** The mic the next take should use, or null for the system default (the phone's mic). */
-    fun preferred(ctx: Context, choice: String = Prefs.micChoice(ctx)): AudioDeviceInfo? {
-        val all = inputs(ctx)
+    fun kind(d: AudioDeviceInfo): MicKind? = kind(d.type)
+
+    private fun kind(type: Int): MicKind? = when (type) {
+        in USB -> MicKind.USB
+        AudioDeviceInfo.TYPE_BLUETOOTH_SCO, TYPE_BLE_HEADSET -> MicKind.BLUETOOTH
+        in WIRED -> MicKind.WIRED
+        AudioDeviceInfo.TYPE_BUILTIN_MIC -> MicKind.PHONE
+        else -> null
+    }
+
+    fun icon(kind: MicKind?) = when (kind) {
+        MicKind.USB -> R.drawable.ic_mic_usb
+        MicKind.BLUETOOTH -> R.drawable.ic_mic_bluetooth
+        MicKind.WIRED -> R.drawable.ic_mic_wired
+        MicKind.PHONE -> R.drawable.ic_mic_phone
+        null -> R.drawable.ic_mic
+    }
+
+    /** The icon for a chip naming [d]; null is the system default, the phone's mic. */
+    fun icon(d: AudioDeviceInfo?) = icon(if (d == null) MicKind.PHONE else kind(d))
+
+    fun kindName(kind: MicKind) = when (kind) {
+        MicKind.USB -> R.string.mic_kind_usb
+        MicKind.BLUETOOTH -> R.string.mic_kind_bluetooth
+        MicKind.WIRED -> R.string.mic_kind_wired
+        MicKind.PHONE -> R.string.mic_kind_phone
+    }
+
+    /**
+     * The standing order. Until one is saved, a mic picked under the old single choice
+     * (Prefs.oldMicChoice, up to 1.017) goes first, so an update doesn't change someone's mic.
+     */
+    fun order(ctx: Context): List<MicKind> {
+        Prefs.micOrder(ctx)?.let { return MicOrder.parse(it) }
+        val old = Prefs.oldMicChoice(ctx).substringBefore(':').toIntOrNull()?.let { kind(it) }
+        return if (old == null) MicOrder.DEFAULT else MicOrder.promote(MicOrder.DEFAULT, old)
+    }
+
+    /** Saves the standing order; it replaces any one-off choice. */
+    fun setOrder(ctx: Context, order: List<MicKind>) {
+        Prefs.setMicOrder(ctx, MicOrder.encode(order))
+        session = null
+    }
+
+    /** Connected mics, best first: what a source chip's picker offers. */
+    fun choices(ctx: Context): List<AudioDeviceInfo> = MicOrder.rank(inputs(ctx), order(ctx)) { kind(it) }
+
+    /**
+     * One-off choice from a source chip's picker: a device [key], or null to follow the order.
+     * Held in memory for the session, which ends after [MicOrder.SESSION_MS] with no take, when
+     * the app's process ends, or when the order is changed. Services live for days, so "until the
+     * process ends" alone would quietly turn it into a standing choice.
+     */
+    @Volatile private var session: String? = null
+    @Volatile private var sessionUsed = 0L
+
+    private fun sessionChoice(): String? = session?.takeIf {
+        MicOrder.sessionLive(sessionUsed, SystemClock.elapsedRealtime())
+    }
+
+    /** Uses [d] for this session, or just follows the order if the order would pick it anyway. */
+    fun choose(ctx: Context, d: AudioDeviceInfo) {
+        session = key(d).takeIf { it != choices(ctx).firstOrNull()?.let(::key) }
+        sessionUsed = SystemClock.elapsedRealtime()
+    }
+
+    /** The mic the next take should use, or null if Android lists none we can name. */
+    fun preferred(ctx: Context, choice: String = sessionChoice() ?: AUTO): AudioDeviceInfo? {
+        val all = choices(ctx)
         if (choice != AUTO) all.firstOrNull { key(it) == choice }?.let { return it }
-        // Automatic, or the chosen mic isn't connected right now.
-        return all.firstOrNull { isBluetooth(it) }
-            ?: all.firstOrNull { it.type in HEADSETS }
+        // Following the order, or the chosen mic isn't connected right now.
+        return all.firstOrNull()
     }
 
     /** Picks the mic for [r]'s next start and opens a Bluetooth link if it needs one. */
     fun prepare(ctx: Context, r: Recorder) {
+        if (sessionChoice() != null) sessionUsed = SystemClock.elapsedRealtime()
         val d = preferred(ctx)
         r.preferredDevice = d
         if (d != null && isBluetooth(d)) route(ctx, d)
@@ -89,8 +160,8 @@ object Mic {
     fun label(ctx: Context, d: AudioDeviceInfo?): String = when {
         d == null || d.type == AudioDeviceInfo.TYPE_BUILTIN_MIC -> ctx.getString(R.string.mic_builtin)
         isBluetooth(d) -> ctx.getString(R.string.mic_bluetooth, d.productName)
-        d.type == AudioDeviceInfo.TYPE_WIRED_HEADSET -> ctx.getString(R.string.mic_wired)
-        d.type == AudioDeviceInfo.TYPE_USB_HEADSET || d.type == AudioDeviceInfo.TYPE_USB_DEVICE -> ctx.getString(R.string.mic_usb, d.productName)
+        d.type in WIRED -> ctx.getString(R.string.mic_wired)
+        d.type in USB -> ctx.getString(R.string.mic_usb, d.productName)
         else -> d.productName.toString()
     }
 
@@ -101,42 +172,33 @@ object Mic {
     fun shortLabel(ctx: Context, d: AudioDeviceInfo?): String = when {
         d == null || d.type == AudioDeviceInfo.TYPE_BUILTIN_MIC -> ctx.getString(R.string.mic_internal)
         isBluetooth(d) -> ctx.getString(R.string.mic_bt_short, clip(d.productName.toString()))
-        d.type == AudioDeviceInfo.TYPE_WIRED_HEADSET -> ctx.getString(R.string.mic_wired_short)
+        d.type in WIRED -> ctx.getString(R.string.mic_wired_short)
         else -> ctx.getString(R.string.mic_usb_short, clip(d.productName.toString()))
     }
 
     private fun clip(name: String) = if (name.length <= SHORT_NAME) name else name.take(SHORT_NAME - 1).trimEnd() + "…"
 
     /**
-     * One-tap source switch (1.008; the floating mic's chip since 0.7.2, the keyboard's chip since
-     * 1.008): from the phone's mic to a Bluetooth mic (or, with none, a wired/USB headset), and from
-     * any headset back to the phone's mic (saved as the phone's mic, not Automatic). Decided from
-     * [current], the mic the take was *asked* to use (Recorder.preferredDevice, or [preferred] when idle), not the one Android reports as
-     * routed: while a Bluetooth link is still opening the route can read "phone", and up to 1.007
-     * a tap then switched to Bluetooth again, which looked like the chip doing nothing (I).
-     * Saved as Prefs.micChoice, so the next take, both chips and the Controls screen agree.
-     * Returns the mic switched to, or null when there is nothing to switch to (phone in use and
-     * no headset connected).
+     * The mic Android gave [r] instead of the one it was asked for, or null if it gave the right
+     * one. setPreferredDevice is only a request, and a silent fallback looks like the mic being
+     * ignored. Bluetooth is skipped: its link can still be opening when the take starts (1.008).
      */
-    fun toggle(ctx: Context, current: AudioDeviceInfo?): AudioDeviceInfo? {
-        val internal = current == null || current.type == AudioDeviceInfo.TYPE_BUILTIN_MIC
-        return if (internal) {
-            // Automatic (Bluetooth first), so whichever headset is connected next time is used.
-            val to = preferred(ctx, AUTO) ?: return null
-            Prefs.setMicChoice(ctx, AUTO)
-            to
-        } else {
-            val phone = inputs(ctx).firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC } ?: return null
-            Prefs.setMicChoice(ctx, key(phone))
-            phone
-        }
+    fun substitute(r: Recorder): AudioDeviceInfo? {
+        val want = r.preferredDevice ?: return null
+        val got = r.routedDevice ?: return null
+        return got.takeIf { !isBluetooth(want) && it.id != want.id && key(it) != key(want) }
     }
+
+    /** Every input Android reports, usable or not: the Controls screen's check for a mic that won't show. */
+    fun report(ctx: Context): String = am(ctx).getDevices(AudioManager.GET_DEVICES_INPUTS)
+        .joinToString(", ") { "${it.productName} (type ${it.type})" }
 
     /** Longest device name [shortLabel] shows before cutting it with "…". */
     private const val SHORT_NAME = 10
 
     /** AudioDeviceInfo.TYPE_BLE_HEADSET (API 31), spelled out so this compiles against older stubs. */
     private const val TYPE_BLE_HEADSET = 26
-    private val HEADSETS = setOf(AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_USB_HEADSET, AudioDeviceInfo.TYPE_USB_DEVICE)
-    private val CHOOSABLE = HEADSETS + setOf(AudioDeviceInfo.TYPE_BUILTIN_MIC, AudioDeviceInfo.TYPE_BLUETOOTH_SCO, TYPE_BLE_HEADSET)
+    private val USB = setOf(AudioDeviceInfo.TYPE_USB_DEVICE, AudioDeviceInfo.TYPE_USB_HEADSET, AudioDeviceInfo.TYPE_USB_ACCESSORY)
+    private val WIRED = setOf(AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_LINE_ANALOG, AudioDeviceInfo.TYPE_LINE_DIGITAL, AudioDeviceInfo.TYPE_AUX_LINE)
+    private val CHOOSABLE = USB + WIRED + setOf(AudioDeviceInfo.TYPE_BUILTIN_MIC, AudioDeviceInfo.TYPE_BLUETOOTH_SCO, TYPE_BLE_HEADSET)
 }

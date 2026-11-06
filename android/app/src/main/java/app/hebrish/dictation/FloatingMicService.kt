@@ -127,6 +127,10 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private lateinit var pauseBtn: ImageButton
     /** Which mic the take records from ("BT Pixel Bu…", "Internal"); tap to switch. */
     private lateinit var source: TextView
+    /** The mic icons that replace [source] while choosing (1.018). */
+    private lateinit var picker: LinearLayout
+    private val closePicker = Runnable { hidePicker() }
+    private var pickerOpen = false
     /** Shown while a take is open. */
     private lateinit var takeControls: List<View>
     /** Shown while a transcript is waiting for a field ([pending]). */
@@ -412,10 +416,13 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             maxWidth = dp(SOURCE_MAX_DP)
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(8), dp(4), dp(8), dp(4))
+            compoundDrawablePadding = dp(4)
+            compoundDrawableTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.ime_text))
             background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(getColor(R.color.ime_key)) }
-            setOnClickListener { switchMic() }
+            setOnClickListener { openPicker() }
             setOnTouchListener(Drag({ performClick() }))
         }
+        picker = LinearLayout(themed).apply { gravity = Gravity.CENTER; visibility = View.GONE }
         // Buttons on the left, timer and mic chip on the right, whichever edge the mic is on
         // (Daniel, 2026-10-21: "controls to the left and then the timer to the right").
         takeControls = listOf(
@@ -424,6 +431,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             button(R.drawable.ic_close, R.string.discard, R.color.bubble_discard) { discard() },
             timer,
             source,
+            picker,
         )
         insert = TextView(themed).apply {
             setText(R.string.bubble_insert)
@@ -517,6 +525,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         mic.addView(spinner, FrameLayout.LayoutParams(inner, inner, Gravity.CENTER))
         r.removeAllViews()
         r.orientation = if (along) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+        picker.orientation = r.orientation
         // Along the edge the column hugs the mic's edge, so a wide chip can't shift the mic.
         r.gravity = if (along) (if (left) Gravity.LEFT else Gravity.RIGHT) else Gravity.CENTER_VERTICAL
         val scale = Prefs.bubbleBarScale(this) / 100f
@@ -736,6 +745,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         take = t
         // The mic asked for, not routedDevice: a Bluetooth link can still be opening (1.008).
         showSource(r.preferredDevice)
+        warnIfSubstituted(r)
+        pickerOpen = false
         state = State.RECORDING
         shownSeconds = -1
         Feedback.cue(this, cue)
@@ -782,19 +793,52 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         micName = Mic.shortLabel(this, d)
         source.text = micName
         source.contentDescription = getString(R.string.bubble_mic_cd, micName)
+        source.setCompoundDrawablesRelativeWithIntrinsicBounds(chipIcon(d), null, null, null)
+    }
+
+    private fun chipIcon(d: android.media.AudioDeviceInfo?) = getDrawable(Mic.icon(d))?.mutate()?.apply {
+        val s = dp(16)
+        setBounds(0, 0, s, s)
+    }
+
+    /** Says so when Android recorded from another mic than the one asked for. */
+    private fun warnIfSubstituted(r: Recorder) {
+        Mic.substitute(r)?.let { toast(getString(R.string.mic_substituted, Mic.label(this, r.preferredDevice), Mic.label(this, it))) }
     }
 
     /**
-     * The source chip was tapped (0.7.2): switch between Bluetooth and the phone's mic in the
-     * middle of the take. The recorder pauses, re-routes and resumes, so the take keeps what it
-     * had; paused, the switch applies on Resume. The choice is saved ([Mic.toggle]). Since 1.008
-     * the direction comes from the mic the take asked for, not the routed one (see Mic.toggle),
-     * the chip names that mic, and a click confirms the switch.
+     * The source chip was tapped: show the connected mics as icons in its place (1.018; a two-way
+     * toggle from 0.7.2, which could never reach USB with Bluetooth connected). Compares against
+     * the mic the take asked for, not the routed one: see [Mic.substitute].
      */
-    private fun switchMic() {
+    private fun openPicker() {
         val r = recorder ?: return
         if (!open) return
-        Mic.toggle(this, r.preferredDevice) ?: return toast(getString(R.string.bubble_no_headset))
+        if (Mic.choices(this).size < 2) return toast(getString(R.string.bubble_no_headset))
+        val scale = Prefs.bubbleBarScale(this) / 100f
+        MicPicker.fill(picker, r.preferredDevice, dp((BUTTON_DP * scale).toInt()), { b -> b.setOnTouchListener(Drag({ b.performClick() })) }) { switchMic(it) }
+        pickerOpen = true
+        render()
+        place()
+        main.removeCallbacks(closePicker)
+        main.postDelayed(closePicker, MicPicker.OPEN_MS)
+    }
+
+    private fun hidePicker() {
+        main.removeCallbacks(closePicker)
+        if (!pickerOpen) return
+        pickerOpen = false
+        render()
+        place()
+    }
+
+    /**
+     * A mic was picked: use it for this session ([Mic.choose]). The recorder pauses, re-routes and
+     * resumes, so the take keeps what it had; paused, the switch applies on Resume.
+     */
+    private fun switchMic(d: android.media.AudioDeviceInfo) {
+        val r = recorder ?: return hidePicker()
+        Mic.choose(this, d)
         source.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         val wasRecording = state == State.RECORDING
         if (wasRecording) r.pause()
@@ -803,12 +847,14 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         if (wasRecording) {
             try {
                 r.start()
+                warnIfSubstituted(r)
             } catch (e: Exception) {
                 state = State.PAUSED
                 toast(getString(R.string.ime_mic_error, e.message ?: ""))
             }
         }
         showSource(r.preferredDevice)
+        hidePicker()
         render()
     }
 
@@ -1091,6 +1137,9 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         r.visibility = if (show) View.VISIBLE else View.GONE
         r.background = if (open || waiting) barBg.apply { cornerRadius = dp(Prefs.bubbleSize(this@FloatingMicService)).toFloat() } else null
         for (c in takeControls) c.visibility = if (open) View.VISIBLE else View.GONE
+        val choosing = open && pickerOpen
+        source.visibility = if (open && !choosing) View.VISIBLE else View.GONE
+        picker.visibility = if (choosing) View.VISIBLE else View.GONE
         for (c in pendingControls) c.visibility = if (waiting) View.VISIBLE else View.GONE
         grip.visibility = if (open || waiting) View.VISIBLE else View.GONE
         // A take or a held transcript shows the full mic and bar; the dot comes back after. An

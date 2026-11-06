@@ -16,6 +16,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.LinearLayout
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ProgressBar
@@ -71,6 +72,9 @@ class VoiceImeService : InputMethodService() {
     private var shownSeconds = -1
     /** The mic source chip (1.008): Mic.shortLabel of the mic the next or current take uses. */
     private lateinit var source: TextView
+    /** The mic icons that replace [source] while choosing (1.018). */
+    private lateinit var picker: LinearLayout
+    private val closePicker = Runnable { hidePicker() }
     private lateinit var status: TextView
     private lateinit var mic: ImageButton
     private lateinit var spinner: ProgressBar
@@ -95,7 +99,8 @@ class VoiceImeService : InputMethodService() {
         pauseLbl = v.findViewById(R.id.pause_lbl)
         micLbl = v.findViewById(R.id.mic_lbl)
         source = v.findViewById(R.id.source)
-        source.setOnClickListener { switchMic() }
+        source.setOnClickListener { openPicker() }
+        picker = v.findViewById(R.id.source_picker)
         insertLastBtn.setOnClickListener { insertLast() }
         mic.setOnClickListener { onMic() }
         v.findViewById<ImageButton>(R.id.switch_ime).apply {
@@ -158,20 +163,38 @@ class VoiceImeService : InputMethodService() {
     /** The chip names the take's mic while one is open, else the mic the next take will use. */
     private fun showSource() {
         if (!::source.isInitialized) return
-        val name = Mic.shortLabel(this, recorder?.preferredDevice ?: Mic.preferred(this))
+        val d = recorder?.preferredDevice ?: Mic.preferred(this)
+        val name = Mic.shortLabel(this, d)
         source.text = name
         source.contentDescription = getString(R.string.bubble_mic_cd, name)
+        source.setCompoundDrawablesRelativeWithIntrinsicBounds(Mic.icon(d), 0, 0, 0)
+    }
+
+    /** The source chip was tapped: show the connected mics as icons in its place (1.018). */
+    private fun openPicker() {
+        if (Mic.choices(this).size < 2) return show(getString(R.string.bubble_no_headset), busy = finishing.isNotEmpty())
+        MicPicker.fill(picker, recorder?.preferredDevice ?: Mic.preferred(this), (32 * resources.displayMetrics.density).toInt()) { switchMic(it) }
+        source.visibility = View.GONE
+        picker.visibility = View.VISIBLE
+        picker.removeCallbacks(closePicker)
+        picker.postDelayed(closePicker, MicPicker.OPEN_MS)
+    }
+
+    private fun hidePicker() {
+        picker.removeCallbacks(closePicker)
+        picker.visibility = View.GONE
+        source.visibility = View.VISIBLE
     }
 
     /**
-     * The source chip was tapped (1.008, as the floating mic's since 0.7.2): switch between
-     * Bluetooth and the phone's mic. Idle, the next take uses the new mic; mid-take the recorder
-     * pauses, re-routes and resumes, so the take keeps what it had; paused, it applies on Resume.
+     * A mic was picked: use it for this session ([Mic.choose]). Idle, the next take uses it;
+     * mid-take the recorder pauses, re-routes and resumes, so the take keeps what it had; paused,
+     * it applies on Resume.
      */
-    private fun switchMic() {
+    private fun switchMic(d: AudioDeviceInfo) {
         val r = recorder
-        Mic.toggle(this, r?.preferredDevice ?: Mic.preferred(this))
-            ?: return show(getString(R.string.bubble_no_headset), busy = finishing.isNotEmpty())
+        Mic.choose(this, d)
+        hidePicker()
         source.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         if (r != null && open) {
             val wasRecording = state == State.RECORDING
@@ -294,6 +317,7 @@ class VoiceImeService : InputMethodService() {
         if (cue == Feedback.Cue.RESTART) flashRetake()
         show(getString(R.string.ime_status_listening, 0, 0), busy = false)
         renderTake()
+        Mic.substitute(r)?.let { show(getString(R.string.mic_substituted, Mic.label(this, r.preferredDevice), Mic.label(this, it)), busy = false) }
     }
 
     private fun togglePause() {
