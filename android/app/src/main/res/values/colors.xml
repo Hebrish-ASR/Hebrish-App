@@ -17,5 +17,7 @@
     <color name="ime_pause">#3E4C59</color>
     <color name="ime_paused">#C8901C</color>
     <color name="ime_insert">#2F5D50</color>
+    <!-- Keyboard key icon (1.019): brand dark.gold, so the way back to the keyboard stands out. -->
+    <color name="ime_switch">#E0B14A</color>
     <color name="ime_label">#AEB4BA</color>
 </resources>

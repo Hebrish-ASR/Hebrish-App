@@ -8,12 +8,14 @@ import android.inputmethodservice.InputMethodService
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.os.Build
 import android.os.Handler
 import android.text.InputType
 import android.os.Looper
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.View
+import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
@@ -108,7 +110,10 @@ class VoiceImeService : InputMethodService() {
             // Escape hatch that cannot fail: the system's own keyboard picker.
             setOnLongClickListener { showPicker(); true }
         }
-        v.findViewById<ImageButton>(R.id.backspace).setOnClickListener { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
+        v.findViewById<ImageButton>(R.id.backspace).apply {
+            setOnClickListener { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
+            setOnLongClickListener { deleteLastSentence(); true }
+        }
         v.findViewById<ImageButton>(R.id.space).setOnClickListener { currentInputConnection?.commitText(" ", 1) }
         v.findViewById<ImageButton>(R.id.enter).setOnClickListener { onEnter() }
         v.findViewById<Button>(R.id.comma).setOnClickListener { punctuate(",") }
@@ -119,7 +124,28 @@ class VoiceImeService : InputMethodService() {
         discardBtn.setOnClickListener { discard() }
         renderTake()
         showSource()
+        keepAboveNavigationBar(v)
         return v
+    }
+
+    /**
+     * Targeting API 35+ makes this window edge to edge, so the navigation bar is drawn over the
+     * bottom of the keyboard instead of beside it: on Daniel's phone it covered the key row
+     * (screenshot 2026-11-06). The bar's height goes under the key row as padding, so the keyboard's
+     * background shows behind the bar. The padding is zero when the bar is hidden.
+     */
+    private fun keepAboveNavigationBar(root: View) {
+        val basePadding = root.paddingBottom
+        root.setOnApplyWindowInsetsListener { view, insets ->
+            // Before API 35 the system keeps this window above the bar by itself.
+            val bar = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                insets.getInsets(WindowInsets.Type.navigationBars()).bottom
+            } else {
+                0
+            }
+            view.setPadding(view.paddingLeft, view.paddingTop, view.paddingRight, basePadding + bar)
+            insets
+        }
     }
 
     /** Keeps the idle chip right when a headset connects or drops while the keyboard is up. */
@@ -522,6 +548,14 @@ class VoiceImeService : InputMethodService() {
         ic.commitText(mark, 1)
     }
 
+    /** Long-press on delete: the sentence before the cursor goes, along with the space before it. */
+    private fun deleteLastSentence() {
+        val ic = currentInputConnection ?: return
+        val before = ic.getTextBeforeCursor(SENTENCE_WINDOW, 0)?.toString() ?: return
+        val n = lastSentenceLength(before)
+        if (n > 0) ic.deleteSurroundingText(n, 0)
+    }
+
     private fun sendEnter() {
         val ic = currentInputConnection ?: return
         val action = currentInputEditorInfo?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_NONE
@@ -655,6 +689,8 @@ class VoiceImeService : InputMethodService() {
         const val ENTER_HOLD_MS = 4000L
         /** HeliBoard's package (`helium314.keyboard`, plus `.debug` / `.nouserlib` builds). */
         const val HELIBOARD = "helium314.keyboard"
+        /** How far back a long-press on delete looks for the start of the sentence. */
+        private const val SENTENCE_WINDOW = 2000
         /** Hebrish Keyboard, the HeliBoard fork (`Hebrish-ASR/Hebrish-Keyboard`). */
         const val HEBRISH_KEYBOARD = "app.hebrish.keyboard"
     }

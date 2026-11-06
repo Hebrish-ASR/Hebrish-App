@@ -1755,3 +1755,47 @@ Dictation screen: a 0-100 slider, pref `noise_filter`, default 60, the same dial
 
 (V) `VoiceDetectionTest`, synthetic audio only. (I) Not run on a device or on real speech, so the risk to check first is quiet or continuous speech being dropped at 60.
 
+## Voice keyboard above the navigation bar (B-96, 2026-11-06)
+
+Daniel, 2026-11-06, with a screenshot of 1.018 over Gmail on the Nord 3 (Android 16, three-button
+navigation): the navigation bar sits over the key row, so Enter is hard to hit while dictating. He
+dictates and adds paragraph breaks by hand with the microphone open, so the key row has to work
+without scrolling or leaving voice mode.
+
+**Cause.** `targetSdk` 35+ makes the IME window edge to edge, and nothing in `VoiceImeService` read
+the insets. The bar covered the bottom of `ime_view`. Measured by adb on the phone: `navigationBars`
+is 154 px at 560 dpi, so 44 dp. The 1.007 note above saw the same symptom and blamed the keyboard
+changing height. That was wrong, or at least not the whole story: the fixed height never cleared it.
+
+**Fix.** `VoiceImeService.keepAboveNavigationBar` adds the bar's inset to the root's bottom padding
+on API 35+. Below 35 the system fits the window itself, so nothing is added.
+
+**Height.** Daniel doesn't want more of the screen taken, so the rows paid for the padding. Budget
+in dp, excluding the label text (about 13):
+
+| | 1.018 | Now |
+| --- | --- | --- |
+| Padding top + bottom | 6 + 12 | 4 + 2 |
+| Header | 36 | 32 |
+| Control row (gap, mic, label gap) | 4 + 72 + 4 | 2 + 52 + 2 |
+| Level bar (gap, bar) | 8 + 4 | 3 + 3 |
+| Key row (gap, margins, key) | 8 + 8 + 52 | 2 + 6 + 46 |
+| Navigation bar padding | 0 (bar covered the keys) | 44 |
+| Total | 214 | 196 |
+
+The side buttons went from 52 to 44 dp. "The record button doesn't need to expand": the mic never
+changed size between states, it was just 20 dp bigger than the rest. It stays 8 dp bigger, so it is
+still the first thing the thumb finds.
+
+**Removed:** the Hebrish mark and name in the header, overriding the 0.6.0 reason ("so it's clear
+which keyboard this is") at Daniel's request. The status line gets their width. The mic source chip
+stays.
+
+**Keyboard key:** icon tinted `ime_switch` (#E0B14A, `dark.gold` in the brand tokens).
+
+**Long-press delete** removes the last sentence (`lastSentenceLength` in `Sentences.kt`,
+`SentencesTest`). A boundary is `.?!…` followed by whitespace, or a line break; a line break before
+the sentence stays, so a paragraph break survives. It looks back 2,000 characters at most. There is
+no undo beyond the host app's own. Tap still deletes one character.
+
+Compiled and unit tested (`testFdroidDebugUnitTest --tests '*SentencesTest'`, 11 pass, V, 2026-11-06).

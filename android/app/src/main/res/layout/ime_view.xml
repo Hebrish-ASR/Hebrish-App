@@ -1,38 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Voice keyboard (0.6.0 layout, Daniel 2026-10-20): header with the Hebrish mark (so it's clear
-     which keyboard this is) and a settings gear, one row of round take controls with the mic in the middle (1.007),
-     and the key row at the bottom: keyboard, comma, period, space, delete, enter. -->
+<!-- Voice keyboard: a header with status, mic source and settings, one row of round take controls
+     with the mic in the middle (1.007), and the key row at the bottom: keyboard, comma, period,
+     space, delete, enter. 1.019 (Daniel 2026-11-06): the Hebrish mark and name are gone and every
+     row is tighter, because VoiceImeService adds the navigation bar's height under the key row and
+     the whole keyboard should still be no taller than before. See docs/maintaining.md. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@color/ime_bg"
     android:orientation="vertical"
     android:paddingHorizontal="12dp"
-    android:paddingTop="6dp"
-    android:paddingBottom="12dp">
+    android:paddingTop="4dp"
+    android:paddingBottom="2dp">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="36dp"
+        android:layout_height="32dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
-
-        <ImageView
-            android:id="@+id/brand"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginStart="4dp"
-            android:importantForAccessibility="no"
-            android:src="@drawable/ic_hebrish" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:text="@string/app_name"
-            android:textColor="@color/ime_text"
-            android:textSize="14sp"
-            android:textStyle="bold" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -92,11 +77,11 @@
 
         <ImageButton
             android:id="@+id/settings"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/cd_settings"
-            android:padding="7dp"
+            android:padding="6dp"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_settings" />
     </LinearLayout>
@@ -110,7 +95,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="2dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
         <LinearLayout
@@ -121,20 +106,20 @@
             android:orientation="vertical">
             <ImageButton
                 android:id="@+id/discard"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
                 android:background="@drawable/ime_round"
                 android:backgroundTint="@color/bubble_discard"
                 android:contentDescription="@string/action_discard"
                 android:foreground="@drawable/ime_round_press"
-                android:padding="14dp"
+                android:padding="12dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_close" />
             <TextView
                 android:id="@+id/discard_lbl"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="2dp"
                 android:maxLines="1"
                 android:text="@string/discard"
                 android:textColor="@color/ime_label"
@@ -148,20 +133,20 @@
             android:orientation="vertical">
             <ImageButton
                 android:id="@+id/restart"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
                 android:background="@drawable/ime_round"
                 android:backgroundTint="@color/bubble_retake"
                 android:contentDescription="@string/action_restart"
                 android:foreground="@drawable/ime_round_press"
-                android:padding="14dp"
+                android:padding="12dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_retake" />
             <TextView
                 android:id="@+id/restart_lbl"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="2dp"
                 android:maxLines="1"
                 android:text="@string/restart"
                 android:textColor="@color/ime_label"
@@ -175,20 +160,20 @@
             android:orientation="vertical">
             <ImageButton
                 android:id="@+id/mic"
-                android:layout_width="72dp"
-                android:layout_height="72dp"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
                 android:background="@drawable/ime_round"
                 android:backgroundTint="@color/ime_mic_idle"
                 android:contentDescription="@string/cd_mic"
                 android:foreground="@drawable/ime_round_press"
-                android:padding="18dp"
+                android:padding="14dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_mic" />
             <TextView
                 android:id="@+id/mic_lbl"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="2dp"
                 android:maxLines="1"
                 android:text="@string/ime_lbl_record"
                 android:textColor="@color/ime_label"
@@ -202,20 +187,20 @@
             android:orientation="vertical">
             <ImageButton
                 android:id="@+id/pause"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
                 android:background="@drawable/ime_round"
                 android:backgroundTint="@color/ime_pause"
                 android:contentDescription="@string/action_pause"
                 android:foreground="@drawable/ime_round_press"
-                android:padding="14dp"
+                android:padding="12dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_pause" />
             <TextView
                 android:id="@+id/pause_lbl"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="2dp"
                 android:maxLines="1"
                 android:text="@string/pause"
                 android:textColor="@color/ime_label"
@@ -229,20 +214,20 @@
             android:orientation="vertical">
             <ImageButton
                 android:id="@+id/insert_last"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
                 android:background="@drawable/ime_round"
                 android:backgroundTint="@color/ime_insert"
                 android:contentDescription="@string/insert_last"
                 android:foreground="@drawable/ime_round_press"
-                android:padding="15dp"
+                android:padding="13dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_paste" />
             <TextView
                 android:id="@+id/insert_last_lbl"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="2dp"
                 android:maxLines="1"
                 android:text="@string/ime_lbl_insert"
                 android:textColor="@color/ime_label"
@@ -253,33 +238,34 @@
     <View
         android:id="@+id/level"
         android:layout_width="match_parent"
-        android:layout_height="4dp"
+        android:layout_height="3dp"
         android:layout_marginHorizontal="40dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="3dp"
         android:background="@drawable/level_bar"
         android:scaleX="0.02" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="2dp"
         android:orientation="horizontal">
 
         <ImageButton
             android:id="@+id/switch_ime"
             android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_margin="4dp"
+            android:layout_height="46dp"
+            android:layout_margin="3dp"
             android:layout_weight="1.2"
             android:background="@drawable/key_bg"
             android:contentDescription="@string/cd_switch"
-            android:src="@drawable/ic_keyboard" />
+            android:src="@drawable/ic_keyboard"
+            android:tint="@color/ime_switch" />
 
         <Button
             android:id="@+id/comma"
             android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_margin="4dp"
+            android:layout_height="46dp"
+            android:layout_margin="3dp"
             android:layout_weight="0.8"
             android:background="@drawable/key_bg"
             android:contentDescription="@string/cd_comma"
@@ -290,8 +276,8 @@
         <Button
             android:id="@+id/period"
             android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_margin="4dp"
+            android:layout_height="46dp"
+            android:layout_margin="3dp"
             android:layout_weight="0.8"
             android:background="@drawable/key_bg"
             android:contentDescription="@string/cd_period"
@@ -302,8 +288,8 @@
         <ImageButton
             android:id="@+id/space"
             android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_margin="4dp"
+            android:layout_height="46dp"
+            android:layout_margin="3dp"
             android:layout_weight="2.4"
             android:background="@drawable/key_bg"
             android:contentDescription="@string/cd_space"
@@ -312,8 +298,8 @@
         <ImageButton
             android:id="@+id/backspace"
             android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_margin="4dp"
+            android:layout_height="46dp"
+            android:layout_margin="3dp"
             android:layout_weight="1.2"
             android:background="@drawable/key_bg"
             android:contentDescription="@string/cd_backspace"
@@ -322,8 +308,8 @@
         <ImageButton
             android:id="@+id/enter"
             android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_margin="4dp"
+            android:layout_height="46dp"
+            android:layout_margin="3dp"
             android:layout_weight="1.2"
             android:background="@drawable/key_bg"
             android:contentDescription="@string/cd_enter"
