@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-06",
+      "tag": "Android 1.019",
+      "title": "A voice keyboard you can use while you dictate",
+      "summary": "Bottom row: the keys no longer sit under the navigation bar, so Enter, space and delete work while the mic is open.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-11-06",
       "tag": "Android 1.018",
       "title": "USB microphones, and your mics in your order",
       "summary": "Mic order: Controls now has a list of mic types: USB, Bluetooth, wired and phone. Drag them into the order you want, and each take uses the highest one connected.",
@@ -185,15 +194,6 @@
       "platforms": [
         "android",
         "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-23",
-      "tag": "Android 0.10.0",
-      "title": "A cleaner look, and the floating mic keeps your line breaks",
-      "summary": "The app's screens now use the Hebrish look from this site: the warm paper background, the green accent, the Hebrish logo (it was showing as a plain green square), headings in the Hebrish typeface and grouped settings on the home screen.",
-      "platforms": [
-        "android"
       ]
     }
   ]
