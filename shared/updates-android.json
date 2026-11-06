@@ -2,9 +2,18 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "android",
-  "built": "2026-11-05",
+  "built": "2026-11-06",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-06",
+      "tag": "Android 1.018",
+      "title": "USB microphones, and your mics in your order",
+      "summary": "Mic order: Controls now has a list of mic types: USB, Bluetooth, wired and phone. Drag them into the order you want, and each take uses the highest one connected.",
+      "platforms": [
+        "android"
+      ]
+    },
     {
       "date": "2026-11-05",
       "tag": "Android 1.017",
@@ -185,16 +194,6 @@
       "summary": "The app's screens now use the Hebrish look from this site: the warm paper background, the green accent, the Hebrish logo (it was showing as a plain green square), headings in the Hebrish typeface and grouped settings on the home screen.",
       "platforms": [
         "android"
-      ]
-    },
-    {
-      "date": "2026-10-23",
-      "tag": "Apps: Android 0.9.0, Desktop 0.8.0",
-      "title": "A personal dictionary: your words, written your way",
-      "summary": "Add the words you want written a certain way: names, brands, Hebrew words in the spelling you use. After each take, Hebrish replaces what the model wrote with your spelling.",
-      "platforms": [
-        "android",
-        "desktop"
       ]
     }
   ]

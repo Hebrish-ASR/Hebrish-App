@@ -2,9 +2,18 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "desktop",
-  "built": "2026-11-05",
+  "built": "2026-11-06",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-05",
+      "tag": "Site",
+      "title": "The home page opens with the comparison, and a shorter footer",
+      "summary": "The first thing on the home page is now regular speech recognition typing a sentence and getting the Hebrew wrong, then Hebrish typing it, then the headline benchmark numbers.",
+      "platforms": [
+        "site"
+      ]
+    },
     {
       "date": "2026-11-05",
       "tag": "Site",
@@ -174,15 +183,6 @@
       "summary": "A batch of your own recordings can now be sent as a pull request on Hebrish/Community-Voice-Contributions, one folder per Hugging Face username.",
       "platforms": [
         "site"
-      ]
-    },
-    {
-      "date": "2026-10-31",
-      "tag": "Desktop 1.016",
-      "title": "Download models in sets, update them all at once, and the title model downloads again",
-      "summary": "Bundles: the Models tab now starts with three sets you can download in one click. Everything (Sabich, Shakshuka, and the clean-up, title and paragraph models), Voice Typing (Sabich and Shakshuka) and Transcription (Sabich with the clean-up, title and paragraph models).",
-      "platforms": [
-        "desktop"
       ]
     }
   ]
