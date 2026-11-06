@@ -1799,3 +1799,8 @@ the sentence stays, so a paragraph break survives. It looks back 2,000 character
 no undo beyond the host app's own. Tap still deletes one character.
 
 Compiled and unit tested (`testFdroidDebugUnitTest --tests '*SentencesTest'`, 11 pass, V, 2026-11-06).
+Run on the Nord 3 (Android 16, three-button navigation, 2026-11-06, a `workflow_dispatch` build of
+`94ad39c`): the key row clears the navigation bar, idle and recording, and dictation works in
+Settings search and Notepad Free (V; `docs/screenshots/android-voice-keyboard-1.019.png`). Daniel
+checked it by eye: "looks great". Not run: long-press delete on a device, the gold key's tap (the
+same `leave()` as before), and gesture navigation.

@@ -1,6 +1,6 @@
 # Backlog
 
-Last updated 2026-11-05. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
+Last updated 2026-11-06. Status words: `idea`, `planned`, `in progress`, `done (unreleased)`,
 `released <version>`. Work is queued in **one sprint per platform** (desktop = Ubuntu + Windows,
 which share `desktop/`; Android). A sprint ends with a release, when the release gate below says so. Parity is the aim (decision
 D-2026-10-22-05): an item done on one platform gets a matching item in the other sprint, unless
@@ -120,7 +120,7 @@ tables below hold the detail and status.
 
 | Id | Item | Status |
 | --- | --- | --- |
-| B-96 | **Voice keyboard above the navigation bar** (Daniel, 2026-11-06, R-2026-11-06-2). Key row no longer under the bar (`keepAboveNavigationBar`), logo and name removed, tighter rows, 52 dp mic, gold keyboard key, long-press delete removes the last sentence. `android/docs/maintaining.md`, "Voice keyboard above the navigation bar". | done (unreleased) |
+| B-96 | **Voice keyboard above the navigation bar** (Daniel, 2026-11-06, R-2026-11-06-2). Key row no longer under the bar (`keepAboveNavigationBar`), logo and name removed, tighter rows, 52 dp mic, gold keyboard key, long-press delete removes the last sentence. `android/docs/maintaining.md`, "Voice keyboard above the navigation bar". | released 1.019 |
 | B-95 | **Mic order** (Daniel, 2026-11-06, R-2026-11-06-1, D-2026-11-06-01). Controls: drag-to-rank mic types, USB first by default. Source chips open a row of mic icons, and a pick lasts for the session. Desktop has its own preferred order (B-47) | done in 1.018 |
 | B-94 | **Benchmarks window** (Daniel, 2026-11-05, R-2026-11-05-4, D-2026-11-05-05). Diagnostics > Benchmarks…: the reference file (podcast episode 1, recognised by SHA-256), any audio file, or a recording; speed, RAM and CPU load; `benchmarks` table; Markdown result; transcript collapsed. `desktop/docs/maintaining.md`, "Benchmarks window" | released Desktop 1.025 (beta); the full reference file has not been run end to end; Windows not run |
 | B-94a | **Benchmarks, Android** (parity with B-94): same reference file, hash and figures, so phones and computers compare. After desktop | planned |
