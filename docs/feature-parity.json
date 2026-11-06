@@ -190,7 +190,7 @@
       "android": {
         "status": "present",
         "since": "0.6.0",
-        "evidence": "android/app/src/main/java/app/hebrish/dictation/Mic.kt:37"
+        "evidence": "android/app/src/main/java/app/hebrish/dictation/Mic.kt preferred, MicOrder.kt"
       },
       "ubuntu": {
         "status": "present",

@@ -363,6 +363,41 @@ everything below that describes runtime behaviour).
   Accessibility → Downloaded apps → Hebrish floating mic.
 - Ramblr (GPL-3.0) was read for design only; no code was copied (this app is MIT).
 
+## Mic order: USB mics, ranked types, session override (1.018, 2026-11-06)
+
+Daniel, 2026-11-06: a USB headset wasn't usable in Hebrish; he asked for a standing order of mic *types* with
+drag-to-rank rows, a per-session override, and USB in the overlay with an icon per type. R-2026-11-06-1,
+D-2026-11-06-01, B-95.
+
+- **Why USB wasn't reachable:** `Mic.toggle` flipped only between the phone and Automatic, and Automatic put
+  Bluetooth first, so with Bluetooth connected the chip could never reach USB. Separately, the first test headset
+  was dropping off the USB bus every few seconds through an adapter (V, `dumpsys usb`), and while it was gone
+  Android listed no USB input at all, so no app could have used it.
+- **No permission needed (V):** with only `RECORD_AUDIO`, Android lists a USB mic as an ordinary input. A Yealink
+  BH70 reported as `TYPE_USB_HEADSET`, 16 kHz supported. `UsbManager` is not involved.
+- **Order** (`MicOrder.kt`, unit-tested in `MicOrderTest`): `Prefs.micOrder` holds the `MicKind`s best first.
+  Default USB, Bluetooth, Wired, Phone, because plugging a mic in is a deliberate act. The first type with a
+  connected mic wins (`Mic.preferred`). With nothing saved, a mic picked under the old `Prefs.micChoice` key goes
+  first (`Mic.order`), so an update doesn't change anyone's mic. That includes the phone mic, because up to 1.017
+  a chip tap saved it: those users drag USB up once.
+- **Session override** (`Mic.choose`): a chip's picker sets an in-memory device key. It ends after 30 minutes with
+  no take (`MicOrder.SESSION_MS`), when the process ends, or when the order changes. The time limit is there
+  because the accessibility service lives for days, so "until the process ends" alone would become a standing
+  choice. Picking the mic the order would use anyway clears the override.
+- **Picker** (`MicPicker.kt`): tapping a source chip swaps it for one round icon per connected mic, best first,
+  the one in use filled. It closes after `OPEN_MS` = 6 s. With one mic connected it says so. The floating mic and
+  the keyboard both use it; the chips also show the type's icon. Mid-take a pick pauses, re-routes and resumes as
+  the old toggle did. Icons are Material `usb`, `bluetooth`, `headset_mic`, `smartphone`.
+- **Controls screen** (`MicOrderView.kt`): one row per type with what is connected, dragged by its handle. The view
+  takes the whole gesture, because moving a child that holds the touch cancels it. TalkBack gets Move up and Move
+  down actions. Under it, "Android reports:" lists every input with its type number, for a mic that doesn't appear.
+- **Silent fallback made visible** (`Mic.substitute`): `setPreferredDevice` is only a request, so if Android records
+  from another mic the floating mic shows a toast and the keyboard a status line. Bluetooth is skipped, because its
+  link can still be opening when the take starts.
+- **Transcription Mode** keeps its own `Prefs.tmMic`; its Automatic now follows the order.
+- `Mic.inputs` also accepts `TYPE_USB_ACCESSORY` (as USB) and the line and aux types (as Wired).
+- Compiled and `MicOrderTest` run in CI; see "Not yet verified" for device status.
+
 ## Sound, microphone and buttons (0.6.0, 2026-10-20)
 
 Screen `ControlsActivity`. Compiled (V, 2026-10-20); not run on a device (I below).
@@ -375,7 +410,7 @@ Screen `ControlsActivity`. Compiled (V, 2026-10-20); not run on a device (I belo
   shows "↺ New take" for `FLASH_MS` = 1000 ms; the IME flashes its status line the same way.
   Daniel asked for it so a retake is obvious with beeps off. While recording, the mic background
   pulses (alpha 255↔120, 700 ms).
-- **Microphone** (`Mic.kt`): `Prefs.micChoice` = `Mic.AUTO` or a key `"<type>:<productName>"`
+- **Microphone** (superseded by "Mic order", 1.018): `Prefs.micChoice` = `Mic.AUTO` or a key `"<type>:<productName>"`
   (device ids change on reconnect, so they are not stored). Auto order: Bluetooth (SCO, or BLE
   headset type 26), then wired/USB headset, then the phone mic. Bluetooth is routed with
   `AudioManager.setCommunicationDevice` on API 31+, `startBluetoothSco` below; `Mic.release`

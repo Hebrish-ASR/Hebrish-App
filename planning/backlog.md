@@ -120,6 +120,7 @@ tables below hold the detail and status.
 
 | Id | Item | Status |
 | --- | --- | --- |
+| B-95 | **Mic order** (Daniel, 2026-11-06, R-2026-11-06-1, D-2026-11-06-01). Controls: drag-to-rank mic types, USB first by default. Source chips open a row of mic icons, and a pick lasts for the session. Desktop has its own preferred order (B-47) | done in 1.018 |
 | B-94 | **Benchmarks window** (Daniel, 2026-11-05, R-2026-11-05-4, D-2026-11-05-05). Diagnostics > Benchmarks…: the reference file (podcast episode 1, recognised by SHA-256), any audio file, or a recording; speed, RAM and CPU load; `benchmarks` table; Markdown result; transcript collapsed. `desktop/docs/maintaining.md`, "Benchmarks window" | released Desktop 1.025 (beta); the full reference file has not been run end to end; Windows not run |
 | B-94a | **Benchmarks, Android** (parity with B-94): same reference file, hash and figures, so phones and computers compare. After desktop | planned |
 | B-93 | **Noise filter calibration** (Daniel, 2026-11-05, D-2026-11-05-04). Voice Typing tab, Calibrate…: 5 s quiet, 10 s speech, Safe and Optimized suggestions, Apply, past runs per mic. `desktop/docs/maintaining.md`, "Noise filter calibration". Not yet run on a real mic. | done (unreleased) |

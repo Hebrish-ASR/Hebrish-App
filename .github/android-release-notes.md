@@ -1,5 +1,7 @@
-**1.017: A noise filter, and one Sabich.**
+**1.018: USB microphones, and your mics in your order.**
 
-- **Noise filter:** a piece of audio that is only background is now skipped, so room noise turns into stray words less often. The Dictation screen has a 0 to 100 dial; 0 turns it off.
-- **Sabich:** it now downloads from a single location, and the older names for it are gone. If you already have the latest Sabich, nothing downloads again.
-- Not yet tested on a device. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).
+- **Mic order:** Controls now has a list of mic types: USB, Bluetooth, wired and phone. Drag them into the order you want, and each take uses the highest one connected.
+- **Pick a mic for now:** tap the mic name while dictating, in the floating mic or the keyboard, to see every connected mic as an icon. Your choice lasts for the session, then your order takes over again.
+- **USB microphones:** they now work from the floating mic and the keyboard, and USB comes first by default. If you last chose the phone mic, it stays on top until you drag USB above it.
+- If Android records from a different mic than the one asked for, Hebrish now tells you.
+- arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).

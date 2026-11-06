@@ -9,6 +9,16 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-06-01: Rank mic types, not devices, with USB first
+
+- **Decision:** the standing mic preference on Android is an order of mic types (USB, Bluetooth, wired, phone),
+  USB first by default. Tapping a source chip overrides it for the session, which ends after 30 minutes with no take.
+- **Why:** Daniel, 2026-11-06: "the user sets preferred microphone source, not the level of the individual
+  microphone, but in the type". A plugged-in mic is a deliberate choice, and the old Bluetooth-first order hid it.
+- **Alternatives:** one saved device (the old `Prefs.micChoice`), which goes stale as devices change; a chip tap that
+  saves permanently, which silently replaced the preference.
+- **By:** Daniel (the design); the agent (USB default, 30-minute session). R-2026-11-06-1, B-95.
+
 ### D-2026-11-04-01: Control endpoints get their own opt-in, and no token
 
 - **Decision:** History, dictionary, updates, models and dictation on the local API sit behind a
