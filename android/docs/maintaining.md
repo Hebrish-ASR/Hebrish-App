@@ -1781,7 +1781,7 @@ in dp, excluding the label text (about 13):
 | Level bar (gap, bar) | 8 + 4 | 3 + 3 |
 | Key row (gap, margins, key) | 8 + 8 + 52 | 2 + 6 + 46 |
 | Navigation bar padding | 0 (bar covered the keys) | 44 |
-| Total | 214 | 196 |
+| Total | 214 | 198 |
 
 The side buttons went from 52 to 44 dp. "The record button doesn't need to expand": the mic never
 changed size between states, it was just 20 dp bigger than the rest. It stays 8 dp bigger, so it is
