@@ -396,7 +396,7 @@ D-2026-11-06-01, B-95.
   link can still be opening when the take starts.
 - **Transcription Mode** keeps its own `Prefs.tmMic`; its Automatic now follows the order.
 - `Mic.inputs` also accepts `TYPE_USB_ACCESSORY` (as USB) and the line and aux types (as Wired).
-- Compiled and `MicOrderTest` run in CI; see "Not yet verified" for device status.
+- Compiled, and `MicOrderTest` passed, in CI (V, 2026-11-06). 1.018 installed on a OnePlus Nord 3 (V). The drag list, picker and USB routing have not been exercised on a device yet (I).
 
 ## Sound, microphone and buttons (0.6.0, 2026-10-20)
 
