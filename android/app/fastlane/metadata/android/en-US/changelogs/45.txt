@@ -1,0 +1,1 @@
+1.027: only one of the keyboard and floating mic records at a time, so starting a take in one drops a take open in the other. During a take the mic is a green Send instead of a red Stop, Retake is orange and Pause blue. One tap on the mic name moves to the next connected mic in your order.

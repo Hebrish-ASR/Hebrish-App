@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-07",
+      "tag": "Ubuntu 1.027",
+      "title": "Ubuntu 1.027: same version as Android",
+      "summary": "No changes: same app as 1.026, with the version number kept in step with Android. Windows and the AppImage stay on 1.026.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-07",
       "tag": "Apps 1.026",
       "title": "Apps 1.026: a joint stable release, with a smoother look",
       "summary": "One version everywhere: Android, Ubuntu and Windows are all 1.026. Windows and the AppImage move up from 1.022.",
@@ -173,15 +182,6 @@
       "tag": "Licensing",
       "title": "How Hebrish will be licensed to organisations",
       "summary": "A new Licensing page, also in Hebrew: free for individuals, research, education and small non-profits and volunteer organisations; an institutional licence for health funds, hospitals and public bodies; a commercial licence for businesses.",
-      "platforms": [
-        "site"
-      ]
-    },
-    {
-      "date": "2026-11-02",
-      "tag": "Feedback",
-      "title": "Tell Daniel how Hebrish works for you",
-      "summary": "A short four-step form at the top of Feedback: where you use Hebrish, the model and version, your accent, an accuracy rating, the kinds of words it struggles with and a list of words it gets wrong.",
       "platforms": [
         "site"
       ]

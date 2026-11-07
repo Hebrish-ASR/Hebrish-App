@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-07",
+      "tag": "Android 1.027",
+      "title": "Android 1.027: Send, one-tap mic switching, and no more clashing takes",
+      "summary": "Keyboard and floating mic: starting a take in one now drops a take open in the other, so the new one records. Not yet tested on a phone.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-11-07",
       "tag": "Apps 1.026",
       "title": "Apps 1.026: a joint stable release, with a smoother look",
       "summary": "One version everywhere: Android, Ubuntu and Windows are all 1.026. Windows and the AppImage move up from 1.022.",
@@ -181,16 +190,6 @@
       "tag": "Apps 1.002",
       "title": "Paragraphs in Transcription Mode, your choice of how",
       "summary": "Transcription Mode, in both apps, has a Paragraphs setting: None (one block of text), Time-based (a new paragraph about every 30 seconds, as before) or Paragraph model.",
-      "platforms": [
-        "android",
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-24",
-      "tag": "Apps 1.001",
-      "title": "Transcription Mode, the next take any time, and no more \"um\"",
-      "summary": "Transcription Mode, in both apps: record a long take, then transcribe it.",
       "platforms": [
         "android",
         "desktop"
