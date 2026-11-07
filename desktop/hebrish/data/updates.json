@@ -2,9 +2,28 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "desktop",
-  "built": "2026-11-06",
+  "built": "2026-11-07",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-07",
+      "tag": "Apps 1.026",
+      "title": "Apps 1.026: a joint stable release, with a smoother look",
+      "summary": "One version everywhere: Android, Ubuntu and Windows are all 1.026. Windows and the AppImage move up from 1.022.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-07",
+      "tag": "Site",
+      "title": "Stickers to download and print",
+      "summary": "Stickers, under About: the logo in English and Hebrew, Corn the Sloth, and \"I type with Hebrish\", as print-ready PDFs and transparent PNGs.",
+      "platforms": [
+        "site"
+      ]
+    },
     {
       "date": "2026-11-05",
       "tag": "Site",
@@ -163,24 +182,6 @@
       "tag": "Feedback",
       "title": "Tell Daniel how Hebrish works for you",
       "summary": "A short four-step form at the top of Feedback: where you use Hebrish, the model and version, your accent, an accuracy rating, the kinds of words it struggles with and a list of words it gets wrong.",
-      "platforms": [
-        "site"
-      ]
-    },
-    {
-      "date": "2026-11-02",
-      "tag": "Desktop 1.017",
-      "title": "Transform a transcript into an email, a to-do list or minutes, and your clipboard comes back after a paste",
-      "summary": "Transform… (experimental): on the Transcription tab, rewrite a transcript with one of 206 ready-made prompts: a business or casual email, a to-do list, meeting minutes, a post, data formats and more.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-11-02",
-      "tag": "Contributions",
-      "title": "Send your own voice samples through Hugging Face",
-      "summary": "A batch of your own recordings can now be sent as a pull request on Hebrish/Community-Voice-Contributions, one folder per Hugging Face username.",
       "platforms": [
         "site"
       ]

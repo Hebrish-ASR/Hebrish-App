@@ -2,9 +2,19 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "android",
-  "built": "2026-11-06",
+  "built": "2026-11-07",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-07",
+      "tag": "Apps 1.026",
+      "title": "Apps 1.026: a joint stable release, with a smoother look",
+      "summary": "One version everywhere: Android, Ubuntu and Windows are all 1.026. Windows and the AppImage move up from 1.022.",
+      "platforms": [
+        "android",
+        "desktop"
+      ]
+    },
     {
       "date": "2026-11-06",
       "tag": "Android 1.019",
@@ -181,16 +191,6 @@
       "tag": "Apps 1.001",
       "title": "Transcription Mode, the next take any time, and no more \"um\"",
       "summary": "Transcription Mode, in both apps: record a long take, then transcribe it.",
-      "platforms": [
-        "android",
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-24",
-      "tag": "Apps: Android 1.000, Desktop 1.000",
-      "title": "Hebrish 1.0: the floating mic gets out of the way, desktop output you can combine, and Paste last",
-      "summary": "Both apps are now version 1.000. From here, versions count 1.001, 1.002, and so on, on Android and desktop alike.",
       "platforms": [
         "android",
         "desktop"
