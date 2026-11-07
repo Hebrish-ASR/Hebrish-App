@@ -4,7 +4,7 @@ platform: android
 environment: found in use by Daniel; no device attached when this was fixed
 component: android/app/src/main/java/app/hebrish/dictation/FloatingMicService.kt, VoiceImeService.kt
 affected: "<= 1.026"
-fixed_in: "unreleased"
+fixed_in: "1.027"
 status: fixed
 ---
 

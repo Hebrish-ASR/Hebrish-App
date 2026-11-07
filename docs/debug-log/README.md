@@ -53,7 +53,7 @@ Newest first.
 
 | Date | Platform | Symptom | Status | Entry |
 | --- | --- | --- | --- | --- |
-| 2026-11-07 | android | Floating mic doesn't start recording while a keyboard take is open | fixed, unreleased; not run on a device | [2026-11-07-floating-mic-during-keyboard-take.md](2026-11-07-floating-mic-during-keyboard-take.md) |
+| 2026-11-07 | android | Floating mic doesn't start recording while a keyboard take is open | fixed in 1.027; not run on a device | [2026-11-07-floating-mic-during-keyboard-take.md](2026-11-07-floating-mic-during-keyboard-take.md) |
 | 2026-11-02 | desktop-linux | The transcript is pasted twice when something was on the clipboard (the user's clipboard was never restored; Klipper kept the transcript) | fixed, unreleased | [2026-11-02-transcript-pasted-twice.md](2026-11-02-transcript-pasted-twice.md) |
 | 2026-10-31 | desktop-linux | Crash at start when /dev/uinput doesn't exist (evdev UInputError) | fixed, unreleased (1.017) | [2026-10-31-uinput-missing-crash.md](2026-10-31-uinput-missing-crash.md) |
 | 2026-10-31 | desktop-windows | Local API reported success on a port another app held (SO_REUSEADDR on Windows) | fixed, unreleased | [2026-10-31-windows-local-api-port-reuse.md](2026-10-31-windows-local-api-port-reuse.md) |
