@@ -40,7 +40,7 @@ import android.widget.Toast
  * The floating mic: an accessibility overlay that dictates into whatever text field has focus,
  * so the regular keyboard never has to be switched. Tap the mic to start. While a take is open
  * the bubble grows a bar with Pause / Resume, Retake, Discard and a timer, and the mic becomes
- * Stop, which transcribes and puts the text in at the cursor. Idle, a long-press inserts the
+ * a green Send (1.027; a red Stop before), which transcribes and puts the text in at the cursor. Idle, a long-press inserts the
  * last transcript again.
  *
  * Missed the field: if no text field has focus when the transcript is ready (or the field
@@ -89,15 +89,18 @@ import android.widget.Toast
  * no foreground service: see docs/maintaining.md, "Floating mic".
  *
  * Feedback and control (0.6.0): while recording the mic pulses, and each start / stop / retake /
- * discard can pip and buzz ([Feedback]). The bar names the microphone in use ([Mic]; Bluetooth
- * first) in a chip that switches between Bluetooth and the phone's mic when tapped (0.7.2; the
- * keyboard has the same chip since 1.008). Broadcast intents and bound hardware keys (a Bluetooth shutter remote, a keyboard)
+ * discard can pip and buzz ([Feedback]). The bar names the microphone in use ([Mic]) in a chip
+ * that moves to the next connected mic in the user's order when tapped (1.027; the keyboard has
+ * the same chip since 1.008). Broadcast intents and bound hardware keys (a Bluetooth shutter remote, a keyboard)
  * drive the same actions as the buttons ([Remote], [onKeyEvent]; docs/external-control.md).
  *
  * Takes can overlap (B-43a, R-2026-10-24-6): a tap while the last take is still transcribing
  * starts the next one at once instead of being ignored. Each take is a [Take] with its own field
  * and decoder; a later take's text waits in [Take.waiting] until every earlier one has landed, so
  * the texts go in in order.
+ *
+ * One open take (1.027): starting a take here ends one open in the keyboard, so the two never
+ * record at once ([VoiceImeService.yieldMic]).
  */
 class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPreferenceChangeListener {
     /** TRANSCRIBING: no take open, earlier takes still decoding ([finishing]). */
@@ -125,12 +128,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private lateinit var spinner: ProgressBar
     private lateinit var timer: TextView
     private lateinit var pauseBtn: ImageButton
-    /** Which mic the take records from ("BT Pixel Bu…", "Internal"); tap to switch. */
+    /** Which mic the take records from ("BT Pixel Bu…", "Internal"); a tap moves to the next one. */
     private lateinit var source: TextView
-    /** The mic icons that replace [source] while choosing (1.018). */
-    private lateinit var picker: LinearLayout
-    private val closePicker = Runnable { hidePicker() }
-    private var pickerOpen = false
     /** Shown while a take is open. */
     private lateinit var takeControls: List<View>
     /** Shown while a transcript is waiting for a field ([pending]). */
@@ -401,13 +400,13 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             setImageResource(drawable)
             contentDescription = getString(cd)
             scaleType = ImageView.ScaleType.FIT_CENTER
-            // Retake and Discard get a filled circle (0.7.2), so they are easy to find and hit.
+            // Pause, Retake and Discard get a filled circle (0.7.2), so they are easy to find and hit.
             background = fill?.let { GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(getColor(it)) } }
             setPadding(dp(10), dp(10), dp(10), dp(10))
             setOnClickListener { action() }
             setOnTouchListener(Drag({ performClick() }))
         }
-        pauseBtn = button(R.drawable.ic_pause, R.string.pause) { togglePause() }
+        pauseBtn = button(R.drawable.ic_pause, R.string.pause, R.color.accent) { togglePause() }
         source = TextView(themed).apply {
             setTextColor(getColor(R.color.ime_text))
             textSize = 12f
@@ -419,10 +418,9 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             compoundDrawablePadding = dp(4)
             compoundDrawableTintList = android.content.res.ColorStateList.valueOf(getColor(R.color.ime_text))
             background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(getColor(R.color.ime_key)) }
-            setOnClickListener { openPicker() }
+            setOnClickListener { nextMic() }
             setOnTouchListener(Drag({ performClick() }))
         }
-        picker = LinearLayout(themed).apply { gravity = Gravity.CENTER; visibility = View.GONE }
         // Buttons on the left, timer and mic chip on the right, whichever edge the mic is on
         // (Daniel, 2026-10-21: "controls to the left and then the timer to the right").
         takeControls = listOf(
@@ -431,7 +429,6 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             button(R.drawable.ic_close, R.string.discard, R.color.bubble_discard) { discard() },
             timer,
             source,
-            picker,
         )
         insert = TextView(themed).apply {
             setText(R.string.bubble_insert)
@@ -455,7 +452,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             alpha = 0.8f
             setOnTouchListener(Drag())
         }
-        plainButtons = listOf(grip, pauseBtn, dismiss)
+        plainButtons = listOf(grip, dismiss)
         barBg.setColor(getColor(R.color.ime_bg))
         root = LinearLayout(themed).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -525,7 +522,6 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         mic.addView(spinner, FrameLayout.LayoutParams(inner, inner, Gravity.CENTER))
         r.removeAllViews()
         r.orientation = if (along) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
-        picker.orientation = r.orientation
         // Along the edge the column hugs the mic's edge, so a wide chip can't shift the mic.
         r.gravity = if (along) (if (left) Gravity.LEFT else Gravity.RIGHT) else Gravity.CENTER_VERTICAL
         val scale = Prefs.bubbleBarScale(this) / 100f
@@ -565,7 +561,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     /**
      * Clear bar: the plain buttons, the timer and Insert each get a mostly opaque backdrop
      * ([BACKDROP_ALPHA]) of the bar's colour; otherwise none, the bar's background does that job.
-     * The mic chip and Retake / Discard have their own fills either way. One drawable per view.
+     * The mic chip and Pause / Retake / Discard have their own fills either way. One drawable per view.
      */
     private fun styleBackdrops() {
         val clear = Prefs.bubbleBarClear(this)
@@ -721,6 +717,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     /** [into]: the field the take's text goes to; by default the one focused now. */
     private fun startRecording(cue: Feedback.Cue = Feedback.Cue.START,
                                into: AccessibilityNodeInfo? = focusedField()?.takeIf { !it.isPassword }) {
+        // First, so the keyboard's Mic.release can't close a Bluetooth link opened for this take.
+        VoiceImeService.yieldMic()
         Transcriber.preload(this)
         // A take started from a remote keeps the bubble up afterwards.
         stuck = true
@@ -746,7 +744,6 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         // The mic asked for, not routedDevice: a Bluetooth link can still be opening (1.008).
         showSource(r.preferredDevice)
         warnIfSubstituted(r)
-        pickerOpen = false
         state = State.RECORDING
         shownSeconds = -1
         Feedback.cue(this, cue)
@@ -807,37 +804,22 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     }
 
     /**
-     * The source chip was tapped: show the connected mics as icons in its place (1.018; a two-way
-     * toggle from 0.7.2, which could never reach USB with Bluetooth connected). Compares against
-     * the mic the take asked for, not the routed one: see [Mic.substitute].
+     * The source chip was tapped: straight to the next connected mic in the order (1.027; an icon
+     * row from 1.018, a two-way toggle from 0.7.2). Goes from the mic the take asked for, not the
+     * routed one: see [Mic.substitute].
      */
-    private fun openPicker() {
+    private fun nextMic() {
         val r = recorder ?: return
         if (!open) return
-        if (Mic.choices(this).size < 2) return toast(getString(R.string.bubble_no_headset))
-        val scale = Prefs.bubbleBarScale(this) / 100f
-        MicPicker.fill(picker, r.preferredDevice, dp((BUTTON_DP * scale).toInt()), { b -> b.setOnTouchListener(Drag({ b.performClick() })) }) { switchMic(it) }
-        pickerOpen = true
-        render()
-        place()
-        main.removeCallbacks(closePicker)
-        main.postDelayed(closePicker, MicPicker.OPEN_MS)
-    }
-
-    private fun hidePicker() {
-        main.removeCallbacks(closePicker)
-        if (!pickerOpen) return
-        pickerOpen = false
-        render()
-        place()
+        switchMic(Mic.next(this, r.preferredDevice) ?: return toast(getString(R.string.bubble_no_headset)))
     }
 
     /**
-     * A mic was picked: use it for this session ([Mic.choose]). The recorder pauses, re-routes and
-     * resumes, so the take keeps what it had; paused, the switch applies on Resume.
+     * Use [d] for this session ([Mic.choose]). The recorder pauses, re-routes and resumes, so the
+     * take keeps what it had; paused, the switch applies on Resume.
      */
     private fun switchMic(d: android.media.AudioDeviceInfo) {
-        val r = recorder ?: return hidePicker()
+        val r = recorder ?: return
         Mic.choose(this, d)
         source.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         val wasRecording = state == State.RECORDING
@@ -854,7 +836,6 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             }
         }
         showSource(r.preferredDevice)
-        hidePicker()
         render()
     }
 
@@ -1137,9 +1118,6 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         r.visibility = if (show) View.VISIBLE else View.GONE
         r.background = if (open || waiting) barBg.apply { cornerRadius = dp(Prefs.bubbleSize(this@FloatingMicService)).toFloat() } else null
         for (c in takeControls) c.visibility = if (open) View.VISIBLE else View.GONE
-        val choosing = open && pickerOpen
-        source.visibility = if (open && !choosing) View.VISIBLE else View.GONE
-        picker.visibility = if (choosing) View.VISIBLE else View.GONE
         for (c in pendingControls) c.visibility = if (waiting) View.VISIBLE else View.GONE
         grip.visibility = if (open || waiting) View.VISIBLE else View.GONE
         // A take or a held transcript shows the full mic and bar; the dot comes back after. An
@@ -1149,21 +1127,22 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         val iconStyle = Prefs.bubbleIcon(this)
         micBg.setColor(when {
             open && flashing() -> getColor(R.color.bubble_retake)
-            open -> getColor(R.color.bubble_recording)
+            open -> getColor(R.color.hebrish_green)
             iconStyle != Prefs.ICON_MIC -> getColor(R.color.hebrish_green)
             else -> Prefs.bubbleColor(this)
         })
         icon.setImageResource(when {
-            open -> R.drawable.ic_stop
+            open -> R.drawable.ic_send
             iconStyle == Prefs.ICON_LOGO -> R.drawable.ic_bubble_h
             iconStyle == Prefs.ICON_HE -> R.drawable.ic_bubble_he
             else -> R.drawable.ic_mic
         })
         icon.visibility = if (state == State.TRANSCRIBING) View.GONE else View.VISIBLE
         spinner.visibility = if (state == State.TRANSCRIBING) View.VISIBLE else View.GONE
-        mic.contentDescription = getString(if (open) R.string.try_cd_stop else R.string.cd_mic)
+        mic.contentDescription = getString(if (open) R.string.bubble_cd_send else R.string.cd_mic)
         pauseBtn.setImageResource(if (state == State.PAUSED) R.drawable.ic_play else R.drawable.ic_pause)
         pauseBtn.contentDescription = getString(if (state == State.PAUSED) R.string.resume else R.string.pause)
+        (pauseBtn.background as GradientDrawable).setColor(getColor(if (state == State.PAUSED) R.color.ime_paused else R.color.accent))
         r.alpha = if (state == State.IDLE && !waiting) Prefs.bubbleAlpha(this) / 100f else 1f
         if (state != State.RECORDING) setLevel(0f)
         if (state == State.RECORDING) { if (!pulse.isStarted) pulse.start() } else { pulse.cancel(); micBg.alpha = 255 }

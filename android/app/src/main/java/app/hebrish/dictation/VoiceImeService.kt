@@ -18,7 +18,6 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.widget.LinearLayout
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ProgressBar
@@ -74,9 +73,6 @@ class VoiceImeService : InputMethodService() {
     private var shownSeconds = -1
     /** The mic source chip (1.008): Mic.shortLabel of the mic the next or current take uses. */
     private lateinit var source: TextView
-    /** The mic icons that replace [source] while choosing (1.018). */
-    private lateinit var picker: LinearLayout
-    private val closePicker = Runnable { hidePicker() }
     private lateinit var status: TextView
     private lateinit var mic: ImageButton
     private lateinit var spinner: ProgressBar
@@ -101,8 +97,7 @@ class VoiceImeService : InputMethodService() {
         pauseLbl = v.findViewById(R.id.pause_lbl)
         micLbl = v.findViewById(R.id.mic_lbl)
         source = v.findViewById(R.id.source)
-        source.setOnClickListener { openPicker() }
-        picker = v.findViewById(R.id.source_picker)
+        source.setOnClickListener { nextMic() }
         insertLastBtn.setOnClickListener { insertLast() }
         mic.setOnClickListener { onMic() }
         v.findViewById<ImageButton>(R.id.switch_ime).apply {
@@ -161,6 +156,7 @@ class VoiceImeService : InputMethodService() {
 
     override fun onCreate() {
         super.onCreate()
+        running = this
         getSystemService(AudioManager::class.java).registerAudioDeviceCallback(devices, main)
         // A system broadcast: delivered to a not-exported receiver too.
         val f = android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_OFF)
@@ -175,6 +171,7 @@ class VoiceImeService : InputMethodService() {
     }
 
     override fun onDestroy() {
+        if (running === this) running = null
         runCatching { unregisterReceiver(screenOff) }
         getSystemService(AudioManager::class.java).unregisterAudioDeviceCallback(devices)
         // onFinishInputView normally drops an open take first; if it didn't, don't leave the mic
@@ -196,31 +193,21 @@ class VoiceImeService : InputMethodService() {
         source.setCompoundDrawablesRelativeWithIntrinsicBounds(Mic.icon(d), 0, 0, 0)
     }
 
-    /** The source chip was tapped: show the connected mics as icons in its place (1.018). */
-    private fun openPicker() {
-        if (Mic.choices(this).size < 2) return show(getString(R.string.bubble_no_headset), busy = finishing.isNotEmpty())
-        MicPicker.fill(picker, recorder?.preferredDevice ?: Mic.preferred(this), (32 * resources.displayMetrics.density).toInt()) { switchMic(it) }
-        source.visibility = View.GONE
-        picker.visibility = View.VISIBLE
-        picker.removeCallbacks(closePicker)
-        picker.postDelayed(closePicker, MicPicker.OPEN_MS)
-    }
-
-    private fun hidePicker() {
-        picker.removeCallbacks(closePicker)
-        picker.visibility = View.GONE
-        source.visibility = View.VISIBLE
+    /** The source chip was tapped: straight to the next connected mic in the order (1.027). */
+    private fun nextMic() {
+        val d = Mic.next(this, recorder?.preferredDevice ?: Mic.preferred(this))
+            ?: return show(getString(R.string.bubble_no_headset), busy = finishing.isNotEmpty())
+        switchMic(d)
     }
 
     /**
-     * A mic was picked: use it for this session ([Mic.choose]). Idle, the next take uses it;
+     * Use [d] for this session ([Mic.choose]). Idle, the next take uses it;
      * mid-take the recorder pauses, re-routes and resumes, so the take keeps what it had; paused,
      * it applies on Resume.
      */
     private fun switchMic(d: AudioDeviceInfo) {
         val r = recorder
         Mic.choose(this, d)
-        hidePicker()
         source.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
         if (r != null && open) {
             val wasRecording = state == State.RECORDING
@@ -388,6 +375,21 @@ class VoiceImeService : InputMethodService() {
         dropTake()
         state = settled()
         startRecording(Feedback.Cue.RESTART)
+    }
+
+    /**
+     * The floating mic is starting a take, so this one gives up the mic: dropped, as Discard does,
+     * with no cue of its own because the floating mic gives the start cue. Earlier takes still
+     * landing are left to finish.
+     */
+    private fun yieldToFloatingMic() {
+        if (!open) return
+        dropTake()
+        state = settled()
+        setLevel(0f)
+        show(getString(R.string.ime_moved_to_bubble), busy = finishing.isNotEmpty())
+        renderTake()
+        showSource()
     }
 
     private fun discard() {
@@ -685,6 +687,15 @@ class VoiceImeService : InputMethodService() {
     }
 
     companion object {
+        /** The live keyboard service. Same process and main thread as the floating mic. */
+        private var running: VoiceImeService? = null
+
+        /**
+         * Ends a take open in the keyboard, if any. Two takes can't share the mic: see
+         * docs/maintaining.md, "One open take across the keyboard and the floating mic".
+         */
+        fun yieldMic() { running?.yieldToFloatingMic() }
+
         /** Longest wait for a held Enter (desktop `ENTER_HOLD_S`, 4 s). */
         const val ENTER_HOLD_MS = 4000L
         /** HeliBoard's package (`helium314.keyboard`, plus `.debug` / `.nouserlib` builds). */

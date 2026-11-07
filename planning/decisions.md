@@ -9,6 +9,13 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-07-03: A source chip tap moves to the next mic; the icon row goes
+
+**Decision:** on Android, one tap on a source chip moves straight to the next connected mic in the order, going round. The row of mic icons from 1.018 is removed. The rest of D-2026-11-06-01 stands: the choice still lasts for the session.
+**Why:** Daniel, 2026-11-07: with two mics connected the row cost a second tap on every switch, which adds up when switching often.
+**Alternatives:** keep the row for three or more mics (two behaviours for one chip); long-press for the row (no one asked for it).
+**By:** Daniel chose the behaviour; removing the row outright was the agent's call.
+
 ### D-2026-11-07-02: 1.026 is a joint stable release of Android, Ubuntu and Windows
 
 **Decision:** Android and desktop both release as 1.026, and desktop 1.026 is promoted to stable, so every platform is on one version. Android skips 1.020 to 1.025.

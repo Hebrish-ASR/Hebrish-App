@@ -266,7 +266,8 @@ focusable, so the field keeps input focus. Built from `docs/plans/accessibility-
 Compiled with `assembleDebug` (V, 2026-10-20, JDK 21); **not yet run on a device** (I for
 everything below that describes runtime behaviour).
 
-- **Controls:** idle mic → tap starts a take. Open take: mic = Stop (transcribe + insert), and a
+- **Controls:** idle mic → tap starts a take. Open take: mic = green Send (transcribe + insert; a red Stop
+  until 1.027, see "Floating mic bar colours"), and a
   bar with timer, Pause/Resume (`Recorder.pause`/`start`, as in the IME), Retake (cancel + new
   take into the same target field), Discard. Idle long-press = insert `Prefs.lastTranscript`.
 - **Position (0.4.0):** `Prefs.bubbleSide` (`left`/`right`/`free`), `bubbleY` (0–1 of
@@ -380,14 +381,16 @@ D-2026-11-06-01, B-95.
   connected mic wins (`Mic.preferred`). With nothing saved, a mic picked under the old `Prefs.micChoice` key goes
   first (`Mic.order`), so an update doesn't change anyone's mic. That includes the phone mic, because up to 1.017
   a chip tap saved it: those users drag USB up once.
-- **Session override** (`Mic.choose`): a chip's picker sets an in-memory device key. It ends after 30 minutes with
+- **Session override** (`Mic.choose`): a chip tap sets an in-memory device key. It ends after 30 minutes with
   no take (`MicOrder.SESSION_MS`), when the process ends, or when the order changes. The time limit is there
   because the accessibility service lives for days, so "until the process ends" alone would become a standing
   choice. Picking the mic the order would use anyway clears the override.
-- **Picker** (`MicPicker.kt`): tapping a source chip swaps it for one round icon per connected mic, best first,
-  the one in use filled. It closes after `OPEN_MS` = 6 s. With one mic connected it says so. The floating mic and
-  the keyboard both use it; the chips also show the type's icon. Mid-take a pick pauses, re-routes and resumes as
-  the old toggle did. Icons are Material `usb`, `bluetooth`, `headset_mic`, `smartphone`.
+- **Chip tap** (`Mic.next`, `MicOrder.next`; 1.027, D-2026-11-07-03): one tap moves straight to the next connected
+  mic in the order, going round, on the floating mic and the keyboard alike. With one mic connected it says so. A
+  mic that was unplugged mid-take counts as no current mic, so the tap goes to the first. Mid-take a tap pauses,
+  re-routes and resumes as the old toggle did. The chips show the type's icon: Material `usb`, `bluetooth`,
+  `headset_mic`, `smartphone`. 1.018 to 1.026 opened a row of icons first (`MicPicker.kt`, removed): two taps per
+  switch, which adds up when switching often (Daniel, 2026-11-07).
 - **Controls screen** (`MicOrderView.kt`): one row per type with what is connected, dragged by its handle. The view
   takes the whole gesture, because moving a child that holds the touch cancels it. TalkBack gets Move up and Move
   down actions. Under it, "Android reports:" lists every input with its type number, for a mic that doesn't appear.
@@ -397,6 +400,35 @@ D-2026-11-06-01, B-95.
 - **Transcription Mode** keeps its own `Prefs.tmMic`; its Automatic now follows the order.
 - `Mic.inputs` also accepts `TYPE_USB_ACCESSORY` (as USB) and the line and aux types (as Wired).
 - Compiled, and `MicOrderTest` passed, in CI (V, 2026-11-06). 1.018 installed on a OnePlus Nord 3 (V). The drag list, picker and USB routing have not been exercised on a device yet (I).
+
+## One open take across the keyboard and the floating mic (1.027, 2026-11-07)
+
+Daniel, 2026-11-07: starting a take in the keyboard and then tapping the floating mic did not start a recording in
+the floating mic. R-2026-11-07-1, B-97, `docs/debug-log/2026-11-07-floating-mic-during-keyboard-take.md`.
+
+- **Rule:** the floating mic's `startRecording` calls `VoiceImeService.yieldMic()` first. An open keyboard take,
+  recording or paused, is dropped, audio included, and the keyboard's status line says so. Text type-as-you-go has
+  already put in stays. Takes still landing in the keyboard finish.
+- **Order matters:** the yield comes before `Mic.prepare`, because the keyboard's `dropTake` calls `Mic.release`,
+  which would otherwise close the Bluetooth link just opened for the new take.
+- **How they reach each other:** both services run in the app's one process and call this on the main thread, so
+  `VoiceImeService.running` is a plain companion field, set in `onCreate` and cleared in `onDestroy`.
+- **One way only:** a take open in the floating mic is not ended when the keyboard starts one. Auto-start would
+  then drop a floating mic take just by opening the keyboard.
+- A remote or bound key that starts a floating mic take goes through the same path, so it ends a keyboard take too.
+- Compiled (V, 2026-11-07). Not run on a device (I).
+
+## Floating mic bar colours (1.027, 2026-11-07)
+
+Daniel, 2026-11-07: a stop square reads as "stop", not "send it to be transcribed". R-2026-11-07-2, B-98.
+
+- During a take the mic is `ic_send` (Material `send`) on `hebrish_green`, recording or paused; it still pulses
+  while recording. It was `ic_stop` on `bubble_recording` red.
+- Retake is `bubble_retake`, now `#B35400`, the orange of `Prefs.BUBBLE_COLORS`, instead of amber `#B26A00`. The
+  keyboard shares this colour. Pause is filled with `accent` blue, turning `ime_paused` gold on Resume as it does
+  in the keyboard. Discard is unchanged.
+- The keyboard's mic is still a red stop: the request was for the overlay only.
+- Compiled (V, 2026-11-07). Not seen on a device (I).
 
 ## Sound, microphone and buttons (0.6.0, 2026-10-20)
 

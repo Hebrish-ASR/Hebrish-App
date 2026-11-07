@@ -29,6 +29,13 @@ object MicOrder {
     fun <T> rank(items: List<T>, order: List<MicKind>, kind: (T) -> MicKind?): List<T> =
         items.sortedBy { i -> kind(i)?.let { order.indexOf(it) } ?: order.size }
 
+    /**
+     * What a source chip's tap moves to: the item after the current one, going round. With none
+     * current (the mic in use was unplugged) it is the first. Null only for an empty list.
+     */
+    fun <T> next(items: List<T>, isCurrent: (T) -> Boolean): T? =
+        if (items.isEmpty()) null else items[(items.indexOfFirst(isCurrent) + 1) % items.size]
+
     /** Whether a one-off choice last used at [usedAt] still holds at [now]. */
     fun sessionLive(usedAt: Long, now: Long) = now - usedAt in 0 until SESSION_MS
 }

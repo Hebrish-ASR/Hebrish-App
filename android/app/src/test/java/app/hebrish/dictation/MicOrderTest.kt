@@ -34,6 +34,17 @@ class MicOrderTest {
         assertEquals(listOf("buds", "usb", "other"), MicOrder.rank(listOf("other", "usb", "buds"), order) { kinds[it] })
     }
 
+    @Test fun nextGoesRoundInOrder() {
+        val mics = listOf("phone", "buds", "usb")
+        assertEquals("buds", MicOrder.next(mics) { it == "phone" })
+        assertEquals("usb", MicOrder.next(mics) { it == "buds" })
+        assertEquals("phone", MicOrder.next(mics) { it == "usb" })
+    }
+
+    @Test fun nextWithNoCurrentMicIsTheFirst() = assertEquals("phone", MicOrder.next(listOf("phone", "buds")) { it == "gone" })
+
+    @Test fun nextOfNothingIsNull() = assertEquals(null, MicOrder.next(emptyList<String>()) { true })
+
     @Test fun sessionLapsesAfterItsWindow() {
         assertTrue(MicOrder.sessionLive(1_000, 1_000 + MicOrder.SESSION_MS - 1))
         assertFalse(MicOrder.sessionLive(1_000, 1_000 + MicOrder.SESSION_MS))

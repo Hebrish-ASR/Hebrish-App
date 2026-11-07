@@ -66,15 +66,6 @@
             android:textColor="@color/ime_text"
             android:textSize="12sp" />
 
-        <LinearLayout
-            android:id="@+id/source_picker"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="4dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:visibility="gone" />
-
         <ImageButton
             android:id="@+id/settings"
             android:layout_width="32dp"

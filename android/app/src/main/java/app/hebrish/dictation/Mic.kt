@@ -10,7 +10,7 @@ import app.hebrish.core.Recorder
 /**
  * Which microphone a take uses. The standing preference is an order of mic *types*
  * ([MicOrder], Prefs.micOrder, set on the Controls screen): the first type with a mic connected
- * wins. A source chip's picker overrides that for the session ([choose]). Transcription Mode
+ * wins. Tapping a source chip overrides that for the session ([next], [choose]). Transcription Mode
  * keeps its own choice, Prefs.tmMic: [AUTO] (follow the order) or a device key from [key].
  *
  * USB mics need no permission beyond RECORD_AUDIO: Android's own USB audio stack exposes them as
@@ -82,11 +82,22 @@ object Mic {
         session = null
     }
 
-    /** Connected mics, best first: what a source chip's picker offers. */
+    /** Connected mics, best first: what a source chip goes through. */
     fun choices(ctx: Context): List<AudioDeviceInfo> = MicOrder.rank(inputs(ctx), order(ctx)) { kind(it) }
 
     /**
-     * One-off choice from a source chip's picker: a device [key], or null to follow the order.
+     * The mic one tap on a source chip moves to from [current]: the next connected one in the
+     * order, going round. Null when there is no other mic to move to. A null [current] is the
+     * system default, the phone's mic, as in [icon].
+     */
+    fun next(ctx: Context, current: AudioDeviceInfo?): AudioDeviceInfo? {
+        val all = choices(ctx)
+        if (all.size < 2) return null
+        return MicOrder.next(all) { d -> if (current == null) kind(d) == MicKind.PHONE else key(d) == key(current) }
+    }
+
+    /**
+     * One-off choice from a source chip: a device [key], or null to follow the order.
      * Held in memory for the session, which ends after [MicOrder.SESSION_MS] with no take, when
      * the app's process ends, or when the order is changed. Services live for days, so "until the
      * process ends" alone would quietly turn it into a standing choice.
