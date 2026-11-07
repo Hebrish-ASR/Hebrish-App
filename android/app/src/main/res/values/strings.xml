@@ -91,7 +91,7 @@
     <string name="insert_last">Insert last transcript</string>
     <!-- Voice keyboard control row (1.007): short labels under the round buttons. -->
     <string name="ime_lbl_record">Record</string>
-    <string name="ime_lbl_stop">Stop</string>
+    <string name="ime_lbl_send">Send</string>
     <string name="ime_lbl_insert">Insert last</string>
     <string name="ime_status_listening">Listening… %1$d:%2$02d</string>
     <string name="ime_status_paused">Paused at %1$d:%2$02d</string>
@@ -486,6 +486,7 @@
     <string name="mic_usb_short">USB %1$s</string>
     <string name="bubble_mic_cd">Microphone: %1$s. Tap for the next microphone.</string>
     <string name="bubble_cd_send">Send for transcription</string>
+    <string name="bubble_moved_to_ime">Take dropped: the keyboard is recording.</string>
     <string name="ime_moved_to_bubble">Take dropped: the floating mic is recording.</string>
     <string name="bubble_no_headset">No other mic is connected.</string>
     <string name="controls_sound">Sounds and vibration</string>

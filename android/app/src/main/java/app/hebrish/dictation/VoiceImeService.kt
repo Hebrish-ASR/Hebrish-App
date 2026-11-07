@@ -254,7 +254,8 @@ class VoiceImeService : InputMethodService() {
             passwordField -> show(getString(R.string.ime_password), busy = false)
             !ModelStore.isReady(this) -> show(getString(R.string.ime_no_model), busy = false)
             !hasMic() -> show(getString(R.string.ime_no_permission), busy = false)
-            Prefs.autoStart(this) -> startRecording()
+            // A floating mic take isn't dropped by a field gaining focus, only by a tap on this mic.
+            Prefs.autoStart(this) && !FloatingMicService.takeOpen -> startRecording()
             else -> { show(getString(R.string.ime_tap_to_speak), busy = false); preload() }
         }
         renderTake()
@@ -303,6 +304,8 @@ class VoiceImeService : InputMethodService() {
 
     private fun startRecording(cue: Feedback.Cue = Feedback.Cue.START) {
         if (passwordField) return show(getString(R.string.ime_password), busy = false)
+        // First, so the floating mic's Mic.release can't close a Bluetooth link opened for this take.
+        FloatingMicService.yieldMic()
         preload()
         var t: Take? = null
         val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
@@ -628,7 +631,7 @@ class VoiceImeService : InputMethodService() {
      * The control row (1.007): the five buttons are always there, so the keyboard keeps one
      * height; the ones that don't apply now are dimmed and disabled. Discard / Retake / Pause
      * while a take is open, Insert last when idle and there is one. The mic is green with a mic
-     * when no take is open and red with a stop square while one is.
+     * when no take is open and green with Send while one is (1.027; a red stop square before).
      */
     private fun renderTake() {
         if (!::pauseBtn.isInitialized) return
@@ -641,9 +644,10 @@ class VoiceImeService : InputMethodService() {
         pauseBtn.setImageResource(if (paused) R.drawable.ic_play else R.drawable.ic_pause)
         pauseBtn.backgroundTintList = tint(if (paused) R.color.ime_paused else R.color.ime_pause)
         pauseLbl.setText(if (paused) R.string.resume else R.string.pause)
-        mic.setImageResource(if (open) R.drawable.ic_stop_round else R.drawable.ic_mic)
-        if (!flashing) mic.backgroundTintList = tint(if (open) R.color.bubble_recording else R.color.ime_mic_idle)
-        micLbl.setText(if (open) R.string.ime_lbl_stop else R.string.ime_lbl_record)
+        mic.setImageResource(if (open) R.drawable.ic_send else R.drawable.ic_mic)
+        mic.contentDescription = getString(if (open) R.string.bubble_cd_send else R.string.cd_mic)
+        if (!flashing) mic.backgroundTintList = tint(R.color.ime_mic_idle)
+        micLbl.setText(if (open) R.string.ime_lbl_send else R.string.ime_lbl_record)
     }
 
     private fun enable(b: View, on: Boolean) {

@@ -267,7 +267,7 @@ Compiled with `assembleDebug` (V, 2026-10-20, JDK 21); **not yet run on a device
 everything below that describes runtime behaviour).
 
 - **Controls:** idle mic → tap starts a take. Open take: mic = green Send (transcribe + insert; a red Stop
-  until 1.027, see "Floating mic bar colours"), and a
+  until 1.027, see "Take controls: Send and colours"), and a
   bar with timer, Pause/Resume (`Recorder.pause`/`start`, as in the IME), Retake (cancel + new
   take into the same target field), Discard. Idle long-press = insert `Prefs.lastTranscript`.
 - **Position (0.4.0):** `Prefs.bubbleSide` (`left`/`right`/`free`), `bubbleY` (0–1 of
@@ -406,19 +406,20 @@ D-2026-11-06-01, B-95.
 Daniel, 2026-11-07: starting a take in the keyboard and then tapping the floating mic did not start a recording in
 the floating mic. R-2026-11-07-1, B-97, `docs/debug-log/2026-11-07-floating-mic-during-keyboard-take.md`.
 
-- **Rule:** the floating mic's `startRecording` calls `VoiceImeService.yieldMic()` first. An open keyboard take,
-  recording or paused, is dropped, audio included, and the keyboard's status line says so. Text type-as-you-go has
-  already put in stays. Takes still landing in the keyboard finish.
-- **Order matters:** the yield comes before `Mic.prepare`, because the keyboard's `dropTake` calls `Mic.release`,
-  which would otherwise close the Bluetooth link just opened for the new take.
+- **Rule:** the newest deliberate start wins, in both directions. Each service's `startRecording` first calls the
+  other's `yieldMic()` (`VoiceImeService.yieldMic`, `FloatingMicService.yieldMic`). An open take there, recording or
+  paused, is dropped, audio included, and that side says so (keyboard status line, floating mic toast). Text
+  type-as-you-go has already put in stays. Takes still landing there finish.
+- **Order matters:** the yield comes before `Mic.prepare`, because `dropTake` calls `Mic.release`, which would
+  otherwise close the Bluetooth link just opened for the new take.
 - **How they reach each other:** both services run in the app's one process and call this on the main thread, so
-  `VoiceImeService.running` is a plain companion field, set in `onCreate` and cleared in `onDestroy`.
-- **One way only:** a take open in the floating mic is not ended when the keyboard starts one. Auto-start would
-  then drop a floating mic take just by opening the keyboard.
+  each has a plain companion field `running`, set when it starts and cleared in `onDestroy`.
+- **Auto-start holds back:** the keyboard's auto-start doesn't fire while `FloatingMicService.takeOpen`, so a field
+  gaining focus can't throw away a long floating mic take. A tap on the keyboard's mic does take over.
 - A remote or bound key that starts a floating mic take goes through the same path, so it ends a keyboard take too.
 - Compiled (V, 2026-11-07). Not run on a device (I).
 
-## Floating mic bar colours (1.027, 2026-11-07)
+## Take controls: Send and colours (1.027, 2026-11-07)
 
 Daniel, 2026-11-07: a stop square reads as "stop", not "send it to be transcribed". R-2026-11-07-2, B-98.
 
@@ -427,7 +428,9 @@ Daniel, 2026-11-07: a stop square reads as "stop", not "send it to be transcribe
 - Retake is `bubble_retake`, now `#B35400`, the orange of `Prefs.BUBBLE_COLORS`, instead of amber `#B26A00`. The
   keyboard shares this colour. Pause is filled with `accent` blue, turning `ime_paused` gold on Resume as it does
   in the keyboard. Discard is unchanged.
-- The keyboard's mic is still a red stop: the request was for the overlay only.
+- The keyboard matches (Daniel, 2026-11-07): its mic is the same green Send, labelled Send, and Pause the same blue
+  (`ime_pause`, now `#24527A`, was slate `#3E4C59`). `bubble_recording` red and `ic_stop_round` are gone. Try it and
+  Transcription Mode keep their stop squares, which do stop a recording.
 - Compiled (V, 2026-11-07). Not seen on a device (I).
 
 ## Sound, microphone and buttons (0.6.0, 2026-10-20)

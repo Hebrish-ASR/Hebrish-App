@@ -99,8 +99,8 @@ import android.widget.Toast
  * and decoder; a later take's text waits in [Take.waiting] until every earlier one has landed, so
  * the texts go in in order.
  *
- * One open take (1.027): starting a take here ends one open in the keyboard, so the two never
- * record at once ([VoiceImeService.yieldMic]).
+ * One open take (1.027): starting a take here ends one open in the keyboard, and the other way
+ * round, so the two never record at once ([VoiceImeService.yieldMic], [yieldMic]).
  */
 class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPreferenceChangeListener {
     /** TRANSCRIBING: no take open, earlier takes still decoding ([finishing]). */
@@ -186,6 +186,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     private val open get() = state == State.RECORDING || state == State.PAUSED
 
     override fun onServiceConnected() {
+        running = this
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         Prefs.listen(this, this)
         addBubble()
@@ -217,6 +218,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
     }
 
     override fun onDestroy() {
+        if (running === this) running = null
         if (screenOffRegistered) runCatching { unregisterReceiver(screenOff) }
         screenOffRegistered = false
         Prefs.unlisten(this, this)
@@ -406,7 +408,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             setOnClickListener { action() }
             setOnTouchListener(Drag({ performClick() }))
         }
-        pauseBtn = button(R.drawable.ic_pause, R.string.pause, R.color.accent) { togglePause() }
+        pauseBtn = button(R.drawable.ic_pause, R.string.pause, R.color.ime_pause) { togglePause() }
         source = TextView(themed).apply {
             setTextColor(getColor(R.color.ime_text))
             textSize = 12f
@@ -848,6 +850,18 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         startRecording(Feedback.Cue.RESTART, keep ?: focusedField()?.takeIf { !it.isPassword })
     }
 
+    /**
+     * The keyboard is starting a take, so this one gives up the mic: dropped, as Discard does, with
+     * no cue of its own because the keyboard gives the start cue. Earlier takes still landing finish.
+     */
+    private fun yieldToKeyboard() {
+        if (!open) return
+        dropTake()
+        state = settled()
+        toast(getString(R.string.bubble_moved_to_ime))
+        render()
+    }
+
     private fun discard() {
         if (!open) return
         dropTake()
@@ -1142,7 +1156,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         mic.contentDescription = getString(if (open) R.string.bubble_cd_send else R.string.cd_mic)
         pauseBtn.setImageResource(if (state == State.PAUSED) R.drawable.ic_play else R.drawable.ic_pause)
         pauseBtn.contentDescription = getString(if (state == State.PAUSED) R.string.resume else R.string.pause)
-        (pauseBtn.background as GradientDrawable).setColor(getColor(if (state == State.PAUSED) R.color.ime_paused else R.color.accent))
+        (pauseBtn.background as GradientDrawable).setColor(getColor(if (state == State.PAUSED) R.color.ime_paused else R.color.ime_pause))
         r.alpha = if (state == State.IDLE && !waiting) Prefs.bubbleAlpha(this) / 100f else 1f
         if (state != State.RECORDING) setLevel(0f)
         if (state == State.RECORDING) { if (!pulse.isStarted) pulse.start() } else { pulse.cancel(); micBg.alpha = 255 }
@@ -1189,7 +1203,19 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
 
     private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
 
-    private companion object {
+    companion object {
+        /** The live service. Same process and main thread as the keyboard. */
+        private var running: FloatingMicService? = null
+
+        /** A take is open here: the keyboard's auto-start holds back for it. */
+        val takeOpen get() = running?.open == true
+
+        /**
+         * Ends a take open in the floating mic, if any. Two takes can't share the mic: see
+         * docs/maintaining.md, "One open take across the keyboard and the floating mic".
+         */
+        fun yieldMic() { running?.yieldToKeyboard() }
+
         /** Padding inside the bubble's window, around the mic and the bar. */
         const val PAD_DP = 4
         const val TAG = "HebrishFloatingMic"

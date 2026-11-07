@@ -36,8 +36,8 @@ Reading both services' start paths after Daniel's report (2026-11-07). Not repro
 
 ## Fix
 
-The floating mic's `startRecording` first calls `VoiceImeService.yieldMic()`, which drops an open keyboard take. It runs
-before `Mic.prepare`, so the keyboard's `Mic.release` can't close a link opened for the new take. The rule is in
+Each service's `startRecording` first calls the other's `yieldMic()`, which drops a take open there. It runs before
+`Mic.prepare`, so the other side's `Mic.release` can't close a link opened for the new take. The rule is in
 `android/docs/maintaining.md`, "One open take across the keyboard and the floating mic".
 
 ## Verified / not verified

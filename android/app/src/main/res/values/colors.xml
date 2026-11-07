@@ -6,7 +6,6 @@
     <color name="ime_key">#33363B</color>
     <color name="ime_text">#E8EAED</color>
     <!-- Floating mic while a take is open. -->
-    <color name="bubble_recording">#C62828</color>
     <!-- Retake flash (0.6.0): bar / status line for a second after Retake. Dark amber, so ime_text stays readable. -->
     <color name="bubble_retake">#B35400</color>
     <!-- Floating mic bar (0.7.2): Discard's own background, so it stands apart from the bar. Retake uses bubble_retake. -->
@@ -14,7 +13,7 @@
     <!-- Voice keyboard control row (1.007, Daniel 2026-10-27: colour-coded, one row, nicer than the
          old blue mic). Mic: green idle, red while a take is open. -->
     <color name="ime_mic_idle">#0F6B5C</color>
-    <color name="ime_pause">#3E4C59</color>
+    <color name="ime_pause">#24527A</color>
     <color name="ime_paused">#C8901C</color>
     <color name="ime_insert">#2F5D50</color>
     <!-- Keyboard key icon (1.019): brand dark.gold, so the way back to the keyboard stands out. -->

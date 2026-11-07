@@ -177,7 +177,7 @@ object Prefs {
     /** Colour of the idle mic (ARGB), one of [BUBBLE_COLORS]; during a take it is always red. */
     fun bubbleColor(ctx: Context) = sp(ctx).getInt("bubble_color", BUBBLE_COLORS[0])
     fun setBubbleColor(ctx: Context, v: Int) = sp(ctx).edit().putInt("bubble_color", v).apply()
-    /** Hebrish blue (R.color.accent, the 0.4.0 colour), Hebrish green, purple, orange, slate, black. No red: that means recording. */
+    /** Hebrish blue (R.color.accent, the 0.4.0 colour), Hebrish green, purple, orange, slate, black. No red: it reads as an error or a stop. */
     val BUBBLE_COLORS = listOf(0xFF24527A, 0xFF0F6B5C, 0xFF6A3FA0, 0xFFB35400, 0xFF4A4F57, 0xFF111214).map { it.toInt() }
 
     /** Height of the floating mic: 0 = top of the screen, 1 = bottom. */
