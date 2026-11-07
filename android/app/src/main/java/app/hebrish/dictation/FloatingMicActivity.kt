@@ -77,7 +77,7 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
 
         text(R.string.bubble_icon, top = 12)
         iconChoice = choice(listOf(Prefs.ICON_MIC to R.string.bubble_icon_mic, Prefs.ICON_LOGO to R.string.bubble_icon_logo,
-            Prefs.ICON_AYIN to R.string.bubble_icon_ayin), iconIds, { Prefs.bubbleIcon(this) }) { Prefs.setBubbleIcon(this, it) }
+            Prefs.ICON_HE to R.string.bubble_icon_he), iconIds, { Prefs.bubbleIcon(this) }) { Prefs.setBubbleIcon(this, it) }
         small(R.string.bubble_icon_hint)
 
         size = stepped(Prefs.SIZE_MIN, Prefs.SIZE_MAX, { Prefs.bubbleSize(this) }, { Prefs.setBubbleSize(this, it) }) {

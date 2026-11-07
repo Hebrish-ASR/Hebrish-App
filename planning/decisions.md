@@ -9,6 +9,13 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-07-01: The Hebrew name is היבריש, and the floating mic's Hebrew icon is ה
+
+**Decision:** the project's Hebrew name changes from עבריש to היבריש, so the Android floating mic's Hebrew letter icon changes from ע to ה (`ic_bubble_he`, label "ה (he)"). The stored preference value stays `ayin` (`Prefs.ICON_HE`).
+**Why:** Daniel's choice of Hebrew spelling; one yud because a double yud reads as "hay-" and the English says "hee-".
+**Alternatives:** הייבריש (two yuds); renaming the stored value with a migration (no benefit to users).
+**By:** Daniel.
+
 ### D-2026-11-06-01: Rank mic types, not devices, with USB first
 
 - **Decision:** the standing mic preference on Android is an order of mic types (USB, Bluetooth, wired, phone),

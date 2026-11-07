@@ -1081,9 +1081,11 @@ objective, in his words: "the expansion happens in the least obtrusive part of t
   buttons (grip, Pause, the held-transcript ×) get an oval backdrop and the timer and Insert a
   rounded one, in `ime_bg` at `BACKDROP_ALPHA` 230/255 (`styleBackdrops()`, one drawable per
   view). Retake/Discard and the chip already have fills.
-- **Icons** (`Prefs.bubbleIcon`: `mic` default, `logo`, `ayin`). `ic_bubble_h` is the mark's H
-  path (from `ic_hebrish`) on a 36-unit viewport cropped round it; `ic_bubble_ayin` is U+05E2
-  from Noto Sans Hebrew Bold (the brand's Hebrew face), outline extracted with fontTools onto the
+- **Icons** (`Prefs.bubbleIcon`: `mic` default, `logo`, `ayin`; the stored value `ayin` is
+  `Prefs.ICON_HE` and now shows the letter he). `ic_bubble_h` is the mark's H
+  path (from `ic_hebrish`) on a 36-unit viewport cropped round it; `ic_bubble_he` is U+05D4
+  (replaced the ayin U+05E2 on 2026-11-07, when the Hebrew name became היבריש; the stored value was
+  kept so existing settings still work) from Noto Sans Hebrew Bold (the brand's Hebrew face), outline extracted with fontTools onto the
   same 64 grid. Both are drawn cream on `hebrish_green`, ignoring the colour swatches; during a
   take the mic is red with Stop as before. Rendered as SVG to check centring (2026-10-24).
 - **Defaults and ranges:** side `left` (was right), `bubbleX` 0.1 (was 0.9), size 44 dp (was 56),

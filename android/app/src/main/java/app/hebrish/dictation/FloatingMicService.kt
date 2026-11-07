@@ -65,7 +65,7 @@ import android.widget.Toast
  * up or down towards the middle, a narrow strip instead of a line across the text
  * (Prefs.bubbleBarDirection); its buttons can be scaled down (Prefs.bubbleBarScale), and a clear
  * bar drops the background so only the buttons, each on its own backdrop, cover anything
- * (Prefs.bubbleBarClear). The idle mic can show the Hebrish H or the letter ayin instead of the
+ * (Prefs.bubbleBarClear). The idle mic can show the Hebrish H or the letter he instead of the
  * mic glyph (Prefs.bubbleIcon).
  *
  * Staying up (0.7.3): with "only while typing" on, the bubble appears when a field gets focus and
@@ -1156,7 +1156,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         icon.setImageResource(when {
             open -> R.drawable.ic_stop
             iconStyle == Prefs.ICON_LOGO -> R.drawable.ic_bubble_h
-            iconStyle == Prefs.ICON_AYIN -> R.drawable.ic_bubble_ayin
+            iconStyle == Prefs.ICON_HE -> R.drawable.ic_bubble_he
             else -> R.drawable.ic_mic
         })
         icon.visibility = if (state == State.TRANSCRIBING) View.GONE else View.VISIBLE

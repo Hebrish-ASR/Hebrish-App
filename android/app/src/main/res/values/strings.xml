@@ -177,7 +177,7 @@
     <string name="bubble_icon">Icon</string>
     <string name="bubble_icon_mic">Mic</string>
     <string name="bubble_icon_logo">Hebrish H</string>
-    <string name="bubble_icon_ayin">ע (ayin)</string>
+    <string name="bubble_icon_he">ה (he)</string>
     <string name="bubble_icon_hint">The H and ע icons are always on Hebrish green. While you talk the mic shows Stop.</string>
     <string name="bubble_bar">While you talk</string>
     <string name="bubble_bar_body">Tapping the mic opens a bar with Pause, Retake, Discard and a timer. Drag the bar by its grip (⠿) to move it off what you are writing.</string>

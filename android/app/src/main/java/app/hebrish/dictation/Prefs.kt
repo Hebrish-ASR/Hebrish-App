@@ -224,9 +224,9 @@ object Prefs {
     const val ICON_MIC = "mic"
     /** The H of the Hebrish mark on Hebrish green. */
     const val ICON_LOGO = "logo"
-    /** The Hebrew letter ayin (the first letter of עבריש) on Hebrish green. */
-    const val ICON_AYIN = "ayin"
-    /** What the idle mic shows (1.000). [ICON_LOGO] and [ICON_AYIN] are always on Hebrish green; [bubbleColor] is for [ICON_MIC]. */
+    /** The Hebrew letter he (the first letter of היבריש) on Hebrish green. The stored value stays "ayin" so existing settings keep working (the icon was an ayin until 2026-11-07). */
+    const val ICON_HE = "ayin"
+    /** What the idle mic shows (1.000). [ICON_LOGO] and [ICON_HE] are always on Hebrish green; [bubbleColor] is for [ICON_MIC]. */
     fun bubbleIcon(ctx: Context): String = sp(ctx).getString("bubble_icon", ICON_MIC) ?: ICON_MIC
     fun setBubbleIcon(ctx: Context, v: String) = sp(ctx).edit().putString("bubble_icon", v).apply()
 

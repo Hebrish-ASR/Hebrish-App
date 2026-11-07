@@ -1,0 +1,7 @@
+<!-- Floating mic icon "he" (replaced the ayin icon 2026-11-07): the Hebrew letter he (U+05D4), the first letter of היבריש, from Noto Sans Hebrew Bold
+     (the brand's Hebrew face), outline extracted with fontTools onto a 64 grid (30 units tall, centred), cropped like ic_bubble_h. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="36" android:viewportHeight="36">
+    <group android:translateX="-14" android:translateY="-14">
+        <path android:fillColor="#FFFBF8F2" android:pathData="M38.09 47V27.7Q38.09 23.22 33.82 23.22H18.34L19.19 17H34.21Q45.66 17 45.66 27.55V47ZM18.99 47V30.83L26.55 30.43V47Z"/>
+    </group>
+</vector>
