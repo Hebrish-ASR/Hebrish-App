@@ -40,7 +40,9 @@ abstract class Page : Activity() {
         }
         val scroll = ScrollView(this).apply { fitsSystemWindows = true; addView(column) }
         if (this is MainActivity) {
-            setContentView(FrameLayout(this).apply { addView(scroll); addDrawer(this) })
+            val root = FrameLayout(this).apply { addView(scroll); addDrawer(this) }
+            setContentView(root)
+            if (savedInstanceState == null) Splash.play(this, root)
             actionBar?.setDisplayHomeAsUpEnabled(true)
             actionBar?.setHomeAsUpIndicator(R.drawable.ic_menu)
             actionBar?.setHomeActionContentDescription(R.string.cd_menu)

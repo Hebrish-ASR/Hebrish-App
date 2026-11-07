@@ -1806,3 +1806,34 @@ Run on the Nord 3 (Android 16, three-button navigation, 2026-11-06, a `workflow_
 Settings search and Notepad Free (V; `docs/screenshots/android-voice-keyboard-1.019.png`). Daniel
 checked it by eye: "looks great". Not run: long-press delete on a device, the gold key's tap (the
 same `leave()` as before), and gesture navigation.
+
+## Opening spin and the download bar (1.026, 2026-11-07)
+
+Daniel, 2026-11-07: "the logo kind of just turns round for a second", and download progress that
+is "a little bit smoother". Same design on the desktop (`desktop/docs/maintaining.md`, same heading).
+
+- **Opening spin** (`Splash.kt`, called from `Page.onCreate` for `MainActivity` when
+  `savedInstanceState == null`): one 360° turn in 900 ms, then a 220 ms fade. Android 12+ always
+  draws its own splash, so the turn runs on that screen's icon through
+  `splashScreen.setOnExitAnimationListener` (no androidx, one splash rather than two).
+  `AppTheme.Launch` (`values-v31/styles.xml`, empty in `values/`) sets the icon and background,
+  and only `MainActivity` uses it. Android 9 to 11 get a cover view with the same drawable.
+  `drawable/splash_mark.xml` is `ic_hebrish` on a 120 grid so the rounded square fits the circle
+  Android 12+ allows a splash icon.
+- **Download bar** (`GlideBar.kt`): 6 dp rounded track, the fill eases 350 ms to each new value,
+  a sheen crosses it every 1.6 s. `ModelsActivity.render()` rebuilds every card, which would
+  restart the bar on each tick, so `onDownload()` sends a tick of the running download straight to
+  the bar and its status line and redraws only on any other status. `barShown` carries the fill
+  across a full redraw. The status line now ends in a percentage.
+
+(V) Kotlin and resources compile (`:app:compileFdroidDebugKotlin`, `:app:processFdroidDebugResources`).
+(I) Neither has been run on a device: no device was attached and the emulator is too heavy for
+that machine. Check first: the icon is not clipped on Android 12+, and the cover on Android 9 to 11.
+A full local `assembleDebug` needs `android/third_party` checked out, or CMake fails at configure.
+
+Tidy-up in the same release: the label is now *Insert as you go*, the desktop's name for it (the
+pref is still `typeAsYouGo`); the Retake flash runs on `main`, so `onDestroy` clears it.
+Left alone on purpose: `TranscriptionService.onStartCommand` stops before `startForeground` when the
+tape is no longer active. A review suspected a `ForegroundServiceDidNotStartInTimeException` race
+there. Starting a microphone-type service first could fail in the background instead, so it needs
+tracing on a device before any change.

@@ -8,7 +8,7 @@
     <string name="url_heliboard">https://github.com/HeliBorg/HeliBoard/releases</string>
     <string name="url_source">https://github.com/Hebrish-ASR/Hebrish-App</string>
     <string name="url_terms">https://hebrish.app/terms</string>
-    <string name="download_terms">By downloading the code-switching model you agree to the Hebrish terms of use: free for personal use, research, education and small non-profits; commercial use, including telephony, needs a licence.</string>
+    <string name="download_terms">By downloading a Hebrish model you agree to the Hebrish terms of use: free for personal use, research, education and small non-profits; commercial use, including telephony, needs a licence.</string>
     <string name="terms_title">Terms of use</string>
     <string name="licence_notice_title">How Hebrish is licensed</string>
     <string name="licence_notice_body">The models are CC BY-NC 4.0 plus the Hebrish terms of use: free for personal use, research, education and small non-profits, with credit.\n\nCommercial use needs a paid licence, and so do health funds and public bodies. Using Hebrish in a commercial project, or not sure? Check first: access@hebrish.app.\n\nThe app itself is open source under MIT. Details: hebrish.app/licensing</string>
@@ -25,7 +25,7 @@
     <string name="delete">Delete</string>
     <string name="model_failed">Download failed: %1$s. Tap Download to resume.</string>
     <string name="download">Download</string>
-    <string name="model_downloading_version">Downloading %1$s… %2$d / %3$d MB</string>
+    <string name="model_downloading_version">Downloading %1$s… %2$d / %3$d MB · %4$d%%</string>
     <string name="check_update">Check for update</string>
     <string name="model_moving">Moving models… %1$d / %2$d MB</string>
     <string name="location_title">Model location</string>
@@ -67,7 +67,7 @@
     <string name="links">Model and source</string>
     <string name="open_model">Model card</string>
     <string name="open_source">Source code</string>
-    <string name="hebrish_body">Using the code-switching model? Its website has the results and every model, dataset and demo. Report a bug, ask for a feature or send feedback by email to feedback@hebrish.app, suggest a Hebrew word it gets wrong, or send voice samples to help it learn more voices.</string>
+    <string name="hebrish_body">Using a Hebrish model? The website has the results and every model, dataset and demo. Report a bug, ask for a feature or send feedback by email to feedback@hebrish.app, suggest a Hebrew word it gets wrong, or send voice samples to help it learn more voices.</string>
     <string name="hebrish_site">Hebrish website</string>
     <string name="hebrish_bug">Report a bug</string>
     <string name="hebrish_feature">Request a feature</string>
@@ -178,7 +178,7 @@
     <string name="bubble_icon_mic">Mic</string>
     <string name="bubble_icon_logo">Hebrish H</string>
     <string name="bubble_icon_he">ה (he)</string>
-    <string name="bubble_icon_hint">The H and ע icons are always on Hebrish green. While you talk the mic shows Stop.</string>
+    <string name="bubble_icon_hint">The H and ה icons are always on Hebrish green. While you talk the mic shows Stop.</string>
     <string name="bubble_bar">While you talk</string>
     <string name="bubble_bar_body">Tapping the mic opens a bar with Pause, Retake, Discard and a timer. Drag the bar by its grip (⠿) to move it off what you are writing.</string>
     <string name="bubble_bar_along">Along the edge</string>
@@ -192,7 +192,7 @@
     <string name="bubble_colour">Mic colour</string>
     <string name="bubble_colour_cd">Mic colour %1$d</string>
     <string name="bubble_colour_hint">While you talk the mic is always red.</string>
-    <string name="bubble_options_hint">Long takes, type as you go and ALL CAPS are set on the Voice Typing screen.</string>
+    <string name="bubble_options_hint">Long takes, insert as you go and ALL CAPS are set on the Voice Typing screen.</string>
     <string name="bubble_needs_mic">It also needs the microphone: see the guide.</string>
     <string name="bubble_on_clipboard">This field doesn\'t accept dictation; the text is on the clipboard.</string>
     <!-- Screens (0.4.0): home and the screens it links to -->
@@ -287,7 +287,7 @@
 
     <string name="dictation_long_title">Long dictation</string>
     <string name="dictation_long">Takes can run up to %1$d minutes. While you talk, each stretch of speech is transcribed at the next pause, so when you tap stop only the last few seconds are left to do. The keyboard, the floating mic and Try it all work this way.</string>
-    <string name="dictation_type_as_you_go">Type as you go</string>
+    <string name="dictation_type_as_you_go">Insert as you go</string>
     <string name="dictation_type_as_you_go_hint">Off: the whole take goes in when you tap stop, and Discard throws all of it away. On: each part goes in as soon as it is transcribed, so long dictations appear while you talk; Discard then only drops the part not yet typed.</string>
     <string name="dictation_all_caps">ALL CAPS</string>
     <string name="dictation_noise_title">Noise filter</string>
@@ -297,7 +297,7 @@
     <string name="history_title">Transcription history</string>
     <string name="history_body">Every take is kept on this phone with its text, length, model and how long it took to transcribe. Nothing is uploaded. Export it as a CSV file to save it to Google Drive, Downloads or anywhere the file picker offers.</string>
     <string name="history_keep">Keep transcription history</string>
-    <string name="history_count">%1$d takes kept on this phone (since version 0.8.1).</string>
+    <string name="history_count">%1$d takes kept on this phone.</string>
     <string name="history_export">Export CSV</string>
     <string name="history_clear">Clear history</string>
     <string name="history_export_hint">The CSV has one row per take: time, text, words, audio seconds, model, where you dictated, and the transcription timings (decode time, real-time factor, wait after stop) with the device and app version. Same first columns as the desktop app\'s history export.</string>
@@ -331,7 +331,6 @@
     <string name="install_get_apk">Download the latest APK</string>
     <string name="install_web">Install instructions on hebrish.app</string>
 
-    <!-- Try it (TryActivity) -->
     <!-- Transcription Mode (R-2026-10-24-5): long recordings, then transcribe -->
     <string name="title_transcription">Transcription Mode</string>
     <string name="nav_transcription_summary">Record for as long as you need, then transcribe</string>
@@ -433,6 +432,7 @@
     <string name="tm_titles_ask">The title model runs on the phone: a %1$d MB download, and about %2$d MB of memory for a few seconds when you save. Best on Wi-Fi.</string>
     <string name="tm_titles_downloaded">Title model downloaded.</string>
     <string name="tm_titles_download_failed">Couldn\'t download the title model (%1$s).</string>
+    <!-- Try it (TryActivity) -->
     <string name="try_open">Try it now: no setup needed</string>
     <string name="try_open_hint">See what it does before you set it up as a keyboard.</string>
     <string name="try_open_no_model">Try it (download the model first)</string>
@@ -581,7 +581,7 @@
     <string name="setup_model">Sabich (English with Hebrew words and tech vocabulary) is recommended. About 660 MB, once; use Wi-Fi.</string>
     <string name="setup_model_button">Choose and download</string>
     <string name="setup_keyboard_title">Turn on the voice keyboard</string>
-    <string name="setup_keyboard">Switch on Hebrish in your keyboard settings. Then the mic key on Hebrish Keyboard or HeliBoard opens it. You need this or the floating mic, or both.</string>
+    <string name="setup_keyboard">Switch on Hebrish in your keyboard settings. Then the mic key on HeliBoard, or any keyboard with a voice key, opens it. You need this or the floating mic, or both.</string>
     <string name="setup_floating_title">Floating mic</string>
     <string name="setup_floating">A mic over every app, so you keep your usual keyboard. Android 13+ asks you to allow restricted settings first; the guide walks you through it.</string>
     <string name="setup_floating_button">Step by step</string>

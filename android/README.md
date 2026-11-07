@@ -179,7 +179,7 @@ written in Latin script (the v2 tokenizer has no Hebrew characters).
 - **Offline recognition, decoded in pieces.** The model is not a streaming one, but since
   0.4.0 a take is cut at pauses while you talk and each piece is transcribed straight away, so
   after you stop only the last few seconds remain. By default the text goes in at Stop;
-  *Dictation → Type as you go* inserts each piece as soon as it is ready. Takes stop
+  *Dictation → Insert as you go* inserts each piece as soon as it is ready. Takes stop
   automatically at **20 minutes** (90 s before 0.4.0).
 - The first transcription after the process starts loads the 650 MB encoder, which takes a
   few seconds. The floating mic loads it when it starts and whenever a text field gets focus;

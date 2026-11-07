@@ -2363,3 +2363,23 @@ Diagnostics > Benchmarks… opens `ui/benchmark.py`, a separate non-modal window
 - **Storage:** table `benchmarks` in the history database, made by `CREATE TABLE IF NOT EXISTS` like `calibrations`, so no schema bump. Figures only: never the transcript or audio. `file_name` is stored, but the Markdown report leaves it out, as people paste it elsewhere. Clearing history leaves benchmarks.
 - **Why no benchmark CLI:** see D-2026-11-05-05.
 - **Verified (V), 2026-11-05:** real engine through the window off-screen, Sabich v3.0 int8, sherpa-onnx 2.0.1, 4 threads, AMD Ryzen 7 5700U: the 52.86 s `test-codeswitch.flac` took 4.93 s (10.72× real time), peak 1552 MB. The real reference MP3's hash and length match. **Not verified:** the 67-minute reference run end to end, the Record path with a real mic (Stop, Cancel and the 10-minute limit are not tested), Windows, Shakshuka. Tests: `tests/test_benchmark.py`.
+
+## Opening spin and the download bar (1.026, 2026-11-07)
+
+Daniel, 2026-11-07: "the logo kind of just turns round for a second", and download progress that
+is "a little bit smoother". Same design on Android (`android/docs/maintaining.md`, same heading).
+
+- **Opening spin** (`ui/splash.py`): the mark turns once in `SPIN_S` (0.9 s, ease in and out) during
+  its pop-in, and the rings start after that. `MIN_S` went from 0.9 to 1.1 s so the turn finishes.
+- **Download bar** (`ui/glidebar.py`, `GlideBar`): 6 px rounded track, the fill eases 350 ms to each
+  new value, a sheen crosses it every 1.6 s. It replaces `QProgressBar` on the model cards and the
+  paragraph model download in Transcription; the other `QProgressBar`s are job progress, not
+  downloads, and are unchanged. Hiding the bar resets it. The figures moved out of the bar to the
+  status line: "Downloading… 120 / 640 MB · 18%", or "verifying" while a file is hashed.
+
+(V) `tests/test_glidebar.py`; splash frames and the bar rendered off-screen and looked at.
+(I) Not watched live on a desktop or on Windows.
+
+Tidy-up in the same release: the About tagline is `TAGLINE`, as on Android and the splash; About
+has a Privacy link, which Android already had; `save_wav` and two unused imports are gone; the
+`/proc` reads in `benchmark.py` close their files.

@@ -16,8 +16,8 @@ from ..config import APP_NAME, TAGLINE
 from .style import BRAND_GREEN, INK, MUTED, PAPER, display_font
 
 W, H = 420, 260
-POP_S, RING_S = 0.45, 1.6
-MIN_S = 0.9                   # long enough to read, so it doesn't just flash
+POP_S, SPIN_S, RING_S = 0.45, 0.9, 1.6
+MIN_S = 1.1                   # the spin finishes, and it is long enough to read
 
 
 class Splash(QWidget):
@@ -56,10 +56,11 @@ class Splash(QWidget):
         QTimer.singleShot(max(0, int((MIN_S - (time.monotonic() - self._t0)) * 1000)), done)
 
     def _draw_logo(self, p, cx, cy, t):
-        """The mark pops in over POP_S, then a soft ring leaves it every RING_S while loading
+        """The mark pops in over POP_S while turning once round over SPIN_S (Android's twin is
+        Splash.kt: same turn and timing), then a soft ring leaves it every RING_S while loading
         (Daniel, 2026-11-05: the logo, with a little animation, rather than Corn)."""
-        if t > POP_S:
-            phase = ((t - POP_S) % RING_S) / RING_S
+        if t > SPIN_S:
+            phase = ((t - SPIN_S) % RING_S) / RING_S
             half = 44 + 14 * phase
             ring = QColor(BRAND_GREEN)
             ring.setAlphaF(0.35 * (1 - phase))
@@ -72,6 +73,8 @@ class Splash(QWidget):
         p.setRenderHint(QPainter.SmoothPixmapTransform)
         p.setOpacity(min(1.0, t / (POP_S / 2)))
         p.translate(cx, cy)
+        s = min(1.0, t / SPIN_S)                     # ease in and out
+        p.rotate(360 * (4 * s ** 3 if s < 0.5 else 1 - (2 - 2 * s) ** 3 / 2))
         p.scale(scale, scale)
         p.drawPixmap(-44, -44, self._logo)
         p.restore()

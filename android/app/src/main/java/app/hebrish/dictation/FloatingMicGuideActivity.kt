@@ -1,6 +1,5 @@
 package app.hebrish.dictation
 
-import android.Manifest
 import android.os.Build
 import android.view.View
 import android.widget.Button

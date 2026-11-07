@@ -13,7 +13,7 @@ from PySide6.QtCore import QObject, QSize, Qt, QTime, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout,
                                QInputDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit,
-                               QAbstractItemView, QHeaderView, QProgressBar, QPushButton, QScrollArea,
+                               QAbstractItemView, QHeaderView, QPushButton, QScrollArea,
                                QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QTimeEdit,
                                QToolButton, QVBoxLayout, QWidget)
 
@@ -25,6 +25,7 @@ from . import about
 from .mics import MicsCard, fill_combo, in_use
 from .app import ICONS, icon
 from .meter import LevelMeter, verdict
+from .glidebar import GlideBar
 from .icons import line_icon
 from .style import BRAND_GREEN, GOLD, colours, display_font
 
@@ -117,6 +118,8 @@ class _BackupDone(QObject):
 
 
 class MainWindow(QMainWindow):
+    _download_text = ""           # "120 / 640 MB · 18%", for the model card's status line
+
     def __init__(self, ctl):
         super().__init__()
         self.ctl, self.cfg = ctl, ctl.cfg
@@ -1120,7 +1123,7 @@ class MainWindow(QMainWindow):
         status.setTextFormat(Qt.RichText)
         col.addWidget(status)
         self._technical(m, col)
-        pbar = QProgressBar(maximum=1000)
+        pbar = GlideBar()
         pbar.hide()
         col.addWidget(pbar)
         outer.addLayout(col, 1)
@@ -1589,7 +1592,7 @@ class MainWindow(QMainWindow):
             r["use"].style().polish(r["use"])
             here = ctl.downloading_id == m.id
             if here:
-                text = "<b>Downloading…</b>"
+                text = f"<b>Downloading…</b> {self._download_text}"
             elif inst:
                 text = (f"<span style='color:#2e9e5b'>✓ Downloaded</span> · {inst[1].label} · "
                         f"{model_store.disk_usage(m.id) >> 20} MB")
@@ -1643,6 +1646,7 @@ class MainWindow(QMainWindow):
         self.btn_store_default.setVisible(custom)
 
     def progress(self, frac: float, text: str):
+        self._download_text = text
         r = self.model_rows.get(self.ctl.downloading_id or "")
         if r is None:
             return
@@ -1650,8 +1654,8 @@ class MainWindow(QMainWindow):
             r["pbar"].hide()
             return
         r["pbar"].show()
-        r["pbar"].setValue(int(frac * 1000))
-        r["pbar"].setFormat(text)
+        r["pbar"].set_fraction(frac)
+        r["status"].setText(f"<b>Downloading…</b> {text}")
 
     # -- settings ------------------------------------------------------------------
     def _settings_page(self):

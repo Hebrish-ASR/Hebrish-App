@@ -301,9 +301,7 @@ class TranscriptionActivity : Page() {
 
     override fun onDestroy() {
         // Recording in the background carries on; otherwise the file is closed and offered next time.
-        if (!(tape.active && Recording.background(this))) {
-            if (tape.active) Recording.stop(this)
-        }
+        if (tape.active && !Recording.background(this)) Recording.stop(this)
         cancelled = true
         decoder?.cancel()
         // The recording can outlive the screen (background on): stop redrawing views that are gone.

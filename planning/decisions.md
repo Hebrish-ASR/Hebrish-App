@@ -9,6 +9,13 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-07-02: 1.026 is a joint stable release of Android, Ubuntu and Windows
+
+**Decision:** Android and desktop both release as 1.026, and desktop 1.026 is promoted to stable, so every platform is on one version. Android skips 1.020 to 1.025.
+**Why:** Daniel asked for a new stable across all platforms; Windows and the AppImage were still on 1.022. One number shows that they match. Each app can still release on its own afterwards (D-2026-10-24-01).
+**Alternatives:** keep separate numbers (Android 1.020, desktop 1.026), which hides that this is one release.
+**By:** Daniel chose the joint stable release; the shared number was the agent's call.
+
 ### D-2026-11-07-01: The Hebrew name is היבריש, and the floating mic's Hebrew icon is ה
 
 **Decision:** the project's Hebrew name changes from עבריש to היבריש, so the Android floating mic's Hebrew letter icon changes from ע to ה (`ic_bubble_he`, label "ה (he)"). The stored preference value stays `ayin` (`Prefs.ICON_HE`).

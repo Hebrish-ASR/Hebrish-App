@@ -428,7 +428,7 @@ class Controller(QObject):
                 log.exception("paste last failed")
         threading.Thread(target=go, daemon=True).start()
 
-    def _check_field(self, take_text):
+    def _check_field(self):
         """detect_no_field: after a pasted take, ask AT-SPI (off the GUI thread) whether a text
         field had focus; hebrish.focus says why only a definite "no" prompts."""
         from .. import focus
@@ -880,7 +880,7 @@ class Controller(QObject):
                     self._feedback("copied")
             self.last_text = text.upper() if self.cfg["all_caps"] else text
             if self.cfg["out_cursor"] and self.cfg["detect_no_field"]:
-                self._check_field(self.last_text)
+                self._check_field()
             self._maint_save(self.remember(text, samples), samples)
         elif samples is not None:
             with self._guard:
@@ -1128,7 +1128,8 @@ class Controller(QObject):
         self.win.update_model()
 
         def progress(done, total, name):
-            self.sig.progress.emit(done / total, f"{name}: {done >> 20} / {total >> 20} MB")
+            state = "verifying · " if name.startswith("verifying") else ""
+            self.sig.progress.emit(done / total, f"{state}{done >> 20} / {total >> 20} MB · {done * 100 // total}%")
 
         def work():
             try:

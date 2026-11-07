@@ -16,7 +16,6 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import java.io.File
 
@@ -75,7 +74,7 @@ class ModelsActivity : Page() {
 
     override fun onResume() {
         super.onResume()
-        ModelDownload.listener = { render() }
+        ModelDownload.listener = { onDownload(it) }
         ParagraphStore.listener = { renderPost() }
         CleanupStore.listener = { renderPost() }
         if (ModelPrefs.autoCheck(this)) ModelDownload.check(this)
@@ -240,7 +239,26 @@ class ModelsActivity : Page() {
         return if (rel.isEmpty()) root else "$root/$rel"
     }
 
+    /** A tick of the running download moves its bar and line; anything else redraws the cards. */
+    private fun onDownload(s: ModelDownload.Status) {
+        val glide = bar
+        val target = ModelDownload.target?.first
+        if (s is ModelDownload.Status.Running && !ModelDownload.moving && glide != null && target?.id == barFor) {
+            glide.glideTo(fraction(s))
+            barLine?.text = downloadingLine(target!!, s)
+        } else render()
+    }
+
+    private fun fraction(s: ModelDownload.Status.Running) = s.done.toFloat() / s.total.coerceAtLeast(1)
+
+    private fun downloadingLine(m: Catalogue.Model, s: ModelDownload.Status.Running) = getString(
+        R.string.model_downloading_version, listOfNotNull(m.name, ModelDownload.target?.second?.label).joinToString(" "),
+        mb(s.done), mb(s.total), (fraction(s) * 100).toInt())
+
     private fun render() {
+        barShown = bar?.shown ?: 0f
+        bar = null
+        barLine = null
         val s = ModelDownload.status
         val running = s is ModelDownload.Status.Running
         val models = Catalogue.get(this).models
@@ -381,11 +399,7 @@ class ModelsActivity : Page() {
         val state = text("", list)
         state.text = when {
             !m.available -> getString(R.string.model_coming_soon_long)
-            active -> {
-                s as ModelDownload.Status.Running
-                getString(R.string.model_downloading_version,
-                    listOfNotNull(m.name, ModelDownload.target?.second?.label).joinToString(" "), mb(s.done), mb(s.total))
-            }
+            active -> downloadingLine(m, s as ModelDownload.Status.Running)
             ModelDownload.queued(m.id) -> getString(R.string.models_queued)
             s is ModelDownload.Status.Failed && ModelDownload.failedId == m.id -> getString(R.string.model_failed, s.message)
             ready && update != null -> getString(R.string.update_available, update.label, mb(update.totalBytes), installed!!.label)
@@ -393,11 +407,15 @@ class ModelsActivity : Page() {
             else -> getString(R.string.models_not_downloaded, mb(size(m)))
         }
         if (active) {
-            s as ModelDownload.Status.Running
-            list.addView(ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-                max = 1000
-                progress = (s.done * 1000 / s.total.coerceAtLeast(1)).toInt()
+            val carryOn = if (barFor == m.id) barShown else 0f
+            val glide = GlideBar(this).apply { jumpTo(carryOn); glideTo(fraction(s as ModelDownload.Status.Running)) }
+            list.addView(glide, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(6)).apply {
+                topMargin = dp(6)
+                bottomMargin = dp(6)
             })
+            bar = glide
+            barLine = state
+            barFor = m.id
         }
         if (!m.available) { technical(m, card); return }
         val r = row(list)
@@ -413,6 +431,12 @@ class ModelsActivity : Page() {
         if (ready && !inUse && !active) button(R.string.delete, r) { confirmDelete(m) }
         technical(m, card)
     }
+
+    /** The running download's bar and status line, kept so a tick updates them without a redraw (see [onDownload]). */
+    private var bar: GlideBar? = null
+    private var barLine: TextView? = null
+    private var barFor: String? = null
+    private var barShown = 0f
 
     /** Ids of the cards whose Technical details are open; kept across [render]s (downloads redraw often). */
     private val openDetails = mutableSetOf<String>()

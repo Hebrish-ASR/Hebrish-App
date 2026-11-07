@@ -665,7 +665,7 @@ class VoiceImeService : InputMethodService() {
         mic.rotation = 0f
         mic.animate().rotation(-360f).setDuration(500).withEndAction { mic.rotation = 0f }
         flashing = true
-        status.postDelayed({
+        main.postDelayed({
             flashing = false
             status.background = null
             renderTake()

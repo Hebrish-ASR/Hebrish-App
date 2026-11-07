@@ -3,7 +3,7 @@
 import threading
 import time
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import (QDialog, QHBoxLayout, QHeaderView, QLabel, QProgressBar, QPushButton, QTableWidget,
                                QTableWidgetItem, QVBoxLayout)
 

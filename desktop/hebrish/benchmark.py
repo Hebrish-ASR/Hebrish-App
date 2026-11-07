@@ -38,9 +38,10 @@ SAMPLE_EVERY_S = 0.25
 def cpu_name() -> str:
     if sys.platform.startswith("linux"):
         try:
-            for line in open("/proc/cpuinfo"):
-                if line.startswith("model name"):
-                    return line.split(":", 1)[1].strip()
+            with open("/proc/cpuinfo") as f:
+                for line in f:
+                    if line.startswith("model name"):
+                        return line.split(":", 1)[1].strip()
         except OSError:
             pass
     return platform.processor() or platform.machine()
@@ -50,9 +51,10 @@ def rss_mb() -> float | None:
     """Resident memory of this process, MB."""
     if sys.platform.startswith("linux"):
         try:
-            for line in open("/proc/self/status"):
-                if line.startswith("VmRSS:"):
-                    return int(line.split()[1]) / 1024
+            with open("/proc/self/status") as f:
+                for line in f:
+                    if line.startswith("VmRSS:"):
+                        return int(line.split()[1]) / 1024
         except OSError:
             return None
     if sys.platform == "win32":

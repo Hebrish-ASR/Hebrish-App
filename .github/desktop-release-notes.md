@@ -1,6 +1,7 @@
-**1.025: Benchmarks, to see how Hebrish runs on your computer.**
+**1.026: a joint stable release, with a smoother look.**
 
-- **Benchmarks:** a new window, opened from Diagnostics, measures how fast Hebrish transcribes and how much memory and CPU it uses. Only the figures are saved.
-- **Three ways to run it:** the reference file (the first Hebrish podcast episode, which Hebrish recognises, so your result compares directly with other computers), any audio file, or a recording.
-- **Results:** the latest run shows as Markdown you can copy, with past runs listed below it. The transcript stays folded away until you open it.
-- Not tried on Windows by hand. Recording and the full 67-minute reference run haven't been tried by hand yet. Downloads: [hebrish.app/download](https://hebrish.app/download).
+- **One version everywhere:** Ubuntu, Windows and Android are all 1.026. Windows and the AppImage move up from 1.022, so they also get everything from 1.023 to 1.025, including Benchmarks.
+- **Opening spin:** the Hebrish logo turns once round on the start-up screen.
+- **Downloads:** the progress bar now glides instead of jumping, with the size and percentage beside it.
+- **About:** the same tagline as the phone app, and a Privacy link.
+- Not tried on Windows by hand. Downloads: [hebrish.app/download](https://hebrish.app/download).

@@ -290,12 +290,3 @@ def load_file(path: str) -> np.ndarray:
         raise RuntimeError("Install ffmpeg to open audio files") from None
     data, sr = soundfile.read(path, dtype="float32", always_2d=True)
     return _resample(data.mean(axis=1), sr)
-
-
-def save_wav(path: str, samples: np.ndarray):
-    pcm = (np.clip(samples, -1, 1) * 32767).astype("<i2")
-    with wave.open(path, "wb") as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(SAMPLE_RATE)
-        w.writeframes(pcm.tobytes())

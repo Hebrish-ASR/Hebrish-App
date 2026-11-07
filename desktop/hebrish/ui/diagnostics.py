@@ -15,7 +15,6 @@ over the last 7 days.
 import json
 import os
 import platform
-import sys
 import threading
 import time
 import wave

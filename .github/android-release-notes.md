@@ -1,7 +1,8 @@
-**1.019: a voice keyboard you can use while you dictate.**
+**1.026: a joint stable release, with a smoother look.**
 
-- **Bottom row:** the keys no longer sit under the navigation bar, so Enter, space and delete work while the mic is open.
-- **Smaller:** tighter buttons and no logo, so the keyboard takes less of the screen than before.
-- **Back to your keyboard:** the keyboard key is now gold, so it is easy to find.
-- **Delete a sentence:** press and hold delete to remove the last sentence. This one is not yet tested on a device.
+- **One version everywhere:** Android, Ubuntu and Windows are all 1.026.
+- **Opening spin:** the Hebrish logo turns once round as the app opens, on phone and desktop alike. Not yet tested on a device.
+- **Downloads:** the progress bar now glides instead of jumping, and shows a percentage. Not yet tested on a device.
+- **New Hebrew icon:** the floating mic's Hebrew letter is now ה, for the Hebrew name היבריש.
+- **Same words on every platform:** Type as you go is now Insert as you go, as on the desktop, and some out-of-date text is fixed.
 - arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).

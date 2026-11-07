@@ -24,6 +24,9 @@
         <item name="android:buttonStyle">@style/AppButton</item>
     </style>
 
+    <!-- The launcher screen: AppTheme, plus the Android 12+ splash in values-v31/styles.xml. -->
+    <style name="AppTheme.Launch" />
+
     <style name="AppBar" parent="@android:style/Widget.Material.Light.ActionBar.Solid">
         <item name="android:background">@color/brand_bg</item>
         <item name="android:elevation">0dp</item>

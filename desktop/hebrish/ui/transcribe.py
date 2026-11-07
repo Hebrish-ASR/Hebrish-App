@@ -53,6 +53,7 @@ from PySide6.QtWidgets import (QApplication, QMenu, QCheckBox, QComboBox, QFileD
 
 from .. import (__version__, audio, cleanup, config, dictionary, disfluency, longform, mics, model_store,
                paragraphs, titles, transcripts, transforms)
+from .glidebar import GlideBar
 from .icons import line_icon
 from .mics import fill_combo
 from .meter import LevelMeter, verdict
@@ -323,10 +324,12 @@ class TranscribePage(QWidget):
         head = QHBoxLayout()
         head.addWidget(QLabel("Transcript", objectName="cardTitle"))
         head.addStretch(1)
-        self.dl_bar = QProgressBar(maximum=1000)
-        self.dl_bar.setFormat("Downloading… %p%")
-        self.dl_bar.setMaximumWidth(160)
+        self.dl_text = QLabel()
+        head.addWidget(self.dl_text)
+        self.dl_bar = GlideBar()
+        self.dl_bar.setFixedWidth(120)
         self.dl_bar.setVisible(False)
+        self.dl_text.setVisible(False)
         head.addWidget(self.dl_bar)
         head.addWidget(QLabel("Next recording"))
         self.next = QComboBox()
@@ -1075,7 +1078,8 @@ class TranscribePage(QWidget):
         if self._dl is not None:
             return
         self._dl = cancel = threading.Event()
-        self.dl_bar.setValue(0)
+        self.dl_text.setText("Downloading… 0%")
+        self.dl_text.setVisible(True)
         self.dl_bar.setVisible(True)
         self.ctl.win.status("Downloading the paragraph model (34 MB)…")
 
@@ -1088,11 +1092,14 @@ class TranscribePage(QWidget):
         threading.Thread(target=work, daemon=True).start()
 
     def _dl_progress(self, done, total):
-        self.dl_bar.setValue(int(done * 1000 / max(1, total)))
+        frac = done / max(1, total)
+        self.dl_bar.set_fraction(frac)
+        self.dl_text.setText(f"Downloading… {int(frac * 100)}%")
 
     def _dl_done(self, err):
         self._dl = None
         self.dl_bar.setVisible(False)
+        self.dl_text.setVisible(False)
         if err is not None:
             self.ctl.win.status(f"Couldn't download the paragraph model ({err}). Paragraphs are "
                                 "time-based; choose Paragraph model again to retry.")

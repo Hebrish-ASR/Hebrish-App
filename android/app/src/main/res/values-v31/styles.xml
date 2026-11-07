@@ -1,0 +1,7 @@
+<resources>
+    <!-- Android 12+ shows this before the first frame; Splash.kt then turns the icon once round. -->
+    <style name="AppTheme.Launch">
+        <item name="android:windowSplashScreenBackground">@color/brand_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_mark</item>
+    </style>
+</resources>

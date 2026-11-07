@@ -18,6 +18,7 @@ from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QScrollArea, QVBoxLayout, QWidget
 
 from .. import __version__, model_store
+from ..config import TAGLINE
 from .licence import LICENCE_HTML, cc_icons
 from .style import BLUE, BRAND_GREEN, GOLD, INK, MUTED, PAPER, display_font
 
@@ -250,8 +251,7 @@ class AboutPage(QScrollArea):
         title = QLabel("Hebrish")
         title.setFont(display_font(30))
         col.addWidget(title)
-        tag = QLabel("Voice typing for English speakers in Israel who use Hebrew words. Gets the Hebrew words right.",
-                     objectName="heroMuted")
+        tag = QLabel(TAGLINE, objectName="heroMuted")
         tag.setWordWrap(True)
         col.addWidget(tag)
         by = _rich(f"An open-source project by <a href='{AUTHOR_SITE}' style='color:{BRAND_GREEN}'>"
@@ -276,6 +276,7 @@ class AboutPage(QScrollArea):
         row.addWidget(_link_button("Report a bug", HEBRISH_LINKS[1][1]))
         row.addWidget(_link_button("Send feedback", HEBRISH_LINKS[3][1]))
         row.addWidget(_link_button("Source code", SOURCE))
+        row.addWidget(_link_button("Privacy", f"{HEBRISH}/privacy"))
         row.addStretch(1)
         lay.addLayout(row)
         self.refresh()
