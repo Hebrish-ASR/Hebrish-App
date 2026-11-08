@@ -134,6 +134,8 @@ re-downloaded. Version folders under `models/<model>/<version>/` on the CDN neve
 version is a new folder plus a new `latest.json` (cache 5 min). `repo` stays in the entry for
 apps up to 0.2.1. Uploading: the `r2-upload` skill (voice-model-training).
 
+**2026-11-08: `type` in every ASR manifest.** `"type": "offline"` or `"streaming"`, next to `model`, in `cdn.hebrish.app/models/{sabich,shakshuka,sabich-110m}/latest.json` (Shakshuka is `streaming`), so an app that reads a manifest without this catalogue can classify the model without guessing from its name (requested by Paolo Antinori, Anti-Vocale, which imports these manifests). Written by `cdn_release` in the training repo from then on; the live files were patched the same day. These apps do not read it: the variant's `engine` (`sherpa_online_transducer`) decides streaming, and both manifest parsers (`Manifest.from_json`, `ModelStore.Manifest`) ignore fields they do not know, so no app release was needed.
+
 **2026-10-19: moved to the mirror.** The main repo `danielrosehill/Parakeet-TDT-0.6B-v2-English-Hebrew-Codeswitching`
 became **gated** (manual access requests), so its `sherpa-onnx/int8/` returns 401 to the apps.
 The catalogue now points at the ungated mirror `Hebrish/…-sherpa-onnx-int8`, files at the root,
