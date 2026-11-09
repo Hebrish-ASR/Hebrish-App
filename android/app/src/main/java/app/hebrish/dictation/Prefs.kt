@@ -96,6 +96,9 @@ object Prefs {
     /** Give saved transcripts a title (B-75a; desktop `titles`), when the title model is downloaded. On by default, as on desktop. */
     fun titles(ctx: Context) = sp(ctx).getBoolean("titles", true)
     fun setTitles(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("titles", v).apply()
+    /** Notes get a title from the title model when left untitled (B-101). On by default; separate from [titles]. */
+    fun noteTitles(ctx: Context) = sp(ctx).getBoolean("note_titles", true)
+    fun setNoteTitles(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("note_titles", v).apply()
     /** Longest title in characters (desktop `title_max_chars`); no setting on Android yet. */
     fun titleMaxChars(ctx: Context) = Titles.limit(sp(ctx).getInt("title_max_chars", Titles.MAX_CHARS))
     /** The standing mic order, as MicOrder.encode, or null until one is saved. Read it through Mic.order. */

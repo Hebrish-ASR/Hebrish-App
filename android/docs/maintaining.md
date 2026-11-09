@@ -1873,16 +1873,18 @@ tape is no longer active. A review suspected a `ForegroundServiceDidNotStartInTi
 there. Starting a microphone-type service first could fail in the background instead, so it needs
 tracing on a device before any change.
 
-## Notes (unreleased, B-100, 2026-11-09)
+## Notes (unreleased, B-100 and B-101, 2026-11-09)
 
-Daniel, 2026-11-09 (R-2026-11-09-3): "a small notepad … No online sync, just a notepad with a
-message history and you can use the model for dictation." Read as: a list of saved notes (the
-history) plus a note screen with the mic.
+Daniel, 2026-11-09 (R-2026-11-09-3, -4): "a small notepad … No online sync, just a notepad with a
+message history and you can use the model for dictation", then "a list of notes, like a history of
+notes … generate a title … a basic notepad". Cloud sync and desktop parity are I-21; clean-up
+(post-processing) in notes is I-22, deliberately not done now.
 
 - **Screens.** `NotesActivity` (a `Page`; home, in the card under Transcription Mode, and the side
-  menu, top entry): New note, then the notes newest edit first, each row the first non-blank line
-  (two lines at most), relative time and word count. `NoteActivity` (`activity_note.xml`,
-  `adjustResize`): the text box, Copy / Share / Delete (confirm dialog), the mic.
+  menu, top entry): New note, the title setting, then the notes newest edit first. A row shows the
+  title (or the first non-blank line while there is none), the text's first line under a title,
+  relative time and word count. `NoteActivity` (`activity_note.xml`, `adjustResize`): the title
+  field, the text box, Copy / Share (title as the first line) / Delete (confirm dialog), the mic.
 - **Dictation.** `DictationPad.kt` is TryActivity's mic logic moved out unchanged (model preload,
   no-model / load-failed fix button, permission request code 10, type-as-you-go insertion at the
   cursor, status line); TryActivity and NoteActivity both use it. Takes go to History with source
@@ -1890,12 +1892,31 @@ history) plus a note screen with the mic.
   also after the screen has closed (Back while recording stops the take, the decode finishes
   later), and NoteActivity saves there, so that text is not lost.
 - **Store.** `Notes.kt`, framework SQLite, `databases/notes.db`, table `notes` (`id`, `created`,
-  `updated` in unix ms, `text`). App storage, `allowBackup` off: no sync and no cloud backup,
-  by design. All reads and writes run on `Notes.io`, one app-wide thread never shut down, so a new
+  `updated` in unix ms, `title` (default `''`), `text`); schema 2 (1 had no `title` and never
+  shipped; `onUpgrade` adds the column). App storage, `allowBackup` off: no sync and no cloud
+  backup. All reads and writes run on `Notes.io`, one app-wide thread never shut down, so a new
   note's insert lands before its next update and the list reads after a just-queued save.
-- **Saving.** 800 ms after the last edit, after each take, and in `onPause`. A new note is not
-  stored until it has text; a note emptied by hand is deleted. The row id survives rotation
-  through `onSaveInstanceState` (it waits on `Notes.io` for the id).
-- **Not done:** search, export, sharing a note as a file, sync (ruled out). No desktop equivalent.
+- **Saving.** 800 ms after the last edit of title or text, after each take, and in `onPause`. A new
+  note is not stored until it has text; a note whose text is emptied is deleted. The row id
+  survives rotation through `onSaveInstanceState` (it waits on `Notes.io` for the id).
+- **Titles (B-101).** In `onStop` (leaving the note: Back, Home, screen off), and after a take that
+  lands once the screen is finishing, a note with an empty title field and at least 5 words
+  (`Notes.TITLE_MIN_WORDS`) is queued with `Notes.titleLater`. Not on every pause, so a title isn't
+  made from the first sentence of a note still being dictated. It runs on `Notes.titler` (its own
+  thread, so saves never wait on it): the Transcription Mode title model (`CleanupStore.titleFile`,
+  Gemma 270M Q8_0, `Titles.make`, `Prefs.titleMaxChars`), loaded, run and closed each time. The
+  result is written with `UPDATE … WHERE title = ''`, so a title typed meanwhile wins and the note's
+  `updated` (its place in the list) does not change. `Notes.listeners` tell an open note (fills an
+  empty title field) and the list (redraws). An id already queued is not queued again. Setting:
+  *Give notes a title* on the Notes screen (`Prefs.noteTitles`, `note_titles`, default on), separate
+  from Transcription Mode's `titles`; with the model missing the screen says so and offers Open
+  Models (the download is the existing Add-on models card). Hidden on phones that can't run it
+  (`CleanupStore.title` null: no ARMv8.2 dot product). A failure leaves the note untitled; it is
+  tried again the next time the note is left.
+- **Known gap:** Transcription Mode's Save runs the same model on its own `paraWorker`; the two are
+  not locked against each other, so both could hold the model (about 450 MB each, estimated) at once
+  if a note is left while a transcript is being saved.
+- **Not done:** search, export, sharing a note as a file, clean-up (I-22), sync and desktop (I-21).
 - **Checked (2026-11-09):** `compileFdroidDebugKotlin` passes (JDK 21). **Not run on a device**:
-  the screens, saving, the take-after-Back path and Try it after the refactor are unverified.
+  the screens, saving, titles (speed, memory next to the loaded ASR model), the take-after-Back
+  path and Try it after the refactor are unverified.

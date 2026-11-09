@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One note: the text, Copy / Share / Delete, and the mic (DictationPad). NoteActivity. -->
+<!-- One note: the title, the text, Copy / Share / Delete, and the mic (DictationPad). NoteActivity. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:fitsSystemWindows="true" android:orientation="vertical" android:padding="16dp">
 
+    <EditText android:id="@+id/note_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:hint="@string/note_title_hint" android:inputType="textCapSentences" android:maxLines="1"
+        android:importantForAutofill="no" android:padding="10dp" android:textSize="20sp" android:textStyle="bold" />
     <EditText android:id="@+id/note_text" android:layout_width="match_parent" android:layout_height="0dp"
         android:layout_weight="1" android:gravity="top|start"
         android:hint="@string/note_hint" android:inputType="textMultiLine|textCapSentences"

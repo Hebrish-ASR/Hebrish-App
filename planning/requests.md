@@ -6,6 +6,7 @@ credited), or an issue link. Outcome links the backlog item, or says why not.
 
 | Id | Date | From | Platforms | Request | Outcome |
 | --- | --- | --- | --- | --- | --- |
+| R-2026-11-09-4 | 2026-11-09 | Daniel | Android, then all | Notes, follow-up: automatic titles from the title model; later cloud sync and desktop parity; clean-up (post-processing) as an option, not now | [B-101](backlog.md#sprint-android); [I-21, I-22](backlog.md#ideas-for-future-versions) |
 | R-2026-11-09-3 | 2026-11-09 | Daniel | Android | A small notepad in the app: notes with a history of past ones, dictated with the model, no online sync | [B-100](backlog.md#sprint-android) |
 | R-2026-11-09-2 | 2026-11-09 | Daniel ([voice note](https://hebrish.app/updates/2026-11-09)) | All | Speaker isolation in the input chain: an audio-to-audio speaker-isolation model before the ASR, alongside voice detection (VAD), maybe in parallel, so background speech, music and passers-by never reach the model. Exactly how the chain works is open (28:14) | [I-20](backlog.md#ideas-for-future-versions) |
 | R-2026-11-09-1 | 2026-11-09 | Daniel ([voice note](https://hebrish.app/updates/2026-11-09)) | All | Email addresses: Parakeet's decoder can't output "@", so add a small inverse text normalisation (ITN) model between the ASR and the text the app releases, which turns a dictated address ("daniel at danielrosehill.com") into one with "@". Usable with or without the S1-ASR-Cleanup step (25:26) | [I-19](backlog.md#ideas-for-future-versions); related B-39 |

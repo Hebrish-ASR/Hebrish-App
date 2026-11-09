@@ -10,12 +10,19 @@ import android.widget.LinearLayout
 import android.widget.TextView
 
 /**
- * Notes (2026-11-09): the list of notes, newest edit first, and New note. Each row opens
- * [NoteActivity]. Stored on the phone only ([Notes]); no sync.
+ * Notes (B-100, 2026-11-09): the list of notes, newest edit first, and New note. Each row opens
+ * [NoteActivity]: its title (or first line while it has none), then the first line of the text
+ * under a title, the time and the word count. Stored on the phone only ([Notes]); no sync.
+ * Titles (B-101): the *Give notes a title* switch and, when the model is missing, where to get it;
+ * hidden on phones that can't run the title model ([CleanupStore.title] null).
  */
 class NotesActivity : Page() {
     private lateinit var count: TextView
     private lateinit var list: LinearLayout
+    private lateinit var titleBox: LinearLayout
+    private lateinit var titleLine: TextView
+    private lateinit var modelsBtn: Button
+    private val onTitled: (Long) -> Unit = { render() }
 
     override fun build() {
         text(R.string.notes_body)
@@ -24,12 +31,35 @@ class NotesActivity : Page() {
             setOnClickListener { startActivity(Intent(this@NotesActivity, NoteActivity::class.java)) }
         }
         column.addView(add, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(56)).apply { topMargin = dp(16) })
+        titleBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(titleBox, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
+        switch(R.string.notes_titles, { Prefs.noteTitles(this) }, { on -> Prefs.setNoteTitles(this, on); renderTitles() }, titleBox)
+        titleLine = TextView(this).apply { setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f); setTextColor(getColor(R.color.brand_muted)) }
+        titleBox.addView(titleLine)
+        modelsBtn = button(R.string.notes_open_models, titleBox) { startActivity(Intent(this, ModelsActivity::class.java)) }
         count = heading("")
         list = group()
     }
 
+    private fun renderTitles() {
+        val e = CleanupStore.title(this)
+        titleBox.visibility = if (e == null) android.view.View.GONE else android.view.View.VISIBLE
+        if (e == null) return
+        val missing = CleanupStore.titleFile(this) == null
+        titleLine.text = if (missing) getString(R.string.notes_titles_missing, e.downloadMb) else getString(R.string.notes_titles_ready)
+        titleLine.visibility = if (Prefs.noteTitles(this)) android.view.View.VISIBLE else android.view.View.GONE
+        modelsBtn.visibility = if (missing && Prefs.noteTitles(this)) android.view.View.VISIBLE else android.view.View.GONE
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Notes.listeners -= onTitled
+    }
+
     override fun onResume() {
         super.onResume()
+        Notes.listeners += onTitled
+        renderTitles()
         render()
     }
 
@@ -68,13 +98,22 @@ class NotesActivity : Page() {
             }
             val first = n.text.trim().lineSequence().firstOrNull { it.isNotBlank() }?.trim()
             row.addView(TextView(this).apply {
-                text = first ?: getString(R.string.notes_untitled)
+                text = n.title.ifBlank { first ?: getString(R.string.notes_untitled) }
                 maxLines = 2
                 ellipsize = TextUtils.TruncateAt.END
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                 setTextColor(getColor(R.color.brand_ink))
+                if (n.title.isNotBlank()) typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
             })
-            val words = n.text.split(Regex("\\s+")).count { it.isNotEmpty() }
+            if (n.title.isNotBlank() && first != null) row.addView(TextView(this).apply {
+                text = first
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                setTextColor(getColor(R.color.brand_ink))
+                alpha = 0.8f
+            })
+            val words = Notes.words(n.text)
             val at = DateUtils.getRelativeDateTimeString(this, n.updated, DateUtils.MINUTE_IN_MILLIS, DateUtils.WEEK_IN_MILLIS, 0)
             row.addView(TextView(this).apply {
                 text = getString(R.string.notes_row_meta, at, words)
