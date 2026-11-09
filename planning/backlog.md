@@ -120,6 +120,7 @@ tables below hold the detail and status.
 
 | Id | Item | Status |
 | --- | --- | --- |
+| B-100 | **Notes** (Daniel, 2026-11-09, R-2026-11-09-3). Home and the side menu → Notes: a list of notes, newest edit first, and a note screen with the in-app mic (`DictationPad`, split out of Try it). Phone only, no sync (`notes.db`). `android/docs/maintaining.md`, "Notes". Compiled; **not run on a device**. Desktop parity not queued: ask Daniel | done (unreleased) |
 | B-99 | **One-tap mic switching** (Daniel, 2026-11-07, R-2026-11-07-3, D-2026-11-07-03). A source chip tap moves to the next connected mic in the order, on the overlay and the keyboard; the icon row (`MicPicker`) is gone. `android/docs/maintaining.md`, "Mic order". Compiled, `MicOrderTest` passes; **not run on a device**. | released, Android 1.027 |
 | B-98 | **Floating mic: Send icon and colour coding** (Daniel, 2026-11-07, R-2026-11-07-2). Green Send instead of the red Stop, orange Retake, blue Pause. `android/docs/maintaining.md`, "Take controls: Send and colours". The keyboard matches. Compiled; **not seen on a device**. Manual updated (v1.7). | released, Android 1.027 |
 | B-97 | **Floating mic takes over from the keyboard** (Daniel, 2026-11-07, R-2026-11-07-1). Starting a take in either one drops a take open in the other; the keyboard's auto-start holds back for a floating mic take. `android/docs/maintaining.md`, "One open take across the keyboard and the floating mic". Compiled; **not run on a device**. | released, Android 1.027 |

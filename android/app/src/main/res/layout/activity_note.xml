@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One note: the text, Copy / Share / Delete, and the mic (DictationPad). NoteActivity. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:fitsSystemWindows="true" android:orientation="vertical" android:padding="16dp">
+
+    <EditText android:id="@+id/note_text" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:gravity="top|start"
+        android:hint="@string/note_hint" android:inputType="textMultiLine|textCapSentences"
+        android:importantForAutofill="no" android:padding="10dp" android:textSize="17sp" />
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button android:id="@+id/note_copy" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/try_copy" style="?android:attr/borderlessButtonStyle" />
+        <Button android:id="@+id/note_share" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/try_share" style="?android:attr/borderlessButtonStyle" />
+        <Button android:id="@+id/note_delete" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/note_delete" style="?android:attr/borderlessButtonStyle" />
+    </LinearLayout>
+
+    <TextView android:id="@+id/note_status" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="4dp" android:gravity="center" android:minLines="2" />
+    <Button android:id="@+id/note_fix" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal" android:visibility="gone" />
+    <ProgressBar android:id="@+id/note_level" style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="160dp" android:layout_height="6dp" android:layout_gravity="center_horizontal"
+        android:layout_marginTop="4dp" android:max="100" android:progressDrawable="@drawable/level_bar"
+        android:visibility="invisible" />
+    <ImageButton android:id="@+id/note_mic" android:layout_width="80dp" android:layout_height="80dp"
+        android:layout_gravity="center_horizontal" android:layout_marginTop="8dp"
+        android:background="@drawable/mic_bg" android:contentDescription="@string/cd_mic"
+        android:scaleType="centerInside" android:src="@drawable/ic_mic" />
+</LinearLayout>

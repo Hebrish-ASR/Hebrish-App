@@ -62,6 +62,7 @@ object History {
     const val KEYBOARD = "keyboard"
     const val FLOATING = "floating"
     const val TRY = "try"
+    const val NOTE = "note"
     const val RECORD = "record"
 
     /**

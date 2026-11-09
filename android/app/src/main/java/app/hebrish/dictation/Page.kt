@@ -125,6 +125,7 @@ abstract class Page : Activity() {
         fun screen(label: Int, target: Class<out Activity>) = entry(label) { startActivity(Intent(this, target)) }
         fun divider() = items.addView(View(this).apply { setBackgroundColor(getColor(R.color.brand_line)) },
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(1)).apply { setMargins(dp(24), dp(8), dp(24), dp(8)) })
+        screen(R.string.title_notes, NotesActivity::class.java)
         screen(R.string.title_setup, SetupActivity::class.java)
         screen(R.string.title_models, ModelsActivity::class.java)
         screen(R.string.title_keyboard, KeyboardActivity::class.java)

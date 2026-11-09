@@ -642,4 +642,20 @@
     <string name="dict_open_system">Open Android\'s personal dictionary</string>
     <string name="dict_no_system_screen">This phone has no personal dictionary screen in Settings.</string>
     <string name="dict_limits">A word matches with any capitals, and a word of four or more letters also when the model splits it (git hub, Git-Hub → GitHub). A word you write all in lower case keeps a capital at the start of a sentence. Every match is replaced: adding IT turns every \"it\" into IT.</string>
+    <!-- Notes (2026-11-09): NotesActivity, NoteActivity -->
+    <string name="title_notes">Notes</string>
+    <string name="title_note">Note</string>
+    <string name="nav_notes_summary">Dictate notes and keep them on your phone</string>
+    <string name="notes_body">Notes stay on this phone: nothing is synced or uploaded. Each note saves as you go.</string>
+    <string name="notes_new">New note</string>
+    <plurals name="notes_count">
+        <item quantity="one">%1$d note</item>
+        <item quantity="other">%1$d notes</item>
+    </plurals>
+    <string name="notes_empty">No notes yet. Tap New note, then the mic.</string>
+    <string name="notes_untitled">(empty)</string>
+    <string name="notes_row_meta">%1$s · %2$d words</string>
+    <string name="note_hint">Tap the mic and talk, or type.</string>
+    <string name="note_delete">Delete</string>
+    <string name="note_delete_confirm">Delete this note? This can\'t be undone.</string>
 </resources>

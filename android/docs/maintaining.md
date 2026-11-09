@@ -1872,3 +1872,30 @@ Left alone on purpose: `TranscriptionService.onStartCommand` stops before `start
 tape is no longer active. A review suspected a `ForegroundServiceDidNotStartInTimeException` race
 there. Starting a microphone-type service first could fail in the background instead, so it needs
 tracing on a device before any change.
+
+## Notes (unreleased, B-100, 2026-11-09)
+
+Daniel, 2026-11-09 (R-2026-11-09-3): "a small notepad … No online sync, just a notepad with a
+message history and you can use the model for dictation." Read as: a list of saved notes (the
+history) plus a note screen with the mic.
+
+- **Screens.** `NotesActivity` (a `Page`; home, in the card under Transcription Mode, and the side
+  menu, top entry): New note, then the notes newest edit first, each row the first non-blank line
+  (two lines at most), relative time and word count. `NoteActivity` (`activity_note.xml`,
+  `adjustResize`): the text box, Copy / Share / Delete (confirm dialog), the mic.
+- **Dictation.** `DictationPad.kt` is TryActivity's mic logic moved out unchanged (model preload,
+  no-model / load-failed fix button, permission request code 10, type-as-you-go insertion at the
+  cursor, status line); TryActivity and NoteActivity both use it. Takes go to History with source
+  `note` (`History.NOTE`). The pad's `onTake` callback runs after a take's text is in the box,
+  also after the screen has closed (Back while recording stops the take, the decode finishes
+  later), and NoteActivity saves there, so that text is not lost.
+- **Store.** `Notes.kt`, framework SQLite, `databases/notes.db`, table `notes` (`id`, `created`,
+  `updated` in unix ms, `text`). App storage, `allowBackup` off: no sync and no cloud backup,
+  by design. All reads and writes run on `Notes.io`, one app-wide thread never shut down, so a new
+  note's insert lands before its next update and the list reads after a just-queued save.
+- **Saving.** 800 ms after the last edit, after each take, and in `onPause`. A new note is not
+  stored until it has text; a note emptied by hand is deleted. The row id survives rotation
+  through `onSaveInstanceState` (it waits on `Notes.io` for the id).
+- **Not done:** search, export, sharing a note as a file, sync (ruled out). No desktop equivalent.
+- **Checked (2026-11-09):** `compileFdroidDebugKotlin` passes (JDK 21). **Not run on a device**:
+  the screens, saving, the take-after-Back path and Try it after the refactor are unverified.
