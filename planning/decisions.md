@@ -2,12 +2,23 @@
 
 Newest first. Append-only: a decision that is later reversed stays here, and the new one says
 which decision it supersedes. Ids are `D-<date>-<nn>`. Agents add entries with the
-`log-decision` skill (plugin `hebrish-maintainers`, marketplace Hebrish-ASR/Hebrish-Claude-Plugins).
+maintainer's `log-decision` skill (private plugin since 2026-11-09).
 
 Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not chosen),
 **By** (who decided), and links to the request, backlog item or commit where they exist.
 
 ---
+
+### D-2026-11-09-01: The maintainer skills go private; `hebrish-maintainers` is removed
+
+- **Decision:** Every skill in the public `hebrish-maintainers` plugin moves into Daniel's private
+  Hebrish plugin, which becomes the one plugin for maintaining the project, and
+  `hebrish-maintainers` is removed from the `hebrish` marketplace. The marketplace keeps
+  `hebrish-setup` for users. Supersedes D-2026-10-22-10.
+- **Why:** Two plugins running in parallel was too risky (Daniel): skills drifted between the
+  public and private copies, and maintenance work spans both.
+- **Alternatives:** Keep the public plugin alongside the private one (the old layout).
+- **By:** Daniel, 2026-11-09.
 
 ### D-2026-11-07-03: A source chip tap moves to the next mic; the icon row goes
 

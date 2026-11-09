@@ -11,7 +11,7 @@ in the project Drive.
 ## Processing a note (agents)
 
 1. Publish it with the `voice-update` skill. Its page is `https://hebrish.app/updates/<date>`.
-2. Queue the asks with `queue-sprint` (plugin `hebrish-maintainers`). In `planning/requests.md`,
+2. Queue the asks with `queue-sprint` (maintainer's private plugin). In `planning/requests.md`,
    "From" is `Daniel ([voice note](https://hebrish.app/updates/<date>))`.
 3. Add an entry to `index.json` and commit the `planning/` edits together:
    `planning: voice note <date> <slug> -> R-…`.

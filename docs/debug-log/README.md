@@ -14,7 +14,7 @@ What goes where:
 - **`planning/decisions.md`:** only if fixing it meant choosing a behaviour (a default, a
   trade-off).
 
-Agents: the `debug-log` skill in the `hebrish-maintainers` plugin writes entries in this format.
+Agents: the maintainer's `debug-log` skill (private plugin) writes entries in this format.
 
 ## Format
 

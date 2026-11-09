@@ -13,11 +13,13 @@ agents. So:
 - Write everything as if a stranger reads it: no personal details beyond Daniel's public role,
   no machine/host names, account ids, internal URLs, private repo contents, or credentials
   (reference a secret by its name, never its value).
-- The project's skills are in the public `hebrish` Claude Code marketplace,
-  [Hebrish-ASR/Hebrish-Claude-Plugins](https://github.com/Hebrish-ASR/Hebrish-Claude-Plugins),
-  plugin `hebrish-maintainers` (`/plugin marketplace add Hebrish-ASR/Hebrish-Claude-Plugins`,
-  then `/plugin install hebrish-maintainers@hebrish`). Change skills there, not here. Skills
-  tied to Daniel's own machines and accounts stay in his private plugins.
+- The project's maintenance skills (reviews, parity, planning, `log-decision`, `debug-log`,
+  `queue-sprint`, data, website, Hugging Face) are in Daniel's private Claude Code plugin since
+  2026-11-09 (D-2026-11-09-01); the public `hebrish-maintainers` plugin was removed. Don't add
+  skills here. The public `hebrish` marketplace
+  ([Hebrish-ASR/Hebrish-Claude-Plugins](https://github.com/Hebrish-ASR/Hebrish-Claude-Plugins))
+  still has `hebrish-setup` for users. Contributors without the skills follow the formats in
+  `planning/` and `docs/debug-log/README.md` and open an issue or pull request.
   `.claude/skills/android-release` is the last repo-local copy, kept until it is reconciled with
   the plugin's version (2026-10-22).
 
@@ -34,7 +36,7 @@ something it would answer, and write to the one that fits.
 | `docs/` | Shared reference: `feature-parity.json`, screenshots |
 | `docs/debug-log/` | One file per bug that took diagnosis: symptom, cause, how it was found, wrong turns, fix, what is verified. Index and format in its `README.md`; lasting rules still go in `maintaining.md`. Skill: `debug-log` |
 | `shared/` | Data and protocols both apps read (`catalogue.json`, `update-protocol.md`) |
-| `hebrish-maintainers` plugin | The project's skills (reviews, parity, planning, data, website, outreach, Hugging Face): see above |
+| Maintainer skills | Private since 2026-11-09 (reviews, parity, planning, data, website, Hugging Face): see above |
 
 A research answer becomes a decision (`planning/decisions.md`) and a backlog item, both linking
 back to the research folder. Shipped behaviour is described in `maintaining.md`, not in

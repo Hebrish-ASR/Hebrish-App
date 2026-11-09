@@ -118,7 +118,7 @@ you talk, and you're returned to HeliBoard with the text inserted. Details:
 | `shared/updates-android.json` | Android's in-app What's new list (Updates screen), baked from hebrish.app's changelog by `scripts/bake_updates.py`, Android entries only (by each entry's `data-platforms`, 2026-10-31); copied into the APK as `assets/updates.json` at build time. The desktop's list (Desktop and Site entries) is `desktop/hebrish/data/updates.json`, written by the same script |
 | `shared/update-protocol.md` | How models are listed, downloaded and updated, and the quirks both apps work around |
 | `planning/` | Public project tracking: feature requests, backlog (with ideas for future versions), decision log |
-| `CLAUDE.md` | Agent instructions, public on purpose. The project's skills are in the public [`hebrish` marketplace](https://github.com/Hebrish-ASR/Hebrish-Claude-Plugins), plugin `hebrish-maintainers` |
+| `CLAUDE.md` | Agent instructions, public on purpose. The maintainer's skills are private since 2026-11-09; the public [`hebrish` marketplace](https://github.com/Hebrish-ASR/Hebrish-Claude-Plugins) has `hebrish-setup` for users |
 
 Versions are `M.NNN` (three digits after the point): 1.000 (2026-10-24) was the first, for both
 apps, and every GitHub release before it was deleted that day (the `*-v0.*` tags remain).
