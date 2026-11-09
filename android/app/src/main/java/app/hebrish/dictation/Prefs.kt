@@ -212,16 +212,17 @@ object Prefs {
     fun bubbleBarClear(ctx: Context) = sp(ctx).getBoolean("bubble_bar_clear", false)
     fun setBubbleBarClear(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("bubble_bar_clear", v).apply()
 
-    /** The bar opens across the screen, towards the middle (0.4.0 to 0.10.0). */
+    /** The bar opens across the screen, towards the middle (0.4.0 to 0.10.0, and the default again from 2026-11-09). */
     const val BAR_ACROSS = "across"
     /** The bar opens along the edge the mic is on, up or down towards the middle: a narrow strip. */
     const val BAR_ALONG = "along"
     /**
-     * Which way the bar opens during a take (1.000). Along the edge by default: it covers a
-     * narrow strip at the side instead of a line across the text (Daniel, 2026-10-24: "the expansion
-     * happens in the least obtrusive part of the screen").
+     * Which way the bar opens during a take (1.000). Across the screen by default since 2026-11-09
+     * (D-2026-11-09-02); 1.000 to then defaulted to along the edge (Daniel, 2026-10-24: "the
+     * expansion happens in the least obtrusive part of the screen"). Only the default changed: a
+     * user who picked a direction keeps it.
      */
-    fun bubbleBarDirection(ctx: Context): String = sp(ctx).getString("bubble_bar_direction", BAR_ALONG) ?: BAR_ALONG
+    fun bubbleBarDirection(ctx: Context): String = sp(ctx).getString("bubble_bar_direction", BAR_ACROSS) ?: BAR_ACROSS
     fun setBubbleBarDirection(ctx: Context, v: String) = sp(ctx).edit().putString("bubble_bar_direction", v).apply()
 
     const val ICON_MIC = "mic"

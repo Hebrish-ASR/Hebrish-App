@@ -61,9 +61,9 @@ import android.widget.Toast
  *
  * Out of the way (1.000, Daniel 2026-10-24: "it'll open, and then suddenly it's overlaying some
  * text I'm working on"): the bar has a grip at its outer end, so it can be moved mid-take without
- * going near the mic (a tap on it is Stop). By default the bar opens along the edge the mic is on,
- * up or down towards the middle, a narrow strip instead of a line across the text
- * (Prefs.bubbleBarDirection); its buttons can be scaled down (Prefs.bubbleBarScale), and a clear
+ * going near the mic (a tap on it is Stop). By default the bar opens across the screen towards the
+ * middle (since 2026-11-09); it can instead open along the edge the mic is on, up or down
+ * towards the middle, a narrow strip instead of a line across the text (Prefs.bubbleBarDirection); its buttons can be scaled down (Prefs.bubbleBarScale), and a clear
  * bar drops the background so only the buttons, each on its own backdrop, cover anything
  * (Prefs.bubbleBarClear). The idle mic can show the Hebrish H or the letter he instead of the
  * mic glyph (Prefs.bubbleIcon).

@@ -9,6 +9,17 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-09-02: The Android overlay bar opens across the screen by default
+
+- **Decision:** `Prefs.bubbleBarDirection` defaults to `across` again instead of `along`. Both
+  directions stay in the Floating mic settings; a stored choice is kept, so only users who never
+  picked one see the change. Reverses the default chosen in 1.000 (2026-10-24).
+- **Why:** Daniel, 2026-11-09: the default text expansion in the overlay should be across the
+  screen.
+- **Alternatives:** Keep `along` as the default (the 1.000 behaviour); migrate everyone to
+  `across` including users who chose `along` (overrides an explicit choice).
+- **By:** Daniel (the default); keeping stored choices was the agent's call.
+
 ### D-2026-11-09-01: The maintainer skills go private; `hebrish-maintainers` is removed
 
 - **Decision:** Every skill in the public `hebrish-maintainers` plugin moves into Daniel's private

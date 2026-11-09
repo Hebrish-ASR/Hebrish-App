@@ -132,8 +132,8 @@ all: your regular keyboard stays up and the text goes straight into the field.
   size (20–96 dp) and idle opacity (down to 1 %), each with − / + buttons for single steps.
   The icon can be the mic, the Hebrish H or the letter ע (1.000). New installs start on the
   left edge at 44 dp. *Show only while a text field is focused* hides the mic the rest of the time.
-- **While you talk** (1.000): the bar opens towards the middle of the screen, by default along
-  the edge as a narrow column (or across the screen). Drag it by its grip (⠿) to move it off
+- **While you talk** (1.000): the bar opens towards the middle of the screen, by default across
+  the screen (or along the edge as a narrow column). Drag it by its grip (⠿) to move it off
   what you are writing. Its size (50–100 %), background opacity, and a *clear bar* (buttons
   only, each on its own backdrop) are on the Floating mic screen.
 - **How the text goes in** (2026-10-25): on Android 13+ the floating mic types the text at the

@@ -1098,8 +1098,10 @@ objective, in his words: "the expansion happens in the least obtrusive part of t
   (`Drag`), but the only obvious handle was the mic, and a tap on it during a take is Stop. 1.000
   adds a grip (`ic_drag`, `grip`) at the bar's outer end, shown whenever the bar is (take or held
   transcript). Drag only, no tap action. (I) that the grip is what was missing; not reproduced.
-- **Bar along the edge** (`Prefs.bubbleBarDirection`, `bubble_bar_direction`, default `along`;
-  `across` is the 0.4.0–0.10.0 behaviour). Along: the root `LinearLayout` is vertical, children
+- **Bar along the edge** (`Prefs.bubbleBarDirection`, `bubble_bar_direction`; default `across`
+  since 2026-11-09 (D-2026-11-09-02), `along` from 1.000 until then; `across` is also the
+  0.4.0–0.10.0 behaviour. Only the default changed: a stored choice is kept, so users who never
+  touched the setting move to `across`). Along: the root `LinearLayout` is vertical, children
   hug the mic's side (`r.gravity` LEFT/RIGHT, so a wide chip can't shift the mic), the source
   chip is capped at `SOURCE_ALONG_DP` (72). The column opens **down** from a mic in the top half
   and **up** from one in the bottom half. Up keeps window gravity TOP and moves the window's
