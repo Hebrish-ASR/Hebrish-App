@@ -460,6 +460,7 @@ plus the `input` group (Flatpak) or classic confinement (Snap), so neither gains
 | Public key | `packaging/apt/hebrish-archive-keyring.{gpg,asc}`, published at `apt/hebrish-archive-keyring.{gpg,asc}` |
 | Setup | `packaging/apt/setup.sh`, published at `apt/setup.sh`: `curl -fsSL https://cdn.hebrish.app/apt/setup.sh \| sudo sh` (checks the key fingerprint, writes the sources file, installs) |
 | Publish | `with-secrets scripts/publish-apt.sh <deb>…` (no argument: re-sign what is in the pool) |
+| Packages | `hebrish` (this repo) and, since 2026-11-09, `meorav` (Meorav TTS test app, `Hebrish-ASR/Meorav-App` `desktop/`). The script accepts only the names in its `KNOWN` list |
 
 - **The package enrols itself (0.6.2+).** `build-deb.sh` ships the keyring at
   `/etc/apt/keyrings/hebrish-archive-keyring.gpg` and `/etc/apt/sources.list.d/hebrish.sources`
@@ -472,8 +473,18 @@ plus the `input` group (Flatpak) or classic confinement (Snap), so neither gains
   **byte-identical** file, so installing the package afterwards raises no conffile prompt:
   change all three together (the public `Hebrish-ASR/Hebrish-Agent-Skills` repo copies the
   manual steps too).
-- **Pool**: the newest `KEEP=3` versions; older ones are deleted from R2, so apt can roll back
-  two versions. Old versions stay on GitHub releases.
+- **Pool**: the newest `KEEP=3` versions **of each package** (`pool/main/<letter>/<package>/`); older
+  ones are deleted from R2, so apt can roll back two versions. Old versions stay on GitHub releases.
+- **More than one package (2026-11-09).** Before `meorav`, the script synced and indexed only
+  `pool/main/h/hebrish` and then uploaded `pool/` with `--delete`, so any other package would have
+  been deleted from R2 and dropped from `Packages` on the next Hebrish release. It now downloads the
+  whole `pool/`, prunes per package, and refuses to publish an index without a `hebrish` .deb
+  (guard against an empty or failed pool download). Release `Description` is "Hebrish apps".
+  Checked with a stubbed `aws`/`gpg` against a local fake pool: publishing meorav kept hebrish
+  1.025 to 1.027; a later hebrish 1.028 dropped 1.025 and kept meorav; `foo` was refused.
+- **Other packages don't enrol themselves.** Only `hebrish` ships `hebrish.sources` and the keyring
+  (conffiles; dpkg refuses two packages owning one path), so `setup.sh` takes a package name:
+  `curl -fsSL https://cdn.hebrish.app/apt/setup.sh | sudo sh -s meorav` (default `hebrish`).
 - **One suite, `stable`, not per-Ubuntu codenames**: the .deb is pinned to Ubuntu 26.04's
   python3 minor (see Releasing). When a second Ubuntu needs its own build, add per-codename suites
   (`resolute`, …) and point new installs at them; `stable` can stay as resolute's alias.

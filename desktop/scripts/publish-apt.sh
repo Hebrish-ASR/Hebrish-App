@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Publish .debs to the Hebrish APT repository (https://cdn.hebrish.app/apt, R2 bucket hebrish-cdn,
 # prefix apt/) and re-sign it:   scripts/publish-apt.sh dist/hebrish_0.6.2-1_amd64.deb
+# Any package from the Hebrish apps goes in the same repo (2026-11-09: hebrish, and meorav from
+# Hebrish-ASR/Meorav-App desktop/); each lives in pool/main/<first letter>/<package>/.
 # With no argument it only regenerates and re-signs the indexes from what is in the pool.
 #
 # Layout (suite stable, component main, amd64; see docs/maintaining.md, "APT repository"):
-#   apt/pool/main/h/hebrish/<deb>          the last $KEEP versions; older ones are deleted
+#   apt/pool/main/<l>/<pkg>/<deb>          the last $KEEP versions of each package; older ones are deleted
 #   apt/dists/stable/{InRelease,Release,Release.gpg}
 #   apt/dists/stable/main/binary-amd64/{Packages,Packages.gz,by-hash/SHA{256,512}/<hash>}
 #   apt/hebrish-archive-keyring.{gpg,asc}, apt/setup.sh
@@ -25,11 +27,13 @@ FPR=4745D63577C81400DBB743DFDBD1F5A22CA1B27B
 : "${HEBRISH_CDN_R2_ACCESS_KEY_ID:?run under with-secrets}" "${HEBRISH_APT_SIGNING_KEY:?run under with-secrets}"
 E=https://81ee9810726226b99b56e4d84ffac020.r2.cloudflarestorage.com
 S3=s3://hebrish-cdn/apt
-POOL=pool/main/h/hebrish
 BIN=dists/stable/main/binary-amd64
 
+# Only packages listed here: a typo'd or foreign .deb must not land in the signed repo.
+KNOWN="hebrish meorav"
 for deb in "$@"; do
-    [ "$(dpkg-deb -f "$deb" Package)" = hebrish ] || { echo "$deb is not the hebrish package" >&2; exit 1; }
+    pkg=$(dpkg-deb -f "$deb" Package)
+    case " $KNOWN " in *" $pkg "*) ;; *) echo "$deb: package '$pkg' is not one of: $KNOWN" >&2; exit 1 ;; esac
 done
 
 WORK=$(mktemp -d)
@@ -43,17 +47,30 @@ printf '%s\n' "$HEBRISH_APT_SIGNING_KEY" | sed 's/^"//; s/"$//' | gpg --batch --
 gpg --list-secret-keys --with-colons | grep -q "^fpr:*$FPR:" || { echo "signing key not imported" >&2; exit 1; }
 
 REPO="$WORK/repo"
-mkdir -p "$REPO/$POOL" "$REPO/$BIN"
-aws s3 sync "$S3/$POOL/" "$REPO/$POOL/" --endpoint-url $E --only-show-errors
-for deb in "$@"; do cp "$deb" "$REPO/$POOL/"; done
+mkdir -p "$REPO/pool" "$REPO/$BIN"
+# The whole pool, every package: the index below is rebuilt from it, and the upload syncs pool/
+# with --delete, so a package missing here would vanish from the repo.
+aws s3 sync "$S3/pool/" "$REPO/pool/" --endpoint-url $E --only-show-errors
+for deb in "$@"; do
+    pkg=$(dpkg-deb -f "$deb" Package)
+    mkdir -p "$REPO/pool/main/${pkg:0:1}/$pkg"
+    cp "$deb" "$REPO/pool/main/${pkg:0:1}/$pkg/"
+done
 
-# Keep the newest $KEEP versions (dpkg version order), delete the rest locally and on R2.
-mapfile -t debs < <(for f in "$REPO/$POOL"/*.deb; do
-    [ -e "$f" ] && printf '%s\t%s\n' "$(dpkg-deb -f "$f" Version)" "$(basename "$f")"; done \
-    | sort -t$'\t' -k1,1V | cut -f2)
-[ ${#debs[@]} -gt 0 ] || { echo "pool is empty: pass a .deb" >&2; exit 1; }
-drop=$(( ${#debs[@]} > KEEP ? ${#debs[@]} - KEEP : 0 ))
-for f in "${debs[@]:0:$drop}"; do rm "$REPO/$POOL/$f"; echo "dropping $f"; done
+# Per package, keep the newest $KEEP versions (dpkg version order); delete the rest locally and on R2.
+n_debs=0
+for dir in "$REPO"/pool/main/*/*/; do
+    mapfile -t debs < <(for f in "$dir"*.deb; do
+        [ -e "$f" ] && printf '%s\t%s\n' "$(dpkg-deb -f "$f" Version)" "$(basename "$f")"; done \
+        | sort -t$'\t' -k1,1V | cut -f2)
+    n_debs=$(( n_debs + ${#debs[@]} ))
+    drop=$(( ${#debs[@]} > KEEP ? ${#debs[@]} - KEEP : 0 ))
+    for f in "${debs[@]:0:$drop}"; do rm "$dir$f"; echo "dropping $f"; done
+done
+[ "$n_debs" -gt 0 ] || { echo "pool is empty: pass a .deb" >&2; exit 1; }
+# Never publish an index without hebrish: an empty or failed pool download would otherwise
+# delete the dictation app from every user's apt.
+ls "$REPO"/pool/main/h/hebrish/hebrish_*.deb >/dev/null 2>&1 || { echo "hebrish missing from the pool; refusing" >&2; exit 1; }
 
 cd "$REPO"
 apt-ftparchive packages pool > "$BIN/Packages"
@@ -72,7 +89,7 @@ apt-ftparchive \
     -o APT::FTPArchive::Release::Codename=stable \
     -o APT::FTPArchive::Release::Architectures=amd64 \
     -o APT::FTPArchive::Release::Components=main \
-    -o "APT::FTPArchive::Release::Description=Hebrish dictation (https://hebrish.app)" \
+    -o "APT::FTPArchive::Release::Description=Hebrish apps (https://hebrish.app)" \
     -o APT::FTPArchive::Release::Acquire-By-Hash=yes \
     -o APT::FTPArchive::Release::MD5=false -o APT::FTPArchive::Release::SHA1=false \
     release dists/stable | grep -v '/by-hash/' > "$WORK/Release"

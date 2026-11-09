@@ -1,8 +1,12 @@
 #!/bin/sh
 # Add the Hebrish APT repository and install Hebrish (Ubuntu 26.04, amd64).
 #   curl -fsSL https://cdn.hebrish.app/apt/setup.sh | sudo sh
+# Another app from the same repo: pass its package name (2026-11-09: meorav, the Meorav TTS test app)
+#   curl -fsSL https://cdn.hebrish.app/apt/setup.sh | sudo sh -s meorav
 # Source: https://github.com/Hebrish-ASR/Hebrish-App/blob/main/desktop/packaging/apt/setup.sh
 set -eu
+PKG=${1:-hebrish}
+case "$PKG" in hebrish|meorav) ;; *) echo "Unknown package: $PKG (hebrish or meorav)" >&2; exit 1 ;; esac
 FPR=4745D63577C81400DBB743DFDBD1F5A22CA1B27B
 KEYRING=/etc/apt/keyrings/hebrish-archive-keyring.gpg
 [ "$(id -u)" = 0 ] || { echo "Run as root: curl -fsSL https://cdn.hebrish.app/apt/setup.sh | sudo sh" >&2; exit 1; }
@@ -28,5 +32,5 @@ Architectures: amd64
 Signed-By: /etc/apt/keyrings/hebrish-archive-keyring.gpg
 SRC
 apt-get update -q
-apt-get install -y hebrish
-echo "Hebrish is installed. Start it from the app menu; updates arrive with your normal system updates."
+apt-get install -y "$PKG"
+echo "$PKG is installed. Start it from the app menu; updates arrive with your normal system updates."
