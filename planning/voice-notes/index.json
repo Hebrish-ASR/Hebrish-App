@@ -25,6 +25,16 @@
     "D-2026-10-22-17"
    ],
    "page": "https://hebrish.app/updates/2026-10-22"
+  },
+  {
+   "recorded": "2026-11-09",
+   "processed": "2026-11-09",
+   "requests": [
+    "R-2026-11-09-1",
+    "R-2026-11-09-2"
+   ],
+   "decisions": [],
+   "page": "https://hebrish.app/updates/2026-11-09"
   }
  ]
 }
