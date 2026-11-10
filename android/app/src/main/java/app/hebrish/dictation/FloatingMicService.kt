@@ -505,6 +505,24 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
      * moved up by the bar's measured height, so the mic itself stays put.
      */
     private fun place(attached: Boolean = true) {
+        // Not re-entrant (1.029): removeAllViews() below cancels a touch in progress, and the
+        // cancel reached Drag -> savePosition -> place() again inside this one, which left a child
+        // with a parent that no longer listed it ("The specified child already has a parent").
+        // 16 crashes on a Pixel 11, 2026-11-08..10 (docs/debug-log/2026-11-10-floating-mic-drag-crash.md).
+        // A nested call runs once this one has finished.
+        if (placing) { placeAgain = true; return }
+        placing = true
+        try {
+            placeOnce(attached)
+        } finally {
+            placing = false
+        }
+        if (placeAgain) { placeAgain = false; main.post { place() } }
+    }
+    private var placing = false
+    private var placeAgain = false
+
+    private fun placeOnce(attached: Boolean) {
         val r = root ?: return
         placedMini = mini()
         placedExpanded = expanded()
@@ -649,13 +667,19 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
                         runCatching { wm.updateViewLayout(r, params) }
                     }
                 }
+                // dragging is cleared before savePosition: its place() cancels this touch, and the
+                // ACTION_CANCEL that arrives inside it must not save and place again (1.029).
                 MotionEvent.ACTION_UP -> {
                     main.removeCallbacks(longPress)
-                    if (dragging) savePosition() else if (!longPressed && !grabbed) tap()
+                    val dragged = dragging
+                    dragging = false
+                    if (dragged) savePosition() else if (!longPressed && !grabbed) tap()
                 }
                 MotionEvent.ACTION_CANCEL -> {
                     main.removeCallbacks(longPress)
-                    if (dragging) savePosition()
+                    val dragged = dragging
+                    dragging = false
+                    if (dragged) savePosition()
                 }
             }
             return true

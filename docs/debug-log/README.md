@@ -53,6 +53,7 @@ Newest first.
 
 | Date | Platform | Symptom | Status | Entry |
 | --- | --- | --- | --- | --- |
+| 2026-11-10 | android | The app crashes when the floating mic is dragged (`place()` re-entered through the ACTION_CANCEL its own removeAllViews sends) | fixed, unreleased (1.029) | [2026-11-10-floating-mic-drag-crash.md](2026-11-10-floating-mic-drag-crash.md) |
 | 2026-11-10 | desktop-linux | After an early Enter, Ctrl+V pasted the whole take instead of the late words (the whole-take clipboard copy landed 600 ms later) | fixed, unreleased | [2026-11-10-late-words-clipboard-overwritten.md](2026-11-10-late-words-clipboard-overwritten.md) |
 | 2026-11-07 | android | Floating mic doesn't start recording while a keyboard take is open | fixed in 1.027; not run on a device | [2026-11-07-floating-mic-during-keyboard-take.md](2026-11-07-floating-mic-during-keyboard-take.md) |
 | 2026-11-02 | desktop-linux | The transcript is pasted twice when something was on the clipboard (the user's clipboard was never restored; Klipper kept the transcript) | fixed, unreleased | [2026-11-02-transcript-pasted-twice.md](2026-11-02-transcript-pasted-twice.md) |

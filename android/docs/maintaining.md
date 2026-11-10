@@ -1542,6 +1542,13 @@ user's choice (Sabich-Parakeet-110M).
 child is listed twice, so why a child kept a parent is not established. 1.010 detaches each child
 from whatever parent it has before `addView`. Not reproduced; no 1.009 crash reported yet.
 
+**Update 2026-11-10: the guard did not fix it.** 16 more crashes on 1.026 and 1.027. The cause is
+re-entry: the drag's save fires the prefs listener, whose `place()` cancels the touch in
+`removeAllViews()`, and the cancel saves and places again inside it. Lasting rule (1.029): `place()`
+is not re-entrant (a nested call is deferred), and `Drag` clears `dragging` before it saves. Anything that
+detaches views in the bubble must expect a touch callback during the detach.
+Investigation: `docs/debug-log/2026-11-10-floating-mic-drag-crash.md`.
+
 Verified: compiles (`compileFdroidDebugKotlin`, `compilePlayDebugKotlin`). Not run on a phone.
 
 ## Model freed while the phone sleeps (1.011 hotfix, 2026-10-31)
