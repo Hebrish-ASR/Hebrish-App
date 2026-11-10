@@ -1,4 +1,5 @@
-**1.027: same app as 1.026, version kept in step with Android.**
+**1.028: Falafel coming soon.**
 
-- **No changes** from 1.026. Windows and the AppImage stay on 1.026.
+- **Falafel:** the new model for short voice commands has its own tab under Models, in a full size and a small one (Falafel-Parakeet-110M). It shows "Coming soon" until its first version is published, then downloads like any other model, with no app update.
+- Windows and the AppImage stay on 1.026.
 - Downloads: [hebrish.app/download](https://hebrish.app/download).
