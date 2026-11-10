@@ -29,7 +29,8 @@ from .glidebar import GlideBar
 from .icons import line_icon
 from .style import BRAND_GREEN, GOLD, colours, display_font
 
-OVERLAY = [("off", "Off"), ("active", "While recording"), ("always", "Always (a mic button)")]
+OVERLAY = [("off", "Off"), ("finishing", "Only while the last words come in"),
+           ("active", "While recording"), ("always", "Always (a mic button)")]
 # Insert-as-you-go presets (R-2026-10-25-3: Fast 4, Normal 6, Relaxed 10 s; 0.7.1 had 3/5/8, 0.7.0
 # 5/7/10). Any other value is Custom; -1 is the Custom entry's own data.
 LIVE = [(0, "Off: everything when you stop"), (4, "Fast: every ~4 seconds"),

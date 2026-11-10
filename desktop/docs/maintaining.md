@@ -183,8 +183,9 @@ room. Not measured: WER on the benchmark with Silero on; Android timing. Tests: 
 ## Floating overlay (0.3.0, 2026-10-20)
 
 Daniel: "an optional overlay to match the android app". `ui/overlay.py`. Config `overlay`
-(`off` default | `active` = while a take is open, busy or just inserted | `always` = also an idle
-mic button), `overlay_pos` (the mic square's top-left in screen coordinates; `None` = bottom
+(`off` | `finishing` = only from Stop until the last words are in, then the check; the default for new
+installs since 1.029, B-102 | `active` = while a take is open, busy or just inserted | `always` = also an idle
+mic button; the tray's Show overlay toggles `always`/`off` and is ticked only for `active`/`always`), `overlay_pos` (the mic square's top-left in screen coordinates; `None` = bottom
 centre, 72 px above the work area), `overlay_opacity` (idle only). The Controller pushes one dict
 (`_overlay_push`) on every state change and at 15 Hz while recording (level, seconds). Model
 loading counts as idle for the overlay, so start-up doesn't show "Transcribing…". Overlay
@@ -898,7 +899,9 @@ submitted without the last words, which then landed in the next prompt.
   `finally` for a final job) removes it. A send key in between moves the unfinished takes to
   `_diverted`; the worker's `_out()` keeps their remaining pieces in `_late` instead of pasting,
   and at the end `sig.late` → `_show_late`: clipboard, a status line and the overlay's `late` state
-  ("Late words", Paste → action `paste_late`, ×). History still gets the whole take. Stop and send
+  ("Late words", Paste → action `paste_late`, ×). History still gets the whole take. With `out_clipboard`
+  on, `_done`'s delayed whole-take copy goes through `_copy_whole`, which skips it when the take ends with
+  the late words, or it would replace them 600 ms later (B-102, `docs/debug-log/2026-11-10-late-words-clipboard-overwritten.md`). Stop and send
   does not press its Enter for a diverted take (`_sends`).
 - **`hold` (opt-in):** `stop()` calls `hotkeys.hold_send(True)`. Linux (`hotkey_evdev`): every
   keyboard with an Enter key and no key down is grabbed (EVIOCGRAB); all its events except the

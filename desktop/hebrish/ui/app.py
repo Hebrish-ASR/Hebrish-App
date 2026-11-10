@@ -597,7 +597,10 @@ class Controller(QObject):
         self.overlay.send({
             # "No text field" shows even with the overlay off: it is the only place for Paste
             # that doesn't take the keyboard focus from the field the user clicks into.
-            "visible": show == "always" or (show != "off" and st != "idle") or st in ("nofield", "late"),
+            # "finishing" (1.029): only from Stop until the last words are in (the spinner, then the
+            # check), so it's clear when Enter would still be too early.
+            "visible": (show == "always" or (show == "active" and st != "idle")
+                        or (show == "finishing" and st in ("busy", "done")) or st in ("nofield", "late")),
             "state": st, "paused": self.recorder.paused,
             "seconds": round(self.recorder.seconds, 1), "level": round(self.recorder.level, 3),
             "opacity": self.cfg["overlay_opacity"], "pos": self.cfg["overlay_pos"]})
@@ -822,6 +825,16 @@ class Controller(QObject):
             self.inserter.insert(text, "clipboard", self.cfg["paste_chord"])
         return False
 
+    def _copy_whole(self, whole):
+        """The whole take to the clipboard (out_clipboard), unless an early Enter kept its last words
+        back: _show_late has put those on the clipboard, and the start of the take was already sent.
+        The worker emits the late words just after the transcript, so they are set by now; this
+        timer used to copy the whole take over them 600 ms later (1.029)."""
+        late = self._late_last.strip()
+        if late and whole.rstrip().endswith(late):
+            return
+        self._copy_take(whole)
+
     def _copy_take(self, text):
         try:
             copy_to_clipboard(text)
@@ -875,7 +888,7 @@ class Controller(QObject):
                 # target app to read the clipboard first, or it would paste the whole take.
                 whole = text.upper() if self.cfg["all_caps"] else text
                 QTimer.singleShot(CLIPBOARD_AFTER_PASTE_MS if self.cfg["out_cursor"] else 0,
-                                  lambda: self._copy_take(whole))
+                                  lambda: self._copy_whole(whole))
                 if not self.cfg["out_cursor"]:
                     self._feedback("copied")
             self.last_text = text.upper() if self.cfg["all_caps"] else text
@@ -1676,7 +1689,7 @@ class Controller(QObject):
         self.act_toggle.setText("Stop dictation" if self.state == "recording" else "Start dictation")
         self.act_toggle.setEnabled(self.state != "busy" or self.queued_ok)
         self.act_overlay.setVisible(self.overlay.available)
-        self.act_overlay.setChecked(self.cfg["overlay"] != "off")
+        self.act_overlay.setChecked(self.cfg["overlay"] in ("active", "always"))
         self.act_vad.setChecked(bool(self.cfg["vad"]))
         self.act_update.setVisible(self.update_available() and not self.downloading)
         self.act_restart.setVisible(bool(self.app_installed))

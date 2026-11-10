@@ -72,3 +72,24 @@ def test_paste_last_not_during_a_take():
     from hebrish.ui.app import Controller
     ctl = SimpleNamespace(state="recording", last_text="x")
     assert Controller.paste_last(ctl) is None          # returns before touching anything else
+
+
+def _copied(whole, late):
+    pytest.importorskip("PySide6")
+    from hebrish.ui.app import Controller
+    copied = []
+    ctl = SimpleNamespace(_late_last=late, _copy_take=copied.append)
+    Controller._copy_whole(ctl, whole)
+    return copied
+
+
+def test_whole_take_does_not_overwrite_late_words_on_the_clipboard():
+    """1.029: with "whole take on the clipboard" on, the delayed copy of the whole take replaced the
+    late words _show_late had just copied, so Ctrl+V pasted the whole take again."""
+    assert _copied("Whole take, already sent, and the end.", "and the end.") == []
+
+
+def test_whole_take_still_copied_without_late_words():
+    assert _copied("Whole take.", "") == ["Whole take."]
+    # late words from another (overlapping) take don't stop this one's copy
+    assert _copied("The next take.", "and the end.") == ["The next take."]

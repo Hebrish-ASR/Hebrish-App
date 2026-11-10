@@ -95,3 +95,23 @@ def test_child_process_protocol():
     out, err = p.communicate(("\n".join(json.dumps(m) for m in msgs) + "\nnot json\n").encode(),
                              timeout=20)
     assert p.returncode == 0, err.decode()           # EOF on stdin = quit, bad lines ignored
+
+
+def _visible(mode, state, late="", no_field=False):
+    from types import SimpleNamespace
+    from hebrish.ui.app import Controller
+    sent = []
+    ctl = SimpleNamespace(_overlay_done=state == "done", loading=False, state="idle" if state == "done" else state,
+                          _late_text=late, _no_field=no_field, overlay=SimpleNamespace(send=sent.append),
+                          recorder=SimpleNamespace(paused=False, seconds=0.0, level=0.0),
+                          cfg={"overlay": mode, "overlay_opacity": 85, "overlay_pos": None})
+    Controller._overlay_push(ctl)
+    return sent[0]["visible"]
+
+
+def test_finishing_mode_shows_only_until_the_last_words_are_in():
+    """1.029: the spinner from Stop until the last words land, so an early Enter is visible as early."""
+    assert [_visible("finishing", s) for s in ("idle", "recording", "busy", "done")] == [False, False, True, True]
+    assert _visible("finishing", "idle", late="the end.")       # the late words' Paste still shows
+    assert [_visible("off", s) for s in ("recording", "busy")] == [False, False]
+    assert [_visible("active", s) for s in ("idle", "recording", "busy")] == [False, True, True]

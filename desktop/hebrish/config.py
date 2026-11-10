@@ -73,7 +73,7 @@ DEFAULTS = {
                                   # presets Fast 4, Normal 6, Relaxed 10 (R-2026-10-25-3; 0.7.1: 3/5/8;
                                   # 0.7.0: 5/7/10), else Custom
     "stream_release": "phrase",   # streaming models: paste every word | phrase | sentence (engine.STREAM_RELEASE; 0.7.1)
-    "overlay": "off",             # off | active (while dictating) | always
+    "overlay": "finishing",       # off | finishing (Stop until the last words are in, 1.029) | active (while dictating) | always
     "overlay_pos": None,          # [x, y] of the overlay's top-left; None = bottom centre
     "overlay_opacity": 85,        # idle opacity %, "always" mode
     # Where text goes (1.000, Daniel 2026-10-24): three switches, any combination. At the cursor
