@@ -30,6 +30,7 @@ import re
 import shutil
 import sys
 import threading
+import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -49,6 +50,15 @@ PLATFORM = "windows" if sys.platform == "win32" else "linux"
 
 class Cancelled(Exception):
     pass
+
+
+class NotPublished(RuntimeError):
+    """A catalogue variant whose CDN manifest answers 404: listed ahead of its first release
+    (Falafel, 2026-11-10). Shown as "Coming soon", not as an error; Download asks again."""
+
+
+# Variant ids whose manifest answered 404 at the last look; cleared when one answers.
+UNPUBLISHED: set[str] = set()
 
 
 # -- catalogue ---------------------------------------------------------------
@@ -402,7 +412,15 @@ def fetch_latest(mid: str | None = None) -> Manifest:
     if not model or not model.available:
         raise RuntimeError(f"{mid} is not downloadable yet")
     if model.manifest_url:
-        return manifest_from_cdn(model, json.loads(_get(model.manifest_url)))
+        try:
+            doc = json.loads(_get(model.manifest_url))
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                raise
+            UNPUBLISHED.add(model.id)
+            raise NotPublished(f"{model.name} isn't published yet") from None
+        UNPUBLISHED.discard(model.id)
+        return manifest_from_cdn(model, doc)
     sha = json.loads(_get(f"{HF}/api/models/{model.repo}/revision/main"))["sha"]
     tree = json.loads(_get("/".join(p for p in (f"{HF}/api/models/{model.repo}/tree/{sha}", model.subdir) if p)))
     try:

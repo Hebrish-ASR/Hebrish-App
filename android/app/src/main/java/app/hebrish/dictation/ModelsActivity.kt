@@ -402,6 +402,7 @@ class ModelsActivity : Page() {
             active -> downloadingLine(m, s as ModelDownload.Status.Running)
             ModelDownload.queued(m.id) -> getString(R.string.models_queued)
             s is ModelDownload.Status.Failed && ModelDownload.failedId == m.id -> getString(R.string.model_failed, s.message)
+            !ready && ModelDownload.unpublished(m.id) -> getString(R.string.model_not_published)
             ready && update != null -> getString(R.string.update_available, update.label, mb(update.totalBytes), installed!!.label)
             ready -> getString(R.string.models_downloaded, installed!!.label, mb(installed.totalBytes))
             else -> getString(R.string.models_not_downloaded, mb(size(m)))

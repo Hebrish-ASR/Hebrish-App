@@ -1596,6 +1596,8 @@ class MainWindow(QMainWindow):
             elif inst:
                 text = (f"<span style='color:#2e9e5b'>✓ Downloaded</span> · {inst[1].label} · "
                         f"{model_store.disk_usage(m.id) >> 20} MB")
+            elif m.id in model_store.UNPUBLISHED:     # manifest 404: listed ahead of its first release
+                text = "<span style='color:gray'>Coming soon: not published yet. Download checks again.</span>"
             else:
                 text = f"<span style='color:gray'>Not downloaded · about {m.download_mb or 660} MB</span>"
             r["status"].setText(text)

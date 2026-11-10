@@ -241,6 +241,7 @@
     <string name="models_all_downloaded">All models downloaded</string>
     <string name="models_cancel_all">Cancel downloads</string>
     <string name="model_coming_soon_long">Coming soon.</string>
+    <string name="model_not_published">Coming soon: not published yet. Tap Download to check again.</string>
     <string name="models_queued">Waiting: downloads after the current one.</string>
     <string name="models_downloaded">Downloaded: %1$s, %2$d MB.</string>
     <string name="models_not_downloaded">Not downloaded. About %1$d MB.</string>

@@ -48,6 +48,15 @@ Verified live 2026-10-18 (V):
 The update branch (old version installed, new weights published) is covered only by
 `tests/test_model_store.py` (I for the live path; v5 will be the first real one).
 
+### A 404 manifest is "Coming soon" (1.028, 2026-11-10)
+
+For Falafel, listed before its first release (`shared/update-protocol.md`, 2026-11-10). `model_store.fetch_latest`
+turns an HTTP 404 from a `manifest_url` into `NotPublished` and adds the id to `UNPUBLISHED` (removed on the next
+successful fetch); other HTTP errors are unchanged. `ui/app.py` `_fetched` and `_checked` show it in the status bar
+with no "Model download failed" notice and move on to the next queued model; the Models row reads "Coming soon: not
+published yet. Download checks again." Tests: `test_a_404_manifest_is_coming_soon_not_an_error`,
+`test_other_http_errors_stay_errors`.
+
 ## Two hotkeys (0.3.0, 2026-10-20)
 
 Daniel asked for separate shortcuts for tap-tap and push-to-talk. Config: `hotkey` (toggle;

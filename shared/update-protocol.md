@@ -21,6 +21,28 @@ its place; if not, set `recommended` back to `sabich`. Same day the `sabich` var
 
 **2026-11-05: one CDN folder for Sabich** (Daniel: one set of weights per model, overwritten on publish; the manifest says the version). `sabich-rolling` now pulls `cdn.hebrish.app/models/sabich/latest.json`; the stable v2.4 weights there were replaced by the current ones and `models/sabich-rolling/` was removed. The manifest's `version` reads `Sabich vN` and `model` is `sabich`. Installed apps do not re-download: both apps compare file hashes (`sameWeights`, `Manifest` equality), and the files are identical. The internal id `sabich-rolling` and the HF repo names stay, because changing the id would make every install fetch 661 MB again; users never see it. v1.0 to v2.4 stay on HF (`Hebrish/Sabich-sherpa-onnx-int8`, gated, v2.4 at `d0a6f111`).
 
+**2026-11-10: Falafel listed before its first release; a 404 manifest is "Coming soon"** (Daniel: installed apps
+should be able to download Falafel as soon as its first training finishes). Falafel is the voice-command line
+(short spoken commands to a computer or phone, Hebrew words included; ASR-Training `voice-commands/`), between
+Shakshuka and stock. Variants, both `sherpa_offline_transducer`: `falafel` (Parakeet 0.6B v2, 128 mels,
+`cdn.hebrish.app/models/falafel/latest.json`, `Hebrish/Falafel-sherpa-onnx-int8`) and `falafel-110m` (Parakeet
+TDT-CTC 110M, 80 mels, `cdn.hebrish.app/models/falafel-110m/latest.json`,
+`Hebrish/Falafel-Parakeet-110M-sherpa-onnx-int8`). The training pipeline overwrites those two folders on every release.
+Both are `status: available` from the start, so **nothing has to be edited, flipped or released when the manifests
+go live**; `recommended` and `recommended_by_platform` are unchanged.
+
+Why not `planned` and a flip later: `planned` would hide them from the new builds too, and needs a second push the
+moment the run lands. Why not `available` alone: up to 1.027 a 404 manifest was a plain failure (Android "Download
+failed: Couldn't reach Hugging Face to find Falafel", and a failed download cleared Download all's queue; desktop
+"Couldn't look up the model: HTTP Error 404" with a "Model download failed" notice). So Android 1.028 and desktop
+1.028 treat a 404 from the manifest (or HF API) as *not published yet*: `ModelStore.NotPublished` (Android, from
+`ModelStore.get`) and `model_store.NotPublished` (desktop, from `fetch_latest`), remembered per variant
+(`ModelDownload.unpublished`, `model_store.UNPUBLISHED`) and forgotten as soon as a lookup succeeds. The card then reads
+"Coming soon: not published yet", Download stays and asks again, no error notice, and Android's queue carries on.
+Any other HTTP error is still an error. A model whose manifest is live is untouched by this. (V) desktop:
+`tests/test_model_store.py::test_a_404_manifest_is_coming_soon_not_an_error`; (I) Android: compiled in CI, not run
+on a device. Builds up to 1.027 show the old error for Falafel until the manifests exist, then download it normally.
+
 [`catalogue.json`](catalogue.json) (`schema: 2`) is what **Android 0.7.0+ and desktop 0.6.0+**
 read; they bundle it (Android: gradle `copyCatalogue` into assets; desktop:
 `hebrish/data/catalogue.json`, byte-identical) and re-fetch `catalogue_v2_url` (this file on

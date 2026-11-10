@@ -1042,6 +1042,10 @@ class Controller(QObject):
 
     def _checked(self, latest, err, manual):
         log.info("update check: latest=%s err=%r", latest and latest.debug_label, err)
+        if isinstance(err, model_store.NotPublished):     # listed before its first release: not a failure
+            self.win.status(f"{err}: coming soon.")
+            self.win.update_model()
+            return
         if err:
             self.win.status(f"Update check failed: {err}")
             if manual:
@@ -1180,7 +1184,12 @@ class Controller(QObject):
         threading.Thread(target=work, daemon=True).start()
 
     def _fetched(self, manifest, err):
-        if err:
+        if isinstance(err, model_store.NotPublished):     # coming soon (2026-11-10): no error notice
+            self.downloading_id = None
+            self.win.status(f"{err}: coming soon. Download checks again.")
+            self._next_queued()
+            self.win.update_model()
+        elif err:
             self.downloading_id = None
             self.win.status(f"Couldn't look up the model: {err}")
             self.notify("Model download failed", str(err))

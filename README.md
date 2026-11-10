@@ -40,6 +40,8 @@ be), and whether speed or accuracy matters more, and answers with the same rules
 | | Sabich-asr4all-M / -S | FUTO asr4all 56M / 28M | listed; not runnable in the apps yet | Tiny, for wearables; writes numbers as words |
 | **Jachnun** (code-switching only) | **Jachnun** | Parakeet TDT 0.6B v2 | available | English + Hebrew vocabulary (*teudat zehut*, *arnona*, *bituach leumi*), in Latin letters. Recommended until 2026-10-21. [Models](https://hebrish.app/models#parakeet) |
 | **Shakshuka** (streaming) | **Shakshuka** | Nemotron speech streaming 0.6B | desktop 0.7.0+ (streams while you talk); not on Android yet | Live text while you talk |
+| **Falafel** (voice commands, added 2026-11-10) | **Falafel** | Parakeet TDT 0.6B v2 | listed; "Coming soon" until its first release is on the CDN (1.028+), then downloadable | Short spoken commands to a computer or phone, Hebrew words included. [Model card](https://huggingface.co/Hebrish/Falafel) |
+| | Falafel-Parakeet-110M | Parakeet TDT-CTC 110M | as Falafel | Voice commands on a phone or laptop: a fifth of the size, faster, more mistakes |
 | **Parakeet (stock)** | | Parakeet TDT 0.6B v2 | available | Standard English, without the Hebrew words. NVIDIA's release, unchanged |
 
 Everything the apps can run today is a sherpa-onnx int8 offline transducer. A version on an

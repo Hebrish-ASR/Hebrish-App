@@ -105,7 +105,8 @@ def test_hebrish_ships_only_code_switching_lines_and_stock():
     (streaming, trained on Sabich's blend) and stock Parakeet last. Jachnun left the apps on 2026-11-04 (Daniel: two active models).
     The fine-tunes without Hebrew (Boxty, tech, personal) belong to Parlance
     (danielrosehill/Parlance-Dictation). Schema 1 keeps its three models."""
-    assert [ln["id"] for ln in v2()["lines"]] == ["sabich", "shakshuka", "stock"]
+    # Falafel (voice commands, Daniel 2026-11-10) before stock, which stays last.
+    assert [ln["id"] for ln in v2()["lines"]] == ["sabich", "shakshuka", "falafel", "stock"]
     # Daniel, 2026-11-02: Sabich (Rolling) is the default while he tests it; Sabich stays in the line.
     assert v2()["lines"][0]["variants"][0]["id"] == v2()["recommended"] == "sabich-rolling"
     assert v2()["lines"][0]["variants"][0]["name"] == "Sabich"

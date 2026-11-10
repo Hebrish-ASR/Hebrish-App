@@ -320,3 +320,39 @@ def test_label_drops_the_old_rolling_qualifier():
     """sabich-rolling is shown as Sabich since 2026-11-04; its manifests say "Sabich (Rolling) v2.9"."""
     m = ms.manifest_from_tree(CS, "a" * 40, TREE, {"version": "Sabich (Rolling) v2.9", "run": "r"})
     assert m.label == "v2.9"
+
+
+def test_a_404_manifest_is_coming_soon_not_an_error(monkeypatch):
+    """Falafel (2026-11-10) is listed before its first release: its CDN manifest answers 404.
+    fetch_latest raises NotPublished (the UI shows "Coming soon") and remembers it until the
+    manifest answers, so the variant becomes downloadable with no catalogue or app change."""
+    import io
+    import urllib.error
+    mid = "falafel"
+    m = ms.get_model(mid)
+    assert m and m.available and m.manifest_url.endswith("/falafel/latest.json")
+
+    def missing(url, timeout=20):
+        raise urllib.error.HTTPError(url, 404, "Not Found", {}, io.BytesIO())
+    monkeypatch.setattr(ms, "_get", missing)
+    with pytest.raises(ms.NotPublished):
+        ms.fetch_latest(mid)
+    assert mid in ms.UNPUBLISHED
+
+    doc = {"schema": 1, "model": mid, "type": "offline", "version": "Falafel v1.0", "run": "r1",
+           "revision": "a" * 40, "base_url": "https://cdn.hebrish.app/models/falafel/",
+           "files": {f: {"size": 1, "sha256": None} for f in ms.FILES}}
+    monkeypatch.setattr(ms, "_get", lambda url, timeout=20: json.dumps(doc).encode())
+    assert ms.fetch_latest(mid).version == "Falafel v1.0"
+    assert mid not in ms.UNPUBLISHED
+
+
+def test_other_http_errors_stay_errors(monkeypatch):
+    import io
+    import urllib.error
+
+    def down(url, timeout=20):
+        raise urllib.error.HTTPError(url, 503, "Unavailable", {}, io.BytesIO())
+    monkeypatch.setattr(ms, "_get", down)
+    with pytest.raises(urllib.error.HTTPError):
+        ms.fetch_latest("falafel")

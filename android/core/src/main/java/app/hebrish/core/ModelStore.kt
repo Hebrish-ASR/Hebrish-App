@@ -236,6 +236,12 @@ object ModelStore {
         return Manifest(version, sha, files)
     }
 
+    /**
+     * The model's manifest (or HF repo) answers 404: it is in the catalogue ahead of its first
+     * release (Falafel, 2026-11-10). Shown as "Coming soon", not as a failure; Download asks again.
+     */
+    class NotPublished(url: String) : java.io.IOException("not published yet ($url)")
+
     /** One GET of the CDN manifest: {"version", "revision", "base_url", "files": {name: {size, sha256}}}. */
     private fun fromCdn(manifestUrl: String, names: List<String>): Manifest {
         val o = JSONObject(get(manifestUrl))
@@ -253,6 +259,7 @@ object ModelStore {
         conn.connectTimeout = 15_000
         conn.readTimeout = 15_000
         try {
+            if (conn.responseCode == HttpURLConnection.HTTP_NOT_FOUND) throw NotPublished(url)
             if (conn.responseCode != HttpURLConnection.HTTP_OK) throw java.io.IOException("HTTP ${conn.responseCode} for $url")
             return conn.inputStream.bufferedReader().use { it.readText() }
         } finally {

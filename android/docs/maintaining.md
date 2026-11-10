@@ -93,6 +93,16 @@ installed for the selected model.
 Verified 2026-10-19: `assembleDebug` compiles with JDK 21 and the APK contains
 `assets/models.json`. Not run on a device (I).
 
+### A 404 manifest is "Coming soon" (1.028, 2026-11-10)
+
+For Falafel, listed before its first release (`shared/update-protocol.md`, 2026-11-10). `ModelStore.get` throws
+`ModelStore.NotPublished` (an `IOException`) on HTTP 404; `ModelDownload.lookUp` records the id in `unpublished` and
+clears it on the next successful lookup. `check()` ignores it for the selected model (no "update check failed"),
+`install` rethrows it instead of falling back to "Couldn't reach Hugging Face", and `run` turns it into `Idle`
+with `failedId` unset and starts the next queued model (Download all no longer stops at it). `ModelsActivity` shows
+`model_not_published` ("Coming soon: not published yet. Tap Download to check again.") and keeps Download.
+Compiled in CI, not run on a device.
+
 ## sherpa-onnx API notes (1.13.8, read with javap from the AAR 2026-10-18)
 
 - Since 1.000 (2026-10-23) sherpa-onnx is built from source for F-Droid (`fdroid-main.md`):

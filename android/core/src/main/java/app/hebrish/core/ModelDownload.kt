@@ -45,6 +45,18 @@ object ModelDownload {
     @Volatile var checkError: String? = null
         private set
 
+    /** Models whose manifest answered 404 at the last look ([ModelStore.NotPublished]): "Coming soon". */
+    private val unpublished = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    fun unpublished(id: String) = id in unpublished
+
+    /** [ModelStore.checkLatest], remembering whether the model is published yet. */
+    private fun lookUp(app: Context, model: Catalogue.Model): ModelStore.Manifest = try {
+        ModelStore.checkLatest(app, model).also { unpublished.remove(model.id) }
+    } catch (e: ModelStore.NotPublished) {
+        unpublished.add(model.id)
+        throw e
+    }
+
     /** Automatic checks run at most this often; the button forces one. */
     private const val CHECK_EVERY_MS = 6 * 60 * 60 * 1000L
 
@@ -61,9 +73,13 @@ object ModelDownload {
             try {
                 Catalogue.refresh(app)
                 val sel = Catalogue.selected(app)
-                latestById[sel.id] = ModelStore.checkLatest(app, sel)
+                try {
+                    latestById[sel.id] = lookUp(app, sel)
+                } catch (e: ModelStore.NotPublished) {
+                    // Picked before its first release: shown as "Coming soon", not a failed check.
+                }
                 for (m in ModelStore.readyModels(app)) if (m.id != sel.id) {
-                    runCatching { ModelStore.checkLatest(app, m) }.onSuccess { latestById[m.id] = it }
+                    runCatching { lookUp(app, m) }.onSuccess { latestById[m.id] = it }
                 }
                 ModelPrefs.setLastCheck(app, System.currentTimeMillis())
             } catch (e: Exception) {
@@ -112,7 +128,13 @@ object ModelDownload {
         run(ctx, moving = false, total = guess?.totalBytes ?: 0L, model = model) { app, report ->
             target = model to guess
             val chosen = m ?: latestById[model.id]
-                ?: runCatching { ModelStore.checkLatest(app, model).also { latestById[model.id] = it } }.getOrNull()
+                ?: try {
+                    lookUp(app, model).also { latestById[model.id] = it }
+                } catch (e: ModelStore.NotPublished) {
+                    throw e
+                } catch (e: Exception) {
+                    null
+                }
                 ?: ModelStore.installed(app, model)
                 ?: throw java.io.IOException("Couldn't reach Hugging Face to find ${model.name}")
             target = model to chosen
@@ -196,6 +218,11 @@ object ModelDownload {
             } catch (e: InterruptedException) {
                 queue.clear()
                 publish(Status.Idle)
+            } catch (e: ModelStore.NotPublished) {
+                // Not released yet: the card says "Coming soon"; the rest of the queue carries on.
+                failedId = null
+                publish(Status.Idle)
+                queue.poll()?.let { next -> main.post { download(app, next) } }
             } catch (e: Exception) {
                 failedId = target?.first?.id
                 queue.clear()
