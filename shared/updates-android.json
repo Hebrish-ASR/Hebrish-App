@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-10",
+      "tag": "Android 1.029",
+      "title": "Android 1.029: no more crash when you drag the floating mic",
+      "summary": "Floating mic: dragging the mic or its bar to a new place could close the app as you let go. It no longer does.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-11-10",
       "tag": "Android 1.028",
       "title": "Android 1.028: Notes, and Falafel coming soon",
       "summary": "Notes: a notepad you dictate into with the in-app mic, kept on the phone only. A note you leave untitled gets a title from the title model; a title you type is never replaced.",
@@ -181,17 +190,6 @@
       "platforms": [
         "android",
         "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-25",
-      "tag": "Models",
-      "title": "Sabich v2.1: more recordings, and no more <unk>",
-      "summary": "Sabich v2.1 replaces v2.0 as the recommended model in the apps. It is a Sabich-only update to Release v2; Shakshuka, Jachnun and Meorav are unchanged.",
-      "platforms": [
-        "android",
-        "desktop",
-        "models"
       ]
     }
   ]
