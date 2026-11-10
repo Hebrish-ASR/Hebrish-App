@@ -7,6 +7,24 @@
   "entries": [
     {
       "date": "2026-11-10",
+      "tag": "Site",
+      "title": "Falafel: the third model in active development",
+      "summary": "Falafel, the voice-command model, has its own page and sits beside Sabich and Shakshuka on /models and the home page. Two sizes, Falafel (desktop) and Falafel 110M (phones and laptop CPUs).",
+      "platforms": [
+        "site"
+      ]
+    },
+    {
+      "date": "2026-11-10",
+      "tag": "Ubuntu 1.029",
+      "title": "Ubuntu 1.029: late words stay on the clipboard",
+      "summary": "Late words: when Enter goes in before the last words, Ctrl+V now pastes just the words that were missed. With \"whole take on the clipboard\" on, the whole take used to replace them a moment later.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-10",
       "tag": "Ubuntu 1.028",
       "title": "Ubuntu 1.028: Falafel coming soon",
       "summary": "Falafel: the new model for short voice commands has its own tab under Models, in a full size and a small one. It shows Coming soon until its first version is out, then downloads like any other model, with no app update.",
@@ -166,24 +184,6 @@
       "summary": "Active model: switch between Sabich and Shakshuka from the tray menu, or with the new Select Sabich, Select Shakshuka and Toggle model action keys.",
       "platforms": [
         "desktop"
-      ]
-    },
-    {
-      "date": "2026-11-04",
-      "tag": "Desktop 1.018",
-      "title": "Let your coding agent read your history, fix recurring errors and update the app",
-      "summary": "Agent control (opt-in): a new switch in Settings → Local API lets coding agents on this computer read and search your transcript history, add find-and-replace rules to the personal dictionary, update the app and its models, switch model and start or stop dictation.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-11-02",
-      "tag": "Data",
-      "title": "How the training sentences are made",
-      "summary": "A method note, How the Hebrish training sentences are made (PDF, 5 pages, with charts): where the words and sentences come from, how sentences are generated from a target term and its context, which models and batch APIs wrote them, the rejection policy, spelling and…",
-      "platforms": [
-        "site"
       ]
     }
   ]
