@@ -2,9 +2,18 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "android",
-  "built": "2026-11-07",
+  "built": "2026-11-10",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-10",
+      "tag": "Android 1.028",
+      "title": "Android 1.028: Notes, and Falafel coming soon",
+      "summary": "Notes: a notepad you dictate into with the in-app mic, kept on the phone only. A note you leave untitled gets a title from the title model; a title you type is never replaced.",
+      "platforms": [
+        "android"
+      ]
+    },
     {
       "date": "2026-11-07",
       "tag": "Android 1.027",
@@ -183,16 +192,6 @@
         "android",
         "desktop",
         "models"
-      ]
-    },
-    {
-      "date": "2026-10-24",
-      "tag": "Apps 1.002",
-      "title": "Paragraphs in Transcription Mode, your choice of how",
-      "summary": "Transcription Mode, in both apps, has a Paragraphs setting: None (one block of text), Time-based (a new paragraph about every 30 seconds, as before) or Paragraph model.",
-      "platforms": [
-        "android",
-        "desktop"
       ]
     }
   ]

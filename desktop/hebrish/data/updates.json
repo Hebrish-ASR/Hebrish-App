@@ -2,9 +2,18 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "desktop",
-  "built": "2026-11-07",
+  "built": "2026-11-10",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-10",
+      "tag": "Ubuntu 1.028",
+      "title": "Ubuntu 1.028: Falafel coming soon",
+      "summary": "Falafel: the new model for short voice commands has its own tab under Models, in a full size and a small one. It shows Coming soon until its first version is out, then downloads like any other model, with no app update.",
+      "platforms": [
+        "desktop"
+      ]
+    },
     {
       "date": "2026-11-07",
       "tag": "Ubuntu 1.027",
@@ -173,15 +182,6 @@
       "tag": "Data",
       "title": "How the training sentences are made",
       "summary": "A method note, How the Hebrish training sentences are made (PDF, 5 pages, with charts): where the words and sentences come from, how sentences are generated from a target term and its context, which models and batch APIs wrote them, the rejection policy, spelling and…",
-      "platforms": [
-        "site"
-      ]
-    },
-    {
-      "date": "2026-11-02",
-      "tag": "Licensing",
-      "title": "How Hebrish will be licensed to organisations",
-      "summary": "A new Licensing page, also in Hebrew: free for individuals, research, education and small non-profits and volunteer organisations; an institutional licence for health funds, hospitals and public bodies; a commercial licence for businesses.",
       "platforms": [
         "site"
       ]
