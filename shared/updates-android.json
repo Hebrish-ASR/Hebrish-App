@@ -2,9 +2,18 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "android",
-  "built": "2026-11-10",
+  "built": "2026-11-11",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-11",
+      "tag": "Android 1.030",
+      "title": "Android 1.030: turn the floating mic off from the app",
+      "summary": "Floating mic: the Floating mic screen now has a Turn off the floating mic button. Before this, the only way to make it go away was to switch it off in Android's Accessibility settings.",
+      "platforms": [
+        "android"
+      ]
+    },
     {
       "date": "2026-11-10",
       "tag": "Android 1.029",
@@ -180,16 +189,6 @@
       "summary": "Settings, Sound, microphone and buttons has a new Use bound buttons switch. Turn it off and Hebrish takes no keys, so the same Bluetooth remote works in other apps; your bindings are kept for when you turn it back on.",
       "platforms": [
         "android"
-      ]
-    },
-    {
-      "date": "2026-10-25",
-      "tag": "Android 1.003 · Desktop 1.005",
-      "title": "Models in plain words, a What's new list, and the floating mic types instead of pasting",
-      "summary": "Each model now says what it's built on, for example \"Base model: Parakeet 0.6B v2 by NVIDIA\"; the technical detail is under Technical details.",
-      "platforms": [
-        "android",
-        "desktop"
       ]
     }
   ]

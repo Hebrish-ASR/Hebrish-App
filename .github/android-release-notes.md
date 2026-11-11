@@ -1,4 +1,4 @@
-**1.029: no more crash when you drag the floating mic.**
+**1.030: turn the floating mic off from the app.**
 
-- **Floating mic:** dragging the mic or its bar to a new place could close the app as you let go. It no longer does. This was the cause of the crashes reported on 1.026 to 1.028 (not memory). Nothing else changes in this release.
+- **Floating mic:** the Floating mic screen has a new *Turn off the floating mic* button. Before this, the only way to make the mic go away was to switch it off in Android's Accessibility settings. Turning it back on is still done there.
 - Not yet tested on a device. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).
