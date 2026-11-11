@@ -21,6 +21,7 @@ import android.widget.TextView
 class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeListener {
     private lateinit var status: TextView
     private lateinit var guideBtn: Button
+    private lateinit var offBtn: Button
     private lateinit var side: RadioGroup
     private lateinit var iconChoice: RadioGroup
     private lateinit var direction: RadioGroup
@@ -43,6 +44,7 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
     override fun build() {
         status = text()
         guideBtn = button(R.string.bubble_guide) { startActivity(Intent(this, FloatingMicGuideActivity::class.java)) }
+        offBtn = button(R.string.bubble_turn_off) { turnOff() }
         button(R.string.bubble_enable) { FloatingMicConsentActivity.openSettings(this) }
 
         heading(R.string.bubble_how_title)
@@ -156,6 +158,13 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
         }, set)
     }
 
+    /** B-103: the service switches itself off; the system's enabled list updates a moment later. */
+    private fun turnOff() {
+        if (!FloatingMicService.turnOff()) { FloatingMicConsentActivity.openSettings(this); return }
+        offBtn.isEnabled = false
+        status.postDelayed({ render() }, 400)
+    }
+
     override fun onResume() {
         super.onResume()
         Prefs.listen(this, this)
@@ -177,6 +186,8 @@ class FloatingMicActivity : Page(), SharedPreferences.OnSharedPreferenceChangeLi
         status.text = getString(if (on) R.string.bubble_on else R.string.bubble_off) +
             if (!Setup.hasMic(this)) "\n" + getString(R.string.bubble_needs_mic) else ""
         guideBtn.setText(if (on) R.string.bubble_guide else R.string.bubble_guide_first)
+        offBtn.visibility = if (on) View.VISIBLE else View.GONE
+        offBtn.isEnabled = true
         val s = Prefs.bubbleSide(this)
         sideIds[s]?.let { if (side.checkedRadioButtonId != it) side.check(it) }
         iconIds[Prefs.bubbleIcon(this)]?.let { if (iconChoice.checkedRadioButtonId != it) iconChoice.check(it) }

@@ -71,8 +71,9 @@ import android.widget.Toast
  * Staying up (0.7.3): with "only while typing" on, the bubble appears when a field gets focus and
  * then stays, even when the field loses focus or the bubble is dragged, so it can be moved off
  * what you are reading before you tap it. There is no close button (0.7.4): a × beside the mic
- * was hit by every attempt to grab and drag the mic, so turning the floating mic off in settings
- * is the only way to hide it (Daniel, 2026-10-22).
+ * was hit by every attempt to grab and drag the mic, so the floating mic is hidden only by turning
+ * it off (Daniel, 2026-10-22): the Floating mic screen's "Turn off" button ([turnOff], B-103) or
+ * Accessibility settings.
  *
  * Minimise (0.7.7): double-tap the idle mic and it shrinks to a dot a third of its size, at the
  * same spot and at idle opacity, for when it is in the way of what you are writing. Tap the dot
@@ -1239,6 +1240,19 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
          * docs/maintaining.md, "One open take across the keyboard and the floating mic".
          */
         fun yieldMic() { running?.yieldToKeyboard() }
+
+        /**
+         * Turns the floating mic off from inside the app (B-103, Daniel 2026-11-11: there was no way to
+         * make it go away short of Android's Accessibility settings). [disableSelf] unbinds the service
+         * and clears it from the enabled list, the same as switching it off in settings; it stays off
+         * until switched on again there. False when the service isn't running, so the caller can fall
+         * back to the settings screen.
+         */
+        fun turnOff(): Boolean {
+            val s = running ?: return false
+            s.disableSelf()
+            return true
+        }
 
         /** Padding inside the bubble's window, around the mic and the bar. */
         const val PAD_DP = 4
