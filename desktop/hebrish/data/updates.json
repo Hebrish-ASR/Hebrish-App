@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-12",
+      "tag": "Ubuntu 1.031",
+      "title": "Ubuntu 1.031: Settings in their own window, Transcription as a Notepad",
+      "summary": "The main window holds the modes: Voice Typing, Transcription and History. Settings, Models, Dictionary, Updates, Diagnostics and About open in a separate Settings window, from the buttons at the top or Settings… in the tray menu.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-12",
       "tag": "Ubuntu 1.030",
       "title": "Ubuntu 1.030: Enter waits for the last words",
       "summary": "Send pressed early: Hold the send key until they're in now also covers an Enter pressed while you're still recording (with The send key stops recording on).",
@@ -175,15 +184,6 @@
       "summary": "/models now leads with the two models in active development, Sabich and Shakshuka, with a training explorer: hours of audio at each version, then clips, speakers, the blend and topics for any version you pick.",
       "platforms": [
         "site"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Model",
-      "title": "Shakshuka v2.1",
-      "summary": "Shakshuka, the streaming model, is updated for the first time since Release v2. It continues from v2.0 and now knows the same recordings as Sabich: 1,672 minutes of them, up from 642.",
-      "platforms": [
-        "desktop"
       ]
     }
   ]
