@@ -2114,6 +2114,10 @@ for users to make sense and use the right one."
   windows). Every download, select, update and folder path still goes through `models()` /
   `get_model()`, so a Qwen3-ASR or asr4all variant can never be selected or fetched (test
   `test_unsupported_engines_are_listed_but_not_models`).
+- The Models tab is built from `model_store.listed_lines()`, not `lines()` (2026-11-12, D-2026-11-12-01). A variant whose
+  `offered_on` does not include this platform is left out unless it is installed or is the saved pick. On the desktop
+  that hides Sabich-Qwen3-ASR, Canary-Qwen, Parakeet-110M and asr4all. `models()` is unchanged, so a hidden variant that
+  is installed still runs and updates (test `test_models_tab_lists_only_models_offered_on_the_desktop`).
 - Models tab (1.010; `ui/window.py` `_family_page`, `_model_row`, `_other_versions`): one tab per line
   (`family_tabs`, tab data = line id; opens on the line in use, keeps the shown tab across
   rebuilds). Each tab: the line summary and its card link, then one row per version this app runs:

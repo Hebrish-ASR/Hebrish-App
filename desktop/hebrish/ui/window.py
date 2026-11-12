@@ -1010,6 +1010,7 @@ class MainWindow(QMainWindow):
         top = QHBoxLayout()
         self.models_intro = muted()
         self.models_intro.setTextFormat(Qt.RichText)
+        self.models_intro.setOpenExternalLinks(True)
         top.addWidget(self.models_intro, 1)
         helper = QPushButton(line_icon("help"), "Help me choose…")
         helper.clicked.connect(self._help_choose)
@@ -1548,7 +1549,7 @@ class MainWindow(QMainWindow):
         self._models_dirty = False
         cur, ctl = model_store.active(), self.ctl
         sel = model_store.current()
-        lines = model_store.lines()
+        lines = model_store.listed_lines()
         shape = [(v.id, v.available, v.supported) for ln in lines for v in ln.variants]
         if getattr(self, "_model_shape", None) != shape:          # catalogue changed: rebuild
             tabs = self.family_tabs
@@ -1573,7 +1574,10 @@ class MainWindow(QMainWindow):
         rec = model_store.get_model(model_store.recommended_id())
         self.models_intro.setText(
             "Pick a family, then a version. " + (f"<b>{rec.name}</b> is the recommended one. " if rec else "")
-            + "A model downloads once and then works offline.")
+            + "A model downloads once and then works offline. This app lists the models made for a "
+            "computer; the full list, including early experimental builds and small models for other "
+            "hardware, is on <a href='https://hebrish.app/models'>hebrish.app/models</a>, where you can "
+            "download them (GGUF, ONNX) for other apps.")
         for m in cat:
             r, inst = self.model_rows[m.id], model_store.active(m.id)
             in_use = m.id == sel.id

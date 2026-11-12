@@ -9,6 +9,27 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-12-01: Each app offers the models that fit it; the rest stay on hebrish.app
+
+- **Decision:** A catalogue variant can carry `offered_on`, the platforms whose Models screen
+  lists it. The desktop app (Ubuntu, Windows) now lists Sabich, Shakshuka, Falafel (both sizes)
+  and stock Parakeet. Sabich-Qwen3-ASR-1.7B, Sabich-Canary-Qwen-2.5B, Sabich-Parakeet-110M and
+  asr4all are no longer listed there. The Models tab links to hebrish.app/models for the full
+  list. Nothing is deleted: the variants stay in the catalogue and on Hugging Face, and one that
+  is already installed or in use stays listed and working. Narrows D-2026-11-04-01's model list
+  for the desktop.
+- **Why:** Daniel, 2026-11-12: focus on the three supported models (Sabich, Falafel,
+  Shakshuka). The apps should offer the most appropriate models for their hardware, not every
+  build. Experimental builds are on the website, and their GGUF can be used in third-party apps.
+  Low-resource hardware may later get its own CLI (for example, for Raspberry Pi) instead of a
+  place in the desktop GUI.
+- **Alternatives:** Remove the variants from the catalogue (this would strand installs, and
+  Android still uses 110M and asr4all). Hide them with a per-app hard-coded list (this would
+  drift from the shared catalogue).
+- **By:** Daniel (the principle and which models). The `offered_on` mechanism, keeping installed
+  models listed and keeping stock Parakeet were the agent's calls.
+- **Plan:** [targeted-model-lists.md](targeted-model-lists.md), backlog I-23.
+
 ### D-2026-11-09-02: The Android overlay bar opens across the screen by default
 
 - **Decision:** `Prefs.bubbleBarDirection` defaults to `across` again instead of `along`. Both

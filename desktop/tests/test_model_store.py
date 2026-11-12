@@ -188,6 +188,19 @@ def test_unsupported_engines_are_listed_but_not_models():
         ms.select("sabich-qwen3-asr-1.7b")
 
 
+def test_models_tab_lists_only_models_offered_on_the_desktop():
+    """offered_on (2026-11-12, Daniel): the Models tab lists Sabich, Shakshuka, Falafel and stock;
+    the other Sabich variants stay in the catalogue and on Hugging Face, and one that is already
+    installed stays listed (and usable) so nobody loses the model they have."""
+    def listed():
+        return {v.id for ln in ms.listed_lines() for v in ln.variants}
+    assert listed() == {"sabich-rolling", "shakshuka", "falafel", "falafel-110m", "stock"}
+    assert ms.get_model("sabich-parakeet-110m") is not None       # hidden, not removed
+    install(ms.manifest_from_tree(ms.get_model("sabich-parakeet-110m"), "s" * 40, STOCK_TREE, None))
+    assert "sabich-parakeet-110m" in listed()
+    shutil.rmtree(ms.model_dir("sabich-parakeet-110m"))
+
+
 def test_no_pick_prefers_a_downloaded_model_then_recommended():
     state = ms.load_json(ms.STATE_PATH)
     state.pop("model", None)

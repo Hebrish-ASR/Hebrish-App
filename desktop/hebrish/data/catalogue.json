@@ -1,5 +1,5 @@
 {
-  "_comment": "Model catalogue v2 (schema 2), read by Android 0.7.0+ and desktop 0.6.0+. Builds before those read models.json (schema 1) and reject any other schema, so both files are kept; desktop/tests/test_shared.py checks that every schema-1 model appears here with the same id, repo and manifest_url. Lines are what a model is trained for (Sabich = everything, Shakshuka = streaming, Falafel = voice commands since 2026-11-10; Jachnun was removed from the apps on 2026-11-04, Daniel: two active models); variants are the same line on another base model. A variant is downloadable in an app only if its engine is in that app's supported engines AND its status is 'available'; other variants are listed greyed with runs_on and a card link. What the Models screens show is plain language (2026-10-25): base_label (e.g. Parakeet 0.6B v2 by NVIDIA), hardware, recommendation and runs_on; repo ids, formats and runtimes go in technical (and base_model, repo), shown only under Technical details. Variant ids are permanent (they name the folder models/<id>/); never reuse or rename one. speed and accuracy (1-5) and gradient (0-100) are estimates, the same numbers as hebrish.app/models/choose, not benchmark results; `chooser.rules` is that page's decision list. Protocol: shared/update-protocol.md. A variant whose manifest_url answers 404 is shown as 'Coming soon' by Android 1.028+ and desktop 1.028+ (not an error); Download checks again (2026-11-10, update-protocol.md).",
+  "_comment": "Model catalogue v2 (schema 2), read by Android 0.7.0+ and desktop 0.6.0+. Builds before those read models.json (schema 1) and reject any other schema, so both files are kept; desktop/tests/test_shared.py checks that every schema-1 model appears here with the same id, repo and manifest_url. Lines are what a model is trained for (Sabich = everything, Shakshuka = streaming, Falafel = voice commands since 2026-11-10; Jachnun was removed from the apps on 2026-11-04, Daniel: two active models); variants are the same line on another base model. A variant is downloadable in an app only if its engine is in that app's supported engines AND its status is 'available'; other variants are listed greyed with runs_on and a card link. What the Models screens show is plain language (2026-10-25): base_label (e.g. Parakeet 0.6B v2 by NVIDIA), hardware, recommendation and runs_on; repo ids, formats and runtimes go in technical (and base_model, repo), shown only under Technical details. Variant ids are permanent (they name the folder models/<id>/); never reuse or rename one. speed and accuracy (1-5) and gradient (0-100) are estimates, the same numbers as hebrish.app/models/choose, not benchmark results; `chooser.rules` is that page's decision list. Protocol: shared/update-protocol.md. A variant whose manifest_url answers 404 is shown as 'Coming soon' by Android 1.028+ and desktop 1.028+ (not an error); Download checks again (2026-11-10, update-protocol.md). `offered_on` (2026-11-12, Daniel: each app offers the models that fit its hardware): the platforms whose Models screen lists a variant; absent means every platform it runs on. A variant left out stays published (Hugging Face, hebrish.app/models) and keeps working where it is installed or in use; desktop 1.031+ reads it, Android not yet (planning/targeted-model-lists.md, D-2026-11-12-01).",
   "schema": 2,
   "catalogue_v2_url": "https://raw.githubusercontent.com/Hebrish-ASR/Hebrish-App/main/shared/catalogue.json",
   "recommended": "sabich-rolling",
@@ -124,7 +124,8 @@
           "recommendation": "The most accurate, for a computer with a graphics card. Not in the Hebrish apps yet.",
           "runs_on": "other speech software, on a computer with a graphics card. See the model page.",
           "repo": "Hebrish/Sabich-Qwen3-ASR-1.7B",
-          "card": "https://huggingface.co/Hebrish/Sabich-Qwen3-ASR-1.7B"
+          "card": "https://huggingface.co/Hebrish/Sabich-Qwen3-ASR-1.7B",
+          "offered_on": []
         },
         {
           "id": "sabich-canary-qwen-2.5b",
@@ -160,7 +161,8 @@
           "recommendation": "Best on plain English; behind Sabich-Qwen3-ASR-1.7B on Hebrew words. Not in the apps.",
           "runs_on": "other speech software, on a computer with a graphics card. See the model page.",
           "repo": "Hebrish/Sabich-Canary-Qwen-2.5B",
-          "card": "https://huggingface.co/Hebrish/Sabich-Canary-Qwen-2.5B"
+          "card": "https://huggingface.co/Hebrish/Sabich-Canary-Qwen-2.5B",
+          "offered_on": []
         },
         {
           "id": "sabich-parakeet-110m",
@@ -195,7 +197,10 @@
           "repo": "Hebrish/Sabich-Parakeet-110M-sherpa-onnx-int8",
           "subdir": "",
           "card": "https://huggingface.co/Hebrish/Sabich-Parakeet-110M",
-          "manifest_url": "https://cdn.hebrish.app/models/sabich-110m/latest.json"
+          "manifest_url": "https://cdn.hebrish.app/models/sabich-110m/latest.json",
+          "offered_on": [
+            "android"
+          ]
         },
         {
           "id": "sabich-asr4all-m",
@@ -225,7 +230,10 @@
           "recommendation": "Tiny, for wearables: live text, writes numbers as words.",
           "runs_on": "other speech apps. See the model page.",
           "card": "https://huggingface.co/Hebrish/Sabich-asr4all-M",
-          "repo": "Hebrish/Sabich-asr4all-M"
+          "repo": "Hebrish/Sabich-asr4all-M",
+          "offered_on": [
+            "android"
+          ]
         },
         {
           "id": "sabich-asr4all-s",
@@ -255,7 +263,10 @@
           "recommendation": "The smallest and fastest, for the weakest devices; writes numbers as words.",
           "runs_on": "other speech apps. See the model page.",
           "card": "https://huggingface.co/Hebrish/Sabich-asr4all-S",
-          "repo": "Hebrish/Sabich-asr4all-S"
+          "repo": "Hebrish/Sabich-asr4all-S",
+          "offered_on": [
+            "android"
+          ]
         }
       ]
     },

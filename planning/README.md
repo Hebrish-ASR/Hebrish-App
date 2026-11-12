@@ -11,6 +11,7 @@ what is being worked on next, and why things were decided the way they were.
 | [requests.md](requests.md) | Feature requests received, from users and from Daniel, with where each one went |
 | [backlog.md](backlog.md) | The working list: one sprint per platform (desktop, Android), and ideas for future versions |
 | [sprints/](sprints/README.md) | Cross-platform sprints with targets, one file each |
+| [targeted-model-lists.md](targeted-model-lists.md) | Which models each app offers, and what is left to do (Android, a CLI for low-resource boards) |
 | [decisions.md](decisions.md) | The decision log, newest first |
 | [voice-notes/](voice-notes/README.md) | Index of Daniel's spoken updates, the source of many requests. Published as written-up episodes at <https://hebrish.app/updates/podcast>; raw transcripts and audio are not kept here |
 

@@ -93,6 +93,13 @@ class Model:
     recommendation: str = ""
     runs_on: str = ""                # where an unsupported variant runs instead
     streaming: bool = False
+    offered_on: list | None = None   # platforms whose Models screen lists it; None = every platform it runs on
+
+    @property
+    def offered(self) -> bool:
+        """Listed on this platform's Models screen (2026-11-12, Daniel: each app offers the models
+        that fit its hardware; the rest stay on Hugging Face and hebrish.app/models)."""
+        return self.offered_on is None or PLATFORM in self.offered_on
 
     @property
     def supported(self) -> bool:
@@ -174,6 +181,18 @@ def lines() -> list[Line]:
                     summary=m.get("summary") or ln.get("summary", ""))
               for m in ln.get("variants", [])]
         out.append(Line(ln["id"], ln["name"], ln.get("summary", ""), ln.get("card", ""), vs))
+    return out
+
+
+def listed_lines() -> list[Line]:
+    """What the Models tab shows: lines() without the variants not offered here, except one that is
+    installed or in use, so nobody loses sight of the model they have. Empty lines are dropped."""
+    keep = set(installed_ids()) | {load_json(STATE_PATH).get("model")}
+    out = []
+    for ln in lines():
+        vs = [v for v in ln.variants if v.offered or v.id in keep]
+        if vs:
+            out.append(Line(ln.id, ln.name, ln.summary, ln.card, vs))
     return out
 
 
