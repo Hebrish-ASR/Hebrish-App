@@ -1966,3 +1966,32 @@ notes … generate a title … a basic notepad". Cloud sync and desktop parity a
 - **Checked (2026-11-09):** `compileFdroidDebugKotlin` passes (JDK 21). **Not run on a device**:
   the screens, saving, titles (speed, memory next to the loaded ASR model), the take-after-Back
   path and Try it after the refactor are unverified.
+
+## Keyboard hidden mid-take: pause, don't drop (unreleased, 2026-11-12)
+
+Daniel, 2026-11-12: dictating in the voice keyboard and then tapping something on screen (a menu in
+ChatGPT, or another field in an email) closed the keyboard and threw the take away, so he had to
+start again from zero.
+
+**Cause.** Tapping a non-editable element or another field takes input focus away, and the system
+hides the IME; an IME can't veto that. `onFinishInputView` then called `dropTake()` (since 0.4.0),
+which cancels the recorder and the decoder, so the audio was lost.
+
+**Fix.** `onFinishInputView` now calls `pauseForHide()`: a recording take is paused (`Recorder.pause`,
+so `AudioRecord` stops and the privacy indicator goes off), samples and decoder kept, and
+`Mic.release` lets go of a Bluetooth link. `resumeOnShow` remembers whether it was recording. When the
+keyboard comes back, `onStartInputView` sees the open take before anything else (`resumeAfterHide`,
+ahead of the `restarting` check and auto-start), re-runs `Mic.prepare`, and resumes recording if it was
+recording when it hid; a take the user had paused stays paused. Stop then puts the rest into whichever
+field the keyboard came back for. Type-as-you-go text already typed stays where it went. A password
+field keeps the take paused.
+
+**Ruled out: keep recording while hidden.** A hidden IME isn't in the foreground, so the mic would need
+a `microphone` foreground service; Android 14+ refuses to start one from the background, and starting
+it at every take start would put up a notification on every dictation. Pausing needs no mic while
+hidden at all.
+
+**Side effect.** A paused take keeps the model loaded (`onScreenOff` / `onTrimMemory` see a take open)
+until it is stopped, discarded, or the service dies. Not capped yet.
+
+**Verified.** Compiled (V, 2026-11-12). Not run on a device (I).

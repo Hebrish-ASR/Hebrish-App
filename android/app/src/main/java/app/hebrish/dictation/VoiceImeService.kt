@@ -178,7 +178,7 @@ class VoiceImeService : InputMethodService() {
         if (running === this) running = null
         runCatching { unregisterReceiver(screenOff) }
         getSystemService(AudioManager::class.java).unregisterAudioDeviceCallback(devices)
-        // onFinishInputView normally drops an open take first; if it didn't, don't leave the mic
+        // A take paused by onFinishInputView (or still open) dies with the service: don't leave the mic
         // open or a held Enter pending on a dead service. Takes still landing have no field left.
         dropTake()
         for (t in finishing) t.decoder.cancel()
@@ -252,6 +252,7 @@ class VoiceImeService : InputMethodService() {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         passwordField = isPassword(info)
+        if (open) return resumeAfterHide()
         if (restarting) return
         switchWhenDone = false
         when {
@@ -270,11 +271,46 @@ class VoiceImeService : InputMethodService() {
         super.onFinishInputView(finishingInput)
         // The field the held Enter was meant for is gone: don't send it into the next one.
         if (enterHeld) { enterHeld = false; main.removeCallbacks(enterTimeout) }
-        if (open) {
-            dropTake()
-            state = settled()
-            renderTake()
+        if (open) pauseForHide()
+    }
+
+    /** The take was recording when the keyboard hid, so it resumes when the keyboard comes back. */
+    private var resumeOnShow = false
+
+    /**
+     * The keyboard hid mid-take: a tap on a menu, a link or another field takes focus away and the
+     * system hides the IME, which has no say. Up to 1.030 the take was dropped there and the words
+     * were lost; now it is paused, buffer and decoder kept, and the Bluetooth link let go. Recording
+     * on while hidden was ruled out: a hidden IME isn't foreground, so the mic would need a
+     * microphone foreground service, which Android 14+ won't start from the background.
+     */
+    private fun pauseForHide() {
+        val r = recorder ?: return
+        resumeOnShow = state == State.RECORDING
+        if (resumeOnShow) {
+            r.pause()
+            setLevel(0f)
+            state = State.PAUSED
         }
+        Mic.release(this)
+        renderTake()
+    }
+
+    /**
+     * The keyboard is back with a take still open (paused by [pauseForHide], or by the user):
+     * reopen the mic route and carry on recording if it was recording when it hid. Its text goes
+     * into whichever field the keyboard came back for. A password field keeps it paused.
+     */
+    private fun resumeAfterHide() {
+        val r = recorder ?: return
+        Mic.prepare(this, r)
+        val resume = resumeOnShow && !passwordField
+        resumeOnShow = false
+        if (resume) togglePause()
+        else if (passwordField) show(getString(R.string.ime_password), busy = false)
+        else show(getString(R.string.ime_status_paused, r.seconds / 60, r.seconds % 60), busy = false)
+        renderTake()
+        showSource()
     }
 
     /** Back leaves for the regular keyboard instead of just hiding this one (Prefs.backSwitches). */
