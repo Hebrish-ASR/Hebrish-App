@@ -48,7 +48,7 @@ from pathlib import Path
 from PySide6.QtCore import QEvent, QObject, QSize, Qt, QTimer, Signal
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (QApplication, QMenu, QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel,
-                               QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider,
+                               QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider, QSplitter,
                                QToolButton, QVBoxLayout, QWidget)
 
 from .. import (__version__, audio, cleanup, config, dictionary, disfluency, longform, mics, model_store,
@@ -172,6 +172,25 @@ class TranscribePage(QWidget):
         r.addWidget(self.btn_left_go)
         r.addWidget(self.btn_left_del)
         lay.addWidget(self.leftover_row)
+
+        # Two panes (2026-11-12, Daniel: "file-based transcription in one pane and then a Notepad in
+        # another"): Audio file on the left, the Notepad (recorder over the editable transcript) on
+        # the right. Both write into the Notepad's text, following Next recording.
+        self.split = QSplitter(Qt.Horizontal)
+        self.split.setChildrenCollapsible(False)
+        self.file_pane = QWidget()
+        fl = QVBoxLayout(self.file_pane)
+        fl.setContentsMargins(0, 0, 0, 0)
+        self.notepad = QWidget()
+        page_lay, lay = lay, QVBoxLayout(self.notepad)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(12)
+        self.split.addWidget(self.file_pane)
+        self.split.addWidget(self.notepad)
+        self.split.setStretchFactor(0, 0)
+        self.split.setStretchFactor(1, 1)
+        self.split.setSizes([240, 640])
+        page_lay.addWidget(self.split, 1)
 
         # -- recorder
         box, b = card()
@@ -307,12 +326,23 @@ class TranscribePage(QWidget):
         b.addLayout(row)
         self._keep_tip()
 
-        row = QHBoxLayout()
-        self.drop = QPushButton("Open an audio file…")
+        lay.addWidget(box)
+
+        # -- audio file (left pane)
+        fbox, fb = card()
+        fb.addWidget(QLabel("Audio file", objectName="cardTitle"))
+        fb.addWidget(muted("Transcribe a recording you already have. The transcript goes into the Notepad."))
+        self.drop = QPushButton(line_icon("folder"), "Open an audio file…")
         self.drop.setToolTip("Or drop one anywhere on this tab: " + audio.AUDIO_FILTER.split("(")[1].rstrip(")"))
         self.drop.clicked.connect(self._open)
-        row.addWidget(self.drop)
-        row.addWidget(muted("or drop one on this tab"), 1)
+        fb.addWidget(self.drop)
+        zone = QLabel("or drop one here", objectName="dropZone")
+        zone.setAlignment(Qt.AlignCenter)
+        zone.setMinimumHeight(110)
+        zone.setWordWrap(True)
+        zone.setStyleSheet("#dropZone { border: 2px dashed palette(mid); border-radius: 10px; color: palette(mid); }")
+        zone.setToolTip(audio.AUDIO_FILTER.split("(")[1].rstrip(")"))
+        fb.addWidget(zone)
         # Bundled test recordings (2026-11-02): hidden if a build left them out
         self.btn_sample = QPushButton("Try a sample")
         self.btn_sample.setToolTip("Transcribe a recording that comes with the app: three 1-minute "
@@ -323,15 +353,15 @@ class TranscribePage(QWidget):
             menu.addAction(label, lambda p=str(path): self.transcribe_file(p))
         self.btn_sample.setMenu(menu)
         self.btn_sample.setVisible(bool(menu.actions()))
-        row.addWidget(self.btn_sample)
-        b.addLayout(row)
+        fb.addWidget(self.btn_sample)
+        fb.addStretch(1)
         self.btn_open = self.drop
-        lay.addWidget(box)
+        fl.addWidget(fbox, 1)
 
         # -- transcript
         box, b = card()
         head = QHBoxLayout()
-        head.addWidget(QLabel("Transcript", objectName="cardTitle"))
+        head.addWidget(QLabel("Notepad", objectName="cardTitle"))
         head.addStretch(1)
         self.dl_text = QLabel()
         head.addWidget(self.dl_text)
@@ -369,9 +399,9 @@ class TranscribePage(QWidget):
         head.addWidget(self.tidy)
         b.addLayout(head)
         self.text = QPlainTextEdit()
-        self.text.setPlaceholderText("The transcript lands here, and you can edit it. "
-                                     "Another recording or file is added at the end. Paragraphs "
-                                     "follow the Paragraphs setting above.")
+        self.text.setPlaceholderText("Record, or open an audio file: the transcript lands here, and you "
+                                     "can edit it like any notepad. Another recording or file is added "
+                                     "at the end. Paragraphs follow the Paragraphs setting above.")
         self.text.setStyleSheet("font-size: 14px;")
         b.addWidget(self.text, 1)
         self.sync_cleanup()

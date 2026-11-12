@@ -169,7 +169,7 @@ class MainWindow(QMainWindow):
         self.ctl, self.cfg = ctl, ctl.cfg
         self.quitting = False
         self.setWindowTitle(APP_NAME)
-        self.resize(600, 720)
+        self.resize(900, 760)          # 2026-11-12: Transcription has two panes (was 600 x 720)
 
         root = QWidget()
         outer = QVBoxLayout(root)

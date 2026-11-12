@@ -9,6 +9,27 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-12-02: Desktop: modes in the main window, everything else in a Settings window; Transcription in two panes
+
+- **Decision:** The desktop main window keeps Voice Typing, Transcription and History.
+  Settings, Models, Dictionary, Updates, Diagnostics and About move to a separate Settings
+  window. It opens from the header buttons, the tray's Settings… and any `present_tab()` for
+  those pages. The Transcription tab is split into an Audio file pane (open, drop, samples) and a
+  Notepad (the recorder over the editable transcript). Both write into the Notepad text. The tab
+  gets a Test mic button. The default window size goes from 600 x 720 to 900 x 760.
+- **Why:** Daniel, 2026-11-12: Transcription mode "doesn't seem to detect my microphone" (it
+  recorded, but nothing showed a level until a recording ran). The mode should be "a Notepad
+  style UI", with "file-based transcription in one pane and then a Notepad in another", and "a
+  clean separation between the main UI, the modes, and then the other ones", with Models and
+  Dictionary collapsed into Settings.
+- **Alternatives:** Sub-tabs (File / Notepad) inside Transcription (hides one of the two); a
+  separate output box for file transcripts (duplicates Copy, Save, Clean up and Transform; not
+  asked for). Settings as one long page with Models and Dictionary as sections (Models is too
+  long for that).
+- **By:** Daniel (the layout). Keeping one text box for both sources, putting Updates,
+  Diagnostics and About in the Settings window too, and the window size were the agent's calls.
+- **Parity:** Android follow-up, backlog I-24.
+
 ### D-2026-11-12-01: Each app offers the models that fit it; the rest stay on hebrish.app
 
 - **Decision:** A catalogue variant can carry `offered_on`, the platforms whose Models screen
