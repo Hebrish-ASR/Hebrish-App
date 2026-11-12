@@ -520,8 +520,8 @@ def test_held_enter_with_nothing_typed_goes_through():
     # nothing of this take typed yet and no earlier take pending: the Enter isn't held
     from types import SimpleNamespace
     import threading
+    pytest = __import__("pytest"); pytest.importorskip("PySide6")   # before the import: CI's test job has no Qt
     from hebrish.ui.app import Controller
-    pytest = __import__("pytest"); pytest.importorskip("PySide6")
     ctl = SimpleNamespace(cfg={"enter_stops": True, "enter_guard": "hold", "out_cursor": True}, _typed=False,
                           state="recording", recorder=SimpleNamespace(paused=False), _guard=threading.Lock(),
                           _unfinished=set(), _diverted=set(), _enter_held=False, _take=3)
