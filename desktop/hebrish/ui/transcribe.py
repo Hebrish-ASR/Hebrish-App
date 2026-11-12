@@ -200,6 +200,15 @@ class TranscribePage(QWidget):
         refresh.setToolTip("Rescan microphones")
         refresh.clicked.connect(self._fill_mics)
         row.addWidget(refresh)
+        # Test mic (2026-11-12, Daniel: "it doesn't seem to detect my microphone"): before this the
+        # meter was hidden by default and read "shows while recording", so an idle tab gave no sign
+        # the mic worked. It opens this tab's mic for the meter only (nothing is kept), like Voice
+        # Typing's Test mic, and stops on Record, on leaving the tab or when the window hides.
+        self.monitor = audio.Recorder(max_s=0)
+        self.btn_test = QPushButton(line_icon("mic"), "Test mic", checkable=True)
+        self.btn_test.setToolTip("Open this microphone and show its level, without recording")
+        self.btn_test.toggled.connect(self._test_mic)
+        row.addWidget(self.btn_test)
         b.addLayout(row)
         self._fill_mics()
         self.mic.currentIndexChanged.connect(self._on_mic)
@@ -437,8 +446,34 @@ class TranscribePage(QWidget):
     def _fill_mics(self):
         fill_combo(self.mic, self.cfg, "tm_audio_device")
 
+    def _test_mic(self, on: bool):
+        """Test mic: the level of this tab's mic, nothing recorded. Shows the Levels panel."""
+        if not on:
+            if self.monitor.active:
+                self.monitor.stop()
+            return
+        if self.tape.active:
+            self.btn_test.setChecked(False)
+            return
+        try:
+            self.monitor.start(mics.resolve(self.cfg, "tm_audio_device")[0])
+        except Exception as e:
+            self.btn_test.setChecked(False)
+            QMessageBox.warning(self, "Couldn't open the microphone", str(e))
+            return
+        if self._levels_state == "docked":
+            self._set_levels("shown")
+        self._timer.start()
+
+    def stop_test(self):
+        if self.btn_test.isChecked():
+            self.btn_test.setChecked(False)
+
     def _on_mic(self, _i):
         self.cfg.set("tm_audio_device", self.mic.currentData())
+        if self.monitor.active:                 # follow the new mic
+            self.monitor.stop()
+            self._test_mic(True)
         try:
             self.tape.switch_device(mics.resolve(self.cfg, "tm_audio_device")[0])
         except Exception as e:
@@ -525,6 +560,10 @@ class TranscribePage(QWidget):
         if self._levels_state == "floating":
             self._place_levels()
 
+    def hideEvent(self, ev):
+        super().hideEvent(ev)
+        self.stop_test()                 # another tab, or the window went to the tray
+
     def eventFilter(self, obj, ev):
         if obj is self._watched and self._levels_state == "floating" and \
                 ev.type() in (QEvent.Show, QEvent.Hide):
@@ -550,6 +589,7 @@ class TranscribePage(QWidget):
                 self, "Low disk space", f"The disk has room for about {_clock(room)} of recording. "
                 "Record anyway?") != QMessageBox.Yes:
             return
+        self.stop_test()
         try:
             t.start(mics.resolve(self.cfg, "tm_audio_device")[0])
         except Exception as e:
@@ -646,9 +686,10 @@ class TranscribePage(QWidget):
             self.elapsed.setText(_clock(t.seconds))
         if not self.meter_box.isVisible():
             return
-        self.meter.set_source(t if t.active else None)
-        if not t.active:
-            self.meter_label.setText("<span style='color:gray'>Level: shows while recording</span>")
+        src = t if t.active else self.monitor if self.monitor.active else None
+        self.meter.set_source(src)
+        if src is None:
+            self.meter_label.setText("<span style='color:gray'>Level: press Test mic, or record</span>")
         elif t.paused:
             self.meter_label.setText("Paused")
         else:
@@ -694,10 +735,12 @@ class TranscribePage(QWidget):
         self.btn_go.setEnabled(not busy and (rec or held))
         self.btn_drop_tape.setEnabled(not busy and (rec or held))
         self.drop.setEnabled(not busy and not rec)
-        if rec:
+        self.btn_test.setEnabled(not rec)
+        if rec or self.monitor.active:
             self._timer.start()
         else:
             self._timer.stop()
+        if not rec:
             self.elapsed.setText(f"■ {_clock(self._held_seconds())}" if held else "")
         light = LIGHT.get("paused" if paused else "rec" if rec else "")
         self.light.setVisible(light is not None)

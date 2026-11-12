@@ -336,3 +336,35 @@ def test_one_switch_reaches_tray_and_voice_typing_box():
     ctl.cfg["vad"] = False
     Controller.sync_tray_vad(ctl)
     assert not act.isChecked() and not box.isChecked()
+
+
+# -- Test mic (2026-11-12) -------------------------------------------------------------------
+class FakeMonitor(FakeTape):
+    level = 0.0
+
+    def start(self, device=""):
+        self.active = True
+        self.device = device
+
+
+def test_test_mic_shows_the_level_without_recording_and_stops_on_record(make):
+    """Daniel, 2026-11-12: the tab didn't seem to detect the mic, because nothing showed a level
+    until a recording ran. Test mic opens the mic for the meter only; Record takes over."""
+    _, page, _ = make()
+    page.monitor = FakeMonitor()
+    page.btn_test.click()
+    assert page.monitor.active and page.levels.isVisible()
+    page._tick()
+    assert "Test mic" not in page.meter_label.text()          # showing a level, not the hint
+    page.btn_rec.click()
+    assert not page.monitor.active and not page.btn_test.isChecked() and page.tape.active
+    assert not page.btn_test.isEnabled()
+
+
+def test_test_mic_stops_when_the_tab_is_hidden(make):
+    host, page, _ = make()
+    page.monitor = FakeMonitor()
+    page.btn_test.click()
+    host.hide()
+    app.processEvents()
+    assert not page.monitor.active
