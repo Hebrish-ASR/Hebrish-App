@@ -118,6 +118,49 @@ class _BackupDone(QObject):
     done = Signal(object, object, str)     # manifest, error, destination
 
 
+MAIN_TABS = (("dictate", "Voice Typing"), ("file", "Transcription"), ("history", "History"))
+SETTINGS_TABS = (("settings", "Settings"), ("model", "Models"), ("dictionary", "Dictionary"),
+                 ("updates", "Updates"), ("diagnostics", "Diagnostics"), ("about", "About"))
+SETTINGS_KEYS = {k for k, _ in SETTINGS_TABS}
+
+
+class SettingsWindow(QWidget):
+    """Settings, Models, Dictionary, Updates, Diagnostics and About in a window of their own
+    (2026-11-12, Daniel), opened from the main window's header and the tray. Closing it hides it.
+    The pages are the main window's (MainWindow.pages); only their tab widget lives here."""
+
+    def __init__(self, main):
+        super().__init__(None, Qt.Window)
+        self.main = main
+        self.setWindowTitle(f"{APP_NAME} settings")
+        self.resize(640, 760)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
+        lay.addWidget(self.tabs, 1)
+        footer = QWidget(objectName="footer")
+        fl = QHBoxLayout(footer)
+        fl.setContentsMargins(16, 4, 12, 8)
+        self.status_label = muted()
+        self.status_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        fl.addWidget(self.status_label, 1)
+        lay.addWidget(footer)
+        self.tabs.currentChanged.connect(
+            lambda i: self.tabs.widget(i) is getattr(main, "_about", None) and main._about.refresh())
+
+    def add_toast(self):
+        self.toast_label = QLabel("", self, objectName="toast")
+        self.toast_label.setAlignment(Qt.AlignCenter)
+        self.toast_label.hide()
+        self._toast_timer = QTimer(self, singleShot=True, interval=1600, timeout=self.toast_label.hide)
+
+    def showEvent(self, ev):
+        super().showEvent(ev)
+        self.main._refresh_shown()
+
+
 class MainWindow(QMainWindow):
     _download_text = ""           # "120 / 640 MB · 18%", for the model card's status line
 
@@ -158,16 +201,17 @@ class MainWindow(QMainWindow):
         from .updates import UpdatesPage
         self.pages["updates"] = UpdatesPage(card, muted)
         self.pages["about"] = self._about_page()
-        for key, label in (("dictate", "Voice Typing"), ("file", "Transcription"), ("history", "History"),
-                           ("dictionary", "Dictionary"), ("model", "Models"), ("settings", "Settings"),
-                           ("updates", "Updates"), ("diagnostics", "Diagnostics"), ("about", "About")):
+        # The main window holds the modes and History; everything else is in the Settings window
+        # (2026-11-12, Daniel: "a clean separation between the main UI, the modes, and then the
+        # other ones"). Up to 1.030 Dictionary, Models and Settings were tabs here, and Updates,
+        # Diagnostics and About hidden tabs opened from the header.
+        for key, label in MAIN_TABS:
             self.tabs.addTab(self.pages[key], label)
         self.tabs.setTabVisible(self.tabs.indexOf(self.pages["history"]), self.cfg["keep_history"])
-        # Diagnostics and About open from the header's buttons (1.007): eight tabs didn't fit the
-        # window's width, and these two are visited rarely. Updates joined them (2026-10-31).
-        for key in ("updates", "diagnostics", "about"):
-            self.tabs.setTabVisible(self.tabs.indexOf(self.pages[key]), False)
-        self.tabs.currentChanged.connect(self._sync_header_buttons)
+        self.settings_win = SettingsWindow(self)
+        for key, label in SETTINGS_TABS:
+            self.settings_win.tabs.addTab(self.pages[key], label)
+        self.settings_win.tabs.currentChanged.connect(self._refresh_shown)
         self.ctl.sig.piece.connect(self._append_piece)
         # The level meter repaints ~16 times a second, so only while the window is shown
         # (showEvent / hideEvent): up to 1.012 it woke the app all day in the tray.
@@ -208,6 +252,7 @@ class MainWindow(QMainWindow):
         self.toast_label.setAlignment(Qt.AlignCenter)
         self.toast_label.hide()
         self._toast_timer = QTimer(self, singleShot=True, interval=1600, timeout=self.toast_label.hide)
+        self.settings_win.add_toast()
         self.cfg.on_set = lambda key: key not in NO_TOAST and self.toast()
 
     # -- frame ---------------------------------------------------------------------
@@ -227,26 +272,25 @@ class MainWindow(QMainWindow):
         text.addWidget(QLabel(TAGLINE, objectName="tagline"))
         lay.addLayout(text, 1)
         self.header_buttons = {}
-        for key, name, label in (("updates", "bell", "Updates"), ("diagnostics", "pulse", "Diagnostics"),
-                                 ("about", "info", "About")):
-            b = QToolButton(objectName="headerButton", text=label, checkable=True)
+        for key, name, label in (("settings", "settings", "Settings"), ("updates", "bell", "Updates"),
+                                 ("diagnostics", "pulse", "Diagnostics"), ("about", "info", "About")):
+            b = QToolButton(objectName="headerButton", text=label)
             b.setIcon(line_icon(name))
             b.setIconSize(QSize(16, 16))
             b.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
             b.setCursor(Qt.PointingHandCursor)
-            b.clicked.connect(lambda _=False, k=key: self._header_tab(k))
+            b.clicked.connect(lambda _=False, k=key: self.open_settings(k))
             self.header_buttons[key] = b
             lay.addWidget(b, 0, Qt.AlignVCenter)
         return h
 
-    def _header_tab(self, key):
-        """A header button: open its page, or go back to Voice Typing if it is already open."""
-        self.tabs.setCurrentWidget(self.pages["dictate"] if self.tabs.currentWidget() is self.pages[key]
-                                   else self.pages[key])
-
-    def _sync_header_buttons(self, _i=None):
-        for key, b in self.header_buttons.items():
-            b.setChecked(self.tabs.currentWidget() is self.pages[key])
+    def open_settings(self, key: str = "settings"):
+        """The Settings window, on one of its pages (SETTINGS_TABS)."""
+        w = self.settings_win
+        w.tabs.setCurrentWidget(self.pages[key])
+        w.show()
+        w.raise_()
+        w.activateWindow()
 
     def _app_update_bar(self):
         """A new Hebrish app (0.6.2, app_update): a strip under the header with one action and
@@ -316,6 +360,9 @@ class MainWindow(QMainWindow):
         return s
 
     def present_tab(self, name: str = ""):
+        if name in SETTINGS_KEYS:
+            self.open_settings(name)
+            return
         if name:
             self.tabs.setCurrentWidget(self.pages[name])
         self.show()
@@ -338,7 +385,9 @@ class MainWindow(QMainWindow):
         self._meter_timer.stop()
 
     def _shown(self, page) -> bool:
-        return self.isVisible() and self.tabs.currentWidget() is page
+        win = page.window()
+        tabs = self.settings_win.tabs if win is self.settings_win else self.tabs
+        return win.isVisible() and tabs.currentWidget() is page
 
     def _refresh_shown(self, _i=None):
         """A tab came into view: bring Models or History up to date if they changed meanwhile."""
@@ -1569,7 +1618,7 @@ class MainWindow(QMainWindow):
             self._model_shape = shape
         self._update_addons()
         self._update_bundles()
-        cat = [m for m in model_store.models() if m.available]
+        cat = [m for m in model_store.models() if m.available and m.id in self.model_rows]   # rows: listed_lines()
         busy = bool(ctl.downloading or ctl.downloading_id)
         rec = model_store.get_model(model_store.recommended_id())
         self.models_intro.setText(
@@ -2285,15 +2334,15 @@ class MainWindow(QMainWindow):
     # -- about ---------------------------------------------------------------------
     def _about_page(self):
         self._about = about.AboutPage(icon("hebrish"), card, muted,
-                                      open_updates=lambda: self.tabs.setCurrentWidget(self.pages["updates"]))
-        self.tabs.currentChanged.connect(lambda i: self.tabs.widget(i) is self._about and self._about.refresh())
+                                      open_updates=lambda: self.open_settings("updates"))
         return self._about
 
     # -- misc ----------------------------------------------------------------------
     def toast(self, text="Settings saved"):
-        if not self.isVisible():
+        host = self.settings_win if self.settings_win.isVisible() and self.settings_win.isActiveWindow() else self
+        if not host.isVisible():
             return
-        t = self.toast_label
+        t = host.toast_label
         t.setText(f"✓  {text}")
         t.adjustSize()
         t.resize(t.width() + 28, t.height() + 12)
@@ -2301,10 +2350,11 @@ class MainWindow(QMainWindow):
         t.move((root.width() - t.width()) // 2, root.height() - t.height() - 36)
         t.raise_()
         t.show()
-        self._toast_timer.start()
+        host._toast_timer.start()
 
     def status(self, text):
         self.status_label.setText(text)
+        self.settings_win.status_label.setText(text)
 
     def _on_detect_no_field(self):
         if self.cfg["detect_no_field"]:
