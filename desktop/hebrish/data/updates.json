@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-12",
+      "tag": "Ubuntu 1.032",
+      "title": "Ubuntu 1.032: Stop transcribes, and the Notepad gets formatting",
+      "summary": "Stop now transcribes. On the Transcription tab, the square Stop button stops the recording and puts the transcript in the Notepad.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-12",
       "tag": "Ubuntu 1.031",
       "title": "Ubuntu 1.031: Settings in their own window, Transcription as a Notepad",
       "summary": "The main window holds the modes: Voice Typing, Transcription and History. Settings, Models, Dictionary, Updates, Diagnostics and About open in a separate Settings window, from the buttons at the top or Settings… in the tray menu.",
@@ -173,15 +182,6 @@
       "tag": "Site",
       "title": "Licensing in the top menu, a clearer models page, and Corn",
       "summary": "Licensing is now in the top menu and opens with what each part of Hebrish is licensed under, with the Creative Commons icons.",
-      "platforms": [
-        "site"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Models",
-      "title": "See what each Sabich and Shakshuka version was trained on",
-      "summary": "/models now leads with the two models in active development, Sabich and Shakshuka, with a training explorer: hours of audio at each version, then clips, speakers, the blend and topics for any version you pick.",
       "platforms": [
         "site"
       ]

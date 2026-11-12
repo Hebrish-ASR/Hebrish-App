@@ -1,9 +1,7 @@
-**1.031: Settings in their own window, Transcription as a Notepad, and a Test mic (Ubuntu).**
+**1.032: Stop transcribes, and the Notepad gets formatting (Ubuntu).**
 
-- **The main window holds the modes:** Voice Typing, Transcription and History. Settings, Models, Dictionary, Updates, Diagnostics and About open in a separate Settings window, from the buttons at the top or *Settings…* in the tray menu.
-- **Transcription is split in two:** an Audio file pane (open a file, drop one, or try a sample) next to the Notepad, where you record and edit the transcript. Both write into the Notepad.
-- **Test mic on the Transcription tab** shows your microphone's level before you record. Until now nothing showed a level until a recording was running, so the mic could look undetected.
-- **Models lists the models made for a computer:** Sabich, Shakshuka, Falafel and stock Parakeet. The other builds (small-device, experimental) are on [hebrish.app/models](https://hebrish.app/models); one you already have installed stays listed.
-- From 1.030 (never released on its own): **Enter waits for the last words.** With *The send key stops recording* on, an Enter pressed while you're still recording stops it, types the last words, then sends, so the message goes whole. After 4 seconds the Enter goes anyway and the rest goes on the clipboard. *Hold* is the default for new installs (Settings → Action keys → *Send pressed early*).
+- **Stop now transcribes.** On the Transcription tab, the square Stop button stops the recording and puts the transcript in the Notepad. Until now Stop only kept the audio and waited for a separate Transcribe button, so a recording could look like it had vanished. Transcribe now appears only for a recording the app stopped by itself (time limit or a disk error).
+- **Voice Typing goes into the Notepad** while the Transcription tab is open: dictate with your Voice Typing key and the words land at the Notepad's cursor, not in another app. Until now they went only to the clipboard and History.
+- **The Notepad is a page you can format:** a white page with bold, italic, highlight, headings and bulleted or numbered lists (Ctrl+B, Ctrl+I, Ctrl+Shift+H). Save and Copy write it as Markdown.
 - Windows and the AppImage stay on 1.026.
 - Downloads: [hebrish.app/download](https://hebrish.app/download).
