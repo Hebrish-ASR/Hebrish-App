@@ -54,6 +54,9 @@ NO_FIELD_S = 30
 # Enter guard "hold" (1.007): the longest the keyboard is held after Stop. Past it the held Enter
 # goes through, and words still to come are kept for Paste, as in "late".
 ENTER_HOLD_S = 4.0
+# Hold while recording (1.030): the grab is renewed on every live tick (500 ms) with this cap, so it
+# lapses soon after the app stops renewing it.
+REC_HOLD_S = 3.0
 BEEPS = {"recording": 880, "transcribing": 620, "discarded": (660, 440), "retake": (523, 880)}
 
 
@@ -453,30 +456,58 @@ class Controller(QObject):
             self._overlay_push()
 
     # -- Enter guard (1.007) ----------------------------------------------------------
-    def _send_pressed(self, held: bool):
+    def _send_pressed(self, held: bool) -> bool:
         """The user's send key (key thread). Takes still to finish keep their remaining words
-        out of whatever the Enter just sent; held (hold mode), the Enter waits for them."""
+        out of whatever the Enter just sent; held (hold mode), the Enter waits for them. Returns
+        False to let a held key through when nothing is waiting for it."""
         typed, self._typed = self._typed, False   # Press Enter after silence: this Enter sent what was typed
-        if (self.cfg["enter_stops"] and typed and self.state == "recording" and self.cfg["out_cursor"]
-                and not self.recorder.paused):
+        stopping = (self.cfg["enter_stops"] and typed and self.state == "recording" and self.cfg["out_cursor"]
+                    and not self.recorder.paused)
+        if stopping:
             # Enter stops recording (R-2026-11-02-3): text of this take was pasted and the user sent
             # it, so the take is over. Its words still to come are kept out of the next message now
             # (enter_guard), not only from the stop, which runs on the GUI thread a moment later.
+            # Held (hold mode, 1.030): the Enter waits for those words instead, then goes.
             log.info("send key while recording: stopping take %d", self._take)
             with self._guard:
                 self._stopped_by_send = True
-                if self.cfg["enter_guard"] != "off":
+                if held:
+                    self._enter_held = True
+                    self._unfinished.add(self._take)    # before stop(): an earlier take finishing can't replay it
+                elif self.cfg["enter_guard"] != "off":
                     self._diverted.add(self._take)
             self.sig.stop.emit()
-        if self.cfg["enter_guard"] == "off" or not self.cfg["out_cursor"]:
-            return
-        with self._guard:
             if held:
+                log.info("send key held until the last words of take %d are in", self._take)
+                return True
+        if self.cfg["enter_guard"] == "off" or not self.cfg["out_cursor"]:
+            return False if held else None
+        with self._guard:
+            if held and self._unfinished:
                 self._enter_held = True
                 log.info("send key held until the last words are in")
-            elif self._unfinished:
+                return True
+            if self._unfinished:
                 self._diverted |= self._unfinished
                 log.info("send key before the last words: keeping take(s) %s", sorted(self._unfinished))
+        return False if held else None
+
+    def _rec_hold(self) -> bool:
+        """Hold the send key while recording, too (1.030; GUI thread, from set_state and every live
+        tick): with Enter stops recording, an Enter pressed mid-take is otherwise sent at once,
+        before the words still being decoded. Only while it can matter: hold mode, Paste output,
+        Insert as you go, Enter stops recording."""
+        if not (self.cfg["enter_guard"] == "hold" and self.cfg["out_cursor"] and self.cfg["enter_stops"]
+                and self.cfg["live_insert_s"] and self.state == "recording"):
+            return False
+        return self.hotkeys.hold_send(True, max_s=REC_HOLD_S)
+
+    def _end_rec_hold(self):
+        """The recording ended without a stop that holds on (discard, retake, the hold mode off):
+        let go of the keyboard unless a stopped take's words or a held Enter still need it."""
+        with self._guard:
+            if not self._unfinished and not self._enter_held and not self._hold_timer and self.hotkeys.holding:
+                self.hotkeys.hold_send(False)
 
     def _hold_send(self):
         """After Stop, in hold mode: the key source holds the send key until _finish_take."""
@@ -500,7 +531,7 @@ class Controller(QObject):
     def _replay_enter(self):
         time.sleep(0.15)          # let the target app take the paste before the Enter
         try:
-            self.inserter.press("enter")
+            self.inserter.press(self.cfg["send_chord"] or "enter")   # the key that was held
         except Exception:
             log.exception("replaying the held Enter failed")
 
@@ -618,7 +649,8 @@ class Controller(QObject):
         with self._guard:
             self._unfinished.add(self._take)
             by_send, self._stopped_by_send = self._stopped_by_send, False
-        if not by_send:                   # stopped by the send key: that Enter has already gone
+            held = self._enter_held
+        if not by_send or held:           # stopped by the send key: that Enter has gone, unless held
             self._hold_send()
         self.cue("transcribing")
         self.set_state("busy")
@@ -630,6 +662,7 @@ class Controller(QObject):
             self.stop()
             self.notify("Dictation stopped", f"Reached the {audio.DICTATION_MAX_S // 60}-minute limit.")
             return
+        self._rec_hold()                  # renew the grab, and take keyboards left out (1.030)
         interval = self.cfg["live_insert_s"]
         if not interval or self.state != "recording" or self.recorder.paused:
             return
@@ -987,6 +1020,10 @@ class Controller(QObject):
         self.win.update_state()
         for t in (self._level_timer, self._live_timer):
             t.start() if state == "recording" else t.stop()
+        if state == "recording":
+            self._rec_hold()
+        else:
+            self._end_rec_hold()
         self._overlay_push()
 
     # -- model ---------------------------------------------------------------------

@@ -265,3 +265,12 @@ def test_held_send_key_is_swallowed_with_its_release():
     assert press("KEY_ENTER") is False                         # the next Enter goes through
     assert seen == [True, False]
     assert m.send_key("KEY_ENTER", True, can_hold=False) is False   # an ungrabbed keyboard's Enter
+
+
+def test_controller_can_let_a_held_send_key_through():
+    # 1.030: on_send returning False means nothing waits for this Enter: deliver it
+    m, seen, press = _sender()
+    m.on_send = lambda held: (seen.append(held), False)[1]
+    m.hold_send(True)
+    assert press("KEY_ENTER") is False and press("KEY_ENTER", False) is False
+    assert seen == [True]

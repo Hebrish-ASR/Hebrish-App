@@ -1738,9 +1738,10 @@ class MainWindow(QMainWindow):
             ("off", "Paste them anyway")])
         guard.setToolTip("Keep: words still to come are not pasted into the next message. They go on "
                          "the clipboard, and the overlay offers Paste.\nHold: the send key waits "
-                         "(up to 4 seconds) for the last words, then goes through. The keyboard is "
-                         "briefly taken over to do this; everything else you type passes straight "
-                         "through.")
+                         "(up to 4 seconds) for the last words, then goes through, so the message is sent "
+                         "whole. With The send key stops recording on, this also covers Enter pressed "
+                         "while still recording. The keyboard is taken over while words are pending; "
+                         "everything else you type passes straight through.")
         form.addRow("Send pressed early", guard)
         stops = self._check("enter_stops", "The send key stops recording")
         stops.setToolTip("While Voice Typing with Insert as you go, pressing the send key after text "

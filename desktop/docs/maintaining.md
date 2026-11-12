@@ -916,9 +916,26 @@ submitted without the last words, which then landed in the next prompt.
 - **Verified:** unit tests (`test_hotkey.py` send key cases; `test_live.py` worker cases: late
   words kept, off, held Enter replayed, Stop and send cancelled). **Not verified:** the evdev grab
   and passthrough on a live session, the Windows suppression, on any machine (agents don't run
-  live key tests on Daniel's desktop). Try `hold` by hand before recommending it.
-- Only takes already stopped are covered: an Enter during a recording with insert-as-you-go is
-  not caught.
+  live key tests on Daniel's desktop). Try `hold` by hand before recommending it. The B-104 cases
+  (`test_held_enter_while_recording_waits_for_the_last_words`, `..._with_nothing_typed_goes_through`,
+  `test_controller_can_let_a_held_send_key_through`) are unit tests only, too.
+- **Hold while recording (B-104, 1.030, 2026-11-12):** with `hold`, `enter_stops`, Paste output and
+  Insert as you go, the key source also holds while a take records: `set_state("recording")` and every
+  `_live_tick` call `_rec_hold()` → `hotkeys.hold_send(True, max_s=REC_HOLD_S)` (3 s). Each call
+  renews the evdev grab's cap and grabs keyboards left out before (one with a key down, typically
+  the hotkey that started the take, or one plugged in since), so a hung GUI lets go of the keyboard
+  within 3 s. An Enter then reaches `_send_pressed(held=True)`: if text of the take was typed
+  (`stopping`), the take is added to `_unfinished` *on the key thread* (so an earlier take finishing
+  can't replay the Enter first), `_enter_held` is set, the take stops, and `stop()` runs
+  `_hold_send()` (the 4 s `ENTER_HOLD_S` timer, cap back to `GRAB_MAX_S`); `_finish_take` replays it
+  after the last paste, or the timeout sends it and the rest goes to `late`. Nothing typed yet and
+  no earlier take pending: `_send_pressed` returns False and `HotkeyMachine.send_key` lets the Enter
+  through. A recording that ends otherwise (discard, retake) releases the grab in `set_state`
+  (`_end_rec_hold`) unless a stopped take or a held Enter still needs it. Without `enter_stops`, an
+  Enter while recording is not held (the recording goes on, so there is no point to release it at).
+- **Default:** `hold` on Linux for new installs since 1.030 (`config.DEFAULTS`), `late` on Windows,
+  where the hook suppression hasn't been tried on a machine. Existing configs keep their value.
+- The replayed key is `send_chord` (was always `enter` up to 1.029, wrong for a ctrl+enter Send key).
 
 ## Press Enter after silence (B-72, unreleased, 2026-10-31)
 

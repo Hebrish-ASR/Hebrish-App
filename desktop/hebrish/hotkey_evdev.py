@@ -10,7 +10,9 @@ take's last words are pending, keyboards with an Enter key are grabbed (EVIOCGRA
 event except the send key is forwarded at once through a passthrough uinput device, so typing
 still works and only the Enter waits. A keyboard with a key down is not grabbed (its release
 would go astray), and keys forwarded but still down are released through the passthrough before
-the grab ends. GRAB_MAX_S caps a grab even if the controller never ends it.
+the grab ends. GRAB_MAX_S caps a grab even if the controller never ends it. Since 1.030 the
+controller also holds while a take records (Enter stops recording + hold), renewing the grab on
+every live tick with a short cap, so a hung app lets go of the keyboard within seconds.
 """
 
 import glob
@@ -54,34 +56,40 @@ class EvdevHotkeys(HotkeyMachine):
         self._pass: UInput | None = None
         self._grab_timer: threading.Timer | None = None
 
-    def hold_send(self, on: bool) -> bool:
+    def hold_send(self, on: bool, max_s: float | None = None) -> bool:
         with self._lock:
-            if on and not self._grabbed:
-                try:
-                    self._pass = self._pass or UInput(
-                        {ecodes.EV_KEY: [c for c in ecodes.KEY if c < ecodes.BTN_MISC]}, name=PASSTHROUGH_NAME)
-                except (OSError, UInputError):              # UInputError: no /dev/uinput at all
-                    return super().hold_send(False)       # no uinput: guard falls back to late words
-                for path, dev in self._devices.items():
-                    keys = dev.capabilities().get(ecodes.EV_KEY, [])
-                    if ecodes.KEY_ENTER not in keys and ecodes.KEY_KPENTER not in keys:
-                        continue
-                    try:
-                        if dev.active_keys():
-                            continue
-                        dev.grab()
-                        self._grabbed.add(path)
-                    except OSError:
-                        pass
-                if self._grabbed:
-                    self._grab_timer = threading.Timer(GRAB_MAX_S, lambda: self.hold_send(False))
-                    self._grab_timer.daemon = True
-                    self._grab_timer.start()
-                return super().hold_send(bool(self._grabbed))
             if not on:
                 self._ungrab()
                 return super().hold_send(False)
-            return self.holding
+            try:
+                self._pass = self._pass or UInput(
+                    {ecodes.EV_KEY: [c for c in ecodes.KEY if c < ecodes.BTN_MISC]}, name=PASSTHROUGH_NAME)
+            except (OSError, UInputError):              # UInputError: no /dev/uinput at all
+                return super().hold_send(False)       # no uinput: guard falls back to late words
+            # Called again while holding (every live tick during a recording, 1.030): grab the
+            # keyboards left out before (a key was down, e.g. the hotkey that started the take,
+            # or one plugged in since) and renew the cap.
+            for path, dev in self._devices.items():
+                if path in self._grabbed:
+                    continue
+                keys = dev.capabilities().get(ecodes.EV_KEY, [])
+                if ecodes.KEY_ENTER not in keys and ecodes.KEY_KPENTER not in keys:
+                    continue
+                try:
+                    if dev.active_keys():
+                        continue
+                    dev.grab()
+                    self._grabbed.add(path)
+                except OSError:
+                    pass
+            if self._grab_timer:
+                self._grab_timer.cancel()
+                self._grab_timer = None
+            if self._grabbed:
+                self._grab_timer = threading.Timer(max_s or GRAB_MAX_S, lambda: self.hold_send(False))
+                self._grab_timer.daemon = True
+                self._grab_timer.start()
+            return super().hold_send(bool(self._grabbed))
 
     def _ungrab(self):
         if self._grab_timer:

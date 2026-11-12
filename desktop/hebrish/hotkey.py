@@ -96,9 +96,10 @@ class HotkeyMachine:
         self.holding = False             # swallow the send key (set through hold_send)
         self.on_send = None              # on_send(held: bool), from the key thread
 
-    def hold_send(self, on: bool) -> bool:
+    def hold_send(self, on: bool, max_s: float | None = None) -> bool:
         """Start or stop swallowing the send key; returns whether holding is now on. Sources
-        that need more than the flag (an evdev grab) override this."""
+        that need more than the flag (an evdev grab) override this; max_s caps their grab, and
+        calling again while holding renews it (and grabs keyboards left out the first time)."""
         self.holding = on
         return on
 
@@ -126,13 +127,16 @@ class HotkeyMachine:
         if not self.is_send(name):
             return False
         held = self.holding and can_hold
-        if held:
-            self._swallowed.add(name)
         if self.on_send:
             try:
-                self.on_send(held)
+                # The controller may let a held key through (False): nothing of a take is waiting
+                # for it, e.g. an Enter while recording before any text was typed (1.030).
+                if self.on_send(held) is False:
+                    held = False
             except Exception:
                 pass
+        if held:
+            self._swallowed.add(name)
         return held
 
     def capture_next_key(self, callback):

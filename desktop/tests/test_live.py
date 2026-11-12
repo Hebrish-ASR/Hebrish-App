@@ -504,6 +504,33 @@ def test_enter_while_recording_stops_the_take():
     assert text == "Fix the seam rule then rerun it."
 
 
+def test_held_enter_while_recording_waits_for_the_last_words():
+    # 1.030 (Daniel, 2026-11-12): hold mode with Enter stops recording. The Enter pressed mid-take
+    # is swallowed, the take stops, its last words are pasted, then the Enter goes: one message.
+    late, stops, sent = [], [], []
+    pastes, text = _run_worker(["Fix the seam rule.", "Then rerun it."],
+                               [(0.7, False), (None, True)], enter_at=1, hold=True, late=late, stops=stops,
+                               sent=sent, cfg={"enter_stops": True, "enter_guard": "hold"})
+    assert stops == [1]
+    assert pastes == ["Fix the seam rule", " then rerun it. "]
+    assert late == [] and sent == ["enter"]
+
+
+def test_held_enter_with_nothing_typed_goes_through():
+    # nothing of this take typed yet and no earlier take pending: the Enter isn't held
+    from types import SimpleNamespace
+    import threading
+    from hebrish.ui.app import Controller
+    pytest = __import__("pytest"); pytest.importorskip("PySide6")
+    ctl = SimpleNamespace(cfg={"enter_stops": True, "enter_guard": "hold", "out_cursor": True}, _typed=False,
+                          state="recording", recorder=SimpleNamespace(paused=False), _guard=threading.Lock(),
+                          _unfinished=set(), _diverted=set(), _enter_held=False, _take=3)
+    assert Controller._send_pressed(ctl, True) is False
+    assert ctl._enter_held is False
+    ctl._unfinished = {2}                      # an earlier take's last words still coming: held
+    assert Controller._send_pressed(ctl, True) is True and ctl._enter_held
+
+
 def test_enter_while_recording_off_by_default():
     stops = []
     _run_worker(["Fix the seam rule.", "Then rerun it."], [(0.7, False), (None, True)], enter_at=1, stops=stops)

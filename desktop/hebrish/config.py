@@ -54,8 +54,11 @@ DEFAULTS = {
     # The send key pressed while a stopped take's last words are still coming (1.007,
     # R-2026-10-22-2): "late" keeps those words out of the next message (clipboard + Paste in the
     # overlay); "hold" also holds the Enter until they are in, then sends it (grabs the keyboard
-    # for up to ENTER_HOLD_S); "off" pastes them wherever the cursor is, as before 1.007.
-    "enter_guard": "late",
+    # for up to ENTER_HOLD_S, and from 1.030 also while recording when enter_stops is on); "off"
+    # pastes them wherever the cursor is, as before 1.007. Linux defaults to "hold" from 1.030
+    # (Daniel, 2026-11-12: in Claude Code an early Enter sent the prompt without its last words);
+    # Windows stays on "late" until its hook suppression is tried on a machine.
+    "enter_guard": "late" if sys.platform == "win32" else "hold",
     # Enter stops recording (R-2026-11-02-3): while recording with insert-as-you-go, the send key
     # pressed after text of this take was pasted stops the take, so a reflex Enter in a chat box
     # doesn't leave the mic on. Words still to come follow enter_guard ("late": kept for Paste).
