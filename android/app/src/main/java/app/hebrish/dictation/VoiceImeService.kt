@@ -252,7 +252,7 @@ class VoiceImeService : InputMethodService() {
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         passwordField = isPassword(info)
-        if (open) return resumeAfterHide()
+        if (open) return resumeAfterHide(info)
         if (restarting) return
         switchWhenDone = false
         when {
@@ -271,11 +271,20 @@ class VoiceImeService : InputMethodService() {
         super.onFinishInputView(finishingInput)
         // The field the held Enter was meant for is gone: don't send it into the next one.
         if (enterHeld) { enterHeld = false; main.removeCallbacks(enterTimeout) }
-        if (open) pauseForHide()
+        when {
+            open -> pauseForHide()
+            // Closed while the last take is still landing: let it land, then go back.
+            finishing.isNotEmpty() -> if (Prefs.autoReturn(this)) switchWhenDone = true
+            // Closed while idle (Back, Send, a tap elsewhere): don't stay the system's keyboard, or
+            // it comes up again in the next app's field. No picker fallback: nothing is on screen.
+            Prefs.autoReturn(this) -> switchBack(picker = false)
+        }
     }
 
     /** The take was recording when the keyboard hid, so it resumes when the keyboard comes back. */
     private var resumeOnShow = false
+    /** The app the keyboard hid in: the take resumes by itself only back in the same app. */
+    private var hiddenIn: String? = null
 
     /**
      * The keyboard hid mid-take: a tap on a menu, a link or another field takes focus away and the
@@ -287,6 +296,7 @@ class VoiceImeService : InputMethodService() {
     private fun pauseForHide() {
         val r = recorder ?: return
         resumeOnShow = state == State.RECORDING
+        hiddenIn = currentInputEditorInfo?.packageName
         if (resumeOnShow) {
             r.pause()
             setLevel(0f)
@@ -299,12 +309,13 @@ class VoiceImeService : InputMethodService() {
     /**
      * The keyboard is back with a take still open (paused by [pauseForHide], or by the user):
      * reopen the mic route and carry on recording if it was recording when it hid. Its text goes
-     * into whichever field the keyboard came back for. A password field keeps it paused.
+     * into whichever field the keyboard came back for. A password field, or a field in another
+     * app, keeps it paused: a tap on Resume carries on.
      */
-    private fun resumeAfterHide() {
+    private fun resumeAfterHide(info: EditorInfo?) {
         val r = recorder ?: return
         Mic.prepare(this, r)
-        val resume = resumeOnShow && !passwordField
+        val resume = resumeOnShow && !passwordField && info?.packageName == hiddenIn
         resumeOnShow = false
         if (resume) togglePause()
         else if (passwordField) show(getString(R.string.ime_password), busy = false)
@@ -664,7 +675,7 @@ class VoiceImeService : InputMethodService() {
      * 3. The last other keyboard seen as the system default, then HeliBoard, then any other
      *    enabled keyboard. 4. The system picker, which always works.
      */
-    private fun switchBack() {
+    private fun switchBack(picker: Boolean = true) {
         val others = (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).enabledInputMethodList
             .filter { it.packageName != packageName }.map { it.id }
         val chosen = Prefs.returnIme(this)?.takeIf { it in others }
@@ -674,7 +685,7 @@ class VoiceImeService : InputMethodService() {
             ?: others.firstOrNull { it.startsWith(HEBRISH_KEYBOARD) }
             ?: others.firstOrNull { it.startsWith(HELIBOARD) } ?: others.firstOrNull()
         if (fallback != null && trySwitch(fallback)) return
-        showPicker()
+        if (picker) showPicker()
     }
 
     private fun trySwitch(id: String) = runCatching { switchInputMethod(id); true }.getOrDefault(false)

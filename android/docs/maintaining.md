@@ -1984,7 +1984,9 @@ keyboard comes back, `onStartInputView` sees the open take before anything else 
 ahead of the `restarting` check and auto-start), re-runs `Mic.prepare`, and resumes recording if it was
 recording when it hid; a take the user had paused stays paused. Stop then puts the rest into whichever
 field the keyboard came back for. Type-as-you-go text already typed stays where it went. A password
-field keeps the take paused.
+field keeps the take paused, and so does a field in another app (`hiddenIn`, the `EditorInfo.packageName`
+it hid in): coming back in a different app shows "Paused" and Resume carries on, so the mic doesn't open
+by itself in an unrelated app.
 
 **Ruled out: keep recording while hidden.** A hidden IME isn't in the foreground, so the mic would need
 a `microphone` foreground service; Android 14+ refuses to start one from the background, and starting
@@ -1995,3 +1997,28 @@ hidden at all.
 until it is stopped, discarded, or the service dies. Not capped yet.
 
 **Verified.** Compiled (V, 2026-11-12). Not run on a device (I).
+
+## Return to the regular keyboard when this one closes (unreleased, 2026-11-12)
+
+Daniel, 2026-11-12: after dictating an email he opened Google Drive to name a new shared drive, and
+the voice keyboard came up there, because Android brings back the last keyboard used. The selected
+IME is a system setting (`Settings.Secure.DEFAULT_INPUT_METHOD`); an IME can't mark itself "don't
+remember me", but it can switch itself away before the next field appears.
+
+**Before.** `Prefs.autoReturn` (default on, "Return to my keyboard after inserting…") only fired when
+a take landed cleanly in a field, or on Insert last. Closing the keyboard any other way (Back with
+*Back returns to my keyboard* off, Send, tapping elsewhere, a take that landed nowhere) left Hebrish
+as the system keyboard.
+
+**Now.** `onFinishInputView`, with `autoReturn` on:
+- take open: paused, Hebrish stays the keyboard so the take can resume (section above);
+- takes still landing: `switchWhenDone = true`, so `land` switches back once they're in;
+- idle: `switchBack(picker = false)` at once. The picker fallback is skipped because nothing is on
+  screen to explain it.
+
+Same setting, wider label (`auto_return` string). Trade-off: tapping another field while Hebrish is
+idle also returns to the regular keyboard, so dictating into the next field needs the voice key
+again. Turning the setting off restores the old behaviour.
+
+**Verified.** Compiled (V, 2026-11-12). Not run on a device (I); `switchInputMethod` while the IME
+window is hidden is assumed to work because the IME token stays valid until unbind.

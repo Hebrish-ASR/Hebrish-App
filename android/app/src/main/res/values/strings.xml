@@ -60,7 +60,7 @@
 
     <string name="step_options">Behaviour</string>
     <string name="auto_start">Start recording when opened</string>
-    <string name="auto_return">Return to previous keyboard after inserting</string>
+    <string name="auto_return">Return to my keyboard after inserting, or when this one closes</string>
 
     <string name="step_try">Try it</string>
     <string name="try_hint">Tap here, switch to Hebrish, and speak…</string>
