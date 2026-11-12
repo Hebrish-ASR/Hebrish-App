@@ -6,6 +6,15 @@
   "source": "https://hebrish.app/changelog",
   "entries": [
     {
+      "date": "2026-11-12",
+      "tag": "Ubuntu 1.030",
+      "title": "Ubuntu 1.030: Enter waits for the last words",
+      "summary": "Send pressed early: Hold the send key until they're in now also covers an Enter pressed while you're still recording (with The send key stops recording on).",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
       "date": "2026-11-10",
       "tag": "Site",
       "title": "Falafel: the third model in active development",
@@ -173,15 +182,6 @@
       "tag": "Model",
       "title": "Shakshuka v2.1",
       "summary": "Shakshuka, the streaming model, is updated for the first time since Release v2. It continues from v2.0 and now knows the same recordings as Sabich: 1,672 minutes of them, up from 642.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Desktop 1.020",
-      "title": "Switch models from the tray, one Sabich, and one Voice detection switch",
-      "summary": "Active model: switch between Sabich and Shakshuka from the tray menu, or with the new Select Sabich, Select Shakshuka and Toggle model action keys.",
       "platforms": [
         "desktop"
       ]
