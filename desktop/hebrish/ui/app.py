@@ -61,7 +61,8 @@ BEEPS = {"recording": 880, "transcribing": 620, "discarded": (660, 440), "retake
 
 
 def _in_tm_box(win) -> bool:
-    """The Transcription tab's text box has focus (a bool, safe from the decode thread)."""
+    """Focus is on the Transcription tab (its Notepad or any of its controls): a bool, safe from
+    the decode thread. Voice Typing then writes into the Notepad, not at the system cursor."""
     return getattr(getattr(win, "transcribe", None), "box_focused", False) is True
 
 
@@ -111,7 +112,8 @@ def _before(pieces: list, n: int):
 
 
 class Controller(QObject):
-    _kept_out_of_tm = False    # a take wasn't pasted: the Transcription box had focus (1.012)
+    _kept_out_of_tm = False    # a take wasn't pasted: focus was on the Transcription tab (1.012)
+    _tm_pieces: list = []      # its pieces, for the Notepad (1.032; set per instance in _insert)
 
     def __init__(self, hidden: bool, splash=None):
         super().__init__()
@@ -414,8 +416,8 @@ class Controller(QObject):
         if not text:
             self._said("No transcription to paste yet.")
             return
-        if _in_tm_box(getattr(self, "win", None)):
-            self.win.status("Paste last doesn't paste into the Transcription box.")
+        if _in_tm_box(getattr(self, "win", None)):     # into the Notepad, as a take would go (1.032)
+            self.win.transcribe.insert_dictation(text)
             return
         self._clear_no_field()
         self._clear_late()
@@ -841,11 +843,18 @@ class Controller(QObject):
         """A piece out of the app (decode thread): pasted at the cursor, or, with only the
         clipboard on, copied. The window is [_show]'s; the whole take's copy is [_done]'s.
         True when it was pasted at the cursor."""
-        if self.cfg["out_cursor"] and _in_tm_box(getattr(self, "win", None)):
-            # Voice Typing never types into the Transcription box (1.012, Daniel): that box is
-            # Transcription Mode's alone. The take goes to History and the clipboard instead.
+        if _in_tm_box(getattr(self, "win", None)):
+            # On the Transcription tab, Voice Typing writes into its Notepad (1.032, 2026-11-12,
+            # Daniel: "if you're in this mode, then that's where it goes"). 1.012 to 1.031 kept the
+            # take out of the box and put it only on the clipboard and in History, so dictating
+            # there looked like it did nothing. Never pasted at the system cursor: with the
+            # Hebrish window focused, a paste chord would land in whichever widget has focus.
+            # The pieces are collected here and _done puts the take in the Notepad in one go.
             self._kept_out_of_tm = True
-            log.info("not pasted: the Transcription box has focus")
+            if not isinstance(self.__dict__.get("_tm_pieces"), list):
+                self._tm_pieces = []
+            self._tm_pieces.append(text)
+            log.info("piece for the Notepad: focus is on the Transcription tab")
         elif self.cfg["out_cursor"]:
             wait = PASTE_GAP_S - (time.monotonic() - self._pasted_at)
             if wait > 0:
@@ -912,10 +921,9 @@ class Controller(QObject):
                 QTimer.singleShot(1100, self._overlay_clear_done)
             if self._kept_out_of_tm:
                 self._kept_out_of_tm = False
-                if not self.cfg["out_clipboard"]:
-                    self._copy_take(text.upper() if self.cfg["all_caps"] else text)
-                self.win.status("Voice Typing doesn't type into the Transcription box. "
-                                "The take is on the clipboard and in History.")
+                pieces, self._tm_pieces = self.__dict__.get("_tm_pieces") or [], []
+                self.win.transcribe.insert_dictation("".join(pieces) or
+                                                     (text.upper() if self.cfg["all_caps"] else text))
             if self.cfg["out_clipboard"]:
                 # The whole take, not just its last piece (1.000). After a paste, wait for the
                 # target app to read the clipboard first, or it would paste the whole take.

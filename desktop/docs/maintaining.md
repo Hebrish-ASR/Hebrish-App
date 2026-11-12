@@ -1045,19 +1045,33 @@ the tab still works), the transcript below.
   leftover: *Transcribe it* / *Delete*.
 - **Dictation vs Transcription Mode:** `ctl.start` refuses (notification) while the tape
   records; Record refuses while a dictation take is running. Test mic is stopped on Record.
-- **The transcript box is Transcription Mode's alone (1.012, 2026-10-29, Daniel):** with "At the
-  cursor" on, a Voice Typing take pasted into whatever had focus, and that could be this box, so
-  dictation text mixed into a transcript. `TranscribePage.box_focused` (a bool kept by
-  `QApplication.focusChanged`, so the decode thread can read it) is checked by `Controller._insert`,
-  `_sends` and `paste_last`: while the box has focus nothing is pasted or sent; at the end of the take
-  `_done` copies it to the clipboard (if that output is off) and says so in the status bar. History
-  gets it as usual. (Checked first, V: the 109-word transcript in Daniel's 2026-10-29 screenshot was
-  his own 15:40 Transcription recording, History `source = "record"`, left in the box; the box has
-  never been fed by `sig.piece`, which goes only to Voice Typing's text box.)
+- **Voice Typing on the Transcription tab writes into the Notepad (1.032, 2026-11-12, Daniel):
+  "if you're in this mode, then that's where it goes").** `TranscribePage.box_focused` (a bool kept
+  by `QApplication.focusChanged`, so the decode thread can read it) is now true while focus is
+  anywhere on the tab, not only in the box. `Controller._insert` then collects the take's pieces
+  (`_tm_pieces`) instead of pasting, `_done` puts the take in the Notepad at its cursor
+  (`insert_dictation`), and `paste_last` does the same; `_sends` and auto-Enter still press
+  nothing. Never a paste chord: with the Hebrish window focused it would land in whatever widget
+  has focus. Superseded rule: 1.012 to 1.031 kept the take out of the box (clipboard and History
+  only), so dictating there looked like nothing happened
+  (`../../docs/debug-log/2026-11-12-transcription-nothing-in-notepad.md`).
+- **The Notepad (1.032, `ui/notepad.py`):** a white page in both themes over a formatting bar
+  (style menu Text/Heading 1-3, Bold, Italic, Highlight, bulleted and numbered lists, Clear). It is
+  a rich-text QTextEdit, but Save, Copy, Save cleaned copy and Transform take `Notepad.markdown()`
+  (`**bold**`, `*italic*`, `==highlight==`, `#` headings, `-`/`1.` lists); an unformatted page's
+  Markdown is exactly its plain text. Transcription, History and re-flowing still use
+  `toPlainText()`: formatting never changes the characters, so document positions equal plain-text
+  offsets. A new transcript is appended (`Notepad.append`), not written over the whole box, so
+  earlier formatting survives, and every insert is unformatted with a fresh block format (a
+  transcript after a heading or list isn't one). Pasting is plain text only.
+- **Stop transcribes (1.032):** up to 1.031 Stop only held the audio and the transcript waited for
+  the separate Transcribe button, so a stopped take sat on disk with an empty Notepad. Transcribe
+  shows only for a held recording (the recorder stopped itself at its limit or on a disk error).
 - **Controls (1.012, Daniel):** round 40 px icon buttons (`_tape_button`, QSS `#tapeButton[kind=…]`),
   white line icons on one colour per action (`style.TAPE_COLOURS`): Record red, Pause/Resume amber,
   Stop slate, Retake blue, Discard grey, Transcribe brand green with a send arrow (`line-send.svg`).
-  Disabled = the same colour at 30 %. Order: Record, Pause, Stop, Retake, Discard, Transcribe. The
+  Disabled = the same colour at 30 %. Order: Record, Pause, Stop, Retake, Discard, Transcribe
+  (shown only for a held recording since 1.032). The
   label stays as the button's text (tooltip, accessible name, tests) but isn't drawn.
 - **History fix that came with it:** a File/recording transcript used to be stored as the whole
   text box, so a second file in the same session duplicated the first in History. Now only the

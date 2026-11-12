@@ -46,9 +46,8 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QObject, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (QApplication, QMenu, QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel,
-                               QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSlider, QSplitter,
+                               QMessageBox, QProgressBar, QPushButton, QSlider, QSplitter,
                                QToolButton, QVBoxLayout, QWidget)
 
 from .. import (__version__, audio, cleanup, config, dictionary, disfluency, longform, mics, model_store,
@@ -57,6 +56,7 @@ from .glidebar import GlideBar
 from .icons import line_icon
 from .mics import fill_combo
 from .meter import LevelMeter, verdict
+from .notepad import Notepad
 
 PARAGRAPH_S = 30
 SHOW_PROGRESS_S = 5      # the progress bar shows only once a transcription has run this long
@@ -290,9 +290,14 @@ class TranscribePage(QWidget):
         self.btn_pause.clicked.connect(self._pause)
         self.btn_retake = _tape_button("retake", "Retake", "Throw this recording away and start again")
         self.btn_retake.clicked.connect(self._retake)
-        self.btn_stop = _tape_button("stop", "Stop", "Stop recording and keep the audio, to transcribe when you're ready")
-        self.btn_stop.clicked.connect(self._stop)
-        self.btn_go = _tape_button("transcribe", "Transcribe", "Stop (if recording) and transcribe")
+        # Stop transcribes (1.032, 2026-11-12, Daniel: "levels looked fine, but no recording ever
+        # showed up"). Up to 1.031 Stop only held the audio and the transcript waited for the
+        # Transcribe button beside it; a stopped take sat on disk with nothing in the Notepad.
+        # Transcribe now shows only for a held recording: one the recorder stopped by itself
+        # (time limit, disk error), which is not transcribed without asking.
+        self.btn_stop = _tape_button("stop", "Stop", "Stop recording and transcribe it into the Notepad")
+        self.btn_stop.clicked.connect(self._transcribe_tape)
+        self.btn_go = _tape_button("transcribe", "Transcribe", "Transcribe the stopped recording")
         self.btn_go.clicked.connect(self._transcribe_tape)
         self.btn_drop_tape = _tape_button("discard", "Discard", "Discard this recording")
         self.btn_drop_tape.clicked.connect(self._discard)
@@ -398,18 +403,20 @@ class TranscribePage(QWidget):
         self.tidy.toggled.connect(self._on_tidy)
         head.addWidget(self.tidy)
         b.addLayout(head)
-        self.text = QPlainTextEdit()
-        self.text.setPlaceholderText("Record, or open an audio file: the transcript lands here, and you "
-                                     "can edit it like any notepad. Another recording or file is added "
-                                     "at the end. Paragraphs follow the Paragraphs setting above.")
-        self.text.setStyleSheet("font-size: 14px;")
+        # The Notepad (1.032): a white page with a formatting bar; Save and Copy write Markdown
+        # (ui/notepad.py). The page calls it like the QPlainTextEdit it replaced.
+        self.text = Notepad()
+        self.text.setPlaceholderText("Record, open an audio file, or dictate with the Voice Typing key "
+                                     "while this tab is open: the text lands here. Edit and format it "
+                                     "like any notepad; Save writes Markdown.")
         b.addWidget(self.text, 1)
         self.sync_cleanup()
-        # Voice Typing's paste at the cursor stays out of this box (1.012): read from the decode
-        # thread, so a plain bool kept by focusChanged (focus goes to None when the window loses it).
+        # Focus anywhere on this tab: Voice Typing writes into the Notepad, not at the system cursor
+        # (1.032; ui/app.py _insert). Read from the decode thread, so a plain bool kept by
+        # focusChanged (focus goes to None when the window loses it).
         self.box_focused = False
         QApplication.instance().focusChanged.connect(
-            lambda _old, new: setattr(self, "box_focused", new is self.text))
+            lambda _old, new: setattr(self, "box_focused", new is not None and self.isAncestorOf(new)))
         row = QHBoxLayout()
         self.pbar = QProgressBar(maximum=1000)
         self.pbar.setFormat("Transcribing…")
@@ -762,7 +769,8 @@ class TranscribePage(QWidget):
         self.btn_pause.setEnabled(rec)
         self.btn_retake.setEnabled(not busy and (rec or held))
         self.btn_stop.setEnabled(rec)
-        self.btn_go.setEnabled(not busy and (rec or held))
+        self.btn_go.setEnabled(not busy and held)
+        self.btn_go.setVisible(held)
         self.btn_drop_tape.setEnabled(not busy and (rec or held))
         self.drop.setEnabled(not busy and not rec)
         self.btn_test.setEnabled(not rec)
@@ -964,15 +972,10 @@ class TranscribePage(QWidget):
         new = self.cfg["tm_next"] == "new" or not box.strip()
         if new:
             self._doc = None
-            start, full = 0, text
-        else:
-            head = box.rstrip()
-            start, full = len(head) + 2, head + "\n\n" + text
-        c = self.text.textCursor()
-        c.select(QTextCursor.SelectionType.Document)
-        c.insertText(full)                   # one undo step
-        c.movePosition(QTextCursor.MoveOperation.End)
-        self.text.setTextCursor(c)
+            self.text.replace_all(text)      # one undo step
+            start = 0
+        else:                                # added after it, so its formatting is kept (1.032)
+            start = self.text.append(text)
         self.text.ensureCursorVisible()
         return min(start, len(self.text.toPlainText()))
 
@@ -1139,12 +1142,9 @@ class TranscribePage(QWidget):
         last = self._last
         box = self.text.toPlainText()
         region = box[last["from"]:]
-        new = box[:last["from"]] + region[:len(region) - len(region.lstrip())] + body
-        if new != box:
-            c = self.text.textCursor()
-            c.select(QTextCursor.SelectionType.Document)
-            c.insertText(new)                # one undo step
-            self.text.setTextCursor(c)
+        lead = region[:len(region) - len(region.lstrip())]
+        if box[:last["from"]] + lead + body != box:
+            self.text.replace_from(last["from"] + len(lead), body)     # earlier text keeps its formatting
         last["shown"], last["mode"] = self.text.toPlainText(), mode
 
     def _download(self):
@@ -1215,8 +1215,17 @@ class TranscribePage(QWidget):
         for b in (self.btn_copy, self.btn_save, self.btn_clean_copy, self.btn_transform, self.btn_clear):
             b.setEnabled(bool(t.strip()) and not (self._saving and b in (self.btn_save, self.btn_clean_copy)))
 
+    def insert_dictation(self, text: str):
+        """A Voice Typing take while focus was on this tab (ui/app.py _insert): into the Notepad
+        at its cursor. GUI thread."""
+        text = text.strip()
+        if not text:
+            return
+        self.text.insert_at_cursor(text)
+        self.ctl.win.status("Dictation added to the Notepad.")
+
     def _copy(self):
-        self.ctl.win._copy(self.text.toPlainText(), "Transcript copied.")
+        self.ctl.win._copy(self.text.markdown(), "Transcript copied (as Markdown).")
 
     def _save_now(self, text: str) -> tuple[Path, str | None]:
         """Worker thread: save `text` (title first, when the title model is there), or return the
@@ -1246,7 +1255,7 @@ class TranscribePage(QWidget):
         """B-74/B-75: straight to the transcripts folder (shown under the box), as Markdown."""
         if self._saving:
             return
-        text = self.text.toPlainText()
+        text = self.text.markdown()
         d = self._doc
         if d and d["saved"] and d["saved"][1] == text:
             self.ctl.win.status(f"Already saved: {d['saved'][0]}")
@@ -1273,7 +1282,7 @@ class TranscribePage(QWidget):
         aid = self.copy_model.currentData()
         if self._saving or not aid:
             return
-        text = self.text.toPlainText()
+        text = self.text.markdown()
         keep = tuple(e["word"] for e in dictionary.load())
         self._set_saving(True)
 
@@ -1304,7 +1313,7 @@ class TranscribePage(QWidget):
     def _transform(self):
         """B-82: the prompt library dialog (ui/transform.py) on the text in the box."""
         from .transform import TransformDialog
-        text = self.text.toPlainText()
+        text = self.text.markdown()
 
         def save_version(out: str, prompt: dict):
             path, _title = self._save_now(text)      # GUI thread: a title takes a second or two
