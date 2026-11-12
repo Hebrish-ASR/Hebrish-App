@@ -1861,6 +1861,33 @@ Settings search and Notepad Free (V; `docs/screenshots/android-voice-keyboard-1.
 checked it by eye: "looks great". Not run: long-press delete on a device, the gold key's tap (the
 same `leave()` as before), and gesture navigation.
 
+## Voice keyboard edit row (unreleased, 2026-11-12)
+
+Daniel, 2026-11-12: the user should be able to "fix up little things in the dictated text without
+needing to go back to the full keyboard ... provide what they need and not too much more"; deleting
+the last word or the last sentence named as the core. Slightly taller is fine; space can be shorter.
+
+- **Edit row** (`res/layout/ime_view.xml`, between the level bar and the key row, 38 dp keys):
+  cursor left · **⌫ Word** · **⌫ Sentence** · cursor right.
+  - Word: `lastWordLength` (`Sentences.kt`): trailing whitespace, the word with its attached
+    punctuation, and the spaces before it, so "One two three." leaves "One two". A line break
+    before the word stays. Looks back `WORD_WINDOW` = 200 chars.
+  - Sentence: the existing `lastSentenceLength` (B-96), until now only a hidden long-press on
+    delete; that long-press still works. Both go through `VoiceImeService.deleteBefore`.
+  - Arrows send `KEYCODE_DPAD_LEFT` / `_RIGHT`; `repeatWhileHeld` repeats every 60 ms after 400 ms
+    held. Click listener kept for TalkBack.
+  - Deliberately left out: undo, select, word-level cursor jumps (not asked for; the host app's
+    own undo still applies).
+- **Header:** the status line (the "Listening… 0:12" timer) is left-aligned, not centred.
+- **Take buttons:** 44 → 40 dp, mic 52 → 48 dp, label gap 2 → 1 dp.
+- **Space key:** weight 2.4 → 1.8; the other keys take the width.
+- **Height:** +44 dp for the edit row (3 gap + 6 margins + 38 key), −6 dp from the take buttons and
+  labels: about 236 dp total including the 44 dp navigation-bar padding (198 in the table above).
+
+Checked (V, 2026-11-12): `testFdroidDebugUnitTest --tests '*SentencesTest'`, 18 pass (7 new for
+`lastWordLength`); the build compiles the layout. Not run on a device: the row's look and fit,
+"Sentence" label width on small phones, arrow repeat in real apps (some editors may ignore DPAD keys).
+
 ## Opening spin and the download bar (1.026, 2026-11-07)
 
 Daniel, 2026-11-07: "the logo kind of just turns round for a second", and download progress that

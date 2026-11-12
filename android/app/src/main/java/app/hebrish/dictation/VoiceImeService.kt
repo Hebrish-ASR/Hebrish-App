@@ -109,6 +109,10 @@ class VoiceImeService : InputMethodService() {
             setOnClickListener { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
             setOnLongClickListener { deleteLastSentence(); true }
         }
+        v.findViewById<Button>(R.id.delete_word).setOnClickListener { deleteBefore(::lastWordLength, WORD_WINDOW) }
+        v.findViewById<Button>(R.id.delete_sentence).setOnClickListener { deleteLastSentence() }
+        repeatWhileHeld(v.findViewById(R.id.cursor_left)) { sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT) }
+        repeatWhileHeld(v.findViewById(R.id.cursor_right)) { sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT) }
         v.findViewById<ImageButton>(R.id.space).setOnClickListener { currentInputConnection?.commitText(" ", 1) }
         v.findViewById<ImageButton>(R.id.enter).setOnClickListener { onEnter() }
         v.findViewById<Button>(R.id.comma).setOnClickListener { punctuate(",") }
@@ -553,12 +557,38 @@ class VoiceImeService : InputMethodService() {
         ic.commitText(mark, 1)
     }
 
-    /** Long-press on delete: the sentence before the cursor goes, along with the space before it. */
-    private fun deleteLastSentence() {
+    /** Sentence key and long-press on delete: the sentence before the cursor goes, along with the space before it. */
+    private fun deleteLastSentence() = deleteBefore(::lastSentenceLength, SENTENCE_WINDOW)
+
+    /** Deletes the last [length] characters of the text before the cursor, looking back [window] at most. */
+    private fun deleteBefore(length: (String) -> Int, window: Int) {
         val ic = currentInputConnection ?: return
-        val before = ic.getTextBeforeCursor(SENTENCE_WINDOW, 0)?.toString() ?: return
-        val n = lastSentenceLength(before)
+        val before = ic.getTextBeforeCursor(window, 0)?.toString() ?: return
+        val n = length(before)
         if (n > 0) ic.deleteSurroundingText(n, 0)
+    }
+
+    /** Runs [action] on tap and repeats it while the key is held (edit row arrows, 1.031). */
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
+    private fun repeatWhileHeld(key: View, action: () -> Unit) {
+        val repeat = object : Runnable {
+            override fun run() { action(); main.postDelayed(this, REPEAT_MS) }
+        }
+        key.setOnClickListener { action() } // TalkBack and keyboard activation
+        key.setOnTouchListener { view, e ->
+            when (e.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    view.isPressed = true
+                    action()
+                    main.postDelayed(repeat, REPEAT_DELAY_MS)
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    view.isPressed = false
+                    main.removeCallbacks(repeat)
+                }
+            }
+            true
+        }
     }
 
     private fun sendEnter() {
@@ -706,6 +736,11 @@ class VoiceImeService : InputMethodService() {
         const val HELIBOARD = "helium314.keyboard"
         /** How far back a long-press on delete looks for the start of the sentence. */
         private const val SENTENCE_WINDOW = 2000
+        /** How far back the Word key looks. */
+        private const val WORD_WINDOW = 200
+        /** Edit row arrows: first repeat after this long held, then every [REPEAT_MS]. */
+        private const val REPEAT_DELAY_MS = 400L
+        private const val REPEAT_MS = 60L
         /** Hebrish Keyboard, the HeliBoard fork (`Hebrish-ASR/Hebrish-Keyboard`). */
         const val HEBRISH_KEYBOARD = "app.hebrish.keyboard"
     }

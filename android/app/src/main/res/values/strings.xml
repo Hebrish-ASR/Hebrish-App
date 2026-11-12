@@ -118,6 +118,10 @@
     <string name="cd_mic">Record</string>
     <string name="cd_backspace">Delete</string>
     <string name="cd_space">Space</string>
+    <string name="cd_cursor_left">Cursor left</string>
+    <string name="cd_cursor_right">Cursor right</string>
+    <string name="ime_delete_word">Word</string>
+    <string name="ime_delete_sentence">Sentence</string>
     <string name="cd_enter">Enter</string>
     <string name="cd_comma">Comma</string>
     <string name="cd_period">Full stop</string>

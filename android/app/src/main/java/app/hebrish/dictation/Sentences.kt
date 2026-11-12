@@ -20,3 +20,17 @@ fun lastSentenceLength(before: String): Int {
     }
     return before.length
 }
+
+/**
+ * How many characters at the end of [before] make up its last word: trailing whitespace, the word
+ * (anything up to the previous whitespace, so attached punctuation goes with it) and the spaces
+ * before it, so "One two three." leaves "One two". A line break before the word stays, so a
+ * paragraph break survives. 0 for empty text. Voice keyboard edit row (1.031).
+ */
+fun lastWordLength(before: String): Int {
+    var i = before.length
+    while (i > 0 && before[i - 1].isWhitespace()) i--
+    while (i > 0 && !before[i - 1].isWhitespace()) i--
+    while (i > 0 && (before[i - 1] == ' ' || before[i - 1] == '\t')) i--
+    return before.length - i
+}

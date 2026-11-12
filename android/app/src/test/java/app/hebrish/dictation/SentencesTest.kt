@@ -17,4 +17,14 @@ class SentencesTest {
     @Test fun onlySentence() = assertEquals("", afterDelete("Just this"))
     @Test fun blank() = assertEquals(0, lastSentenceLength(""))
     @Test fun onlySpaces() = assertEquals("", afterDelete("  "))
+
+    private fun afterWord(s: String) = s.dropLast(lastWordLength(s))
+
+    @Test fun wordTakesItsPunctuationAndSpace() = assertEquals("One two", afterWord("One two three."))
+    @Test fun wordTrailingSpace() = assertEquals("One two", afterWord("One two three "))
+    @Test fun wordKeepsAParagraphBreak() = assertEquals("One.\n\n", afterWord("One.\n\nTwo"))
+    @Test fun wordAfterABreak() = assertEquals("Zero", afterWord("Zero One\n"))
+    @Test fun wordOnly() = assertEquals("", afterWord("Word"))
+    @Test fun wordHebrew() = assertEquals("\u05E9\u05DC\u05D5\u05DD", afterWord("\u05E9\u05DC\u05D5\u05DD \u05DE\u05D4"))
+    @Test fun wordBlank() = assertEquals(0, lastWordLength(""))
 }

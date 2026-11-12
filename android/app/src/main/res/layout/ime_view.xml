@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Voice keyboard: a header with status, mic source and settings, one row of round take controls
-     with the mic in the middle (1.007), and the key row at the bottom: keyboard, comma, period,
+     with the mic in the middle (1.007), an edit row (1.031: cursor, delete word, delete sentence),
+     and the key row at the bottom: keyboard, comma, period,
      space, delete, enter. 1.019 (Daniel 2026-11-06): the Hebrish mark and name are gone and every
      row is tighter, because VoiceImeService adds the navigation bar's height under the key row and
      the whole keyboard should still be no taller than before. See docs/maintaining.md. -->
@@ -23,7 +24,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:gravity="center"
+            android:gravity="start|center_vertical"
             android:orientation="horizontal">
 
             <ProgressBar
@@ -97,20 +98,20 @@
             android:orientation="vertical">
             <ImageButton
                 android:id="@+id/discard"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:background="@drawable/ime_round"
                 android:backgroundTint="@color/bubble_discard"
                 android:contentDescription="@string/action_discard"
                 android:foreground="@drawable/ime_round_press"
-                android:padding="12dp"
+                android:padding="10dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_close" />
             <TextView
                 android:id="@+id/discard_lbl"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:maxLines="1"
                 android:text="@string/discard"
                 android:textColor="@color/ime_label"
@@ -124,20 +125,20 @@
             android:orientation="vertical">
             <ImageButton
                 android:id="@+id/restart"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:background="@drawable/ime_round"
                 android:backgroundTint="@color/bubble_retake"
                 android:contentDescription="@string/action_restart"
                 android:foreground="@drawable/ime_round_press"
-                android:padding="12dp"
+                android:padding="10dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_retake" />
             <TextView
                 android:id="@+id/restart_lbl"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:maxLines="1"
                 android:text="@string/restart"
                 android:textColor="@color/ime_label"
@@ -151,20 +152,20 @@
             android:orientation="vertical">
             <ImageButton
                 android:id="@+id/mic"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@drawable/ime_round"
                 android:backgroundTint="@color/ime_mic_idle"
                 android:contentDescription="@string/cd_mic"
                 android:foreground="@drawable/ime_round_press"
-                android:padding="14dp"
+                android:padding="12dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_mic" />
             <TextView
                 android:id="@+id/mic_lbl"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:maxLines="1"
                 android:text="@string/ime_lbl_record"
                 android:textColor="@color/ime_label"
@@ -178,20 +179,20 @@
             android:orientation="vertical">
             <ImageButton
                 android:id="@+id/pause"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:background="@drawable/ime_round"
                 android:backgroundTint="@color/ime_pause"
                 android:contentDescription="@string/action_pause"
                 android:foreground="@drawable/ime_round_press"
-                android:padding="12dp"
+                android:padding="10dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_pause" />
             <TextView
                 android:id="@+id/pause_lbl"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:maxLines="1"
                 android:text="@string/pause"
                 android:textColor="@color/ime_label"
@@ -205,20 +206,20 @@
             android:orientation="vertical">
             <ImageButton
                 android:id="@+id/insert_last"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:background="@drawable/ime_round"
                 android:backgroundTint="@color/ime_insert"
                 android:contentDescription="@string/insert_last"
                 android:foreground="@drawable/ime_round_press"
-                android:padding="13dp"
+                android:padding="11dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_paste" />
             <TextView
                 android:id="@+id/insert_last_lbl"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:maxLines="1"
                 android:text="@string/ime_lbl_insert"
                 android:textColor="@color/ime_label"
@@ -235,10 +236,70 @@
         android:background="@drawable/level_bar"
         android:scaleX="0.02" />
 
+    <!-- Edit row (1.031, Daniel 2026-11-12: fix little things in the dictated text "without needing
+         to go back to the full keyboard"): cursor left, delete the last word, delete the last
+         sentence, cursor right. The arrows repeat while held. See docs/maintaining.md. -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="3dp"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/cursor_left"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_margin="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/key_bg"
+            android:contentDescription="@string/cd_cursor_left"
+            android:src="@drawable/ic_cursor_left" />
+
+        <Button
+            android:id="@+id/delete_word"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_margin="3dp"
+            android:layout_weight="2"
+            android:background="@drawable/key_bg"
+            android:drawableStart="@drawable/ic_backspace_small"
+            android:drawableTint="@color/ime_text"
+            android:paddingHorizontal="12dp"
+            android:text="@string/ime_delete_word"
+            android:textAllCaps="false"
+            android:textColor="@color/ime_text"
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/delete_sentence"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_margin="3dp"
+            android:layout_weight="2"
+            android:background="@drawable/key_bg"
+            android:drawableStart="@drawable/ic_backspace_small"
+            android:drawableTint="@color/ime_text"
+            android:paddingHorizontal="12dp"
+            android:text="@string/ime_delete_sentence"
+            android:textAllCaps="false"
+            android:textColor="@color/ime_text"
+            android:textSize="13sp" />
+
+        <ImageButton
+            android:id="@+id/cursor_right"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_margin="3dp"
+            android:layout_weight="1"
+            android:background="@drawable/key_bg"
+            android:contentDescription="@string/cd_cursor_right"
+            android:src="@drawable/ic_cursor_right" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="0dp"
         android:orientation="horizontal">
 
         <ImageButton
@@ -281,7 +342,7 @@
             android:layout_width="0dp"
             android:layout_height="46dp"
             android:layout_margin="3dp"
-            android:layout_weight="2.4"
+            android:layout_weight="1.8"
             android:background="@drawable/key_bg"
             android:contentDescription="@string/cd_space"
             android:src="@drawable/ic_space" />
