@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-13",
+      "tag": "Android 1.032",
+      "title": "Android 1.032: The app and its models update themselves",
+      "summary": "App updates in the background (F-Droid and APK installs): once Hebrish is allowed to install apps, it checks for a new version every 12 hours on Wi-Fi, verifies the download, and installs it when no take is open.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-11-13",
       "tag": "Android 1.031",
       "title": "Android 1.031: No full stop at the end, a live draft, and an edit row",
       "summary": "No full stop at the end: a switch on the Dictation screen, and a small \"No .\" chip in the voice keyboard, leaves off the final full stop of each take, for searches, lookups and titles.",
@@ -179,16 +188,6 @@
       "summary": "In the Hebrish voice keyboard, if you tap Enter after you stop and before the last words are in, the Enter now waits for them (up to 4 seconds), then sends.",
       "platforms": [
         "android"
-      ]
-    },
-    {
-      "date": "2026-10-27",
-      "tag": "Android 1.005 · Desktop 1.006",
-      "title": "No more half-words where a long dictation is split",
-      "summary": "Longer dictations are decoded in pieces cut at your pauses. The first word after a pause sometimes lost its start (\"ividual\" for \"individual\", \"chnically\" for \"technically\"); it now comes out whole, on Android and on the desktop.",
-      "platforms": [
-        "android",
-        "desktop"
       ]
     }
   ]

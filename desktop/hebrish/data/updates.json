@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-13",
+      "tag": "Ubuntu 1.034",
+      "title": "Ubuntu 1.034: Models in a window of their own",
+      "summary": "Models has its own window, opened from the new Models button at the top of the main window, or from the tray. It was a tab inside Settings.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-13",
       "tag": "Ubuntu 1.033",
       "title": "Ubuntu 1.033: No full stop at the end, and a live draft",
       "summary": "No full stop at the end: a new switch, in Settings and in the tray under Output, leaves off the final full stop of each take.",
@@ -173,15 +182,6 @@
       "tag": "Desktop 1.022",
       "title": "Windows catches up",
       "summary": "Windows and AppImage: a new stable build with everything since Windows 1.012.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Desktop 1.021",
-      "title": "Paste last only pastes what was missed, and Corn on the start-up screen",
-      "summary": "Paste last: after an early Enter kept your last words out of a message, the Paste last key and tray item now paste only those words, not the whole take again.",
       "platforms": [
         "desktop"
       ]
