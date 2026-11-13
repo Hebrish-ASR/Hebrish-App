@@ -337,6 +337,10 @@ each part works there:
    `/get/appimage` works with no site change (api/get.mjs reads any key). Until a stable is cut,
    `files.appimage`/`files.windows` keep naming the last stable; the AppImage and Windows builds
    check only their own key, so they are never offered a beta.
+3a. Beta .deb on the CDN (2026-11-13): `gh release download desktop-v<ver> -p "*.deb" -D dist`, then
+   `with-secrets scripts/publish-ubuntu-cdn.sh dist/hebrish_<ver>-1_amd64.deb v<ver>` (repo root): overwrites
+   `apps/ubuntu/hebrish-latest-amd64.deb`, sets `files.ubuntu` in `downloads/latest.json`, checks the public
+   sha256. `DRY_RUN=1` prints the new manifest only.
 4. Publish the .deb to the APT repository (download it from the release first: `gh release download desktop-v<ver> -p "*.deb" -D dist`): `with-secrets scripts/publish-apt.sh dist/hebrish_<ver>-1_amd64.deb` (credentials from Infisical since 2026-10-25)
    (see "APT repository" below). Do it after the CDN upload and `latest.json`, so the in-app
    update notice never points at a version apt can't yet fetch.
