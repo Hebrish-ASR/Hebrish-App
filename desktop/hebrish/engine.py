@@ -298,6 +298,23 @@ def held_mark(text: str, pause_s: float | None) -> str:
     return text[-1] if text[-1] in HOLD_MARKS else ""
 
 
+def drop_final_stop(text: str) -> str:
+    """B-105 (Daniel, 2026-11-13, R-2026-11-13-2): the take without the model's final full stop,
+    for inventory lookups, search boxes and titles. Only a single "." goes (an ellipsis, "?" and "!"
+    stay); a trailing space after it is kept."""
+    body = text.rstrip(" ")
+    if body.endswith(".") and not body.endswith(".."):
+        return body[:-1] + text[len(body):]
+    return text
+
+
+def draft_text(text: str) -> str:
+    """The live draft as shown (I-4): Parakeet writes every pass as a finished sentence, so the
+    draft's closing mark is the model guessing the phrase is over. Punctuation at the end is decided
+    at commit; the draft never shows it."""
+    return text.rstrip().rstrip(".?!").rstrip()
+
+
 HOLD_MARKS = ".?!"
 SEAM_MARKS = ",;:.?!"
 

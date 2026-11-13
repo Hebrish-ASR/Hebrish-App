@@ -25,7 +25,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 from .. import __version__, app_update, audio, auto_enter, autostart, dictionary, disfluency, engine, local_api, maintainer, mics, model_store, vad
 from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
-from ..engine import REF_S, Engine, held_mark, live_split, seam_join
+from ..engine import REF_S, Engine, draft_text, drop_final_stop, held_mark, live_split, seam_join
 from ..history import History, maintain
 from ..hotkey import make_listener
 from ..inserter import copy_to_clipboard, make_inserter
@@ -51,6 +51,16 @@ CLIPBOARD_AFTER_PASTE_MS = 600
 PASTE_GAP_S = 0.4
 # How long the overlay offers "No text field · Paste" before it goes back to normal.
 NO_FIELD_S = 30
+LIVE_DRAFT_MIN_S = 0.6     # I-4: no draft pass on less audio than this
+LIVE_DRAFT_MAX_S = 8       # I-4: a draft pass hears at most the newest 8 s (1.5 s a pass at 15 s on a laptop CPU; the overlay shows ~4 s)
+# Output menu quick switches: (config key, label, tooltip). The same keys are on the Settings tab.
+TRAY_FLAGS = (
+    ("no_final_stop", "No full stop at the end",
+     "Drop the final full stop of each take: for searches, lookups and titles. ? and ! stay."),
+    ("live_draft", "Live draft in the overlay",
+     "While you speak, the overlay shows the words so far, re-heard every half second, so earlier "
+     "words can change. They are pasted at each pause, as before. Needs insert-as-you-go."),
+)
 # Enter guard "hold" (1.007): the longest the keyboard is held after Stop. Past it the held Enter
 # goes through, and words still to come are kept for Paste, as in "late".
 ENTER_HOLD_S = 4.0
@@ -85,6 +95,7 @@ class Signals(QObject):
     piece = Signal(str)             # each decoded piece of a take, for the Dictate tab's text box
     no_field = Signal()             # focus.text_target() said False after a take (detect_no_field)
     late = Signal(str)              # words kept out of the next message by the Enter guard
+    draft = Signal(object, str, int)    # I-4 live draft: take, text, generation (_on_draft)
     fetched = Signal(object, object)    # manifest or None, error: download_model()
     moved = Signal(object)          # error or None: move_models()
     loaded = Signal(object)
@@ -161,6 +172,11 @@ class Controller(QObject):
         self.sig.take_began.connect(lambda: self.win.new_take(self.cfg["clear_each_take"]))
         self.sig.no_field.connect(self._show_no_field)
         self.sig.late.connect(self._show_late)
+        self.sig.draft.connect(self._on_draft)
+        # I-4 live draft (D-2026-11-13-01): the open phrase re-decoded each live tick, shown dimmed
+        # in the overlay. _draft_gen goes up whenever the draft is cleared (a piece cut, the take
+        # leaving recording), so a pass that was already running can't put stale words back.
+        self._draft, self._draft_gen, self._draft_busy = "", 0, False
         self.sig.loaded.connect(self._loaded)
         self.sig.checked.connect(self._checked)
         self.sig.downloaded.connect(self._downloaded)
@@ -636,7 +652,8 @@ class Controller(QObject):
                         or (show == "finishing" and st in ("busy", "done")) or st in ("nofield", "late")),
             "state": st, "paused": self.recorder.paused,
             "seconds": round(self.recorder.seconds, 1), "level": round(self.recorder.level, 3),
-            "opacity": self.cfg["overlay_opacity"], "pos": self.cfg["overlay_pos"]})
+            "opacity": self.cfg["overlay_opacity"], "pos": self.cfg["overlay_pos"],
+            "draft": self._draft if st == "recording" and self.cfg.get("live_draft") else ""})
 
     def _overlay_clear_done(self):
         self._overlay_done = False
@@ -679,19 +696,53 @@ class Controller(QObject):
         cut = live_split(buf, interval)
         if cut:
             self._jobs.put((self._take, self.recorder.consume(cut[0]), False, cut[1]))
+            self._clear_draft()
+        elif (self.cfg.get("live_draft") and not self._draft_busy and self._jobs.empty()
+              and len(buf) >= LIVE_DRAFT_MIN_S * audio.SAMPLE_RATE):
+            # I-4: never queue passes up; skip the tick while one is running or a piece is waiting.
+            # Past LIVE_DRAFT_MAX_S only the newest audio is redrafted (the cut comes at a pause).
+            self._draft_busy = True
+            self._jobs.put((self._take, buf[-LIVE_DRAFT_MAX_S * audio.SAMPLE_RATE:], "draft", self._draft_gen))
+
+    def _clear_draft(self):
+        self._draft_gen += 1
+        if self._draft:
+            self._draft = ""
+            self._overlay_push()
+
+    def _on_draft(self, job, text, gen):
+        if job == self._take and gen == self._draft_gen and self.state == "recording" and text != self._draft:
+            self._draft = text
+            self._overlay_push()
 
     def _worker(self):
         take, parts, stream, heard_audio, held, ctx = None, [], None, [], False, None
         fresh = False         # an Enter after silence was just pressed: the next text starts a new message
         out = str             # how text leaves the app: as is, or ALL CAPS (read once per take)
         fix = str             # the personal dictionary (read once per take)
+        nostop = False        # B-105: no full stop at the end of the take (read once per take)
         while True:
             job, samples, final, pause = self._jobs.get()
+            if isinstance(final, str):        # "draft" (I-4): a pass over the open phrase, nothing pasted
+                try:
+                    if job == self._take and job not in self._dropped and pause == self._draft_gen:
+                        t0 = time.monotonic()
+                        text = draft_text(self.engine.transcribe(samples, record=False))
+                        log.debug("draft pass: %.1f s of audio in %.2f s", len(samples) / audio.SAMPLE_RATE,
+                                  time.monotonic() - t0)
+                        self.sig.draft.emit(job, fix(text) if job == take else text, pause)
+                except Exception:
+                    log.exception("live draft pass failed")
+                finally:
+                    self._draft_busy = False
+                continue
             if samples is None:
                 # Press Enter after silence (_auto_enter_tick): the take's pieces before it are in.
                 # A full stop held back at the last seam goes out first, and what follows is
                 # decoded without that piece as context: it starts the next message.
                 if job == take and job not in self._dropped:
+                    if nostop and held == ".":    # B-105: the message ends here, without it
+                        held = ""
                     if held and parts:
                         parts[-1] += held
                         self._show(out(held))
@@ -709,6 +760,7 @@ class Controller(QObject):
                 # and shown in the text box, so the seam and release rules still see case, and
                 # History (which can become training data) keeps the normal case.
                 out = str.upper if self.cfg["all_caps"] else str
+                nostop = bool(self.cfg.get("no_final_stop"))
                 # Personal dictionary (0.8.0; ../shared/personal-dictionary.md): applied to each piece
                 # after the seam rules, before ALL CAPS. Unlike ALL CAPS it reaches History, which
                 # holds what was meant.
@@ -736,6 +788,8 @@ class Controller(QObject):
                         mlog["pieces"].append({"start_s": round(start_s, 3), "len_s": round(len(samples) / audio.SAMPLE_RATE, 3),
                                                "pause_s": pause, "raw": text, "decode_s": round(time.monotonic() - t0, 3)})
                     space = " " if final and self.cfg["trailing_space"] else ""
+                    if text and final and nostop:
+                        text = drop_final_stop(text)
                     if text:
                         text = fix(disfluency.chop(text, "".join(parts[-1:])))   # whole words with their own spaces; stream.sent keeps the raw text
                         parts.append(text)
@@ -775,9 +829,11 @@ class Controller(QObject):
                     if add:
                         parts[-1] += add
                 elif held and final:
-                    lead, parts[-1] = held + end, parts[-1] + held
-                    self._show(out(lead))
-                    self._out(job, out(lead))
+                    mark = "" if nostop and held == "." else held    # B-105
+                    lead, parts[-1] = mark + end, parts[-1] + mark
+                    if lead:
+                        self._show(out(lead))
+                        self._out(job, out(lead))
                 elif gap and final and end:
                     self._show(out(end))
                     self._out(job, out(end))
@@ -785,6 +841,8 @@ class Controller(QObject):
                     fresh = False
                     held = "" if final else held_mark(text, pause)
                     text = fix(text[:-1] if held else text)
+                    if final and nostop:
+                        text = drop_final_stop(text)
                     parts.append(text)
                     self._show(out(lead + text))
                     self._out(job, out(lead + text + (end if final else "")))
@@ -1028,6 +1086,8 @@ class Controller(QObject):
         self.win.update_state()
         for t in (self._level_timer, self._live_timer):
             t.start() if state == "recording" else t.stop()
+        if state != "recording":
+            self._clear_draft()
         if state == "recording":
             self._rec_hold()
         else:
@@ -1659,9 +1719,20 @@ class Controller(QObject):
                 acts[val] = a
             if acts is self._output_acts:
                 menu.addSeparator()
+        menu.addSeparator()
+        # Quick switches (B-105, I-4), saved like the Settings checkboxes; from the next take.
+        self._flag_acts = {}
+        for key, label, tip in TRAY_FLAGS:
+            a = menu.addAction(label)
+            a.setCheckable(True)
+            a.setToolTip(tip)
+            a.triggered.connect(lambda on, k=key: self.cfg.set(k, bool(on)))
+            self._flag_acts[key] = a
         menu.aboutToShow.connect(self._sync_output_menu)
 
     def _sync_output_menu(self):
+        for key, a in getattr(self, "_flag_acts", {}).items():
+            a.setChecked(bool(self.cfg.get(key)))
         for val, a in self._output_acts.items():
             a.setChecked(bool(self.cfg[val]))
         for val, a in self._chord_acts.items():   # a custom chord leaves both unchecked

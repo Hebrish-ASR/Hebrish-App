@@ -1757,6 +1757,11 @@ class MainWindow(QMainWindow):
         caps.setToolTip("Just for fun: everything you say is pasted in capitals. History and the "
                         "Transcription tab keep the normal case.")
         b.addWidget(caps)
+        nostop = self._check("no_final_stop", "No full stop at the end of a take (from the next take)")
+        nostop.setToolTip("For searches, inventory lookups and titles: the model's final full stop is "
+                          "left off. Question and exclamation marks stay, and so do full stops inside "
+                          "the take. Also in the tray, under Output.")
+        b.addWidget(nostop)
         each = self._check("clear_each_take", "Empty the Voice Typing text box for each take")
         each.setToolTip("Otherwise takes collect, a blank line between them. Every take is in History either way.")
         b.addWidget(each)
@@ -1826,6 +1831,12 @@ class MainWindow(QMainWindow):
         form.setLabelAlignment(Qt.AlignRight)
         form.addRow("Insert as you go", self._live_row())
         form.addRow("Shakshuka pastes", self._combo("stream_release", STREAM))
+        draft = self._check("live_draft", "Live draft in the overlay (experimental)")
+        draft.setToolTip("While you speak, the overlay shows the words since the last pause, heard "
+                         "again every half second, so an earlier word can change once the next ones "
+                         "make it clear. What is pasted doesn't change: each piece still goes in at a "
+                         "pause. Uses more CPU while recording. Not with Shakshuka.")
+        form.addRow("", draft)
         th = QSpinBox(minimum=0, maximum=os.cpu_count() or 16, value=self.cfg["num_threads"])
         th.setSpecialValueText(f"Auto ({threads({'num_threads': 0})})")
         reload = QTimer(self, singleShot=True, interval=900, timeout=self.ctl.load_model)   # once, after the last click

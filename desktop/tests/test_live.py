@@ -607,3 +607,45 @@ def test_seam_join_cases():
     assert seam_join(",", "word", "", None) == ("", "", "")
     assert (held_mark("Done?", 0.7), held_mark("Done!", 0.7), held_mark("Done...", 0.7),
             held_mark("Done?", None), held_mark("Done", 0.7)) == ("?", "!", "", "", "")
+
+
+# -- B-105 no full stop at the end; I-4 live draft (2026-11-13) --------------------------------
+from hebrish.engine import draft_text, drop_final_stop  # noqa: E402
+
+
+def test_drop_final_stop_only_takes_a_single_full_stop():
+    assert drop_final_stop("Order 4512.") == "Order 4512"
+    assert drop_final_stop("Order 4512. ") == "Order 4512 "
+    assert drop_final_stop("Wait...") == "Wait..."
+    assert drop_final_stop("Is it in stock?") == "Is it in stock?"
+    assert drop_final_stop("Dr. Cohen said no.") == "Dr. Cohen said no"
+    assert drop_final_stop("") == ""
+
+
+def test_draft_text_never_shows_the_closing_mark():
+    assert draft_text("Send the arnona form.") == "Send the arnona form"
+    assert draft_text("Is it here? ") == "Is it here"
+    assert draft_text("Mid, sentence") == "Mid, sentence"
+
+
+def test_no_final_stop_drops_the_last_pieces_stop():
+    pastes, text = _run_worker(["Send the arnona form.", "And the receipt."],
+                               [(0.7, False), (None, True)], {"no_final_stop": True})
+    assert pastes == ["Send the arnona form", " and the receipt "]
+    assert text == "Send the arnona form and the receipt"
+
+
+def test_no_final_stop_drops_a_held_stop_with_an_empty_last_piece():
+    pastes, text = _run_worker(["Kitchen sink.", ""], [(0.9, False), (None, True)], {"no_final_stop": True})
+    assert "".join(pastes) == "Kitchen sink "
+    assert text == "Kitchen sink"
+
+
+def test_no_final_stop_keeps_full_stops_inside_the_take():
+    _, text = _run_worker(["Send the form. Then call."], [(None, True)], {"no_final_stop": True})
+    assert text == "Send the form. Then call"
+
+
+def test_no_final_stop_off_keeps_it():
+    _, text = _run_worker(["Kitchen sink."], [(None, True)])
+    assert text == "Kitchen sink."

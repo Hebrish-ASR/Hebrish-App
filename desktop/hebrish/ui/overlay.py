@@ -16,8 +16,10 @@ It must never take keyboard focus, because the transcript is pasted into whateve
 works because the overlay never takes the focus; the mic does the same as Paste.
 "Late words" (state `late`, 1.007): the same layout, for words the Enter guard kept out of the
 next message (the send key was pressed before they came in); Paste sends `paste_late`.
+"Live draft" (I-4, `draft`): while recording with the live draft on, the words of the open phrase,
+dimmed and re-drawn on each pass (the newest words at the right, older ones elided at the left).
 Parent and child talk JSON lines over the child's stdin/stdout: the parent sends
-{"visible", "state", "seconds", "level", "paused", "opacity", "pos"}, the child sends
+{"visible", "state", "seconds", "level", "paused", "opacity", "pos", "draft"}, the child sends
 {"action": "toggle|pause|retake|discard|paste_last|paste_late|dismiss_no_field"} and {"pos": [x, y]} after a drag.
 """
 
@@ -39,6 +41,7 @@ H = 56                    # pill height = the mic's square
 MIC = 46                  # mic circle diameter
 BTN = 32
 BARS = 14
+DRAFT_W = 340             # the live draft's width (fixed, so the pill doesn't jump as words change)
 
 TIPS = {"mic": {"idle": "Start dictation", "recording": "Stop and transcribe",
                 "busy": "Transcribing: click to start the next take", "done": "Start dictation"},
@@ -80,6 +83,7 @@ class Overlay(QWidget):
         self.setMouseTracking(True)
         self.setWindowTitle("Hebrish overlay")
         self.state, self.seconds, self.paused, self.opacity = "idle", 0.0, False, 0.85
+        self.draft = ""
         self.levels = deque([0.0] * BARS, maxlen=BARS)
         self.anchor: QPoint | None = None       # the mic square's top-left, screen coords
         self._sent_pos = None
@@ -113,6 +117,9 @@ class Overlay(QWidget):
             if self.state != "recording":
                 self.levels.extend([0.0] * BARS)
             relayout = True
+        if "draft" in m and m["draft"] != self.draft:
+            relayout = relayout or bool(m["draft"]) != bool(self.draft)
+            self.draft = m["draft"]
         if relayout:
             self._relayout()
         self.seconds = m.get("seconds", self.seconds)
@@ -149,6 +156,8 @@ class Overlay(QWidget):
         if self.state == "recording":
             parts = [("timer", fm.horizontalAdvance("00:00") + 10), ("bars", BARS * 5 + 6),
                      ("resume" if self.paused else "pause", BTN), ("retake", BTN), ("discard", BTN)]
+            if self.draft:
+                parts.insert(0, ("draft", DRAFT_W))
         elif self.state in OFFER:
             parts = [("label", fm.horizontalAdvance(self._text()) + 14),
                      ("paste", fm.horizontalAdvance("Paste") + 24), ("dismiss", BTN)]
@@ -196,6 +205,16 @@ class Overlay(QWidget):
                 p.drawText(rect, Qt.AlignCenter, f"{s // 60}:{s % 60:02d}")
             elif name == "bars":
                 self._paint_bars(p, rect)
+            elif name == "draft":
+                f = QFont(self.font())
+                f.setBold(False)
+                f.setItalic(True)
+                p.setFont(f)
+                p.setPen(QColor(255, 255, 255, 165))
+                box = rect.adjusted(12, 0, -6, 0)
+                p.drawText(box, Qt.AlignVCenter | (Qt.AlignRight if self.mirrored else Qt.AlignLeft),
+                           QFontMetrics(f).elidedText(self.draft, Qt.ElideLeft, box.width()))
+                p.setFont(self.font())
             elif name == "label":
                 p.setPen(white)
                 p.drawText(rect, Qt.AlignCenter, self._text())

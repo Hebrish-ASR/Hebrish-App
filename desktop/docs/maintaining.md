@@ -2456,3 +2456,45 @@ has a Privacy link, which Android already had; `save_wav` and two unused imports
   A drop anywhere on the tab still works. Test mic (`self.monitor`, an `audio.Recorder(max_s=0)`)
   opens the tab's mic for the meter only. It stops on Record, on a hide (another tab, or the
   window to the tray) and when switched off. The levels panel shows while it runs.
+
+## No full stop at the end (B-105, 1.033, 2026-11-13)
+
+Daniel, 2026-11-13 (R-2026-11-13-2): a lookup in an inventory system or a search title doesn't want the
+model's final period. Setting `no_final_stop` (default off): Settings, beside ALL CAPS, and a quick switch
+in the tray under Output. Read once per take, like ALL CAPS.
+
+- `engine.drop_final_stop(text)` removes one trailing `.` (and keeps a trailing space after it). An
+  ellipsis, `?` and `!` stay; full stops inside the take stay.
+- Insert as you go: the last piece's own stop is dropped after the personal dictionary; when the last piece
+  is empty and the piece before held its stop back (`held_mark`), that held `.` is simply never pasted. A
+  held `?`/`!` still goes out.
+- Press Enter after silence (`auto_enter`): the held `.` before the Enter is dropped too, because that is
+  where the message ends.
+- Shakshuka: only the stop in the final stream piece is dropped; a stop already released at a pause
+  mid-take can't be taken back.
+- History gets the take as pasted (without the stop). Tests: `test_live.py`, `test_no_final_stop_*`,
+  `test_drop_final_stop_*`.
+
+## Live draft in the overlay (I-4, 1.033, 2026-11-13, experimental)
+
+D-2026-11-13-01: words that revise themselves while you speak, the way Claude Code's and Deepgram's
+interim results do, built by re-decoding with Parakeet rather than a streaming model. Setting
+`live_draft` (default off): Voice Typing, under Insert as you go, and the tray under Output. Needs
+Insert as you go (it rides on `_live_tick`, every 500 ms); not with Shakshuka.
+
+- Each live tick with no cut, when no decode is waiting and no draft pass is running, queues a
+  `"draft"` job with the newest `LIVE_DRAFT_MAX_S` (8 s) of the unconsumed audio (at least 0.6 s). The
+  worker decodes it with `Engine.transcribe(record=False)`, applies the personal dictionary, strips the
+  closing mark (`engine.draft_text`: punctuation at the end is decided at commit) and emits `sig.draft`.
+- The overlay shows it dimmed and italic in a fixed 340 px field before the timer, newest words at the
+  edge, older ones elided. Each pass *replaces* the draft. What is pasted is unchanged: pieces still go
+  in at pauses. When a piece is cut or the take leaves recording, the draft is cleared and
+  `_draft_gen` goes up, so a pass already running can't put stale words back.
+- Draft passes run on the same worker as the pieces (the engine is single-threaded), so a piece cut
+  just after a pass started waits for that pass, up to about 0.7 s on a laptop CPU.
+- Measured 2026-11-13, Sabich v4.3 int8, sherpa-onnx, 4 threads, laptop CPU, one pass each: 5 s of audio
+  0.49 s, 10 s 0.86 s, 15 s 1.5 s. A 500 ms tick can't keep up past ~6 s, so passes skip ticks (never
+  queue) and the 8 s cap holds a pass near 0.7 s. The overlay only shows about the last 4 s of words.
+- Not measured yet: erasure and flicker (the research folder's Normalized Erasure / UPWR), or whether a
+  stability rule (LocalAgreement) is needed. Not run live on a desktop (agents don't drive the mic and
+  paste on Daniel's machine); the overlay was rendered offscreen with a draft.

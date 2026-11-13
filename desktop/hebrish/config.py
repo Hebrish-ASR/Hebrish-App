@@ -100,6 +100,12 @@ DEFAULTS = {
     "paste_chord": "ctrl+v",      # e.g. ctrl+shift+v if you dictate mostly into terminals
     "trailing_space": True,
     "all_caps": False,            # type everything in capitals, just for fun (0.7.2)
+    # B-105 (R-2026-11-13-2): drop the model's final "." of a take, for lookups and search boxes.
+    # Only a full stop (not "...", "?" or "!"); full stops inside the take stay. engine.drop_final_stop.
+    "no_final_stop": False,
+    # I-4 (D-2026-11-13-01): while recording, re-decode the open phrase every LIVE_DRAFT_S and show
+    # it, dimmed, in the overlay; it is replaced on each pass and goes out at the pause as before.
+    "live_draft": False,
     "feedback": "beeps",          # beeps | voice (spoken status: data/voice/<voice>/) | off
     "voice": "herman",            # herman | corn | hilbert (audio.VOICES; 0.7.0)
     "beep_style": "soft",         # soft | classic (shown as Loud: the beep up to 1.007); audio.BEEP_STYLES
