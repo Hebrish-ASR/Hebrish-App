@@ -6,6 +6,15 @@
   "source": "https://hebrish.app/changelog",
   "entries": [
     {
+      "date": "2026-11-13",
+      "tag": "Android 1.031",
+      "title": "Android 1.031: No full stop at the end, a live draft, and an edit row",
+      "summary": "No full stop at the end: a switch on the Dictation screen, and a small \"No .\" chip in the voice keyboard, leaves off the final full stop of each take, for searches, lookups and titles.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
       "date": "2026-11-11",
       "tag": "Android 1.030",
       "title": "Android 1.030: turn the floating mic off from the app",
@@ -180,15 +189,6 @@
       "platforms": [
         "android",
         "desktop"
-      ]
-    },
-    {
-      "date": "2026-10-25",
-      "tag": "Android 1.004",
-      "title": "Switch your remote's buttons off without losing them, and save sets of them",
-      "summary": "Settings, Sound, microphone and buttons has a new Use bound buttons switch. Turn it off and Hebrish takes no keys, so the same Bluetooth remote works in other apps; your bindings are kept for when you turn it back on.",
-      "platforms": [
-        "android"
       ]
     }
   ]
