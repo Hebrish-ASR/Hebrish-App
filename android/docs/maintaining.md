@@ -87,8 +87,10 @@ selected model only:
    both versions (~1.3 GB) are on disk.
 
 Checks run when the home or Models screen opens, at most every 6 h (`Prefs.lastCheck`), when the
-model is switched, and on **Check for update**. The IME never checks; it loads whatever is
-installed for the selected model.
+model is switched, and on **Check for update**. Since B-107 (unreleased, 2026-11-13) a background job
+also checks about every 6 h and installs new weights by itself, with **Update models automatically**
+on (the default): "Model updates in the background (B-107)" below. The IME itself still never checks;
+it loads whatever is installed for the selected model.
 
 Verified 2026-10-19: `assembleDebug` compiles with JDK 21 and the APK contains
 `assets/models.json`. Not run on a device (I).
@@ -2114,3 +2116,102 @@ only; experimental, off by default.
 Kotlin 2.1.0 (V, 2026-11-13, outside Gradle, stub `R`). Not built with Gradle, not run on a device,
 no timing (I). Before release: time a pass on the phone (`adb logcat`), and try Gmail, a WebView
 field and Chrome's address bar.
+
+## App updates in the background (B-106)
+
+Unreleased. Daniel, 2026-11-13 (R-2026-11-13-3): the main release, the one distributed through F-Droid, should be
+able to update itself: Setup asks for Android's "Install unknown apps" permission for Hebrish, and once
+it is granted, background updates are on by default.
+
+- **`fdroid` build only** (`Channel.selfUpdate`). Google Play forbids an app updating itself, so
+  `src/play/AndroidManifest.xml` removes `REQUEST_INSTALL_PACKAGES` (`tools:node="remove"`) and every
+  piece of UI is hidden there. The job service and receiver stay in the play manifest because B-107
+  (models) uses the same job service; the app-update path returns `OFF` at once on play.
+- **Setup:** optional step `updates`, "Automatic app updates" (`SetupActivity`, `Checklist.OPTIONAL`), with
+  **Allow**, which opens `Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES` for our package (App info if a ROM
+  lacks it). Done when `packageManager.canRequestPackageInstalls()`; re-read in `onResume`. hebrish.app/setup
+  has no `#step-updates` yet.
+- **Switch and button:** Install and updates (`InstallActivity`, already `fdroid`-only), top section
+  "Automatic updates": **Update Hebrish in the background** (disabled until the permission is allowed) and
+  **Check for updates now**, with the result under it.
+- **Prefs:** `app_auto_update` (Boolean, absent until the user touches the switch; `AppUpdateRules.backgroundOn`:
+  absent = on as soon as the permission is allowed, never on without it), `app_update_installing` (the
+  version an install session was committed for, cleared when that version starts or the install fails).
+- **Source:** `https://cdn.hebrish.app/downloads/latest.json`, `files.android` = `{url, name, size, sha256,
+  version}`. `version` ("M.NNN") is compared with `BuildConfig.VERSION_NAME` part by part as integers
+  (`AppUpdateRules.isNewer`; `1.100 > 1.099`, old `0.10.0` < `1.000`). An entry with a non-https URL, a
+  size of 0, a hash that isn't 64 hex digits or an unreadable version is ignored. The APK at that URL is the
+  `fdroid` build signed with the release key, the same key as the Hebrish F-Droid repo, so it installs over
+  either. **The manifest's Android entry must be updated by every Android release** (on 2026-11-13 it still
+  said 1.030 while 1.031 was out); a stale one just means no update is offered.
+- **Job:** `UpdateJobs.APP` (JobScheduler id 4106, `UpdateJob` service; no WorkManager dependency):
+  every 12 h (flex 2 h), unmetered network, battery not low, persisted (`RECEIVE_BOOT_COMPLETED`).
+  `UpdateJobs.sync` schedules or cancels it to match `AppUpdates.backgroundOn`; it runs from
+  `MainActivity.onResume`, `SetupActivity.onResume`, Install and updates, and `MY_PACKAGE_REPLACED`, and
+  leaves an already-scheduled job alone so its period isn't restarted.
+- **Run** (`AppUpdates.run`, worker thread): fetch the manifest; if newer and permitted and no take is open
+  (`TakeGuard.busy`: keyboard, floating mic, Transcription Mode, a dictation box in the app), download into
+  `cacheDir/updates/Hebrish-<version>.apk` (never external storage), hashing as it goes; a size or SHA-256
+  mismatch deletes it and stops (`MISMATCH`). Check for a take again, then a `PackageInstaller` session
+  (`MODE_FULL_INSTALL`, `setAppPackageName`, `openWrite("base.apk")`, `fsync`, `commit` with a mutable
+  `PendingIntent` broadcast to `AppUpdateReceiver`). A postponed run asks JobScheduler to retry
+  (`jobFinished(…, true)`). Failures are logged under tag `HebrishUpdate`; nothing throws out of the job.
+- **Result** (`AppUpdateReceiver`): `STATUS_PENDING_USER_ACTION` posts a notification "Hebrish X is ready
+  to install" whose tap opens Android's confirmation (from the button with the screen open, the
+  confirmation opens directly); it never starts an activity from the background. `STATUS_SUCCESS` or
+  `MY_PACKAGE_REPLACED` in the new version posts "Hebrish updated to X" once (`AppUpdates.announce`, keyed
+  on `app_update_installing`), if notifications are allowed, and clears the cache folder. Notification
+  channel `updates` ("Updates", low importance), shared with B-107.
+
+**By Android version** (from the documentation, none of it run on a device):
+
+| Android | What happens |
+| --- | --- |
+| 9 to 11 (API 28 to 30) | No silent install API: every update ends in `STATUS_PENDING_USER_ACTION`, so the user gets the "ready to install" notification and confirms |
+| 12 and 13 (API 31 to 33) | `setRequireUserAction(USER_ACTION_NOT_REQUIRED)`: an app updating itself, with "Install unknown apps" allowed, installs without a prompt. Hebrish closes during the install |
+| 14+ (API 34+) | As 12, unless another installer has claimed *update ownership* of Hebrish (`setRequestUpdateOwnership`); then Android asks, and the notification path covers it. The F-Droid client is not known to claim it |
+
+- **F-Droid client alongside:** both deliver the same signed APK, so whichever is first installs it and the
+  other then sees nothing newer. If the F-Droid client is the installer of record, Android may still let our
+  self-update through silently (self-update is allowed on 12+), but this is unverified.
+- **f-droid.org main repo:** the inclusion policy wants no executable downloads without consent. Here the
+  user has to allow "Install unknown apps" first, which is the consent; if F-Droid's reviewers disagree,
+  the f-droid.org build could default the switch off (`docs/fdroid-main.md`).
+- **Untested (I):** everything on a device: the permission screen and return, the job firing, the
+  download, the silent install on 12+, the confirmation notification on 9 to 11, the "updated" notification
+  after the process restarts, and the receiver getting `MY_PACKAGE_REPLACED` while not exported.
+  **Verified (V, 2026-11-13):** `AppUpdateRulesTest` (20 cases: versions, manifest parsing, the size and
+  hash check, the switch default) passes on the JVM outside Gradle; `app` and `core` pass the Kotlin 2.1.0
+  frontend against android-36 with a stub `R`.
+
+## Model updates in the background (B-107)
+
+Unreleased. Daniel, 2026-11-13 (R-2026-11-13-4): new weights for the models on the phone should arrive without opening
+the app. Every build, Play included: weights are data, not code.
+
+- **Settings:** Models, Updates: **Update models automatically** (pref `model_auto_update`, default on) and
+  **Only on Wi-Fi** (`model_wifi_only`, default on; greyed out while the first is off). The older
+  "check when the app opens" switch (`auto_check`, off by default for f-droid.org) is unchanged and separate.
+- **Job:** `UpdateJobs.MODELS` (id 4107, the same `UpdateJob` service): every 6 h (flex 2 h), network
+  unmetered with Only on Wi-Fi, any network without it, battery not low, persisted. `UpdateJobs.sync` follows
+  the two switches.
+- **Run** (`ModelUpdates.run`): skipped if a download or folder move is already running (retry later), or
+  with Only on Wi-Fi and a metered network. Otherwise the existing `ModelDownload.check(force = true)`
+  (catalogue refresh, the selected model and every downloaded one), then for each **installed** model with
+  `ModelDownload.updateAvailable`, selected model first, the existing `ModelDownload.update` path: pinned
+  revision, per-file SHA-256, free-space check, `pruneOld`. One at a time; the job thread waits for each.
+- **Never swap mid-take:** the download may run during a take, but the switch-over (`Transcriber.unload`
+  and recording the new manifest) waits in `ModelDownload.waitForSwap` while `ModelDownload.holdSwap` says
+  so. The app sets `holdSwap = { TakeGuard.busy() }`; it is null in Hebrish Keyboard, which shares `core`,
+  so nothing changes there. After 30 min of waiting the update fails, the verified files stay, and the next
+  run switches over without downloading again. Once set, the hold also applies to Update taps on the
+  Models screen.
+- **Afterwards:** a quiet notification "Sabich updated to v3.1" (`modelupdate_done`, model name and label),
+  opening Models. A background failure is cleared from the Models screen (`clearFailure`) so the user isn't
+  shown an error they didn't start; `.part` files resume next time.
+- **Tracking anti-feature:** background checks to the CDN and Hugging Face on by default may draw F-Droid's
+  `Tracking` label (`docs/fdroid-main.md`, Anti-features); Daniel chose default on.
+- **Caveat:** JobScheduler gives a regular job about 10 minutes on recent Android. A 661 MB model on slow
+  Wi-Fi may be stopped part way; the `.part` files resume on the next run.
+- **Untested (I):** all on a device. **Verified (V, 2026-11-13):** type-checks as above.
+

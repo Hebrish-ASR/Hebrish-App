@@ -24,6 +24,11 @@
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
+    <!-- B-106: the fdroid build installs its own updates (AppUpdates) once the user allows
+         "Install unknown apps". The play build removes it: src/play/AndroidManifest.xml. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- B-106, B-107: the periodic update jobs (UpdateJobs) are persisted across restarts. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <!-- Lists launchable apps for "Hide in these apps" (B-90). Android 11+ hides other apps
          without this; it is narrower than QUERY_ALL_PACKAGES, which Play restricts. -->
@@ -77,6 +82,14 @@
             android:exported="false"
             android:label="@string/try_title"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- B-106, B-107: background app and model updates (UpdateJob.kt, AppUpdates.kt). -->
+        <service android:name=".UpdateJob" android:exported="false" android:permission="android.permission.BIND_JOB_SERVICE" />
+        <receiver android:name=".AppUpdateReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <service
             android:name=".VoiceImeService"

@@ -91,7 +91,7 @@ Source <https://f-droid.org/docs/Anti-Features/> **[C]**: "might not block it fr
 |---|---|
 | `NonFreeNet` | Expected: the model downloads from `cdn.hebrish.app` / Hugging Face. WhisperIME, SherpaTTS and Marmalade all carry it for model downloads **[C]** |
 | `NonFreeAssets` | Once a CC-BY-NC model (v1.1 and later, see hebrish.app/terms) can be downloaded. Precedent **[C]**: Ramblr (`com.trevornk.ramblr`), "The optional on-device cleanup model is under a non-free license. It is downloaded only on request and requires consent." Not needed while only CC-BY-4.0 v1.0 is offered **[I]** |
-| `Tracking` | Only if something phones home by default without consent. To check: `ModelStore.checkLatest` calls `huggingface.co/api/models/<repo>/revision/main` (or the CDN `manifest_url`); if `ModelDownload.updateAvailable` runs automatically, make it opt-in or expect this **[I]** |
+| `Tracking` | Only if something phones home by default without consent. To check: `ModelStore.checkLatest` calls `huggingface.co/api/models/<repo>/revision/main` (or the CDN `manifest_url`); if `ModelDownload.updateAvailable` runs automatically, make it opt-in or expect this **[I]**. Since B-107 (2026-11-13) background model updates are on by default (Daniel's choice), and B-106 checks for app updates once "Install unknown apps" is allowed: expect the label, or default them off in the f-droid.org build (`docs/maintaining.md`) |
 | `NonFreeDep`, `TetheredNet` | No **[I]** (`TetheredNet` exempts a configurable server) |
 
 Accessibility service: not mentioned in the inclusion policy or anti-features **[C]**; 16

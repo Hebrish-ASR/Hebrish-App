@@ -61,6 +61,13 @@ class SetupActivity : Page() {
             }
         }
 
+        // B-106, `fdroid` build only: allow "Install unknown apps", and background app updates turn on.
+        if (Channel.selfUpdate) {
+            step("updates", R.string.setup_updates_title, R.string.setup_updates, { AppUpdates.permitted(this) }) { r ->
+                button(R.string.setup_updates_button, r) { Setup.openSystem(this, AppUpdates.permissionIntent(this), Setup.appInfoIntent(this)) }
+            }
+        }
+
         heading(R.string.setup_try_title)
         text(R.string.setup_try)
         val r = row()
@@ -93,6 +100,8 @@ class SetupActivity : Page() {
     override fun onResume() {
         super.onResume()
         render()
+        // Back from "Install unknown apps": the app update job follows the permission (B-106).
+        UpdateJobs.sync(this)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -136,7 +145,7 @@ class SetupActivity : Page() {
 
 /** What counts towards "set up": shared by the checklist and the home screen. */
 object Checklist {
-    val OPTIONAL = setOf("floating", "background")
+    val OPTIONAL = setOf("floating", "background", "updates")
 
     /** (done, required) over: mic, model, keyboard or floating mic, battery, not paused when unused. */
     fun progress(ctx: android.content.Context): Pair<Int, Int> {

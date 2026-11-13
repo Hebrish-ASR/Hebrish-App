@@ -57,6 +57,22 @@ object ModelDownload {
         throw e
     }
 
+    /**
+     * True while the switch-over to new weights must wait (the Hebrish app's background updates,
+     * B-107: a take is open). Null = never wait (Hebrish Keyboard, and before B-107). Worker thread.
+     */
+    @Volatile var holdSwap: (() -> Boolean)? = null
+    private const val SWAP_WAIT_MS = 30 * 60 * 1000L
+
+    /** Waits up to 30 min for [holdSwap] to clear; then fails, leaving the verified files for the next try. */
+    private fun waitForSwap() {
+        val until = android.os.SystemClock.elapsedRealtime() + SWAP_WAIT_MS
+        while (holdSwap?.invoke() == true) {
+            if (android.os.SystemClock.elapsedRealtime() > until) throw java.io.IOException("A take was still open; the update finishes next time")
+            Thread.sleep(2000)
+        }
+    }
+
     /** Automatic checks run at most this often; the button forces one. */
     private const val CHECK_EVERY_MS = 6 * 60 * 60 * 1000L
 
@@ -140,6 +156,7 @@ object ModelDownload {
             target = model to chosen
             ModelStore.download(app, model, chosen, { cancel }, report)
             // Only now that every file is verified: switch over, then delete the old weights.
+            waitForSwap()
             if (Catalogue.selected(app).id == model.id) Transcriber.unload()
             ModelPrefs.setInstalledManifest(app, model.id, chosen.toJson())
             ModelStore.pruneOld(app, model)

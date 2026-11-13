@@ -268,7 +268,7 @@
     <string name="models_post_cleanup_use">Use for Clean up</string>
     <string name="models_post_cleanup_unsupported">Clean-up models need a newer processor than this phone has (ARMv8.2 with dot product).</string>
     <string name="models_updates">Updates</string>
-    <string name="models_updates_hint">New versions of downloaded models are looked for when the app opens, at most every 6 hours. A model being updated stays usable until the new version is downloaded and checked.</string>
+    <string name="models_updates_hint">With Update models automatically on, downloaded models get new versions by themselves, checked about every 6 hours. A model being updated stays usable until the new version is downloaded and checked, and a take in progress is never interrupted.</string>
 
     <string name="keyboard_intro">A voice keyboard that opens from your regular keyboard\'s mic key, records, types the text in and switches back.</string>
 
@@ -326,7 +326,7 @@
 
     <string name="install_version">This app: Hebrish %1$s.</string>
     <string name="install_fdroid_title">Get updates with F-Droid</string>
-    <string name="install_fdroid_why">Installed from an APK? An APK doesn\'t update itself. Hebrish has its own F-Droid repository: add it once, and every new version arrives as an ordinary app update. It is the same app, signed with the same key, so F-Droid updates this install and keeps your models and settings. It also works in Droid-ify and Neo Store.</string>
+    <string name="install_fdroid_why">Installed from an APK? Automatic updates above keep it current; or use Hebrish\'s own F-Droid repository: add it once, and every new version arrives as an ordinary app update. It is the same app, signed with the same key, so F-Droid updates this install and keeps your models and settings. It also works in Droid-ify and Neo Store.</string>
     <string name="install_step1">1. Install F-Droid, if you don\'t have it</string>
     <string name="install_get_fdroid">Get F-Droid</string>
     <string name="install_step2">2. Add the Hebrish repository</string>
@@ -676,4 +676,31 @@
     <string name="notes_titles_missing">Titles need the title model (%1$d MB): download it in Models, Add-on models.</string>
     <string name="notes_open_models">Open Models</string>
     <string name="note_delete_confirm">Delete this note? This can\'t be undone.</string>
+    <!-- B-107: model updates in the background (Models, Updates). -->
+    <string name="models_auto_update">Update models automatically</string>
+    <string name="models_wifi_only">Only on Wi-Fi</string>
+    <string name="modelupdate_done">%1$s updated to %2$s</string>
+    <!-- B-106: app updates in the background (fdroid build only: Setup, Install and updates). -->
+    <string name="updates_channel">Updates</string>
+    <string name="setup_updates_title">Automatic app updates</string>
+    <string name="setup_updates">Hebrish can install its own new versions in the background, so you always have the newest one. Android calls this permission \"Install unknown apps\": on the page that opens, allow it for Hebrish. You can turn background updates off later in Install and updates.</string>
+    <string name="setup_updates_button">Allow</string>
+    <string name="appupdate_title">Automatic updates</string>
+    <string name="appupdate_intro">Hebrish can download and install new versions by itself, about twice a day on Wi-Fi, never while you are dictating. It needs Android\'s \"Install unknown apps\" permission for Hebrish.</string>
+    <string name="appupdate_allow">Allow \"Install unknown apps\"</string>
+    <string name="appupdate_not_allowed">\"Install unknown apps\" is not allowed for Hebrish yet.</string>
+    <string name="appupdate_switch">Update Hebrish in the background</string>
+    <string name="appupdate_check">Check for updates now</string>
+    <string name="appupdate_checking">Checking for updates…</string>
+    <string name="appupdate_up_to_date">Hebrish %1$s is the newest version.</string>
+    <string name="appupdate_downloading">Downloading Hebrish %1$s…</string>
+    <string name="appupdate_installing">Installing Hebrish %1$s. Hebrish closes while it updates: open it again afterwards.</string>
+    <string name="appupdate_confirm">Android asks you to confirm the update.</string>
+    <string name="appupdate_confirm_title">Hebrish %1$s is ready to install</string>
+    <string name="appupdate_confirm_text">Tap to install the update.</string>
+    <string name="appupdate_done">Hebrish updated to %1$s</string>
+    <string name="appupdate_busy">A take is in progress. Try again when it is done.</string>
+    <string name="appupdate_needs_permission">Hebrish %1$s is out. Allow \"Install unknown apps\" for Hebrish to install it from here.</string>
+    <string name="appupdate_mismatch">The download didn\'t match the published version, so it wasn\'t installed. Try again later.</string>
+    <string name="appupdate_failed">Couldn\'t update: %1$s</string>
 </resources>

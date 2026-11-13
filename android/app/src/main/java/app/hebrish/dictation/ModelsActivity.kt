@@ -62,6 +62,15 @@ class ModelsActivity : Page() {
         checkStatus = text()
         checkBtn = button(R.string.check_update) { ModelDownload.check(this, force = true) }
         switch(R.string.models_auto_check, { ModelPrefs.autoCheck(this) }, { ModelPrefs.setAutoCheck(this, it) })
+        // B-107: background model updates (UpdateJobs.MODELS), on by default, Wi-Fi only by default.
+        lateinit var wifi: android.widget.Switch
+        switch(R.string.models_auto_update, { Prefs.modelAutoUpdate(this) }, {
+            Prefs.setModelAutoUpdate(this, it)
+            wifi.isEnabled = it
+            UpdateJobs.sync(this)
+        })
+        wifi = switch(R.string.models_wifi_only, { Prefs.modelWifiOnly(this) }, { Prefs.setModelWifiOnly(this, it); UpdateJobs.sync(this) })
+        wifi.isEnabled = Prefs.modelAutoUpdate(this)
 
         if (Channel.modelLocation) {
             heading(R.string.location_title)

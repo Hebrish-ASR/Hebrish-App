@@ -63,6 +63,24 @@ object Prefs {
     fun liveDraft(ctx: Context) = sp(ctx).getBoolean("live_draft", false)
     fun setLiveDraft(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("live_draft", v).apply()
 
+    /**
+     * B-106 (Daniel, 2026-11-13): install new Hebrish versions in the background (`fdroid` build only).
+     * Null until the user touches the switch: then on as soon as "Install unknown apps" is allowed
+     * (AppUpdateRules.backgroundOn). Read it through AppUpdates.backgroundOn.
+     */
+    fun appAutoUpdate(ctx: Context): Boolean? = sp(ctx).let { if (it.contains("app_auto_update")) it.getBoolean("app_auto_update", true) else null }
+    fun setAppAutoUpdate(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("app_auto_update", v).apply()
+    /** The version an install session was committed for, until the new version starts (AppUpdateReceiver). */
+    fun appUpdateInstalling(ctx: Context): String? = sp(ctx).getString("app_update_installing", null)
+    fun setAppUpdateInstalling(ctx: Context, v: String?) = sp(ctx).edit().putString("app_update_installing", v).apply()
+
+    /** B-107 (Daniel, 2026-11-13): download new weights for installed models in the background. On by default, every build. */
+    fun modelAutoUpdate(ctx: Context) = sp(ctx).getBoolean("model_auto_update", true)
+    fun setModelAutoUpdate(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("model_auto_update", v).apply()
+    /** B-107: background model downloads only on an unmetered network (Wi-Fi). On by default. */
+    fun modelWifiOnly(ctx: Context) = sp(ctx).getBoolean("model_wifi_only", true)
+    fun setModelWifiOnly(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("model_wifi_only", v).apply()
+
     /** Keep every take in [History] (0.8.1). On by default, as on desktop (D-2026-10-22-13). */
     fun keepHistory(ctx: Context) = sp(ctx).getBoolean("keep_history", true)
     fun setKeepHistory(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("keep_history", v).apply()

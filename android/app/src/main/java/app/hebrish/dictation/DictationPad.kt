@@ -84,6 +84,7 @@ class DictationPad(
 
     fun onDestroy() {
         decoder?.cancel()
+        TakeGuard.pad(this, false)
     }
 
     /** True if [requestCode] was this pad's microphone request. */
@@ -200,6 +201,7 @@ class DictationPad(
 
     private fun setState(s: State, message: String) {
         state = s
+        TakeGuard.pad(this, s == State.RECORDING || s == State.BUSY)
         status.text = message
         mic.setImageResource(if (s == State.RECORDING) R.drawable.ic_stop else R.drawable.ic_mic)
         mic.isEnabled = s == State.IDLE || s == State.RECORDING

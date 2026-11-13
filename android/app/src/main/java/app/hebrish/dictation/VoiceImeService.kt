@@ -858,6 +858,9 @@ class VoiceImeService : InputMethodService() {
         /** The live keyboard service. Same process and main thread as the floating mic. */
         private var running: VoiceImeService? = null
 
+        /** A take is open here (recording, paused, loading or transcribing): background updates wait (B-106, B-107). */
+        val takeOpen get() = running?.let { it.state != State.IDLE } == true
+
         /**
          * Ends a take open in the keyboard, if any. Two takes can't share the mic: see
          * docs/maintaining.md, "One open take across the keyboard and the floating mic".

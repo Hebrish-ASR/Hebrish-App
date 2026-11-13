@@ -106,6 +106,8 @@ class MainActivity : Page() {
         noteDefaultIme()
         checkModelLocation()
         if (ModelPrefs.autoCheck(this)) ModelDownload.check(this)
+        // B-106, B-107: the background update jobs match the settings and permission.
+        UpdateJobs.sync(this)
         render()
     }
 

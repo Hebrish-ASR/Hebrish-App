@@ -15,4 +15,6 @@ object Channel {
     val installScreen = !play
     /** A shared model folder needs all-files access, which Play refuses for an app like this. */
     val modelLocation = !play
+    /** B-106: the app installs its own updates. Play forbids self-updating; the play manifest drops REQUEST_INSTALL_PACKAGES. */
+    val selfUpdate = !play
 }
