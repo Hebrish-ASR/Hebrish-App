@@ -1,0 +1,1 @@
+1.032: The app and its models update themselves.
