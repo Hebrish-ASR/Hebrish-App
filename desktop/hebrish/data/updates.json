@@ -2,9 +2,18 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "desktop",
-  "built": "2026-11-12",
+  "built": "2026-11-13",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-13",
+      "tag": "Ubuntu 1.033",
+      "title": "Ubuntu 1.033: No full stop at the end, and a live draft",
+      "summary": "No full stop at the end: a new switch, in Settings and in the tray under Output, leaves off the final full stop of each take.",
+      "platforms": [
+        "desktop"
+      ]
+    },
     {
       "date": "2026-11-12",
       "tag": "Ubuntu 1.032",
@@ -175,15 +184,6 @@
       "summary": "Paste last: after an early Enter kept your last words out of a message, the Paste last key and tray item now paste only those words, not the whole take again.",
       "platforms": [
         "desktop"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Site",
-      "title": "Licensing in the top menu, a clearer models page, and Corn",
-      "summary": "Licensing is now in the top menu and opens with what each part of Hebrish is licensed under, with the Creative Commons icons.",
-      "platforms": [
-        "site"
       ]
     }
   ]

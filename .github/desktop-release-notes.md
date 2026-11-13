@@ -1,7 +1,6 @@
-**1.032: Stop transcribes, and the Notepad gets formatting (Ubuntu).**
+**1.033: No full stop at the end, and a live draft (Ubuntu).**
 
-- **Stop now transcribes.** On the Transcription tab, the square Stop button stops the recording and puts the transcript in the Notepad. Until now Stop only kept the audio and waited for a separate Transcribe button, so a recording could look like it had vanished. Transcribe now appears only for a recording the app stopped by itself (time limit or a disk error).
-- **Voice Typing goes into the Notepad** while the Transcription tab is open: dictate with your Voice Typing key and the words land at the Notepad's cursor, not in another app. Until now they went only to the clipboard and History.
-- **The Notepad is a page you can format:** a white page with bold, italic, highlight, headings and bulleted or numbered lists (Ctrl+B, Ctrl+I, Ctrl+Shift+H). Save and Copy write it as Markdown.
+- **No full stop at the end:** a new switch, in Settings and in the tray under Output, leaves off the final full stop of each take. Meant for searches, inventory lookups and titles. Question and exclamation marks stay, and so do full stops inside the take.
+- **Live draft in the overlay (experimental):** while you speak, the floating overlay shows your words since the last pause, dimmed, and hears them again every half second, so an earlier word can change once the next ones make it clear. What is pasted doesn't change: each piece still goes in at a pause. On the Voice Typing tab under Insert as you go, and in the tray under Output. Off by default. Not with Shakshuka.
 - Windows and the AppImage stay on 1.026.
 - Downloads: [hebrish.app/download](https://hebrish.app/download).
