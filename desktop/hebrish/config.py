@@ -165,7 +165,10 @@ DEFAULTS = {
     "clear_each_take": False,     # the Dictate tab's text box starts empty for each take (0.7.0; off
                                   # since 1.000: takes collect, a blank line between them)
     "models_dir": "",             # where model weights live; "" = DATA_DIR/models
-    "update_check_hours": 24,     # 0 = never check automatically
+    # 0 = never check automatically. 6 since 1.034 (R-2026-11-13-4: Sabich has rolling updates, so
+    # new weights should arrive in the background the same day); 24 before.
+    "update_check_hours": 6,
+    "model_check_6h": True,       # marker: the 24 -> 6 h move below has been applied
     "auto_update": True,          # download a new model version without asking (0.5.1: default on)
     "app_update_check": True,     # look for a new Hebrish app at start and about daily (0.6.2, app_update)
     # Old model versions are always deleted once the new one verifies (0.5.1, Daniel,
@@ -320,6 +323,11 @@ def upgrade(stored: dict) -> dict:
             for parent in {documents_dir(), Path.home() / "Documents", Path.home()}:
                 if not stored.get(key) and (parent / old).is_dir():
                     stored[key] = str(parent / old)
+    # 1.034 (R-2026-11-13-4): the old default 24 h becomes 6 h, once; a value the user chose stays.
+    # The marker comes from DEFAULTS and is saved with the full config, so this runs once.
+    if stored and "model_check_6h" not in stored and stored.get("update_check_hours") == 24:
+        stored["update_check_hours"] = 6
+        stored["model_check_6h"] = True
     return stored
 
 

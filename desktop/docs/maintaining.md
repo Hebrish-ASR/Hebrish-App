@@ -2502,3 +2502,13 @@ Insert as you go (it rides on `_live_tick`, every 500 ms); not with Shakshuka.
 - Not measured yet: erasure and flicker (the research folder's Normalized Erasure / UPWR), or whether a
   stability rule (LocalAgreement) is needed. Not run live on a desktop (agents don't drive the mic and
   paste on Daniel's machine); the overlay was rendered offscreen with a draft.
+
+## Model updates every 6 hours (R-2026-11-13-4, 1.034)
+
+Daniel, 2026-11-13: new weights should be picked up in the background on their own. The desktop already
+did this (`auto_update`, on by default since 0.5.1: `_checked` downloads a newer version without asking,
+`_downloaded` reloads it, and `load_model` defers the reload while a take is in flight via
+`reload_pending`), but checked only every 24 h, while Sabich now has rolling updates. `update_check_hours`
+defaults to 6; `config.upgrade` moves a stored 24 (the old default) to 6 once (marker `model_check_6h`);
+any other value the user chose stays. The 10-minute `_periodic_check` timer is unchanged. Test:
+`test_config_outputs.py::test_model_check_moves_from_24_to_6_hours_once`.
