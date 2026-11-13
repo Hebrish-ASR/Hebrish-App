@@ -47,6 +47,22 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
+        <!-- "No ." chip (B-105, Daniel 2026-11-13): quick toggle for "No full stop at the end", in the
+             header so the keyboard keeps its height (B-96). Lit while on, dimmed while off
+             (VoiceImeService.showNoStop); it applies to the take in progress too. -->
+        <TextView
+            android:id="@+id/no_stop"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/key_bg"
+            android:gravity="center_vertical"
+            android:maxLines="1"
+            android:paddingHorizontal="10dp"
+            android:text="@string/ime_no_stop"
+            android:textColor="@color/ime_text"
+            android:textSize="12sp" />
+
         <!-- Mic source chip (1.008, Daniel 2026-10-30: "a one touch operation ... to toggle
              between internal mic and BT audio source"): names the mic the next or current take
              uses; a tap opens the mic icons beside it, mid-take too (VoiceImeService.openPicker, 1.018). -->

@@ -905,6 +905,8 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         val samples = r.stop()
         Mic.release(this)
         Feedback.cue(this, Feedback.Cue.STOP)
+        // B-105: read at Stop, as the keyboard does (its "No ." chip may have changed it mid-take).
+        d.dropFinalStop = Prefs.noFinalStop(this)
         if (samples.size < Transcriber.SAMPLE_RATE / 4 && d.segmentsQueued == 0) {
             d.cancel()
             state = settled()

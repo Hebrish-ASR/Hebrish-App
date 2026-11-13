@@ -83,6 +83,15 @@ class VoiceImeService : InputMethodService() {
     private lateinit var insertLastBtn: ImageButton
     private lateinit var pauseLbl: TextView
     private lateinit var micLbl: TextView
+    /** The "No ." chip (B-105): quick toggle for Prefs.noFinalStop. */
+    private lateinit var noStop: TextView
+
+    /** Live draft of the open take (I-4), when Prefs.liveDraft was on at its start. */
+    private var draft: LiveDraft? = null
+    /** A draft is in the field as composing text, owned by the open take or the take landing. */
+    private var draftShown = false
+    /** The character before the draft when it went in, for [TakeDecoder.join] at commit. */
+    private var draftBefore: CharSequence = ""
 
     override fun onCreateInputView(): View {
         val v = layoutInflater.inflate(R.layout.ime_view, null)
@@ -98,6 +107,12 @@ class VoiceImeService : InputMethodService() {
         micLbl = v.findViewById(R.id.mic_lbl)
         source = v.findViewById(R.id.source)
         source.setOnClickListener { nextMic() }
+        noStop = v.findViewById(R.id.no_stop)
+        noStop.setOnClickListener {
+            Prefs.setNoFinalStop(this, !Prefs.noFinalStop(this))
+            noStop.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            showNoStop()
+        }
         insertLastBtn.setOnClickListener { insertLast() }
         mic.setOnClickListener { onMic() }
         v.findViewById<ImageButton>(R.id.switch_ime).apply {
@@ -106,14 +121,14 @@ class VoiceImeService : InputMethodService() {
             setOnLongClickListener { showPicker(); true }
         }
         v.findViewById<ImageButton>(R.id.backspace).apply {
-            setOnClickListener { sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
+            setOnClickListener { clearDraft(); sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL) }
             setOnLongClickListener { deleteLastSentence(); true }
         }
         v.findViewById<Button>(R.id.delete_word).setOnClickListener { deleteBefore(::lastWordLength, WORD_WINDOW) }
         v.findViewById<Button>(R.id.delete_sentence).setOnClickListener { deleteLastSentence() }
-        repeatWhileHeld(v.findViewById(R.id.cursor_left)) { sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT) }
-        repeatWhileHeld(v.findViewById(R.id.cursor_right)) { sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT) }
-        v.findViewById<ImageButton>(R.id.space).setOnClickListener { currentInputConnection?.commitText(" ", 1) }
+        repeatWhileHeld(v.findViewById(R.id.cursor_left)) { clearDraft(); sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT) }
+        repeatWhileHeld(v.findViewById(R.id.cursor_right)) { clearDraft(); sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT) }
+        v.findViewById<ImageButton>(R.id.space).setOnClickListener { clearDraft(); currentInputConnection?.commitText(" ", 1) }
         v.findViewById<ImageButton>(R.id.enter).setOnClickListener { onEnter() }
         v.findViewById<Button>(R.id.comma).setOnClickListener { punctuate(",") }
         v.findViewById<Button>(R.id.period).setOnClickListener { punctuate(".") }
@@ -123,6 +138,7 @@ class VoiceImeService : InputMethodService() {
         discardBtn.setOnClickListener { discard() }
         renderTake()
         showSource()
+        showNoStop()
         keepAboveNavigationBar(v)
         return v
     }
@@ -197,6 +213,15 @@ class VoiceImeService : InputMethodService() {
         source.setCompoundDrawablesRelativeWithIntrinsicBounds(Mic.icon(d), 0, 0, 0)
     }
 
+    /** The "No ." chip: lit while the setting is on, dimmed while off. */
+    private fun showNoStop() {
+        if (!::noStop.isInitialized) return
+        val on = Prefs.noFinalStop(this)
+        noStop.alpha = if (on) 1f else 0.45f
+        noStop.backgroundTintList = if (on) tint(R.color.ime_mic_idle) else null
+        noStop.contentDescription = getString(if (on) R.string.ime_no_stop_cd_on else R.string.ime_no_stop_cd_off)
+    }
+
     /** The source chip was tapped: straight to the next connected mic in the order (1.027). */
     private fun nextMic() {
         val d = Mic.next(this, recorder?.preferredDevice ?: Mic.preferred(this))
@@ -265,9 +290,13 @@ class VoiceImeService : InputMethodService() {
         }
         renderTake()
         showSource()
+        showNoStop()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        // Before the base class and onFinishInput, which finish composing text: a draft left in the
+        // field would stay there as typed text (docs/maintaining.md, "Live draft").
+        clearDraft()
         super.onFinishInputView(finishingInput)
         // The field the held Enter was meant for is gone: don't send it into the next one.
         if (enterHeld) { enterHeld = false; main.removeCallbacks(enterTimeout) }
@@ -359,12 +388,17 @@ class VoiceImeService : InputMethodService() {
         FloatingMicService.yieldMic()
         preload()
         var t: Take? = null
-        val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
-        t = Take(d)
+        // Live draft (I-4) commits each phrase at its pause, so it needs the pieces as they are decoded.
+        val live = Prefs.liveDraft(this)
+        val pieces = live || Prefs.typeAsYouGo(this)
+        val d = TakeDecoder(this, if (pieces) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
+        val current = Take(d)
+        t = current
         val r = Recorder(
             onLevel = { l -> main.post { setLevel(l) } },
             onLimit = { main.post { if (state == State.RECORDING) stopAndTranscribe() } },
             onSegment = { d.add(it) },
+            segmentMaxSeconds = if (live) LiveDraft.PHRASE_CAP_SECONDS else Recorder.Segmenting.MAX_SECONDS,
         )
         Mic.prepare(this, r)
         try {
@@ -376,7 +410,8 @@ class VoiceImeService : InputMethodService() {
             return
         }
         recorder = r
-        take = t
+        take = current
+        if (live) draft = LiveDraft(this, r, main, { canDraft(current) }, { cut, text -> showDraft(current, cut, text) }).also { it.start() }
         state = State.RECORDING
         showSource()
         shownSeconds = -1
@@ -413,6 +448,8 @@ class VoiceImeService : InputMethodService() {
     }
 
     private fun dropTake() {
+        stopDraft()
+        clearDraft()
         recorder?.cancel()
         recorder = null
         take?.decoder?.cancel()
@@ -462,11 +499,15 @@ class VoiceImeService : InputMethodService() {
         val d = t.decoder
         recorder = null
         take = null
+        // The draft stays on screen until the take's last piece replaces it (commit).
+        stopDraft()
         val samples = r.stop()
         Mic.release(this)
         Feedback.cue(this, Feedback.Cue.STOP)
         setLevel(0f)
+        d.dropFinalStop = Prefs.noFinalStop(this)
         if (samples.size < Transcriber.SAMPLE_RATE / 4 && d.segmentsQueued == 0) {
+            clearDraft()
             d.cancel()
             state = settled()
             renderTake()
@@ -481,6 +522,8 @@ class VoiceImeService : InputMethodService() {
         d.finish(samples) { result ->
             main.post {
                 result.onSuccess { text -> if (text.isNotEmpty()) deliverPart(t, text) }
+                // Nothing came to replace the draft (the tail was empty or failed): take it out.
+                if (take == null || finishing.firstOrNull() === t) clearDraft()
                 t.ended = true
                 t.error = result.exceptionOrNull()
                 if (finishing.firstOrNull() === t) land(t)
@@ -554,6 +597,8 @@ class VoiceImeService : InputMethodService() {
      * guard's `hold`, which here needs no keyboard grab because the Enter is this keyboard's own.
      */
     private fun onEnter() {
+        // A draft is not text yet: the message goes without it, and the phrase follows when committed.
+        clearDraft()
         if (enterHeld) return
         if (finishing.isEmpty()) return sendEnter()
         enterHeld = true
@@ -581,6 +626,11 @@ class VoiceImeService : InputMethodService() {
     private fun commit(text: String): Boolean {
         if (passwordField) return false
         val ic = currentInputConnection ?: return false
+        if (draftShown) {
+            // commitText replaces the composing text, so the final takes the draft's place (I-4).
+            draftShown = false
+            return ic.commitText(TakeDecoder.join(draftBefore, text), 1)
+        }
         val before = ic.getTextBeforeCursor(1, 0)
         // TakeDecoder.join: a space after a word, none before a held full stop (". Next", 0.8.2).
         return ic.commitText(TakeDecoder.join(before ?: "", text), 1)
@@ -599,6 +649,7 @@ class VoiceImeService : InputMethodService() {
 
     /** Comma and period keys: a space the dictation left before the cursor goes, so "word ." becomes "word.". */
     private fun punctuate(mark: String) {
+        clearDraft()
         val ic = currentInputConnection ?: return
         if (ic.getTextBeforeCursor(1, 0)?.toString() == " ") ic.deleteSurroundingText(1, 0)
         ic.commitText(mark, 1)
@@ -609,6 +660,7 @@ class VoiceImeService : InputMethodService() {
 
     /** Deletes the last [length] characters of the text before the cursor, looking back [window] at most. */
     private fun deleteBefore(length: (String) -> Int, window: Int) {
+        clearDraft()
         val ic = currentInputConnection ?: return
         val before = ic.getTextBeforeCursor(window, 0)?.toString() ?: return
         val n = length(before)
@@ -694,6 +746,41 @@ class VoiceImeService : InputMethodService() {
 
     private fun openSetup() {
         startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    /**
+     * Live draft (I-4) may show for [t]: it is the open take and recording, nothing earlier is
+     * still landing (its text would go in before the draft), and every phrase cut so far has been
+     * decoded, so the real decode never waits behind a draft pass.
+     */
+    private fun canDraft(t: Take): Boolean =
+        take === t && state == State.RECORDING && finishing.isEmpty() && t.waiting.isEmpty() && !passwordField &&
+            t.decoder.segmentsDecoded >= t.decoder.segmentsQueued
+
+    /**
+     * A draft pass for phrase [cut] of [t] came back. Dropped if the take moved on (a newer cut, or
+     * the cut phrase's own text not in yet: its draft stays until that text replaces it).
+     */
+    private fun showDraft(t: Take, cut: Int, text: String) {
+        if (!canDraft(t) || cut != t.decoder.segmentsQueued) return
+        if (text.isEmpty()) return clearDraft()
+        val ic = currentInputConnection ?: return
+        if (!draftShown) draftBefore = ic.getTextBeforeCursor(1, 0) ?: ""
+        if (ic.setComposingText(TakeDecoder.join(draftBefore, text), 1)) draftShown = true
+    }
+
+    /** Takes a draft out of the field, leaving the committed text as it was. */
+    private fun clearDraft() {
+        if (!draftShown) return
+        draftShown = false
+        val ic = currentInputConnection ?: return
+        ic.setComposingText("", 1)
+        ic.finishComposingText()
+    }
+
+    private fun stopDraft() {
+        draft?.stop()
+        draft = null
     }
 
     private fun show(msg: String, busy: Boolean) {

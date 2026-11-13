@@ -12,7 +12,7 @@ import java.util.Locale
 
 /**
  * How takes behave in both the keyboard and the floating mic: long dictation, type as you go,
- * ALL CAPS; and the transcription history with its CSV export (0.8.1, [History]).
+ * ALL CAPS, no full stop at the end (B-105), Live draft (I-4, keyboard only); and the transcription history with its CSV export (0.8.1, [History]).
  */
 class DictationActivity : Page() {
     private lateinit var historyCount: TextView
@@ -24,6 +24,10 @@ class DictationActivity : Page() {
         small(R.string.dictation_type_as_you_go_hint)
         switch(R.string.dictation_all_caps, { OutputStyle.allCaps(this) }, { OutputStyle.setAllCaps(this, it) })
         small(R.string.dictation_all_caps_hint)
+        switch(R.string.dictation_no_final_stop, { Prefs.noFinalStop(this) }, { Prefs.setNoFinalStop(this, it) })
+        small(R.string.dictation_no_final_stop_hint)
+        switch(R.string.dictation_live_draft, { Prefs.liveDraft(this) }, { Prefs.setLiveDraft(this, it) })
+        small(R.string.dictation_live_draft_hint)
 
         heading(R.string.dictation_noise_title)
         val noiseLabel = text("")

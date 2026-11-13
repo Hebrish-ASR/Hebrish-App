@@ -47,6 +47,15 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
         private set
 
     /**
+     * B-105, "No full stop at the end": [finish] drops the take's final full stop
+     * ([withoutFinalStop]) from the last piece before it is kept or handed over, so what is typed,
+     * [text] (History) and the caller's last transcript all lack it, as with ALL CAPS and the
+     * personal dictionary. Read when [finish] runs, so callers set it just before (a quick toggle
+     * during the take counts). Off by default; the other screens never set it.
+     */
+    @Volatile var dropFinalStop = false
+
+    /**
      * What one take cost (0.8.1, for the history export: "see how the Android inference is
      * doing", Daniel 2026-10-23). Times are wall clock on the worker thread. [decodeSeconds] is
      * the sum of every decode call (trim + pad + sherpa-onnx decode, context included) and excludes
@@ -167,8 +176,10 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
         worker.execute {
             val result = runCatching {
                 failure?.let { throw it }
-                val last = if (tail.size >= minTail) piece(tail, last = true)
+                val tailText = if (tail.size >= minTail) piece(tail, last = true)
                     else if (stopHeld) { stopHeld = false; OutputStyle.apply(".", allCaps) } else ""
+                // Only the last piece can end in "." (every earlier one held its stop back).
+                val last = if (dropFinalStop) withoutFinalStop(tailText) else tailText
                 if (last.isNotEmpty()) keep(last)
                 held.toString() + join(held, last)
             }
@@ -217,6 +228,16 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
             if (first.lowercase().trim(',', ';', ':') in CONTINUES && !(first.length > 1 && first[1].isUpperCase()))
                 return " " + text.take(1).lowercase() + text.drop(1)
             return ". $text"
+        }
+
+        /**
+         * [text] without its final full stop (B-105): only a single "." at the very end goes, after
+         * trailing whitespace; "..." (an ellipsis), "?" and "!" stay, and so does every full stop
+         * inside the text. An abbreviation at the end loses its dot too ("e.g." becomes "e.g").
+         */
+        fun withoutFinalStop(text: String): String {
+            val t = text.trimEnd()
+            return if (t.endsWith(".") && !t.endsWith("..")) t.dropLast(1).trimEnd() else text
         }
 
         /**

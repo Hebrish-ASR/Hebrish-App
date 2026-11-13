@@ -2022,3 +2022,95 @@ again. Turning the setting off restores the old behaviour.
 
 **Verified.** Compiled (V, 2026-11-12). Not run on a device (I); `switchInputMethod` while the IME
 window is hidden is assumed to work because the IME token stays valid until unbind.
+
+## No full stop at the end (unreleased, B-105, 2026-11-13)
+
+Daniel, 2026-11-13 (R-2026-11-13-2): an inventory lookup or a search box doesn't want the model's
+final full stop. A switch drops it from each take; desktop is to follow (`planning/backlog.md`, B-105).
+
+- **Setting:** pref `no_final_stop` (`Prefs.noFinalStop`, default off), Dictation screen, "No full stop
+  at the end", under ALL CAPS, because it applies to the keyboard and the floating mic alike, like
+  ALL CAPS. Try it, Transcription Mode and Notes are not affected.
+- **Quick toggle:** the **No .** chip in the voice keyboard's header, left of the mic source chip
+  (`ime_view.xml` `no_stop`, `VoiceImeService.showNoStop`). Lit green while on, dimmed while off.
+  It sits in the 32 dp header, so the keyboard's height is unchanged (B-96). No chip in the floating
+  mic's bar; the setting still applies there.
+- **Rule** (`TakeDecoder.withoutFinalStop`, `FinalStopTest`): after trailing whitespace, a single
+  final `.` goes. `...`/`..`, `?`, `!` and every full stop inside the text stay. An abbreviation at
+  the end loses its dot (`e.g.` → `e.g`).
+- **Where:** `TakeDecoder.finish` trims the last piece before keeping it (`@Volatile var
+  dropFinalStop`). Only the last piece can carry the take's final `.`: every earlier piece holds its
+  stop back for the seam rules (`holdStop`), and a held stop with nothing after it comes back as `"."`,
+  which trims to nothing. So it works with Insert as you go too. Both services set it at Stop
+  (`stopAndTranscribe`), from the pref as it is then, so the chip counts for the take in progress.
+- **What is stored:** the trimmed text, everywhere: History (`decoder.text`), Insert last
+  (`Prefs.lastTranscript`) and the floating mic's held text. Same choice as ALL CAPS and the personal
+  dictionary, which are also applied in `TakeDecoder`, so History holds what went out.
+- `core` change is additive (a new property and a companion function), so Hebrish Keyboard builds
+  unchanged.
+
+**Verified.** The rule's 13 cases run on the JVM against the function's source (V, 2026-11-13, kotlinc
+outside Gradle). `core` and `app` type-check with Kotlin 2.1.0 against android-36 and a stub `R`
+(V, 2026-11-13). Not run through Gradle, not run on a device (I): the chip's look and tap, and the
+trimmed text in real fields.
+
+## Live draft (unreleased, I-4 first version, 2026-11-13)
+
+D-2026-11-13-01, I-4 (`research/streaming-revision/README.md`, "Update, 2026-11-13"): text that
+revises itself while you speak, built on the offline model alone, no streaming model. Voice keyboard
+only; experimental, off by default.
+
+- **Setting:** pref `live_draft` (`Prefs.liveDraft`), Dictation screen, "Live draft (voice keyboard,
+  experimental)". Read when a take starts.
+- **How it works** (`LiveDraft.kt`, `VoiceImeService`): every `INTERVAL_MS` = 500 ms a pass copies the
+  open phrase, the recorder's audio since its last cut (`Recorder.openSegment()`, new, guarded by
+  `chunkLock` against the capture thread), decodes it with `Transcriber.transcribe`, applies the
+  disfluency chop, the personal dictionary and ALL CAPS, strips the final `. ? !`
+  (`LiveDraft.draftText`: punctuation is decided at commit), and shows it with
+  `InputConnection.setComposingText`, which replaces the previous draft (the interim/final protocol of
+  Deepgram and Claude Code's voice mode).
+- **Commit** reuses insert-as-you-go: the take's `TakeDecoder` decodes each phrase the recorder cuts at
+  a pause (0.6 s after at least 8 s, `Recorder.Segmenting`), with context at the seam, and
+  `commit()` puts it in with `commitText`, which replaces the composing text, so the final takes the
+  draft's place. Stop does the same for the tail. Live draft therefore turns pieces on for the
+  keyboard even when Insert as you go is off. The phrase cap is `PHRASE_CAP_SECONDS` = 20 s
+  (`Recorder(segmentMaxSeconds = …)`, new, default still 28 s), because every pass re-decodes the
+  whole phrase.
+- **Never queued, never two decodes at once:** a tick while a pass is still running is skipped
+  (`busy`). The recognizer is one process-wide object; every decode holds `Transcriber.lock`, so a
+  pass and the take's decoder take turns. A pass never loads the model. No pass runs while a cut
+  phrase is still waiting for its real decode (`canDraft`: `segmentsDecoded >= segmentsQueued`), so the
+  commit doesn't wait behind a draft, and that phrase's draft stays on screen until its text replaces
+  it. Stop can still wait for at most one pass already running.
+- **When there is no draft:** paused, password field, model not loaded yet, earlier takes still
+  landing (their text has to go in first), under 0.5 s of open audio, or no clear speech.
+- **The draft is taken out** (`clearDraft`: empty composing text, then `finishComposingText`) before
+  every edit key (space, comma, period, delete, Word, Sentence, arrows), before Enter (the message goes
+  without the draft; the phrase follows when committed, as with insert-as-you-go today), on Discard,
+  Retake, a floating mic take taking over, and in `onFinishInputView` before the base class, because
+  `InputMethodService.onFinishInput` finishes composing text and would leave the draft in the field as
+  typed text. If the tail decodes to nothing, the finish callback clears it.
+- **Floating mic: not supported.** An accessibility service has no `InputConnection` composing
+  region; it can only set the field's whole text or paste, so a replace-in-place draft would mean
+  rewriting the field every 500 ms. Left out of this version.
+- **Desktop** has no twin yet.
+
+**Risks, all unverified on a device:**
+- *Speed.* D-2026-11-13-01's gate, one Parakeet pass on a 10–15 s phrase on a phone, is still
+  unmeasured. If a pass takes longer than 500 ms the draft simply updates less often; it also competes
+  for CPU with the real decode and costs battery.
+- *Focus moving away mid-take.* When the user taps another field, the app side of the framework
+  finishes composing text on the old field before the IME hears about it, so a draft showing at that
+  moment can stay behind as typed text, and the phrase's final text then also goes in when the take
+  resumes. `onFinishInputView` clears it in time only when the keyboard itself closes first.
+- *Editors that drop the composing region* (some WebViews, or a tap that moves the cursor and makes the
+  app finish composing): the draft becomes plain text, and the final is then inserted after it rather
+  than replacing it. Gboard-style keyboards rely on composing text everywhere, so most editors should
+  keep it.
+- *Case at the seam:* a draft is decoded without the previous phrase as context, so its first word may
+  be capitalised and then change case at commit.
+
+**Verified.** `LiveDraft.draftText` cases on the JVM (V, 2026-11-13); `core` and `app` type-check with
+Kotlin 2.1.0 (V, 2026-11-13, outside Gradle, stub `R`). Not built with Gradle, not run on a device,
+no timing (I). Before release: time a pass on the phone (`adb logcat`), and try Gmail, a WebView
+field and Chrome's address bar.

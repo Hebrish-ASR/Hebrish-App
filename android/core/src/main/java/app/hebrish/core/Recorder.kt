@@ -23,6 +23,11 @@ class Recorder(
     /** The take reached [maxSeconds], or the microphone stopped delivering audio. Capture thread. */
     private val onLimit: () -> Unit,
     private val onSegment: ((FloatArray) -> Unit)? = null,
+    /**
+     * Hard cut when nobody pauses ([Segmenting.MAX_SECONDS] by default). The voice keyboard's Live
+     * draft (I-4) sets a shorter one, because every draft pass re-decodes the whole open segment.
+     */
+    private val segmentMaxSeconds: Float = Segmenting.MAX_SECONDS,
 ) {
     companion object {
         // The sherpa-onnx export uses full attention, so memory grows with length; keep takes short.
@@ -44,6 +49,13 @@ class Recorder(
 
     @Volatile private var running = false
     private var thread: Thread? = null
+    /**
+     * Guards [chunks] (and [cuts]) against [openSegment], which reads them from another thread (I-4).
+     * Everything else touching them runs on the capture thread, or after [pause] has joined it.
+     */
+    private val chunkLock = Any()
+    /** Segments handed to [onSegment] so far in this take. */
+    private var cuts = 0
     private var chunks = ArrayList<ShortArray>()
     /** RMS of each chunk in [chunks], for choosing a hard cut. */
     private var chunkRms = ArrayList<Float>()
@@ -119,7 +131,7 @@ class Recorder(
                     }
                     if (n == 0) continue
                     val chunk = buf.copyOf(n)
-                    chunks.add(chunk)
+                    synchronized(chunkLock) { chunks.add(chunk) }
                     samples += n
                     var peak = 0
                     var sum = 0.0
@@ -152,7 +164,7 @@ class Recorder(
         when {
             segmentSamples >= rate * Segmenting.MIN_SECONDS && silentSamples >= rate * Segmenting.PAUSE_SECONDS ->
                 cut(chunks.size)
-            segmentSamples >= rate * Segmenting.MAX_SECONDS -> {
+            segmentSamples >= rate * segmentMaxSeconds -> {
                 // Nobody paused: cut after the quietest chunk of the last few seconds.
                 var back = 0
                 var at = chunks.size
@@ -169,13 +181,26 @@ class Recorder(
 
     /** Hands chunks [0, k) to [onSegment] and keeps the rest as the start of the next segment. */
     private fun cut(k: Int) {
-        val out = toFloats(chunks.subList(0, k))
-        chunks = ArrayList(chunks.subList(k, chunks.size))
+        val out = synchronized(chunkLock) {
+            val head = toFloats(chunks.subList(0, k))
+            chunks = ArrayList(chunks.subList(k, chunks.size))
+            cuts++
+            head
+        }
         chunkRms = ArrayList(chunkRms.subList(k, chunkRms.size))
         segmentSamples = chunks.sumOf { it.size }
         silentSamples = 0
         onSegment?.invoke(out)
     }
+
+    /** The audio not yet handed to [onSegment] ([samples]), and how many segments came before it ([cut]). */
+    class OpenSegment(val cut: Int, val samples: FloatArray)
+
+    /**
+     * A copy of the open segment, safe to call from any thread while recording (I-4, the voice
+     * keyboard's Live draft). At most [Segmenting.MAX_SECONDS] (or the recorder's own cap) of audio.
+     */
+    fun openSegment(): OpenSegment = synchronized(chunkLock) { OpenSegment(cuts, toFloats(chunks)) }
 
     /** Stops capture and frees the microphone; the take so far is kept. */
     fun pause() {
@@ -187,7 +212,7 @@ class Recorder(
     /** Stops capture and returns what was recorded (since the last segment cut) as floats in [-1, 1]. */
     fun stop(): FloatArray {
         pause()
-        val out = toFloats(chunks)
+        val out = synchronized(chunkLock) { toFloats(chunks) }
         reset()
         return out
     }
@@ -205,7 +230,10 @@ class Recorder(
     }
 
     private fun reset() {
-        chunks = ArrayList()
+        synchronized(chunkLock) {
+            chunks = ArrayList()
+            cuts = 0
+        }
         chunkRms = ArrayList()
         samples = 0
         segmentSamples = 0

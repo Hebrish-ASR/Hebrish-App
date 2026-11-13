@@ -47,6 +47,22 @@ object Prefs {
     fun typeAsYouGo(ctx: Context) = sp(ctx).getBoolean("type_as_you_go", false)
     fun setTypeAsYouGo(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("type_as_you_go", v).apply()
 
+    /**
+     * B-105 (Daniel, 2026-11-13): drop the model's final full stop from each take, for short inputs
+     * (an inventory lookup, a search box). Keyboard and floating mic; read at Stop
+     * (TakeDecoder.dropFinalStop), so the keyboard's quick toggle counts for the take in progress. Off by default.
+     */
+    fun noFinalStop(ctx: Context) = sp(ctx).getBoolean("no_final_stop", false)
+    fun setNoFinalStop(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("no_final_stop", v).apply()
+
+    /**
+     * I-4, Live draft (D-2026-11-13-01): the voice keyboard shows the open phrase as composing text
+     * that is re-decoded about every 500 ms, then commits it at a pause or Stop (LiveDraft). Keyboard
+     * only; read when a take starts. Off by default.
+     */
+    fun liveDraft(ctx: Context) = sp(ctx).getBoolean("live_draft", false)
+    fun setLiveDraft(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("live_draft", v).apply()
+
     /** Keep every take in [History] (0.8.1). On by default, as on desktop (D-2026-10-22-13). */
     fun keepHistory(ctx: Context) = sp(ctx).getBoolean("keep_history", true)
     fun setKeepHistory(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("keep_history", v).apply()
