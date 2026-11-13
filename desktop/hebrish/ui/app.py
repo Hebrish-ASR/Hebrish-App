@@ -1647,6 +1647,7 @@ class Controller(QObject):
         self.act_overlay.setCheckable(True)
         self.act_overlay.triggered.connect(self._tray_overlay)
         m.addAction("Show window", self.win.present_tab)
+        m.addAction("Models…", lambda: self.win.open_settings("model"))
         m.addAction("Settings…", lambda: self.win.open_settings("settings"))
         self._build_output_menu(m.addMenu("Output"))
         self._build_model_menu(m.addMenu("Active model"))

@@ -119,20 +119,22 @@ class _BackupDone(QObject):
 
 
 MAIN_TABS = (("dictate", "Voice Typing"), ("file", "Transcription"), ("history", "History"))
-SETTINGS_TABS = (("settings", "Settings"), ("model", "Models"), ("dictionary", "Dictionary"),
+SETTINGS_TABS = (("settings", "Settings"), ("dictionary", "Dictionary"),
                  ("updates", "Updates"), ("diagnostics", "Diagnostics"), ("about", "About"))
 SETTINGS_KEYS = {k for k, _ in SETTINGS_TABS}
 
 
 class SettingsWindow(QWidget):
-    """Settings, Models, Dictionary, Updates, Diagnostics and About in a window of their own
+    """Settings, Dictionary, Updates, Diagnostics and About in a window of their own
     (2026-11-12, Daniel), opened from the main window's header and the tray. Closing it hides it.
     The pages are the main window's (MainWindow.pages); only their tab widget lives here."""
+
+    TITLE = f"{APP_NAME} settings"
 
     def __init__(self, main):
         super().__init__(None, Qt.Window)
         self.main = main
-        self.setWindowTitle(f"{APP_NAME} settings")
+        self.setWindowTitle(self.TITLE)
         self.resize(640, 760)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -159,6 +161,20 @@ class SettingsWindow(QWidget):
     def showEvent(self, ev):
         super().showEvent(ev)
         self.main._refresh_shown()
+
+
+class ModelsWindow(SettingsWindow):
+    """The model manager in a window of its own (1.034, 2026-11-13, Daniel: too important to sit
+    inside Settings). Opened from the main window's header ("Models"), the tray and present_tab
+    ("model"). Same frame as SettingsWindow; its one page (MainWindow.pages["model"], the Models /
+    Utilities sub-tabs) is the whole window, so `tabs` holds just that page with the tab bar hidden."""
+
+    TITLE = f"{APP_NAME} models"
+
+    def __init__(self, main):
+        super().__init__(main)
+        self.resize(720, 780)
+        self.tabs.tabBar().hide()
 
 
 class MainWindow(QMainWindow):
@@ -212,6 +228,8 @@ class MainWindow(QMainWindow):
         for key, label in SETTINGS_TABS:
             self.settings_win.tabs.addTab(self.pages[key], label)
         self.settings_win.tabs.currentChanged.connect(self._refresh_shown)
+        self.models_win = ModelsWindow(self)
+        self.models_win.tabs.addTab(self.pages["model"], "Models")
         self.ctl.sig.piece.connect(self._append_piece)
         # The level meter repaints ~16 times a second, so only while the window is shown
         # (showEvent / hideEvent): up to 1.012 it woke the app all day in the tray.
@@ -253,6 +271,7 @@ class MainWindow(QMainWindow):
         self.toast_label.hide()
         self._toast_timer = QTimer(self, singleShot=True, interval=1600, timeout=self.toast_label.hide)
         self.settings_win.add_toast()
+        self.models_win.add_toast()
         self.cfg.on_set = lambda key: key not in NO_TOAST and self.toast()
 
     # -- frame ---------------------------------------------------------------------
@@ -272,7 +291,9 @@ class MainWindow(QMainWindow):
         text.addWidget(QLabel(TAGLINE, objectName="tagline"))
         lay.addLayout(text, 1)
         self.header_buttons = {}
-        for key, name, label in (("settings", "settings", "Settings"), ("updates", "bell", "Updates"),
+        # Models first, in its own window (1.034); the rest open the Settings window on that page.
+        for key, name, label in (("model", "download", "Models"),
+                                 ("settings", "settings", "Settings"), ("updates", "bell", "Updates"),
                                  ("diagnostics", "pulse", "Diagnostics"), ("about", "info", "About")):
             b = QToolButton(objectName="headerButton", text=label)
             b.setIcon(line_icon(name))
@@ -285,8 +306,8 @@ class MainWindow(QMainWindow):
         return h
 
     def open_settings(self, key: str = "settings"):
-        """The Settings window, on one of its pages (SETTINGS_TABS)."""
-        w = self.settings_win
+        """The Settings window on one of its pages (SETTINGS_TABS), or the Models window for "model"."""
+        w = self.models_win if key == "model" else self.settings_win
         w.tabs.setCurrentWidget(self.pages[key])
         w.show()
         w.raise_()
@@ -360,7 +381,7 @@ class MainWindow(QMainWindow):
         return s
 
     def present_tab(self, name: str = ""):
-        if name in SETTINGS_KEYS:
+        if name in SETTINGS_KEYS or name == "model":
             self.open_settings(name)
             return
         if name:
@@ -386,7 +407,7 @@ class MainWindow(QMainWindow):
 
     def _shown(self, page) -> bool:
         win = page.window()
-        tabs = self.settings_win.tabs if win is self.settings_win else self.tabs
+        tabs = win.tabs if win in (self.settings_win, self.models_win) else self.tabs
         return win.isVisible() and tabs.currentWidget() is page
 
     def _refresh_shown(self, _i=None):
@@ -2350,7 +2371,7 @@ class MainWindow(QMainWindow):
 
     # -- misc ----------------------------------------------------------------------
     def toast(self, text="Settings saved"):
-        host = self.settings_win if self.settings_win.isVisible() and self.settings_win.isActiveWindow() else self
+        host = next((w for w in (self.settings_win, self.models_win) if w.isVisible() and w.isActiveWindow()), self)
         if not host.isVisible():
             return
         t = host.toast_label
@@ -2366,6 +2387,7 @@ class MainWindow(QMainWindow):
     def status(self, text):
         self.status_label.setText(text)
         self.settings_win.status_label.setText(text)
+        self.models_win.status_label.setText(text)
 
     def _on_detect_no_field(self):
         if self.cfg["detect_no_field"]:

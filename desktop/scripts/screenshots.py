@@ -80,12 +80,13 @@ OUT.mkdir(parents=True, exist_ok=True)
 file_status = win.status_label.text()       # "Transcribed 00:04 of audio in 0.4 s."
 win.show()
 for key in TABS:
-    win.tabs.setCurrentWidget(win.pages[key])
+    win.present_tab(key)       # Models and Settings are windows of their own since 1.034 / 1.031
     win.status(file_status if key == "file" else "")
     pump(lambda: True)
     path = OUT / f"desktop-{key}.png"
-    win.grab().save(str(path))
+    win.pages[key].window().grab().save(str(path))
     print(path)
-win.hide()
+for w in (win, win.settings_win, win.models_win):
+    w.hide()
 shutil.rmtree(tmp, ignore_errors=True)
 os._exit(0)     # the hotkey and decode threads are daemons; skip Qt teardown

@@ -2449,12 +2449,16 @@ has a Privacy link, which Android already had; `save_wav` and two unused imports
 ## Window layout (2026-11-12, D-2026-11-12-02)
 
 - The main window's tabs are `MAIN_TABS` (Voice Typing, Transcription, History). The other pages
-  (`SETTINGS_TABS`: Settings, Models, Dictionary, Updates, Diagnostics, About) live in
-  `SettingsWindow`, a separate top-level window. They are still built by `MainWindow` and kept in
+  (`SETTINGS_TABS`: Settings, Dictionary, Updates, Diagnostics, About) live in
+  `SettingsWindow`, a separate top-level window. **Models is a window of its own** since 1.034
+  (2026-11-13, Daniel: the model manager is too important to sit inside Settings): `ModelsWindow`
+  (a `SettingsWindow` subclass with its tab bar hidden) holds `pages["model"]` (the Models /
+  Utilities sub-tabs). It opens from the first header button, "Models", from the tray's "Models…"
+  and from `present_tab("model")` (first run, no model). A UI move only: the model code is unchanged. They are still built by `MainWindow` and kept in
   `MainWindow.pages`. `present_tab(key)` opens that window for those keys, and `_shown(page)` checks
   the page's own window, so Models and History still refresh only when they can be seen. The
-  "Settings saved" toast shows on whichever of the two windows is active. `status()` writes to
-  both footers.
+  "Settings saved" toast shows on whichever of the three windows is active. `status()` writes to
+  all three footers.
 - Transcription (`ui/transcribe.py`) is a `QSplitter`. On the left is the Audio file pane (open,
   drop zone, Try a sample). On the right is the Notepad: the Record card over the transcript box.
   A drop anywhere on the tab still works. Test mic (`self.monitor`, an `audio.Recorder(max_s=0)`)
