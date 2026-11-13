@@ -22,7 +22,20 @@ Confidence marks: **[C]** confirmed from the source on 2026-10-22; **[I]** infer
 with no corrections (backlog B-12, done; record in `desktop/docs/maintaining.md`, "Shakshuka:
 streaming dictation"). Corrections stay idea I-4, and this page is the brief for building them.
 
-## What it's called
+## Update, 2026-11-13
+
+- **Claude Code's voice mode works the same way as the vendors below** [C, read from the Claude Code client]: audio goes
+  up as 16 kHz 16-bit PCM over a WebSocket; `TranscriptInterim` messages each *replace* the pending text (shown dimmed);
+  `TranscriptEndpoint` commits it; releasing the key sends `CloseStream`, and any unreported interim is promoted to final.
+  It sends Deepgram-style settings (`endpointing_ms`, `utterance_end_ms`, `keyterms`), and the engine is a Deepgram model.
+- **Decision D-2026-11-13-01:** revision is the reason for streaming, and the first route is Parakeet alone with a growing
+  buffer (the LocalAgreement section below), not Shakshuka. Parakeet's collapse on short chunks (the table below) applies to
+  independent chunks. A growing buffer is weak only for the first second or two of a phrase, and the next pass fixes it.
+- **What to measure first:** the time of one Parakeet pass on a 10–15 s phrase, on the laptop CPU (sherpa-onnx int8) and on a
+  phone. The pass has to fit inside the update interval (300–500 ms).
+- **Keyterms** are Deepgram's contextual biasing. On device, the equivalent is sherpa-onnx hotwords (modified beam search)
+  or NeMo word boosting, fed from the personal dictionary. Whether our exported TDT models accept hotwords is unchecked.
+
 
 Use these names in issues, code and docs:
 

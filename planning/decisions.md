@@ -9,6 +9,25 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-13-01: Live revision is the reason for streaming, and Parakeet re-decoding is the first route to it
+
+- **Decision:** Live text that revises itself while you speak (I-4) is planned as a deliberate feature. It is the main reason
+  for a streaming model. The first route to try uses no streaming model: Parakeet re-decodes the open phrase every
+  300–500 ms, each result replaces the tentative tail on screen, and a pause (VAD endpoint, about 0.5–0.8 s) or the end of the
+  take commits it. Phrases are capped at about 15–20 s, because each pass redoes the whole phrase. The tentative tail does not show
+  the model's final punctuation, which is only decided at commit. Shakshuka (Nemotron streaming) becomes the first pass only
+  if a Parakeet pass is too slow on a device.
+- **Why:** Daniel, 2026-11-13: the behaviour of cloud dictation (Claude Code's voice mode streams interim transcripts that
+  replace the pending text, then an endpoint freezes them, the same interim/final protocol as Deepgram) is what he wants from
+  streaming. Re-decoding a growing buffer gives the revisions directly, and every pass hears the whole phrase, so the text
+  is better than append-only streaming. Parakeet falls apart only on short *independent* chunks (under about 2 s,
+  [research](../research/streaming-revision/README.md)). Here only the first second or two of each phrase is affected, and the next pass fixes it.
+- **Alternatives:** Shakshuka append-only (B-12, built: no revisions); Shakshuka plus a Parakeet second pass at each
+  endpoint (two models in memory; kept as the fallback); a new streaming base such as Nemotron 3.5 (its tokenizer lacks
+  `: % / @`, so no times, percentages or URLs).
+- **By:** Daniel (revision as the goal, a streaming model not required). The update interval, phrase cap and Parakeet-first
+  order are the agent's proposal, to be confirmed by timing a pass on the laptop and a phone.
+
 ### D-2026-11-12-02: Desktop: modes in the main window, everything else in a Settings window; Transcription in two panes
 
 - **Decision:** The desktop main window keeps Voice Typing, Transcription and History.

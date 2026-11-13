@@ -6,6 +6,8 @@ credited), or an issue link. Outcome links the backlog item, or says why not.
 
 | Id | Date | From | Platforms | Request | Outcome |
 | --- | --- | --- | --- | --- | --- |
+| R-2026-11-13-2 | 2026-11-13 | Daniel | Android first, then all | An option for no full stop at the end: for short inputs such as a lookup in an inventory system or a search title, the final period is not wanted. Especially on Android, and in desktop live typing (insert-as-you-go) | [B-105](backlog.md#sprint-android) |
+| R-2026-11-13-1 | 2026-11-13 | Daniel | All | Live words that revise themselves (the Deepgram and Claude Code dictation behaviour) is the main reason for wanting a streaming model, so architect it in deliberately as a feature; a streaming base is not required if Parakeet can do it by re-decoding | [I-4](backlog.md#ideas-for-future-versions), [D-2026-11-13-01](decisions.md) |
 | R-2026-11-12-1 | 2026-11-12 | Daniel | Ubuntu | In Claude Code he often presses Enter before the last words are in and doesn't notice until the prompt has gone; re-pasting the whole message is cumbersome. Asked for a better way on Ubuntu, released | [B-104](backlog.md#sprint-desktop-ubuntu--windows-toward-070), desktop 1.030 |
 | R-2026-11-09-4 | 2026-11-09 | Daniel | Android, then all | Notes, follow-up: automatic titles from the title model; later cloud sync and desktop parity; clean-up (post-processing) as an option, not now | [B-101](backlog.md#sprint-android); [I-21, I-22](backlog.md#ideas-for-future-versions) |
 | R-2026-11-09-3 | 2026-11-09 | Daniel | Android | A small notepad in the app: notes with a history of past ones, dictated with the model, no online sync | [B-100](backlog.md#sprint-android) |
