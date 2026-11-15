@@ -15,6 +15,7 @@ import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 
 /**
  * A mic button that dictates into an [EditText] in the app's own screen: Try it ([TryActivity]) and
@@ -54,6 +55,7 @@ class DictationPad(
         onLevel = { v -> ui.post { level.progress = (v * 100).toInt() } },
         onLimit = { ui.post { if (state == State.RECORDING) stopAndTranscribe() } },
         onSegment = { decoder?.add(it) },
+        onSilence = { ui.post { if (state == State.RECORDING) Toast.makeText(act, R.string.silence_guard, Toast.LENGTH_LONG).show() } },
     )
 
     private val tick = object : Runnable {

@@ -21,6 +21,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ProgressBar
+import android.widget.Toast
 import android.widget.TextView
 
 /**
@@ -399,6 +400,7 @@ class VoiceImeService : InputMethodService() {
             onLimit = { main.post { if (state == State.RECORDING) stopAndTranscribe() } },
             onSegment = { d.add(it) },
             segmentMaxSeconds = if (live) LiveDraft.PHRASE_CAP_SECONDS else Recorder.Segmenting.MAX_SECONDS,
+            onSilence = { main.post { if (state == State.RECORDING) Toast.makeText(this, R.string.silence_guard, Toast.LENGTH_LONG).show() } },
         )
         Mic.prepare(this, r)
         try {

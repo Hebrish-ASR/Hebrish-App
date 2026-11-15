@@ -28,12 +28,31 @@ class Recorder(
      * draft (I-4) sets a shorter one, because every draft pass re-decodes the whole open segment.
      */
     private val segmentMaxSeconds: Float = Segmenting.MAX_SECONDS,
+    /**
+     * Silence guard (2026-11-15, as desktop 1.035): called once per take, on the capture thread, when
+     * [SilenceGuard.SECONDS] of the take have been recorded and no chunk peaked above
+     * [SilenceGuard.PEAK]: the mic is muted (Android 12+'s privacy toggle delivers zeros), dead or
+     * the wrong one, so nothing usable reaches the model. Capture carries on.
+     */
+    private val onSilence: (() -> Unit)? = null,
 ) {
     companion object {
         // The sherpa-onnx export uses full attention, so memory grows with length; keep takes short.
         const val MAX_SECONDS = 90
         /** Segmented takes never decode more than [Segmenting.MAX_SECONDS] at once, so they can be long. */
         const val MAX_SEGMENTED_SECONDS = 20 * 60
+    }
+
+    object SilenceGuard {
+        const val SECONDS = 10
+        /** -70 dBFS in 16-bit samples (32768 x 10^-3.5): below any working mic's noise floor. */
+        const val PEAK = 10
+        /** The start pip may be in the first ~0.1 s (Feedback): those chunks don't count. */
+        const val SKIP_SECONDS = 0.5f
+
+        /** True when a take of [samples] whose loudest counted chunk peaked at [loudest] is all silence. */
+        fun silent(samples: Int, loudest: Int): Boolean =
+            samples >= Transcriber.SAMPLE_RATE * SECONDS && loudest <= PEAK
     }
 
     /** Where cuts go. Times are in seconds of audio. */
@@ -63,6 +82,9 @@ class Recorder(
     private var silentSamples = 0
     /** Slowly tracked background level, so "silence" adapts to the room. */
     private var noiseFloor = 0.01f
+    /** Loudest chunk peak of this take after [SilenceGuard.SKIP_SECONDS], and whether [onSilence] has fired. */
+    private var loudest = 0
+    private var silenceWarned = false
 
     /**
      * Microphone to ask for (AudioRecord.setPreferredDevice), or null for the system's choice.
@@ -141,6 +163,11 @@ class Recorder(
                         sum += v.toDouble() * v
                     }
                     onLevel(peak / 32768f)
+                    if (samples - n >= rate * SilenceGuard.SKIP_SECONDS) loudest = maxOf(loudest, peak)
+                    if (onSilence != null && !silenceWarned && SilenceGuard.silent(samples, loudest)) {
+                        silenceWarned = true
+                        onSilence.invoke()
+                    }
                     if (onSegment != null) segment(chunk.size, (kotlin.math.sqrt(sum / chunk.size) / 32768).toFloat())
                     if (samples >= rate * maxSeconds) {
                         running = false
@@ -238,5 +265,7 @@ class Recorder(
         samples = 0
         segmentSamples = 0
         silentSamples = 0
+        loudest = 0
+        silenceWarned = false
     }
 }

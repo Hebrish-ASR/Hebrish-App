@@ -843,8 +843,10 @@
       "group": "recording",
       "name": "Silence guard: warn once when 10 s of a take have recorded nothing above -70 dBFS (muted or dead mic)",
       "android": {
-        "status": "missing",
-        "evidence": "no equivalent"
+        "status": "present",
+        "since": "1.033",
+        "evidence": "android/core/src/main/java/app/hebrish/core/Recorder.kt SilenceGuard, onSilence (Toast)",
+        "verified": false
       },
       "ubuntu": {
         "status": "present",

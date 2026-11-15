@@ -576,6 +576,21 @@ than 4 threads: the Nord 3's Dimensity 9000 has 4 big cores, and the little core
 parallel op down. A true streaming model would show text while you speak; the Nemotron
 streaming fine-tune (no name yet) is the candidate.
 
+## Silence guard (1.033, 2026-11-15)
+
+Ported from desktop 1.035 (Daniel, 2026-11-15: a take recorded for over 10 s with the input at
+nothing, so nothing reached the model, and no sign of it). `Recorder` (`core/.../Recorder.kt`)
+takes an optional `onSilence`, called once per take on the capture thread when
+`Recorder.SilenceGuard.silent(samples, loudest)`: at least `SECONDS` (10) recorded and no chunk
+peaked above `PEAK` (10 in 16-bit samples, -70 dBFS). Chunks in the first `SKIP_SECONDS` (0.5)
+don't count toward `loudest`, because the start pip may be in them (`Feedback`). Paused time
+doesn't count (`samples` only grows while capturing); `reset()` clears it per take. All three
+recorders (voice keyboard, floating mic, `DictationPad`) show a long Toast,
+`R.string.silence_guard`, on the main thread if still recording. Capture carries on. The main
+case is Android 12+'s microphone privacy toggle, which delivers zeros (assumed, not tested).
+Tests: `app/src/test/.../SilenceGuardTest.kt` (the threshold rule; V, `testFdroidDebugUnitTest`,
+2026-11-15). Compiled, not run on a device.
+
 ## Capture and decode robustness (0.7.1, 2026-10-21)
 
 From a review of speed and reliability of inference (code review, compiled; I: not run on a device).

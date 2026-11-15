@@ -757,6 +757,7 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
             onLevel = { l -> main.post { setLevel(l) } },
             onLimit = { main.post { if (state == State.RECORDING) stopAndTranscribe() } },
             onSegment = { d.add(it) },
+            onSilence = { main.post { if (state == State.RECORDING) Toast.makeText(this, R.string.silence_guard, Toast.LENGTH_LONG).show() } },
         )
         Mic.prepare(this, r)
         try {
