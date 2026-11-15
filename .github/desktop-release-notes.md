@@ -1,5 +1,6 @@
-**1.034: Models in a window of their own (Ubuntu).**
+**1.035: A warning when the microphone hears nothing; quiet model updates (Ubuntu).**
 
-- **Models has its own window,** opened from the new Models button at the top of the main window, or from the tray ("Models…"). It was a tab inside Settings. Nothing about the models themselves changes.
+- **Silence guard.** If a recording has run for 10 seconds and the microphone hasn't picked up any sound at all (muted, unplugged or the wrong input), Hebrish shows a warning notification, so you don't dictate into nothing. The recording carries on.
+- **Model updates install quietly.** With automatic model updates on (the default), a new model version now downloads and installs in the background with no notification. Downloads you start yourself still tell you when they're done.
 - Windows and the AppImage stay on 1.026.
 - Downloads: [hebrish.app/download](https://hebrish.app/download).
