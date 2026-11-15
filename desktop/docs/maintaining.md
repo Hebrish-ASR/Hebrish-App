@@ -361,7 +361,8 @@ each part works there:
    `with-secrets scripts/publish-ubuntu-cdn.sh dist/hebrish_<ver>-1_amd64.deb v<ver>` (repo root): overwrites
    `apps/ubuntu/hebrish-latest-amd64.deb`, sets `files.ubuntu` in `downloads/latest.json`, checks the public
    sha256. `DRY_RUN=1` prints the new manifest only.
-4. Publish the .deb to the APT repository (download it from the release first: `gh release download desktop-v<ver> -p "*.deb" -D dist`): `with-secrets scripts/publish-apt.sh dist/hebrish_<ver>-1_amd64.deb` (credentials from Infisical since 2026-10-25)
+4. Publish the .deb to the APT repository (download it from the release first: `gh release download desktop-v<ver> -p "*.deb" -D dist`): `with-secrets scripts/publish-apt.sh ../dist/hebrish_<ver>-1_amd64.deb`, run from `desktop/` (the script is
+   `desktop/scripts/publish-apt.sh`, not the root `scripts/`; 1.035's first run from the root failed on that) (credentials from Infisical since 2026-10-25)
    (see "APT repository" below). Do it after the CDN upload and `latest.json`, so the in-app
    update notice never points at a version apt can't yet fetch.
    It downloads the whole pool to `mktemp -d`; on 2026-10-29 (1.011) that failed with `Disk quota
