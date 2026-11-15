@@ -40,6 +40,12 @@ implementation details are these:
 - `state.json`'s `active` and the optional `prune_except` only run after that.
 - The engine reloads when idle. While a take is in flight, the reload is deferred
   (`reload_pending`).
+- With `auto_update` on (the default since 0.5.1), a newer version found by the periodic check
+  downloads and installs **silently** (Daniel, 2026-11-15, 1.035: "very quietly and without any
+  notification"): `download(..., quiet=True)` skips the "Model ready" and "Model download failed"
+  tray messages and only writes the status line; a failed one is retried at the next check. Up to
+  1.034 every finished auto-update popped "Model ready". Downloads the user asked for (Download,
+  a model switch, Update all) still notify.
 
 Verified live 2026-10-18 (V):
 - The first-run download of v4 (main `edbc85c1ce89`, encoder sha `a6b068a3…`) succeeded.
@@ -56,6 +62,20 @@ successful fetch); other HTTP errors are unchanged. `ui/app.py` `_fetched` and `
 with no "Model download failed" notice and move on to the next queued model; the Models row reads "Coming soon: not
 published yet. Download checks again." Tests: `test_a_404_manifest_is_coming_soon_not_an_error`,
 `test_other_http_errors_stay_errors`.
+
+## Silence guard (1.035, 2026-11-15)
+
+Daniel, 2026-11-15: a take had been recording for more than 10 s with the input at nothing, so
+nothing reached the model, and the app gave no sign. `Recorder.loudest` keeps the highest block
+peak of the take's *recorded* blocks (the muted start cue doesn't count; reset at `start()`).
+`Controller._silence_guard`, called from `_live_tick` (every 500 ms while recording, whatever
+the insert-as-you-go setting), warns once per take when `recorder.seconds >= SILENCE_GUARD_S`
+(10) and `db(loudest) <= SILENCE_GUARD_DB` (-70 dBFS): a tray message with the Warning icon
+("No sound from the microphone") and the status line, and a log line. The take keeps recording.
+Paused time doesn't count. -70 dBFS sits below a working mic's noise floor in a quiet room
+(about -60 or higher, assumed, not measured here), so a user who is merely quiet isn't warned.
+Tests: `tests/test_silence_guard.py`. Not verified live with a muted mic (I). Android has no
+equivalent yet (`docs/feature-parity.json`, `silence-guard`).
 
 ## Two hotkeys (0.3.0, 2026-10-20)
 

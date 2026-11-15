@@ -839,6 +839,27 @@
       "notes": "R-2026-10-27-1, D-2026-10-27-02. Desktop: late words to clipboard by default, hold opt-in (keyboard grab). Android keyboard: hold by default (own key), late words to Insert last after 4 s."
     },
     {
+      "id": "silence-guard",
+      "group": "recording",
+      "name": "Silence guard: warn once when 10 s of a take have recorded nothing above -70 dBFS (muted or dead mic)",
+      "android": {
+        "status": "missing",
+        "evidence": "no equivalent"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "1.035",
+        "evidence": "desktop/hebrish/ui/app.py Controller._silence_guard; desktop/hebrish/audio.py Recorder.loudest"
+      },
+      "windows": {
+        "status": "present",
+        "since": "1.035",
+        "evidence": "shared desktop code",
+        "verified": false
+      },
+      "notes": "Daniel, 2026-11-15. Tray warning plus status line; the take keeps recording."
+    },
+    {
       "id": "auto-enter",
       "group": "insertion",
       "name": "Press Enter after silence (opt-in: once text is typed and the take is silent for N s, press the send key once)",

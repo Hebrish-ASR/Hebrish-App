@@ -38,6 +38,10 @@ QUICK_MODELS = ("sabich-rolling", "shakshuka")   # the tray's Active model, the 
 NO_SPEECH = "no speech"        # _worker -> _done: the take had audio but no speech (engine VAD)
 # The beeps mode: start, stop, a falling "doo-doo" for discard, a rising pair for retake
 APP_CHECK_S = 24 * 3600       # app update check while running: about daily (at start too)
+# Silence guard (2026-11-15): a take that has recorded this long without one block peaking above
+# this level gets a warning once. -70 dBFS is below any live mic's noise floor: it means a muted,
+# unplugged or wrong input, so nothing usable is reaching the model.
+SILENCE_GUARD_S, SILENCE_GUARD_DB = 10.0, -70.0
 # Cues play through the speakers while the mic is open (start, resume): the recorder drops
 # input for the cue's length plus this, for output latency (0.7.0, Daniel 2026-10-22: spoken
 # prompts were ending up in the transcript).
@@ -141,6 +145,7 @@ class Controller(QObject):
         self.latest: model_store.Manifest | None = None
         self.downloading: threading.Event | None = None
         self.downloading_id: str | None = None     # the model being downloaded
+        self._quiet_download = False               # the download in flight is a background auto-update
         # Speech models waiting to download after the current one (B-79: a bundle, Update all):
         # a model id (download_model) or a Manifest (download). One at a time, as before.
         self.model_queue: list = []
@@ -235,6 +240,7 @@ class Controller(QObject):
         # pasted since the last Enter (ours or the user's send key), and the take's silence so far.
         self._typed = False
         self._silence = auto_enter.SilenceClock()
+        self._silence_warned = False    # silence guard: warned for this take already
         # Enter stops recording (R-2026-11-02-3): the stop() the send key asked for (no Enter hold:
         # the Enter has already gone through).
         self._stopped_by_send = False
@@ -293,8 +299,8 @@ class Controller(QObject):
             splash, self.splash = self.splash, None
             splash.finish(then=self.win.show if show else None)
 
-    def notify(self, title, body=""):
-        self.tray.showMessage(title, body, icon("hebrish"), 6000)
+    def notify(self, title, body="", warn=False):
+        self.tray.showMessage(title, body, QSystemTrayIcon.MessageIcon.Warning if warn else icon("hebrish"), 6000)
 
     # -- dictation -----------------------------------------------------------------
     def toggle(self):
@@ -323,6 +329,7 @@ class Controller(QObject):
         self._typed = False
         self._stopped_by_send = False
         self._silence.reset(0)
+        self._silence_warned = False
         self.recorder.mute(self.cue(cue) + CUE_MARGIN_S)
         self._late_last = ""
         self.set_state("recording")
@@ -675,12 +682,28 @@ class Controller(QObject):
         self.set_state("busy")
         self._jobs.put((self._take, samples, True, None))
 
+    def _silence_guard(self):
+        """Warn once per take when SILENCE_GUARD_S of recorded input never rose above
+        SILENCE_GUARD_DB: the mic is muted or dead and nothing is reaching the model. The take
+        keeps recording; the user decides. Paused time doesn't count (recorder.seconds)."""
+        r = self.recorder
+        if (self._silence_warned or self.state != "recording" or r.paused
+                or r.seconds < SILENCE_GUARD_S or audio.db(r.loudest) > SILENCE_GUARD_DB):
+            return
+        self._silence_warned = True
+        log.warning("silence guard: %.1f s recorded, loudest peak %.1f dBFS", r.seconds, audio.db(r.loudest))
+        self.notify("No sound from the microphone",
+                    f"{int(r.seconds)} seconds recorded and all of it silent: nothing has reached the model. "
+                    "Check the microphone isn't muted or unplugged, or choose another in Settings.", warn=True)
+        self.win.status("No sound from the microphone: check it isn't muted.")
+
     def _live_tick(self):
         """Live insertion: hand the take to the decoder in pieces, cut at a pause."""
         if self.state == "recording" and self.recorder.full:
             self.stop()
             self.notify("Dictation stopped", f"Reached the {audio.DICTATION_MAX_S // 60}-minute limit.")
             return
+        self._silence_guard()
         self._rec_hold()                  # renew the grab, and take keyboards left out (1.030)
         interval = self.cfg["live_insert_s"]
         if not interval or self.state != "recording" or self.recorder.paused:
@@ -1179,8 +1202,9 @@ class Controller(QObject):
         if not model_store.needs_update(latest):
             self._said(f"Up to date ({latest.full_label}).", manual)
         elif self.pending_download == latest.model or (self.cfg["auto_update"] and not missing):
+            auto = self.pending_download != latest.model      # not asked for: install it quietly
             self.pending_download = None
-            self.download(latest)
+            self.download(latest, quiet=auto)
         elif missing:
             self._said(f"Ready to download {latest.full_label} ({latest.total_size >> 20} MB).", manual)
         else:
@@ -1242,9 +1266,13 @@ class Controller(QObject):
         if self.history.due():
             self.maintain_history()
 
-    def download(self, manifest):
+    def download(self, manifest, quiet=False):
+        """quiet: a background auto-update (Daniel, 2026-11-15: "very quietly and without any
+        notification"): no tray message when it finishes or fails, the status line only. A failed
+        one is retried at the next check."""
         if self.downloading:
             return
+        self._quiet_download = quiet
         self.downloading = cancel = threading.Event()
         self.downloading_id = manifest.model
         self.win.update_model()
@@ -1263,15 +1291,18 @@ class Controller(QObject):
 
     def _downloaded(self, manifest, err):
         self.downloading = self.downloading_id = None
+        quiet, self._quiet_download = self._quiet_download, False
         if err:
             self.switch_after_download = None      # retried at the next start (flag still unset)
         if isinstance(err, model_store.Cancelled):
             self.win.status("Download cancelled. It resumes where it stopped next time.")
         elif err:
             self.win.status(f"Download failed: {err}")
-            self.notify("Model download failed", str(err))
+            if not quiet:
+                self.notify("Model download failed", str(err))
         else:
-            self.notify("Model ready", f"{manifest.full_label}. Ready to dictate.")
+            if not quiet:
+                self.notify("Model ready", f"{manifest.full_label}. Ready to dictate.")
             self.win.status(f"Installed {manifest.full_label}.")
             if manifest.model == model_store.current_id():
                 self.load_model()

@@ -149,6 +149,7 @@ class Recorder:
         self.level = 0.0            # RMS of the last block, 0..1, for a meter
         self.rms = 0.0              # the same, unscaled (dBFS: db(rms))
         self.peak = 0.0             # peak of the last block
+        self.loudest = 0.0          # highest block peak recorded this take (silence guard)
         self.clipped_at = 0.0       # time.monotonic() of the last block that hit CLIP_PEAK
         self.paused = False
         self._mute_until = 0.0      # time.monotonic(): drop input until then (mute())
@@ -189,7 +190,7 @@ class Recorder:
         self._mute_until = max(self._mute_until, time.monotonic() + seconds)
 
     def start(self, device: str = ""):
-        self._chunks, self._n, self.paused, self._mute_until = [], 0, False, 0.0
+        self._chunks, self._n, self.paused, self._mute_until, self.loudest = [], 0, False, 0.0, 0.0
         self._open(device)
 
     def _open(self, device):
@@ -226,6 +227,7 @@ class Recorder:
         self.level = min(1.0, self.rms * 4)
         if time.monotonic() < self._mute_until:
             return
+        self.loudest = max(self.loudest, self.peak)     # recorded blocks only: not our own cue
         with self._lock:
             if self._n < self._max:
                 self._chunks.append(block.copy())
