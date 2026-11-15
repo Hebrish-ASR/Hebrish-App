@@ -6,6 +6,15 @@
   "source": "https://hebrish.app/changelog",
   "entries": [
     {
+      "date": "2026-11-15",
+      "tag": "Ubuntu 1.035",
+      "title": "Ubuntu 1.035: A warning when the microphone hears nothing; quiet model updates",
+      "summary": "Silence guard: if a recording has run for 10 seconds and the microphone hasn't picked up any sound at all (muted, unplugged or the wrong input), Hebrish shows a warning notification, so you don't dictate into nothing.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
       "date": "2026-11-13",
       "tag": "Ubuntu 1.034",
       "title": "Ubuntu 1.034: Models in a window of their own",
@@ -175,15 +184,6 @@
       "summary": "/models now explains the training blend: the five ingredients, what each one is for, and why LibriSpeech is in the mix, with Corn at the blender.",
       "platforms": [
         "site"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Desktop 1.022",
-      "title": "Windows catches up",
-      "summary": "Windows and AppImage: a new stable build with everything since Windows 1.012.",
-      "platforms": [
-        "desktop"
       ]
     }
   ]
