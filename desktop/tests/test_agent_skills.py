@@ -8,7 +8,7 @@ from hebrish import agent_skills, local_api
 def test_bundled_skills_are_complete():
     names = {p.name for p in agent_skills.bundled()}
     assert {"update-hebrish", "read-hebrish-history", "fix-hebrish-mistranscriptions",
-            "transcribe-with-hebrish"} <= names
+            "transcribe-with-hebrish", "set-up-hebrish-macro-deck"} <= names
     for p in agent_skills.bundled():
         assert re.match(rf"---\nname: {p.name}\n", (p / "SKILL.md").read_text(encoding="utf-8"))
 

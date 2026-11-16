@@ -1780,6 +1780,29 @@ adding find-and-replace rules, shipped with the app. `GET /v1` lists every route
   a downloaded model, a model download, anything on Windows (the beta tag skips the Windows job). `python -m hebrish` is unusable for this test while the installed app
   runs: the single-instance socket hands off to it and shows its window.
 
+### Macro Deck controller (2026-11-16, no app change)
+
+Daniel: the local API is meant for hardware and soft controllers too, starting with
+[Macro Deck](https://macro-deck.app) 3 (open source; the host runs on the computer, a phone, tablet or browser shows the
+buttons). Each button is a Macro Deck *Send HTTP Request* from the host to `127.0.0.1:8723`, so it needs no window
+focus and works on Wayland; the host sends no `Origin`, so the browser guard does not refuse it. Template, skill and
+setup steps: skill `set-up-hebrish-macro-deck` in Hebrish-ASR/Hebrish-Agent-Skills (bundled here), template
+`skills/set-up-hebrish-macro-deck/assets/hebrish-dictation.deck.json`.
+
+- **Push to talk works.** Macro Deck 3.0.2 button triggers are `onShortPress`, `onLongPress`, `onDoublePress`,
+  `onTouchStart` and `onTouchEnd` (the editor's trigger list in the host's `wwwroot` bundle). *Hold to talk* sends
+  `{"action": "start"}` on touch start and `stop` on touch end; *Tap: start / stop* sends `toggle`.
+  Wrong turn ruled out: the Macro Deck plugin's schema notes said there was no press/release pair (they listed only
+  the three press triggers); the touch triggers were missed.
+- **Model buttons** send `POST /v1/app/models/select` with `"download": false`, so a tap never starts a 660 MB
+  download.
+- **Verified** (V, 2026-11-16, Ubuntu, desktop 1.035, Macro Deck 3.0.2): the deck built through Macro Deck's MCP
+  server, each button's stored triggers read back, and a Send HTTP Request from the Macro Deck host to
+  `/v1/app/models/select` (the current model) returned `Succeeded`. **Not run:** a hold or tap from a phone with a live
+  mic (asked of Daniel), Windows.
+- **Future:** physical stream decks (Elgato and similar) through the same routes; no app change is needed while the
+  controller can send an HTTP request.
+
 ## Empty pieces are decoded again (1.014, 2026-10-31)
 
 Sabich can return nothing for a whole piece of speech, depending on exactly where the piece
