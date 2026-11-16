@@ -1,6 +1,6 @@
-**1.035: A warning when the microphone hears nothing; quiet model updates (Ubuntu).**
+**1.036: Dictate in Hebrew with a Hebrew-only model, used when your keyboard layout is Hebrew.**
 
-- **Silence guard.** If a recording has run for 10 seconds and the microphone hasn't picked up any sound at all (muted, unplugged or the wrong input), Hebrish shows a warning notification, so you don't dictate into nothing. The recording carries on.
-- **Model updates install quietly.** With automatic model updates on (the default), a new model version now downloads and installs in the background with no notification. Downloads you start yourself still tell you when they're done.
+- **Hebrew model:** a new download on the Models tab (about 72 MB) that writes in Hebrew letters. It is [Zipformer2 66M by Yakov Kolani](https://huggingface.co/ivrit-ai/zipformer2-66m-streaming-he), trained on [ivrit.ai](https://www.ivrit.ai) data, CC BY 4.0, unchanged (Hebrish fork: [Hebrish/Zipformer2-66M-Streaming-He](https://huggingface.co/Hebrish/Zipformer2-66M-Streaming-He)). Credited on its card and on About.
+- **Automatic switching:** with the Hebrew model downloaded, Voice Typing uses it when your keyboard layout is Hebrew (KDE, GNOME, X11 and Windows); English stays on your main model. Auto / EN / עב buttons under the record button and in Settings choose by hand. Transcription mode stays on the main model.
+- **Local API:** `language: "he"` on transcription requests, and `GET`/`POST /v1/app/language`.
 - Windows and the AppImage stay on 1.026.
-- Downloads: [hebrish.app/download](https://hebrish.app/download).
