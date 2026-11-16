@@ -1,6 +1,5 @@
-**1.038: Dictation goes where you started it, even if you move to another terminal pane or window while it transcribes.**
+**1.039: Change Hebrish's settings from a script or an AI agent through the local API.**
 
-- **Konsole panes:** a take remembers the Konsole pane it started in, and its text and Enter go there, even after you click into another pane. With Konsole's *Settings → Configure Konsole → General → "Enable the security sensitive parts of the DBus API"* on, the text goes straight into that pane without the clipboard or a paste shortcut. Without it, Hebrish switches back to that pane and pastes, and says once how to turn the setting on.
-- **Other windows (KDE Plasma):** if you move to another window while a take is transcribing, Hebrish brings the window it started in back to the front before it pastes.
-- On by default; `bind_pane` and `bind_window` in the config turn each off.
+- **`GET /v1/app/settings`** lists the settings it can change, with their values and what each does. **`POST /v1/app/settings`** with `{"out_clipboard": false}` (any of them, several at once) changes them. Everything is checked before anything is saved, at least one output stays on, and changes apply from the next take.
+- Covers outputs, the paste and send shortcuts, pane and window binding (1.038), Enter after silence, the Enter guard, insert-as-you-go pacing, capitals, sounds and voice detection. Needs *Settings → Local API* with control on.
 - Windows and the AppImage stay on 1.026.

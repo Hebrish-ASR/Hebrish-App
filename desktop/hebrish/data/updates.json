@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-16",
+      "tag": "Desktop 1.039",
+      "title": "Change settings through the local API",
+      "summary": "New GET and POST /v1/app/settings: read and change the everyday settings (outputs, paste and send shortcuts, pane and window binding, Enter after silence, pacing, sounds, voice detection) from a script or an AI agent.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-16",
       "tag": "Desktop 1.038",
       "title": "Dictation goes where you started it, even if you move to another pane or window",
       "summary": "A take remembers the Konsole pane it started in. Its text and its Enter go there even after you click into another pane, so dictating into one of several terminals split side by side no longer lands in the wrong one.",
@@ -174,15 +183,6 @@
       "tag": "Desktop 1.025",
       "title": "Benchmarks, to see how Hebrish runs on your computer",
       "summary": "Benchmarks: a new window, opened from Diagnostics, measures how fast Hebrish transcribes and how much memory and CPU it uses.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Desktop 1.024",
-      "title": "Calibrate the noise filter for your mic and room",
-      "summary": "Noise filter: a 0 to 100 dial on the Voice Typing tab, set a little stricter than before, to keep room noise from turning into stray words.",
       "platforms": [
         "desktop"
       ]
