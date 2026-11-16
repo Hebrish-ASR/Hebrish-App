@@ -42,7 +42,7 @@ class WindowsInserter:
     def __init__(self):
         self._kb = Controller()
 
-    def bind(self):
+    def bind(self, pane: bool = True, window: bool = True):
         """No pane binding on Windows yet (target_linux is Konsole's D-Bus API)."""
         return None
 

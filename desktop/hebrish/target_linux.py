@@ -21,15 +21,26 @@ Konsole's D-Bus API, measured on Konsole 25.12.3 (KDE Plasma 6.6.6, Wayland), 20
 - Assumed, not measured with two windows: MainWindow_<n> and /Windows/<n> number the same window
   (both counters start at 1 and go up one per window in that process).
 
-Delivery (inserter_linux.LinuxInserter): sendText when allowed; when refused, focus the bound
-pane with setCurrentSession and paste as before, which still fixes the wrong pane when its
-Konsole window has focus. dbus-send (package dbus, always installed) does the calls, as
-keyboard_layout does: no new dependency.
+Any other app (KWin, X11 or Wayland): the take's window, through a KWin script (`KWIN_SCRIPT`,
+loaded once per KWin session) that registers two global shortcuts with no key, `BIND` and
+`RESTORE`. Hebrish invokes them over D-Bus (kglobalaccel `invokeShortcut`): BIND keeps
+`workspace.activeWindow`; RESTORE makes it active again if focus moved, then the paste follows.
+No reply channel is needed, so no D-Bus service in Hebrish. Measured 2026-11-16 (Plasma 6.6.6):
+BIND saw the focused Konsole (`resourceClass` org.kde.konsole) and RESTORE saw the same object.
+Assumed, not tried live (it would move focus on the maintainer's desktop): that assigning
+`workspace.activeWindow` brings the window back within RESTORE_WAIT_S. One window is kept, for the
+newest take: an older take still finishing goes to the newer take's window.
+
+Delivery (inserter_linux.LinuxInserter): sendText when allowed; otherwise RESTORE the window, focus
+the bound pane with setCurrentSession and paste as before. dbus-send (package dbus, always
+installed) does the calls, as keyboard_layout does: no new dependency.
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import tempfile
 import re
 import subprocess
 import threading
@@ -118,17 +129,89 @@ def wrap(text: str) -> str:
     return f"{PASTE_START}{text}{PASTE_END}" if ("\n" in text or "\r" in text) else text
 
 
+PLUGIN = "hebrish-take-window"
+BIND, RESTORE = "hebrish-bind-take-window", "hebrish-restore-take-window"
+RESTORE_WAIT_S = 0.1        # after RESTORE, before the paste chord: let the window take focus
+KWIN_SCRIPT = f"""// Hebrish: keep the window a dictation take started in, and bring it back for the paste.
+var hebrishBound = null;
+registerShortcut("{BIND}", "Hebrish: remember the window a take starts in", "", function () {{
+    hebrishBound = workspace.activeWindow;
+}});
+registerShortcut("{RESTORE}", "Hebrish: bring back the take's window", "", function () {{
+    if (hebrishBound && !hebrishBound.deleted && workspace.activeWindow !== hebrishBound)
+        workspace.activeWindow = hebrishBound;
+}});
+workspace.windowRemoved.connect(function (w) {{ if (w === hebrishBound) hebrishBound = null; }});
+"""
+
+
+def on_kwin() -> bool:
+    return "KDE" in os.environ.get("XDG_CURRENT_DESKTOP", "").upper()
+
+
+class KWinWindow:
+    """The take's window through the KWin script (see the module docstring)."""
+
+    def __init__(self, call=_call):
+        self._call = call
+        self._loaded = False
+
+    def _ensure(self) -> bool:
+        try:
+            out = self._call("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting.isScriptLoaded",
+                             f"string:{PLUGIN}")
+            if parse_bool(out):
+                return True
+            path = os.path.join(os.environ.get("XDG_RUNTIME_DIR") or tempfile.gettempdir(), f"{PLUGIN}.js")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(KWIN_SCRIPT)
+            self._call("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting.loadScript",
+                       f"string:{path}", f"string:{PLUGIN}")
+            self._call("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting.start")
+            log.info("loaded the KWin script %s", PLUGIN)
+            return True
+        except (DBusError, OSError) as e:
+            log.info("no KWin window binding: %s", e)
+            return False
+
+    def _invoke(self, name: str) -> bool:
+        try:
+            self._call("org.kde.kglobalaccel", "/component/kwin",
+                       "org.kde.kglobalaccel.Component.invokeShortcut", f"string:{name}")
+            return True
+        except DBusError as e:
+            log.warning("KWin shortcut %s failed: %s", name, e)
+            return False
+
+    def bind(self) -> bool:
+        """Remember the active window. False when there is no KWin or the script won't load."""
+        return self._ensure() and self._invoke(BIND)
+
+    def restore(self):
+        if self._invoke(RESTORE):
+            import time
+            time.sleep(RESTORE_WAIT_S)
+
+
+KWIN = KWinWindow()
+
+
 class Binding:
     """One take's target, looked up off the calling thread (start() is on the GUI thread, and a
-    slow Konsole must not delay the start cue). get() waits for the lookup, up to a second."""
+    slow Konsole must not delay the start cue). get() waits for the lookup, up to a second.
+    window: also keep the take's window through KWin (bind_window)."""
 
-    def __init__(self, lookup=active_pane):
+    def __init__(self, lookup=active_pane, window: bool = False, kwin: KWinWindow | None = None):
         self._pane: KonsolePane | None = None
+        self._kwin = kwin or KWIN
+        self._window = False
         self._done = threading.Event()
-        threading.Thread(target=self._run, args=(lookup,), daemon=True).start()
+        threading.Thread(target=self._run, args=(lookup, window), daemon=True).start()
 
-    def _run(self, lookup):
+    def _run(self, lookup, window):
         try:
+            if window:
+                self._window = self._kwin.bind()
             self._pane = lookup()
             if self._pane:
                 log.info("take bound to %s session %s", self._pane.service, self._pane.session)
@@ -140,6 +223,12 @@ class Binding:
     def get(self, timeout: float = 1.0) -> KonsolePane | None:
         self._done.wait(timeout)
         return self._pane
+
+    def restore_window(self):
+        """Bring the take's window back before a paste or key (no-op without a KWin binding)."""
+        self._done.wait(1.0)
+        if self._window:
+            self._kwin.restore()
 
 
 class PaneSender:

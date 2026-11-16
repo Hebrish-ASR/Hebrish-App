@@ -121,3 +121,49 @@ def test_inserter_routes_to_pane(monkeypatch):
     focused.clear()
     ins.insert("y", "paste", "ctrl+v", target=_Pane(None))
     assert not focused and pasted == ["x", "y"]
+
+
+def test_kwin_window_loads_script_once_and_invokes(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setattr(tl, "RESTORE_WAIT_S", 0)
+    calls, loaded = [], []
+
+    def call(dest, path, method, *args):
+        calls.append((method.rsplit(".", 1)[-1], args))
+        if method.endswith("isScriptLoaded"):
+            return f"boolean {'true' if loaded else 'false'}"
+        if method.endswith("loadScript"):
+            loaded.append(args)
+            return "int32 0"
+        return ""
+    k = tl.KWinWindow(call)
+    assert k.bind() and k.bind()
+    assert len(loaded) == 1
+    assert (tmp_path / f"{tl.PLUGIN}.js").read_text() == tl.KWIN_SCRIPT
+    k.restore()
+    assert [a for m, a in calls if m == "invokeShortcut"] == [(f"string:{tl.BIND}",), (f"string:{tl.BIND}",),
+                                                              (f"string:{tl.RESTORE}",)]
+
+
+def test_kwin_unavailable():
+    def call(*a):
+        raise tl.DBusError("org.freedesktop.DBus.Error.ServiceUnknown")
+    assert not tl.KWinWindow(call).bind()
+
+
+def test_window_restored_before_fallback_paste(monkeypatch):
+    pytest.importorskip("evdev")
+    from hebrish import inserter_linux as il
+    order = []
+
+    class Target:
+        def get(self, timeout=1.0):
+            return None                     # not a Konsole: the window binding only
+
+        def restore_window(self):
+            order.append("restore")
+    ins = il.LinuxInserter.__new__(il.LinuxInserter)
+    ins._ui = None
+    monkeypatch.setattr(il, "copy_to_clipboard", lambda t: order.append("paste"))
+    ins.insert("z", "paste", "ctrl+v", target=Target())
+    assert order == ["restore", "paste"]

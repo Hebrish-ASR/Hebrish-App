@@ -293,6 +293,17 @@ class ClipboardKeeper:
 KEEPER = ClipboardKeeper()
 
 
+def _back_to(target, pane):
+    """Before a paste or key for a bound take: its window back in front (KWin), then its Konsole
+    pane focused in that window."""
+    restore = getattr(target, "restore_window", None)
+    if restore:
+        restore()
+    if pane is not None:
+        from .target_linux import SENDER
+        SENDER.focus(pane)
+
+
 class LinuxInserter:
     def __init__(self):
         self._ui = None
@@ -308,10 +319,14 @@ class LinuxInserter:
             if os.environ.get("APPIMAGE"):     # the .deb installs this rule; an AppImage can't
                 self.error += (". To paste at the cursor, run once: " + UINPUT_RULE_COMMAND)
 
-    def bind(self):
-        """A take starts: remember the Konsole pane it started in (target_linux.Binding)."""
-        from .target_linux import Binding
-        return Binding()
+    def bind(self, pane: bool = True, window: bool = True):
+        """A take starts: remember the Konsole pane (pane) and, on KWin, the window (window) it
+        started in (target_linux.Binding). None when neither is wanted."""
+        from .target_linux import Binding, active_pane, on_kwin
+        window = window and on_kwin()
+        if not (pane or window):
+            return None
+        return Binding(active_pane if pane else (lambda: None), window=window)
 
     def insert(self, text: str, method: str, chord: str, target=None):
         """method "clipboard" (or no uinput): the text stays on the clipboard. "paste": the
@@ -327,7 +342,7 @@ class LinuxInserter:
                 from .target_linux import SENDER, wrap
                 if SENDER.send_text(pane, wrap(text)):
                     return
-                SENDER.focus(pane)
+            _back_to(target, pane)
         if method != "paste" or self._ui is None:
             copy_to_clipboard(text)
             return
@@ -349,7 +364,7 @@ class LinuxInserter:
                 from .target_linux import SENDER
                 if chord.strip().lower() in ("enter", "return") and SENDER.send_text(pane, "\r"):
                     return
-                SENDER.focus(pane)
+            _back_to(target, pane)
         if self._ui is None:
             return
         codes = parse_chord(chord)

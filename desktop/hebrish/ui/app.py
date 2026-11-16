@@ -379,13 +379,14 @@ class Controller(QObject):
         self.set_state("recording")
 
     def _bind_take(self, take):
-        """Remember where the take started (bind_pane): its text and Enters go there, even if
-        focus moves to another Konsole pane while it is transcribed (target_linux)."""
+        """Remember where the take started (bind_pane, bind_window): its text and Enters go there,
+        even if focus moves to another Konsole pane or window while it is transcribed (target_linux)."""
         targets = self.__dict__.setdefault("_targets", {})
         for old in [t for t in targets if t < take - 8]:     # takes long finished
             targets.pop(old, None)
         try:
-            targets[take] = self.inserter.bind() if self.cfg.get("bind_pane", True) else None
+            targets[take] = self.inserter.bind(pane=self.cfg.get("bind_pane", True),
+                                               window=self.cfg.get("bind_window", True))
         except Exception:
             log.exception("binding the take failed")
             targets[take] = None

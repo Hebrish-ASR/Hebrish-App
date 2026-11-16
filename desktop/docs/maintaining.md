@@ -695,7 +695,7 @@ ended the transcript stayed the clipboard and the user's next Ctrl+V pasted it a
 ([`docs/debug-log/2026-11-02-transcript-pasted-twice.md`](../../docs/debug-log/2026-11-02-transcript-pasted-twice.md)).
 Windows has no restore yet.
 
-### A take goes to the Konsole pane it started in (2026-11-16, unreleased)
+### A take goes to the pane or window it started in (2026-11-16, unreleased)
 
 Problem (Daniel, 2026-11-16): with Claude Code in four Konsole split panes, moving to another pane
 while a take was still transcribing sent its text (and its Enter) to the wrong pane, because the
@@ -715,6 +715,15 @@ What it does (`hebrish/target_linux.py`, config `bind_pane`, default on):
 - Fallback when Konsole refuses sendText (its default, see below): `Window.setCurrentSession`
   focuses the bound pane if its window has focus, then the usual paste. One notice per Konsole
   process says how to turn the setting on.
+- Any app, on KWin (config `bind_window`, default on): the take's window is brought back before
+  each fallback paste or key. `KWinWindow` loads the script `KWIN_SCRIPT` once per KWin session
+  (`org.kde.KWin /Scripting isScriptLoaded/loadScript/start`, plugin `hebrish-take-window`,
+  file in `$XDG_RUNTIME_DIR`). It registers two KWin global shortcuts with no key,
+  `hebrish-bind-take-window` (keeps `workspace.activeWindow`) and `hebrish-restore-take-window`
+  (makes it active again if focus moved and the window still exists). Hebrish triggers them with
+  `org.kde.kglobalaccel /component/kwin invokeShortcut`, so KWin never has to call back into
+  Hebrish. Then `RESTORE_WAIT_S` (0.1 s) before the chord. One window is kept, the newest take's.
+  Window-level only: inside a browser the field that has focus gets the text.
 - `paste last` is not bound: it pastes where you are when you press it.
 - Windows: `bind()` returns `None` (no binding yet).
 
@@ -730,9 +739,21 @@ temporary `XDG_CONFIG_HOME`): Hebrew text and the Enter arrived in the pane thro
 `LinuxInserter.insert`/`press`. Assumed, not tested with two windows: `MainWindow_<n>` and
 `/Windows/<n>` are the same window.
 
+KWin measured 2026-11-16 (Plasma 6.6.6, Wayland): the script loaded through dbus-send, BIND saw the
+focused Konsole (`resourceClass` org.kde.konsole), a back-to-back BIND/RESTORE was a no-op with no
+script errors in the journal; binding took 76 ms (pane and window), RESTORE 108 ms with the wait.
+Not tried live: RESTORE actually pulling focus back from another window (it would move focus on
+the maintainer's desktop); it rests on KWin's documented `workspace.activeWindow` setter.
+
 Wrong turns ruled out: choosing Ctrl+V or Ctrl+Shift+V by terminal (the pane route uses no chord);
-binding the window through a KWin script (doesn't separate panes inside one Konsole window; still
-the plan for non-Konsole apps); a Wayland input method (exact everywhere, but a much larger build).
+the KWin window alone (doesn't separate panes inside one Konsole window, hence both); a KWin script
+that reports the active window back over D-Bus, as kdotool does (needs a D-Bus service in Hebrish;
+PySide6's QtDBus isn't packaged in Ubuntu: the no-key shortcuts need no reply); a Wayland input
+method (exact everywhere, but a much larger build).
+
+"Pasted twice" with *Output → Clipboard* on as well as *At the cursor* is that output by design:
+it copies the whole take after the paste and cancels the clipboard restore (see above). Pane
+binding with sendText doesn't touch the clipboard; the Clipboard output still copies the take.
 
 ### Insert-as-you-go pacing (0.7.1, 2026-10-22)
 
