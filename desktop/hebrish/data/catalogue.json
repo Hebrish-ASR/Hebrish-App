@@ -433,7 +433,7 @@
           "technical": "sherpa-onnx int8 online (streaming) Zipformer2 transducer on the CPU, 80 mel features, 1.28 s chunks, 1,493-token Hebrew SentencePiece vocabulary. English comes out spelled letter by letter.",
           "download_mb": 72,
           "recommendation": "For dictating in Hebrew. Hebrish switches to it when your keyboard is in Hebrew; English stays on your main model.",
-          "runs_on": "Hebrish for Android and the Hebrish desktop app, in versions with Hebrew switching.",
+          "runs_on": "Hebrish for Android 1.034 and later, and the Hebrish desktop app 1.036 and later. Update the app to use it.",
           "credit": {
             "text": "Hebrew speech model by Yakov Kolani, trained on ivrit.ai data. Licensed CC BY 4.0. Unchanged from ivrit-ai/zipformer2-66m-streaming-he.",
             "author": "Yakov Kolani",
