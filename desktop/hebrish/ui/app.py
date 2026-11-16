@@ -92,6 +92,13 @@ def _take_lang(ctl, job) -> str:
     return (info or {}).get("lang") or "en"
 
 
+def _target_kw(ctl, take) -> dict:
+    """insert()/press() keyword for a take's target (Controller._bind_take); none when unbound,
+    so inserters and test fakes without the parameter still work."""
+    t = getattr(ctl, "_targets", {}).get(take)
+    return {"target": t} if t is not None else {}
+
+
 def _in_tm_box(win) -> bool:
     """Focus is on the Transcription tab (its Notepad or any of its controls): a bool, safe from
     the decode thread. Voice Typing then writes into the Notepad, not at the system cursor."""
@@ -117,6 +124,7 @@ class Signals(QObject):
     piece = Signal(str)             # each decoded piece of a take, for the Dictate tab's text box
     no_field = Signal()             # focus.text_target() said False after a take (detect_no_field)
     late = Signal(str)              # words kept out of the next message by the Enter guard
+    hint = Signal(str, str)         # title, body: a one-time notice from a worker thread (Konsole sendText refused)
     draft = Signal(object, str, int)    # I-4 live draft: take, text, generation (_on_draft)
     fetched = Signal(object, object)    # manifest or None, error: download_model()
     moved = Signal(object)          # error or None: move_models()
@@ -163,6 +171,7 @@ class Controller(QObject):
         self._he_ready = threading.Event()        # set when no Hebrew load is in flight
         self._he_ready.set()
         self._take_info: dict[int, dict] = {}     # take -> take_language()'s answer
+        self._targets: dict = {}                  # take -> inserter.bind(): the pane it started in
         self.last_lang: dict | None = None        # the last take's, for the Dictate tab
         self.addon_busy: dict[str, threading.Event] = {}     # add-on id -> cancel, while downloading
         self.addon_done: dict[str, float] = {}               # add-on id -> fraction downloaded
@@ -205,6 +214,10 @@ class Controller(QObject):
         self.sig.take_began.connect(lambda: self.win.new_take(self.cfg["clear_each_take"]))
         self.sig.no_field.connect(self._show_no_field)
         self.sig.late.connect(self._show_late)
+        self.sig.hint.connect(lambda title, body: self.notify(title, body))
+        if sys.platform.startswith("linux"):
+            from ..target_linux import SENDER
+            SENDER.on_denied = lambda hint: self.sig.hint.emit("Konsole pane", hint)
         self.sig.draft.connect(self._on_draft)
         # I-4 live draft (D-2026-11-13-01): the open phrase re-decoded each live tick, shown dimmed
         # in the overlay. _draft_gen goes up whenever the draft is cleared (a piece cut, the take
@@ -356,6 +369,7 @@ class Controller(QObject):
             return
         self._take += 1
         self._take_info[self._take] = self.take_language()
+        self._bind_take(self._take)
         self._typed = False
         self._stopped_by_send = False
         self._silence.reset(0)
@@ -363,6 +377,18 @@ class Controller(QObject):
         self.recorder.mute(self.cue(cue) + CUE_MARGIN_S)
         self._late_last = ""
         self.set_state("recording")
+
+    def _bind_take(self, take):
+        """Remember where the take started (bind_pane): its text and Enters go there, even if
+        focus moves to another Konsole pane while it is transcribed (target_linux)."""
+        targets = self.__dict__.setdefault("_targets", {})
+        for old in [t for t in targets if t < take - 8]:     # takes long finished
+            targets.pop(old, None)
+        try:
+            targets[take] = self.inserter.bind() if self.cfg.get("bind_pane", True) else None
+        except Exception:
+            log.exception("binding the take failed")
+            targets[take] = None
 
     @property
     def queued_ok(self) -> bool:
@@ -587,7 +613,7 @@ class Controller(QObject):
     def _replay_enter(self):
         time.sleep(0.15)          # let the target app take the paste before the Enter
         try:
-            self.inserter.press(self.cfg["send_chord"] or "enter")   # the key that was held
+            self.inserter.press(self.cfg["send_chord"] or "enter", **_target_kw(self, self._take))   # the key that was held
         except Exception:
             log.exception("replaying the held Enter failed")
 
@@ -610,7 +636,7 @@ class Controller(QObject):
             if late:
                 self._late.setdefault(job, []).append(text)
                 return
-        if self._insert(text) and job == self._take and text.strip():
+        if self._insert(text, job) and job == self._take and text.strip():
             self._typed = True
 
     def _auto_enter(self, job, heard):
@@ -625,7 +651,7 @@ class Controller(QObject):
             self._typed = False
         time.sleep(0.15)          # let the target app take the paste before the Enter
         try:
-            self.inserter.press(self.cfg["send_chord"] or "enter")
+            self.inserter.press(self.cfg["send_chord"] or "enter", **_target_kw(self, job))
             log.info("pressed %r after silence", self.cfg["send_chord"] or "enter")
         except Exception:
             log.exception("Enter after silence failed")
@@ -863,7 +889,7 @@ class Controller(QObject):
                         # the last words went out at a pause, without the space after them
                         self._out(job, out(space))
                     if final and live and parts and job == self._send_take and self._sends(job):
-                        self._send()
+                        self._send(job)
                     if final:
                         whole = "".join(parts).strip()
                         heard = whole or len(samples) < audio.SAMPLE_RATE // 2
@@ -916,7 +942,7 @@ class Controller(QObject):
                         "pause_s": None if final else pause, "context": ctx_used, "stop": stop, "raw": raw,
                         "text": text, "lead": lead, "held_in": held_in, "held_out": held, "decode_s": round(decode_s, 3)})
                 if final and live and parts and job == self._send_take and self._sends(job):
-                    self._send()
+                    self._send(job)
                 if final:
                     heard = parts or len(samples) < audio.SAMPLE_RATE // 2 or not live
                     self.sig.transcribed.emit(" ".join(parts), None if heard else NO_SPEECH, self._maint_end(job, whole_take()))
@@ -960,7 +986,7 @@ class Controller(QObject):
         if self.cfg["out_window"]:
             self.sig.piece.emit(text)
 
-    def _insert(self, text) -> bool:
+    def _insert(self, text, job=None) -> bool:
         """A piece out of the app (decode thread): pasted at the cursor, or, with only the
         clipboard on, copied. The window is [_show]'s; the whole take's copy is [_done]'s.
         True when it was pasted at the cursor."""
@@ -980,7 +1006,7 @@ class Controller(QObject):
             wait = PASTE_GAP_S - (time.monotonic() - self._pasted_at)
             if wait > 0:
                 time.sleep(wait)
-            self.inserter.insert(text, "paste", self.cfg["paste_chord"])
+            self.inserter.insert(text, "paste", self.cfg["paste_chord"], **_target_kw(self, job))
             self._pasted_at = time.monotonic()
             log.info("pasted %d chars", len(text))
             return True
@@ -1010,11 +1036,11 @@ class Controller(QObject):
             return (self.cfg["out_cursor"] and job not in self._diverted and not self._enter_held
                     and not _in_tm_box(getattr(self, "win", None)))
 
-    def _send(self):
+    def _send(self, job=None):
         """Stop and send: press send_chord after the take's last paste (decode thread)."""
         time.sleep(0.15)          # let the target app take the paste before the Enter
         try:
-            self.inserter.press(self.cfg["send_chord"])
+            self.inserter.press(self.cfg["send_chord"], **_target_kw(self, job))
         except Exception:
             log.exception("send chord %r failed", self.cfg["send_chord"])
 

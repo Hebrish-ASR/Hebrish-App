@@ -42,14 +42,18 @@ class WindowsInserter:
     def __init__(self):
         self._kb = Controller()
 
-    def insert(self, text: str, method: str, chord: str):
+    def bind(self):
+        """No pane binding on Windows yet (target_linux is Konsole's D-Bus API)."""
+        return None
+
+    def insert(self, text: str, method: str, chord: str, target=None):
         copy_to_clipboard(text)
         if method != "paste":
             return
         time.sleep(0.08)
         self.press(chord)
 
-    def press(self, chord: str):
+    def press(self, chord: str, target=None):
         """Tap a chord (the paste shortcut, or Stop and send's Enter)."""
         keys = parse_chord(chord)
         for k in keys:

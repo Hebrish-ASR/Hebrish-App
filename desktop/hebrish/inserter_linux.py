@@ -308,11 +308,26 @@ class LinuxInserter:
             if os.environ.get("APPIMAGE"):     # the .deb installs this rule; an AppImage can't
                 self.error += (". To paste at the cursor, run once: " + UINPUT_RULE_COMMAND)
 
-    def insert(self, text: str, method: str, chord: str):
+    def bind(self):
+        """A take starts: remember the Konsole pane it started in (target_linux.Binding)."""
+        from .target_linux import Binding
+        return Binding()
+
+    def insert(self, text: str, method: str, chord: str, target=None):
         """method "clipboard" (or no uinput): the text stays on the clipboard. "paste": the
         clipboard holds it only for the paste, then the selection is released (copy_for_paste)
         and what the user had there before is put back (KEEPER); the Clipboard output copies the
-        whole take afterwards with copy_to_clipboard, which cancels that restore."""
+        whole take afterwards with copy_to_clipboard, which cancels that restore.
+        target: the take's bind(). A take that started in a Konsole pane goes into that pane with
+        sendText (no clipboard, no keys), or, where Konsole refuses that, the pane is focused
+        first and the paste follows (target_linux)."""
+        if method == "paste" and target is not None:
+            pane = target.get()
+            if pane is not None:
+                from .target_linux import SENDER, wrap
+                if SENDER.send_text(pane, wrap(text)):
+                    return
+                SENDER.focus(pane)
         if method != "paste" or self._ui is None:
             copy_to_clipboard(text)
             return
@@ -325,8 +340,16 @@ class LinuxInserter:
             release_later(proc)
             KEEPER.after_paste(text)
 
-    def press(self, chord: str):
-        """Tap a chord (the paste shortcut, or Stop and send's Enter)."""
+    def press(self, chord: str, target=None):
+        """Tap a chord (the paste shortcut, or Stop and send's Enter). With a take's target in a
+        Konsole pane, a plain Enter goes to that pane as a carriage return, like its text."""
+        if target is not None:
+            pane = target.get()
+            if pane is not None:
+                from .target_linux import SENDER
+                if chord.strip().lower() in ("enter", "return") and SENDER.send_text(pane, "\r"):
+                    return
+                SENDER.focus(pane)
         if self._ui is None:
             return
         codes = parse_chord(chord)

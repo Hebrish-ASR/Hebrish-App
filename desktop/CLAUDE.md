@@ -10,7 +10,7 @@ The model source and update rules are shared with Android: `../shared/catalogue.
   The distro python is required, for apt's PySide6 and evdev.
 - Tests: `.venv/bin/python -m pytest tests`.
 - Per-OS code lives only in `hotkey_evdev.py` / `hotkey_win.py`,
-  `inserter_linux.py` / `inserter_win.py`, `autostart.py` and `keyboard_layout.py` (Hebrew switching). Everything else is shared.
+  `inserter_linux.py` / `inserter_win.py` (and `target_linux.py`, Konsole pane binding), `autostart.py` and `keyboard_layout.py` (Hebrew switching). Everything else is shared.
   `ui/overlay.py` picks in-process or an XWayland child by Qt platform, not by OS: keep the
   overlay unable to take focus on every route (`docs/maintaining.md`, "Floating overlay").
 - Don't run live record-and-paste tests on Daniel's desktop. Render the UI off-screen

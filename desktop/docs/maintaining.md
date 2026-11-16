@@ -695,6 +695,45 @@ ended the transcript stayed the clipboard and the user's next Ctrl+V pasted it a
 ([`docs/debug-log/2026-11-02-transcript-pasted-twice.md`](../../docs/debug-log/2026-11-02-transcript-pasted-twice.md)).
 Windows has no restore yet.
 
+### A take goes to the Konsole pane it started in (2026-11-16, unreleased)
+
+Problem (Daniel, 2026-11-16): with Claude Code in four Konsole split panes, moving to another pane
+while a take was still transcribing sent its text (and its Enter) to the wrong pane, because the
+paste chord goes to whatever has focus when each piece is ready.
+
+What it does (`hebrish/target_linux.py`, config `bind_pane`, default on):
+
+- `Controller.start()` → `_bind_take(take)` → `inserter.bind()`: a `Binding` looks up, off the GUI
+  thread, the focused Konsole window and its focused pane (`active_pane()`, about 30 ms measured).
+  Not in a Konsole: the binding is `None` and everything works as before.
+- Every piece (`_insert(text, job)`), Stop and send (`_send(job)`), Enter after silence and the
+  replayed held Enter pass the take's binding as `target=` to `insert()`/`press()`.
+- `LinuxInserter.insert` with a bound pane: `Session.sendText` into that pane, which needs no
+  clipboard, no key events and no focus, so the clipboard restore isn't involved at all. Text with a
+  line break is wrapped in bracketed-paste markers so it can't send the message early. A plain
+  `enter` from `press()` goes as `"\r"` the same way.
+- Fallback when Konsole refuses sendText (its default, see below): `Window.setCurrentSession`
+  focuses the bound pane if its window has focus, then the usual paste. One notice per Konsole
+  process says how to turn the setting on.
+- `paste last` is not bound: it pastes where you are when you press it.
+- Windows: `bind()` returns `None` (no binding yet).
+
+Konsole's D-Bus facts this rests on (Konsole 25.12.3, measured 2026-11-16): `org.kde.konsole-<pid>`
+per process; `/konsole/MainWindow_<n>` exports `org.qtproject.Qt.QWidget.isActiveWindow`;
+`/Windows/<n>` has `currentSession()` and `setCurrentSession(int)`, which work with defaults;
+`/Sessions/<id>` has `sendText(QString)`, which is refused with `AccessDenied: Security sensitive
+DBus API is disabled in the settings` unless *Configure Konsole → General → Enable the security
+sensitive parts of the DBus API* is on (konsolerc `[KonsoleWindow] EnableSecuritySensitiveDBusAPI=true`;
+`[General]` doesn't work; a hand edit applies at Konsole's next start). Verified end to end against an
+off-screen Konsole (`QT_QPA_PLATFORM=offscreen konsole --separate --nofork` with that konsolerc in a
+temporary `XDG_CONFIG_HOME`): Hebrew text and the Enter arrived in the pane through
+`LinuxInserter.insert`/`press`. Assumed, not tested with two windows: `MainWindow_<n>` and
+`/Windows/<n>` are the same window.
+
+Wrong turns ruled out: choosing Ctrl+V or Ctrl+Shift+V by terminal (the pane route uses no chord);
+binding the window through a KWin script (doesn't separate panes inside one Konsole window; still
+the plan for non-Konsole apps); a Wayland input method (exact everywhere, but a much larger build).
+
 ### Insert-as-you-go pacing (0.7.1, 2026-10-22)
 
 Daniel, the same evening (R-2026-10-22-39): with both models, insert as you go dumped text at the
