@@ -23,6 +23,17 @@ class AboutActivity : Page() {
         button(R.string.hebrish_word) { open(Hebrish.WORD) }
         button(R.string.about_support) { open(Hebrish.CONTRIBUTE) }
 
+        // Third-party models (2026-11-16): the Hebrew model is CC BY 4.0, so its credit is shown here too.
+        val credited = runCatching { app.hebrish.core.Catalogue.get(this).lines.flatMap { it.variants }.filter { it.credit != null } }
+            .getOrDefault(emptyList())
+        if (credited.isNotEmpty()) {
+            heading(R.string.about_credits_heading)
+            for (m in credited) {
+                text(m.name, top = 12).setTypeface(null, android.graphics.Typeface.BOLD)
+                credit(m.credit!!)
+            }
+        }
+
         heading(R.string.about_links_title)
         val r = row()
         button(R.string.hebrish_site, r) { open(Hebrish.SITE) }

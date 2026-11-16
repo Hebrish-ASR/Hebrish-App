@@ -271,7 +271,7 @@ class ModelsActivity : Page() {
         val s = ModelDownload.status
         val running = s is ModelDownload.Status.Running
         val models = Catalogue.get(this).models
-        val missing = models.filter { it.available && !ModelStore.isReady(this, model = it) }
+        val missing = models.filter { it.available && it.language == null && !ModelStore.isReady(this, model = it) }
         allBtn.isEnabled = running || missing.isNotEmpty()
         allBtn.text = when {
             running -> getString(R.string.models_cancel_all)
@@ -284,9 +284,25 @@ class ModelsActivity : Page() {
 
         list.removeAllViews()
         val selected = Catalogue.selected(this)
-        for (line in Catalogue.get(this).lines) {
+        // Language lines (the Hebrew model, 2026-11-16) are not dictation choices: their own section below.
+        val (languages, dictation) = Catalogue.get(this).lines.partition { l -> l.variants.isNotEmpty() && l.variants.all { it.language != null } }
+        for (line in dictation) {
             lineHeader(line)
             for (m in line.variants) card(m, m.id == selected.id, s)
+        }
+        if (languages.isNotEmpty()) {
+            list.addView(TextView(this).apply {
+                setText(R.string.models_hebrew_heading)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 21f)
+                typeface = display(this@ModelsActivity)
+                setTextColor(getColor(R.color.brand_ink))
+                setPadding(0, dp(28), 0, 0)
+            })
+            list.addView(TextView(this).apply { setText(R.string.models_hebrew_intro); setPadding(0, dp(4), 0, 0) })
+            for (line in languages) {
+                lineHeader(line)
+                for (m in line.variants) card(m, inUse = false, s = s)
+            }
         }
 
         checkBtn.visibility = if (ModelDownload.checking) View.GONE else View.VISIBLE
@@ -368,7 +384,7 @@ class ModelsActivity : Page() {
         })
         val badge = when {
             inUse -> getString(R.string.models_badge_in_use)
-            m.id == Catalogue.get(this).recommended -> getString(R.string.models_badge_recommended)
+            m.id == Catalogue.get(this).recommended && m.language == null -> getString(R.string.models_badge_recommended)
             else -> null
         }
         if (badge != null) nameRow.addView(TextView(this).apply {
@@ -386,7 +402,7 @@ class ModelsActivity : Page() {
             alpha = 0.6f
         })
         words.addView(TextView(this).apply { text = m.recommendation.ifEmpty { m.summary }; setPadding(0, dp(4), 0, dp(2)) })
-        words.addView(TextView(this).apply { text = tiers(m); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f) })
+        if (m.speed > 0 || m.accuracy > 0) words.addView(TextView(this).apply { text = tiers(m); setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f) })
         words.addView(TextView(this).apply {
             text = listOfNotNull(m.downloadMb?.let { getString(R.string.models_size_mb, it) }, m.hardware.ifEmpty { null })
                 .joinToString(" · ")
@@ -434,11 +450,14 @@ class ModelsActivity : Page() {
             ModelDownload.queued(m.id) -> button(R.string.models_unqueue, r) { ModelDownload.unqueue(m) }
             !ready -> button(R.string.download, r) { ModelDownload.download(this, m); render() }
         }
-        if (ready && !inUse) button(R.string.models_use, r) { use(m) }
+        // A language model is used by itself for that language, never picked (2026-11-16).
+        if (ready && !inUse && m.language == null) button(R.string.models_use, r) { use(m) }
         if (ready && update != null && s !is ModelDownload.Status.Running) button(getString(R.string.update_button, update.label), r) {
             ModelDownload.update(this, m)
         }
         if (ready && !inUse && !active) button(R.string.delete, r) { confirmDelete(m) }
+        // Attribution (CC BY 4.0 for the Hebrew model): required wherever the model is listed.
+        m.credit?.let { credit(it, card) }
         technical(m, card)
     }
 
@@ -510,7 +529,7 @@ class ModelsActivity : Page() {
             .setPositiveButton(R.string.delete) { _, _ ->
                 // About 650 MB of files: delete them on a worker thread, then redraw.
                 val app = applicationContext
-                Thread { ModelStore.delete(app, m); runOnUiThread { if (!isDestroyed) render() } }.start()
+                Thread { if (m.language != null) StreamingTranscriber.unload(); ModelStore.delete(app, m); runOnUiThread { if (!isDestroyed) render() } }.start()
             }
             .setNegativeButton(R.string.cancel, null)
             .show()

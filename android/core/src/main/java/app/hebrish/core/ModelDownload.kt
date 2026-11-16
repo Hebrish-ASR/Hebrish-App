@@ -128,9 +128,12 @@ object ModelDownload {
         install(ctx, model, null)
     }
 
-    /** Every available model that isn't on the phone yet, one after another. */
+    /**
+     * Every available dictation model that isn't on the phone yet, one after another. Language
+     * models (the Hebrew line) are left out: they download from their own section.
+     */
     fun downloadAll(ctx: Context) {
-        for (m in Catalogue.get(ctx).models) download(ctx, m)
+        for (m in Catalogue.get(ctx).models) if (m.language == null) download(ctx, m)
     }
 
     /** Downloads [model]'s latest version; the current one keeps working until it verifies. */
@@ -158,6 +161,7 @@ object ModelDownload {
             // Only now that every file is verified: switch over, then delete the old weights.
             waitForSwap()
             if (Catalogue.selected(app).id == model.id) Transcriber.unload()
+            if (model.language != null) StreamingTranscriber.unload()
             ModelPrefs.setInstalledManifest(app, model.id, chosen.toJson())
             ModelStore.pruneOld(app, model)
         }
@@ -182,6 +186,7 @@ object ModelDownload {
         val toMove = ModelStore.readyModels(app, from).filter { !ModelStore.isReady(app, to, it) }
         if (toMove.isEmpty()) {
             Transcriber.unload()
+            StreamingTranscriber.unload()
             adoptAll(app, to)
             ModelPrefs.setModelRoot(app, to)
             publish(Status.Idle)
@@ -190,6 +195,7 @@ object ModelDownload {
         val total = toMove.sumOf { ModelStore.installed(app, it)!!.totalBytes }
         run(app, moving = true, total = total) { a, report ->
             Transcriber.unload()
+            StreamingTranscriber.unload()
             var offset = 0L
             for (model in toMove) {
                 ModelStore.move(a, model, from, to, offset, { cancel }, report)

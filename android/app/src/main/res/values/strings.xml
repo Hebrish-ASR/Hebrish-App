@@ -4,6 +4,7 @@
     <string name="tagline">Voice typing that gets the Hebrew words right.</string>
     <string name="ime_name">Hebrish</string>
     <string name="subtype_label">English (voice)</string>
+    <string name="subtype_label_he">Hebrew (voice)</string>
 
     <string name="url_heliboard">https://github.com/HeliBorg/HeliBoard/releases</string>
     <string name="url_source">https://github.com/Hebrish-ASR/Hebrish-App</string>
@@ -304,6 +305,26 @@
     <string name="ime_no_stop">No .</string>
     <string name="ime_no_stop_cd_on">No full stop at the end: on. Tap to turn off.</string>
     <string name="ime_no_stop_cd_off">No full stop at the end: off. Tap to turn on.</string>
+    <!-- Input language button (2026-11-16, InputLanguage): Auto follows the keyboard you came from. -->
+    <string name="ime_lang_auto">EN / עב</string>
+    <string name="ime_lang_en">EN</string>
+    <string name="ime_lang_he">עב</string>
+    <string name="ime_lang_cd_auto">Language: automatic, follows your keyboard. Tap for English.</string>
+    <string name="ime_lang_cd_en">Language: English. Tap for Hebrew.</string>
+    <string name="ime_lang_cd_he">Language: Hebrew. Tap for automatic.</string>
+    <string name="lang_toast_auto">Language: automatic (follows your keyboard)</string>
+    <string name="lang_toast_en">Language: English</string>
+    <string name="lang_toast_he">Language: Hebrew</string>
+    <string name="lang_hebrew_listening">Listening (Hebrew)… %1$d:%2$02d</string>
+    <string name="lang_no_hebrew_model">Hebrew: no Hebrew model yet, tap here to get it</string>
+    <string name="lang_listening_no_he">Listening (no Hebrew model, tap)… %1$d:%2$02d</string>
+    <string name="lang_no_hebrew_model_toast">Your keyboard is in Hebrew, but the Hebrew model isn\'t downloaded: using your main model. Get it in Models.</string>
+    <string name="models_hebrew_heading">Hebrew</string>
+    <string name="models_hebrew_intro">Not a dictation model you choose: Hebrish uses it by itself when your keyboard is in Hebrew, or when the EN / עב button on the voice keyboard is set to Hebrew. English keeps using the model above.</string>
+    <string name="models_credit_license">Licence: %1$s</string>
+    <string name="models_credit_source">Original model</string>
+    <string name="models_credit_upstream">Upstream</string>
+    <string name="about_credits_heading">Third-party models</string>
     <string name="dictation_noise_title">Noise filter</string>
     <string name="dictation_noise_value">Noise filter: %1$d</string>
     <string name="dictation_noise_hint">Keeps room noise from turning into stray words. Turn it up if words appear when you aren\'t speaking; turn it down if quiet speech gets missed. 0 turns it off.</string>

@@ -1,6 +1,7 @@
 # sherpa-onnx Kotlin API (vendored)
 
-Unmodified copies of `sherpa-onnx/kotlin-api/{FeatureConfig,HomophoneReplacerConfig,OfflineRecognizer,OfflineStream,QnnConfig}.kt`
+Unmodified copies of `sherpa-onnx/kotlin-api/{FeatureConfig,HomophoneReplacerConfig,OfflineRecognizer,OfflineStream,OnlineRecognizer,OnlineStream,QnnConfig}.kt`
+(`Online*` added 2026-11-16 for the Hebrew streaming model, `StreamingTranscriber`)
 from `android/third_party/sherpa-onnx` (v1.13.8, Apache-2.0, © Xiaomi Corporation and the k2-fsa
 authors). They used to come inside the prebuilt AAR; since the native library is built from source
 (`app/src/main/cpp/CMakeLists.txt`), the Kotlin side is these files.

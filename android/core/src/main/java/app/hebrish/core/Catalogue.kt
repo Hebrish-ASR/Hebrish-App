@@ -21,8 +21,28 @@ object Catalogue {
     const val ASSET = "catalogue.json"
     const val SCHEMA = 2
     const val PLATFORM = "android"
-    /** Engines this build can run. Phase 2 adds sherpa_online_transducer (Shakshuka). */
+    /** Engines this build can run as a dictation model. Phase 2 adds sherpa_online_transducer (Shakshuka). */
     val SUPPORTED_ENGINES = setOf("sherpa_offline_transducer")
+    /**
+     * The streaming engine ([StreamingTranscriber], 2026-11-16). Runs only for language variants
+     * (the Hebrew line), so Shakshuka's 0.6B streaming model stays desktop-only.
+     */
+    const val ONLINE_ENGINE = "sherpa_online_transducer"
+
+    /**
+     * A third-party model's attribution (catalogue `credit`, required by CC BY 4.0 for the
+     * Hebrew line): shown on its Models card and on About.
+     */
+    data class Credit(
+        val text: String,
+        val author: String = "",
+        val data: String = "",
+        val license: String = "",
+        val licenseUrl: String? = null,
+        val url: String? = null,
+        val originalUrl: String? = null,
+        val changes: String = "",
+    )
 
     data class Model(
         val id: String,
@@ -55,9 +75,19 @@ object Catalogue {
         val recommendation: String = "",
         /** Where a variant this app can't run runs instead. */
         val runsOn: String = "",
+        /**
+         * Set (BCP 47, "he") for a language model (catalogue `language`, 2026-11-16): not a dictation
+         * model the user picks, but the one used when the input language is that language
+         * (docs/maintaining.md, "Hebrew model switching"). Kept out of [selected] and the main list.
+         */
+        val language: String? = null,
+        /** sherpa-onnx online `model_type` (catalogue `engine_options.model_type`, "zipformer2"). */
+        val modelType: String = "",
+        val credit: Credit? = null,
     ) {
-        /** This build can run it. */
-        val supported: Boolean get() = engine in SUPPORTED_ENGINES && PLATFORM in platforms
+        /** This build can run it: an offline transducer, or a streaming one that is a language model. */
+        val supported: Boolean get() = PLATFORM in platforms &&
+            (engine in SUPPORTED_ENGINES || (engine == ONLINE_ENGINE && language != null))
         /** Listed but not downloadable: "planned" models show as coming soon. */
         val available: Boolean get() = supported && status == "available" && !(repo.isNullOrEmpty() && manifestUrl.isNullOrEmpty())
     }
@@ -89,6 +119,10 @@ object Catalogue {
 
     fun model(ctx: Context, id: String): Model? = get(ctx).models.firstOrNull { it.id == id }
 
+    /** The available model for [language] ("he"), downloaded or not; null if the catalogue has none. */
+    fun forLanguage(ctx: Context, language: String): Model? =
+        get(ctx).models.firstOrNull { it.language == language && it.available }
+
     /**
      * The model the keyboard uses: the user's pick if still available. Without a pick, a model
      * already on the phone (recommended first), so a user of an older build that defaulted to
@@ -96,9 +130,9 @@ object Catalogue {
      */
     fun selected(ctx: Context): Model {
         val data = get(ctx)
-        val pick = ModelPrefs.selectedModel(ctx)?.let { id -> data.models.firstOrNull { it.id == id && it.available } }
+        val pick = ModelPrefs.selectedModel(ctx)?.let { id -> data.models.firstOrNull { it.id == id && it.available && it.language == null } }
         if (pick != null) return pick
-        val order = data.models.filter { it.available }
+        val order = data.models.filter { it.available && it.language == null }
             .sortedBy { when (it.id) { data.recommended -> 0; data.default -> 1; else -> 2 } }
         return order.firstOrNull { ModelStore.isReady(ctx, model = it) } ?: order.first()
     }
@@ -141,12 +175,19 @@ object Catalogue {
                         accuracy = m.optInt("accuracy"),
                         recommendation = m.optString("recommendation"),
                         runsOn = m.optString("runs_on"),
+                        language = (m.optString("language").ifEmpty { l.optString("language") }).ifEmpty { null },
+                        modelType = m.optJSONObject("engine_options")?.optString("model_type").orEmpty(),
+                        credit = m.optJSONObject("credit")?.let { c ->
+                            Credit(c.optString("text"), c.optString("author"), c.optString("data"), c.optString("license"),
+                                c.optString("license_url").ifEmpty { null }, c.optString("url").ifEmpty { null },
+                                c.optString("original_url").ifEmpty { null }, c.optString("changes"))
+                        }?.takeIf { it.text.isNotEmpty() },
                     )
                 })
         }
         val models = lines.flatMap { it.variants }.filter { it.supported }
-        if (models.none { it.available } || files.isEmpty()) return null
-        val recommended = o.optString("recommended").ifEmpty { models.first { it.available }.id }
+        if (models.none { it.available && it.language == null } || files.isEmpty()) return null
+        val recommended = o.optString("recommended").ifEmpty { models.first { it.available && it.language == null }.id }
         Data(o.optString("catalogue_v2_url").ifEmpty { null }, recommended, recommended, files,
             o.optString("version_file", "version.json"), models, lines)
     }.getOrNull()

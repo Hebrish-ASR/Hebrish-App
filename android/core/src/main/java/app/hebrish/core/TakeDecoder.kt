@@ -24,12 +24,22 @@ import java.util.concurrent.Executors
  * back until the next segment shows whether the sentence really ended ([afterHeldStop]). A piece
  * of text handed over can therefore start with ". " (the held stop, glued to the text before it):
  * callers put no separating space before text that starts with a mark ([join]).
+ *
+ * [language] (2026-11-16, docs/maintaining.md "Hebrew model switching"): a language model (the
+ * Hebrew line), decided by the caller at the start of the take. Its pieces go through
+ * [StreamingTranscriber] whole, with none of the English-only steps: no seam context or held full
+ * stop (the model writes no punctuation or case), no disfluency chop (English fillers), no
+ * personal dictionary (Latin-letter spellings) and no ALL CAPS. [dropFinalStop] still applies.
  */
-class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) {
+class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private val onText: ((String) -> Unit)? = null) {
+    /** The signature before 2026-11-16 (onText second), for callers outside this app that link android/core. */
+    constructor(ctx: Context, onText: ((String) -> Unit)?) : this(ctx, null, onText)
+
     private val app = ctx.applicationContext
     private val worker = Executors.newSingleThreadExecutor()
     private val held = StringBuilder()
-    private val allCaps = OutputStyle.allCaps(app)
+    private val hebrew = language?.language != null
+    private val allCaps = !hebrew && OutputStyle.allCaps(app)
     private val noiseFilter = VoiceDetection.level(app)
     /**
      * The personal dictionary (0.9.0, [PersonalDictionary]), read on the worker at the take's
@@ -72,6 +82,10 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
         val allCaps: Boolean,
         val typeAsYouGo: Boolean,
         val contextSeconds: Double = 0.0,
+        /** The model that decoded the take when it wasn't the selected one (a language model); null = selected. */
+        val model: Catalogue.Model? = null,
+        /** "he" for a take decoded by the Hebrew model, "en" otherwise (2026-11-16). */
+        val language: String = "en",
     )
 
     private val all = StringBuilder()
@@ -92,11 +106,16 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
 
     /** Valid once [finish] has called back. */
     fun stats() = Stats(audioSamples / Transcriber.SAMPLE_RATE.toDouble(), decodeMs / 1000.0, loadMs / 1000.0,
-        waitMs / 1000.0, segmentsDecoded, allCaps, onText != null, contextSamples / Transcriber.SAMPLE_RATE.toDouble())
+        waitMs / 1000.0, segmentsDecoded, allCaps, onText != null, contextSamples / Transcriber.SAMPLE_RATE.toDouble(),
+        language, language?.language ?: "en")
 
     /** Worker thread only: loads the model if needed (timed apart), then decodes (timed). */
     private fun <T> timed(decode: () -> T): T {
-        if (!Transcriber.isLoaded(app)) {
+        if (language != null && !StreamingTranscriber.isLoaded(app, language)) {
+            val t = SystemClock.elapsedRealtime()
+            StreamingTranscriber.load(app, language)
+            loadMs += SystemClock.elapsedRealtime() - t
+        } else if (language == null && !Transcriber.isLoaded(app)) {
             val t = SystemClock.elapsedRealtime()
             Transcriber.load(app)
             loadMs += SystemClock.elapsedRealtime() - t
@@ -110,6 +129,10 @@ class TakeDecoder(ctx: Context, private val onText: ((String) -> Unit)? = null) 
      * is usable context) and returns what to hand over, seam applied and styled; "" for nothing.
      */
     private fun piece(samples: FloatArray, last: Boolean): String {
+        if (language != null) {
+            if (VoiceDetection.noiseOnly(samples, noiseFilter)) return ""
+            return timed { StreamingTranscriber.transcribe(app, language, samples) }
+        }
         val ctx = context?.takeIf { it.size >= Transcriber.SAMPLE_RATE * MIN_CONTEXT_SECONDS && Transcriber.hasSpeech(it) }
         val (decoded, stop) = if (VoiceDetection.noiseOnly(samples, noiseFilter)) {
             "" to null                                  // background only: decoding could only invent words

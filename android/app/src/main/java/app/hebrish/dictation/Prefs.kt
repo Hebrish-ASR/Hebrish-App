@@ -56,6 +56,13 @@ object Prefs {
     fun setNoFinalStop(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("no_final_stop", v).apply()
 
     /**
+     * The voice keyboard's EN / עב button (2026-11-16, InputLanguage): Auto (follow the keyboard),
+     * English or Hebrew. Read at the start of every take, keyboard, floating mic, Try it and Notes.
+     */
+    fun inputLanguage(ctx: Context) = InputLanguage.parse(sp(ctx).getString("input_language", null))
+    fun setInputLanguage(ctx: Context, v: InputLanguage.Mode) = sp(ctx).edit().putString("input_language", v.name).apply()
+
+    /**
      * I-4, Live draft (D-2026-11-13-01): the voice keyboard shows the open phrase as composing text
      * that is re-decoded about every 500 ms, then commits it at a pause or Stop (LiveDraft). Keyboard
      * only; read when a take starts. Off by default.

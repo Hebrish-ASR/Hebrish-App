@@ -231,6 +231,27 @@ abstract class Page : Activity() {
         })
     }
 
+    /**
+     * A third-party model's attribution (catalogue `credit`; CC BY 4.0 for the Hebrew model, 2026-11-16):
+     * the credit sentence, then underlined links to the original model, the licence and the upstream.
+     * On the model's Models card and on About.
+     */
+    protected fun credit(c: app.hebrish.core.Catalogue.Credit, parent: LinearLayout = column) {
+        text(c.text, parent).setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+        fun link(label: String, url: String?) {
+            if (url == null) return
+            parent.addView(TextView(this).apply {
+                text = android.text.SpannableString(label).apply { setSpan(android.text.style.UnderlineSpan(), 0, length, 0) }
+                setTextColor(getColor(R.color.brand_accent))
+                setPadding(0, dp(4), 0, dp(4))
+                setOnClickListener { open(url) }
+            })
+        }
+        link(getString(R.string.models_credit_source), c.url)
+        link(getString(R.string.models_credit_license, c.license.ifEmpty { "CC BY 4.0" }), c.licenseUrl)
+        link(getString(R.string.models_credit_upstream), c.originalUrl)
+    }
+
     /** Turns [b] into the filled green button (the screen's main action; 0.10.0). */
     protected fun primary(b: Button) = b.apply {
         setBackgroundResource(R.drawable.btn_primary)

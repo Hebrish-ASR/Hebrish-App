@@ -2230,3 +2230,90 @@ the app. Every build, Play included: weights are data, not code.
   Wi-Fi may be stopped part way; the `.part` files resume on the next run.
 - **Untested (I):** all on a device. **Verified (V, 2026-11-13):** type-checks as above.
 
+
+## Hebrew model switching (unreleased, 2026-11-16)
+
+Decision D-2026-11-16-01 (`planning/decisions.md`); catalogue line `hebrew`, variant `hebrew-zipformer-66m`
+(`shared/catalogue.json`, read its `_doc`; protocol note in `shared/update-protocol.md`, 2026-11-16). The
+model is Yakov Kolani's Zipformer2 66M streaming transducer (ivrit.ai data, CC BY 4.0), 72 MB from
+`https://cdn.hebrish.app/models/ivrit-zipformer-he/latest.json`. It writes Hebrew script, no punctuation or case;
+English comes out spelled letter by letter, so it is used only for Hebrew takes.
+
+**Not a dictation model.** `Catalogue.Model.language` ("he", from the variant or its line) marks a language
+model. `Catalogue.selected` never returns one, Download all skips them, Models shows no **Use this model** or
+**Recommended** for them, and the main list leaves their line out. They have their own **Hebrew** section at the
+end of the model list (download, update, delete as any model; same `ModelDownload` queue and `ModelStore`
+folders). `Catalogue.forLanguage(ctx, "he")` finds it. `supported` is true for `sherpa_online_transducer`
+**only** with `language` set, so Shakshuka (0.6B streaming, no `language`) stays greyed "desktop only" as before.
+The `credit` block (CC BY 4.0 attribution, required) is shown on the Hebrew card and on About ("Third-party
+models", every variant with a `credit`): the sentence plus links to the model, the licence and the upstream
+(`Page.credit`).
+
+**Engine.** `core/StreamingTranscriber.kt`: sherpa-onnx `OnlineRecognizer` (Kotlin API `OnlineRecognizer.kt`,
+`OnlineStream.kt` copied unmodified from the v1.13.8 submodule into `app/src/main/java/com/k2fsa/sherpa/onnx/`;
+the JNI side was already compiled in, since upstream's `jni/CMakeLists.txt` always builds `online-recognizer.cc`).
+Config: `FeatureConfig(16000, feature_dim 80)`, transducer encoder/decoder/joiner `.int8.onnx` + `tokens.txt`,
+`modelType` from `engine_options.model_type` ("zipformer2"), greedy search, endpoints off. Each piece the
+`TakeDecoder` gets (the recorder's pause-cut segments, then the tail) is decoded whole, like the desktop's
+`Engine._decode_piece` streaming branch: trim silence (`Transcriber.trim`), accept, 1.5 s of zeros,
+`inputFinished`, decode while ready, result. No live partials. It is a second recognizer next to
+`Transcriber`'s, so English and Hebrew takes don't reload each other; it is freed with the main model's hooks
+(idle, screen off, memory pressure) on its own last-use clock, and unloaded before an update swap, a folder
+move or a delete of the Hebrew model.
+
+**Deciding the language** (`app/.../InputLanguage.kt`, once at the start of each take, logged as
+`adb logcat -s HebrishLanguage` with the source that decided):
+
+1. The **EN / עב** button in the voice keyboard header (`Prefs.inputLanguage`, key `input_language`):
+   Auto (default, label "EN / עב", dimmed) → English → Hebrew → Auto. English or Hebrew wins over everything.
+   The same setting applies to the floating mic, Try it and Notes.
+2. Auto, voice keyboard (`forKeyboard`): this IME's own subtype if it is Hebrew; else
+   `InputMethodManager.getLastInputMethodSubtype()` (the keyboard the user came from) → its `languageTag`, else
+   its old `locale`, `he*` or `iw*` = Hebrew; else the field's `EditorInfo.hintLocales` (first known tag); else English.
+3. Auto, floating mic, Try it, Notes (`forApp`): no previous keyboard there, so
+   `getCurrentInputMethodSubtype()` (the keyboard in use). If Hebrish itself is the default IME, its subtype
+   counts only when Hebrew.
+4. Hebrew decided and the model downloaded → the take goes to `TakeDecoder(ctx, language = he)`. Hebrew decided
+   but not downloaded → the main model, and a hint: the keyboard's status line says "Hebrew: no Hebrew model
+   yet, tap here to get it" (idle) or "Listening (no Hebrew model, tap)…" and a tap opens Models; the floating
+   mic, Try it and Notes show a toast.
+
+**Subtypes** (`res/xml/method.xml`): a second voice subtype, `imeSubtypeLocale="iw"` (the old Java code Android
+reports for Hebrew; AOSP LatinIME uses it too), `languageTag="he"`, label "Hebrew (voice)",
+`overridesImplicitlyEnabledSubtype="true"` for the same reason as the English one (see "IME registration"
+above). English is kept **first**: AOSP-derived keyboards (HeliBoard) switch their mic key to the first voice
+subtype of the shortcut IME, so the mic key keeps opening the English subtype, and Auto then follows the
+keyboard the user came from. The Hebrew subtype matters when the user picks "Hebrish: Hebrew (voice)" in the
+system picker: `onCurrentInputMethodSubtypeChanged` (and `currentInputMethodSubtype` at `onStartInputView`)
+records it, and a Hebrew own subtype makes every take Hebrew in Auto. The English own subtype is ignored
+(it is what mic keys open, so it says nothing about the language).
+
+**Hebrew text through the pipeline.** All dictation post-processing is in `TakeDecoder`; for a language take it
+skips the English-only steps: seam context and the held full stop (`transcribeAfter`, `afterHeldStop`: the model
+has no punctuation or case), the disfluency chop (English fillers), the personal dictionary (Latin spellings)
+and ALL CAPS. `dropFinalStop` still runs (no-op without a "."), `join` puts a space between pieces. Live draft
+(I-4) is off for Hebrew takes (it re-decodes with the main model). Paragraphs and Clean up are Transcription
+Mode only, which stays on the main model (not switched: its paragraph and S1 clean-up models are English).
+Committing goes through the same `InputConnection.commitText`; Hebrew is plain UTF-16 text there and the
+editor handles the right-to-left run (I: standard Android behaviour, not checked on a device). Copy/Share
+(`TextOut`) is plain text.
+
+**History.** `TakeDecoder.Stats` carries `model` (the language model when one decoded the take) and
+`language` ("he"/"en"). `History.record` stores that model's id and version in `model`, the online engine
+string in `engine`, and `language` in `decode`; the CSV export has a new `language` column after `all_caps`.
+
+**Compatibility.** `TakeDecoder(ctx, language, onText)`: `language` was added before `onText` so a trailing
+lambda still binds to `onText`; the old `TakeDecoder(ctx, onText)` is kept as a secondary constructor for
+Hebrish Keyboard, which links `core`.
+
+**Verified (V, 2026-11-16):** `:app:compileFdroidDebugKotlin`, `:app:compilePlayDebugKotlin` and
+`testFdroidDebugUnitTest` pass (JDK 21); `InputLanguageTest` (7 tests: Hebrew tags `he`, `he-IL`, `he_IL`, `iw`,
+`iw_IL`; toggle over Auto; previous keyboard; own Hebrew subtype; own English subtype ignored; hintLocales;
+default; button cycle). `assembleFdroidDebug` builds (20 MB APK); its `lib/arm64-v8a/libsherpa-onnx-jni.so`
+exports `Java_com_k2fsa_sherpa_onnx_OnlineRecognizer_newFromFile`. The CDN manifest parses with the existing `ModelStore.fromCdn` (same four file names).
+**Not verified (I):** everything on a device. In particular: whether `getLastInputMethodSubtype()` returns
+HeliBoard's or Gboard's Hebrew subtype when their mic key opens Hebrish (the API returns the last IME's
+subtype from the switch history; some keyboards may switch via a path that leaves no history), whether
+`getCurrentInputMethodSubtype()` from the accessibility service reflects Gboard's language switch, whether
+HeliBoard still opens the English subtype with two voice subtypes present, the Zipformer2 model's load time,
+speed and memory on a phone, and Hebrew insertion in real apps.

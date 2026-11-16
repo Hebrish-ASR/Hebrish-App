@@ -141,7 +141,10 @@ class DictationPad(
             act.requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
             return
         }
-        decoder = TakeDecoder(act) { said -> ui.post { insert(said) } }
+        // Language per take (2026-11-16, InputLanguage.forApp): the EN / עב setting, else the keyboard in use.
+        val (he, missing) = InputLanguage.model(act, InputLanguage.forApp(act))
+        if (missing) android.widget.Toast.makeText(act, R.string.lang_no_hebrew_model_toast, android.widget.Toast.LENGTH_LONG).show()
+        decoder = TakeDecoder(act, he) { said -> ui.post { insert(said) } }
         Mic.prepare(act, recorder)
         try {
             recorder.start()

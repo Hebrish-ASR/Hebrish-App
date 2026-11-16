@@ -3,7 +3,8 @@
 # used up to Android 0.10.0. Recipe from Marmalade STT (app.marmalade.stt, in F-Droid since
 # 2026-10-15), without its patches: Hebrish runs upstream sherpa-onnx unchanged.
 #
-# Produces libsherpa-onnx-jni.so (offline ASR only). Every dependency is compiled in
+# Produces libsherpa-onnx-jni.so (offline and, since 2026-11-16, online ASR: upstream's JNI
+# sources always include online-recognizer.cc; the app uses it for the Hebrew model). Every dependency is compiled in
 # statically except ONNX Runtime, linked against libonnxruntime.so from the Maven Central AAR
 # com.microsoft.onnxruntime:onnxruntime-android; app/build.gradle.kts unpacks it to ORT_DIR.
 #

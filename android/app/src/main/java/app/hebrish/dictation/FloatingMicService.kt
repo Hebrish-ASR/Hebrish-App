@@ -746,12 +746,16 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
                                into: AccessibilityNodeInfo? = focusedField()?.takeIf { !it.isPassword }) {
         // First, so the keyboard's Mic.release can't close a Bluetooth link opened for this take.
         VoiceImeService.yieldMic()
-        Transcriber.preload(this)
+        // Language per take (2026-11-16, InputLanguage.forApp): no previous keyboard here, so the
+        // EN / עב setting, then the current keyboard's subtype.
+        val (he, missing) = InputLanguage.model(this, InputLanguage.forApp(this))
+        if (he != null) StreamingTranscriber.preload(this, he) else Transcriber.preload(this)
+        if (missing) toast(getString(R.string.lang_no_hebrew_model_toast))
         // A take started from a remote keeps the bubble up afterwards.
         stuck = true
         // Type as you go: each segment goes in when decoded. Otherwise it is all held for Stop.
         var t: Take? = null
-        val d = TakeDecoder(this, if (Prefs.typeAsYouGo(this)) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
+        val d = TakeDecoder(this, he, if (Prefs.typeAsYouGo(this)) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
         t = Take(into, d)
         val r = Recorder(
             onLevel = { l -> main.post { setLevel(l) } },

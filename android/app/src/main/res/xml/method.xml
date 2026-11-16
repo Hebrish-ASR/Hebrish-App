@@ -4,7 +4,13 @@
      overridesImplicitlyEnabledSubtype: when an IME is enabled, Android implicitly enables only
      its *keyboard*-mode subtypes matching the system locale. A voice-only IME without this flag
      ends up with no enabled subtype and is left out of the keyboard picker and of HeliBoard's
-     voice-IME lookup. See docs/maintaining.md. -->
+     voice-IME lookup. See docs/maintaining.md.
+     Hebrew subtype (2026-11-16, docs/maintaining.md "Hebrew model switching"): same flags, so it is
+     enabled with the IME. English stays first: AOSP-derived keyboards (HeliBoard) open the first
+     voice subtype in the list for their mic key, and Auto then follows the keyboard the user came
+     from. Picking "Hebrew (voice)" in the system picker makes every take Hebrew while it is active.
+     imeSubtypeLocale is the old-style "iw" Java locale code Android still reports for Hebrew;
+     languageTag is the BCP 47 "he". -->
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
     android:settingsActivity="app.hebrish.dictation.MainActivity"
     android:supportsSwitchingToNextInputMethod="true">
@@ -13,5 +19,11 @@
         android:imeSubtypeMode="voice"
         android:label="@string/subtype_label"
         android:languageTag="en-US"
+        android:overridesImplicitlyEnabledSubtype="true" />
+    <subtype
+        android:imeSubtypeLocale="iw"
+        android:imeSubtypeMode="voice"
+        android:label="@string/subtype_label_he"
+        android:languageTag="he"
         android:overridesImplicitlyEnabledSubtype="true" />
 </input-method>

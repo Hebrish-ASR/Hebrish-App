@@ -8,6 +8,7 @@ import android.os.Build
 import app.hebrish.core.Catalogue
 import app.hebrish.core.ModelStore
 import app.hebrish.core.TakeDecoder
+import app.hebrish.core.StreamingTranscriber
 import app.hebrish.core.Transcriber
 import org.json.JSONObject
 import java.io.OutputStream
@@ -73,11 +74,13 @@ object History {
         if (text.isBlank() || !Prefs.keepHistory(ctx)) return
         val app = ctx.applicationContext
         val at = System.currentTimeMillis() / 1000.0
-        val model = Catalogue.selected(app)
+        // The language model when one decoded the take (2026-11-16), else the selected dictation model.
+        val model = stats.model ?: Catalogue.selected(app)
         val installed = ModelStore.installed(app, model)
         val decode = JSONObject().apply {
             put("app", "android " + app.packageManager.getPackageInfo(app.packageName, 0).versionName)
-            put("engine", "${Transcriber.ENGINE}, sherpa-onnx ${BuildConfig.SHERPA_VERSION}")
+            put("engine", "${if (stats.model != null) StreamingTranscriber.ENGINE else Transcriber.ENGINE}, sherpa-onnx ${BuildConfig.SHERPA_VERSION}")
+            put("language", stats.language)
             put("threads", Transcriber.threads)
             put("cores", Runtime.getRuntime().availableProcessors())
             put("device", "${Build.MANUFACTURER} ${Build.MODEL}")
@@ -125,7 +128,7 @@ object History {
     val CSV_COLUMNS = listOf(
         "at", "text", "words", "seconds", "model", "source",
         "model_rev", "decode_s", "rtf", "wait_s", "load_s", "segments", "context_s", "type_as_you_go", "all_caps",
-        "engine", "threads", "cores", "device", "soc", "android", "app", "uid",
+        "language", "engine", "threads", "cores", "device", "soc", "android", "app", "uid",
     )
 
     /** Writes every row, oldest first, as RFC 4180 CSV in UTF-8 with a BOM (so spreadsheets read it as UTF-8). Returns the row count. */
@@ -146,7 +149,7 @@ object History {
                         iso.format(Date((c.getDouble(1) * 1000).toLong())), c.getString(2), c.getInt(3).toString(),
                         seconds?.let { "%.2f".format(Locale.US, it) } ?: "", c.getString(5), c.getString(6),
                         c.getString(7) ?: "", opt("decode_s"), rtf, opt("wait_s"), opt("load_s"), opt("segments"), opt("context_s"),
-                        opt("type_as_you_go"), opt("all_caps"), opt("engine"), opt("threads"), opt("cores"),
+                        opt("type_as_you_go"), opt("all_caps"), opt("language"), opt("engine"), opt("threads"), opt("cores"),
                         opt("device"), opt("soc"), opt("android"), opt("app"), c.getString(0),
                     )
                     w.write(row.joinToString(",") { csv(it) } + "\r\n")

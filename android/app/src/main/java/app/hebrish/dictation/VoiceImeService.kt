@@ -86,6 +86,14 @@ class VoiceImeService : InputMethodService() {
     private lateinit var micLbl: TextView
     /** The "No ." chip (B-105): quick toggle for Prefs.noFinalStop. */
     private lateinit var noStop: TextView
+    /** The EN / עב button (2026-11-16): Prefs.inputLanguage, Auto / English / Hebrew. */
+    private lateinit var lang: TextView
+    /** This IME's active subtype (English or Hebrew voice, res/xml/method.xml); a Hebrew one counts in Auto. */
+    private var ownSubtype: android.view.inputmethod.InputMethodSubtype? = null
+    /** The open take is Hebrew (status line says so). */
+    private var takeHebrew = false
+    /** Hebrew was wanted but the Hebrew model isn't downloaded: the status line offers it (tap). */
+    private var hebrewMissing = false
 
     /** Live draft of the open take (I-4), when Prefs.liveDraft was on at its start. */
     private var draft: LiveDraft? = null
@@ -115,6 +123,21 @@ class VoiceImeService : InputMethodService() {
             showNoStop()
         }
         insertLastBtn.setOnClickListener { insertLast() }
+        lang = v.findViewById(R.id.lang)
+        lang.setOnClickListener {
+            val next = InputLanguage.next(Prefs.inputLanguage(this))
+            Prefs.setInputLanguage(this, next)
+            lang.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            showLanguage()
+            Toast.makeText(this, when (next) {
+                InputLanguage.Mode.AUTO -> R.string.lang_toast_auto
+                InputLanguage.Mode.ENGLISH -> R.string.lang_toast_en
+                InputLanguage.Mode.HEBREW -> R.string.lang_toast_he
+            }, Toast.LENGTH_SHORT).show()
+            if (state == State.IDLE) idleStatus()
+        }
+        // The hint "no Hebrew model" is on the status line; a tap there opens Models.
+        status.setOnClickListener { if (hebrewMissing) openModels() }
         mic.setOnClickListener { onMic() }
         v.findViewById<ImageButton>(R.id.switch_ime).apply {
             setOnClickListener { leave() }
@@ -214,6 +237,50 @@ class VoiceImeService : InputMethodService() {
         source.setCompoundDrawablesRelativeWithIntrinsicBounds(Mic.icon(d), 0, 0, 0)
     }
 
+    /** The EN / עב button: its state's label, lit unless on Auto. */
+    private fun showLanguage() {
+        if (!::lang.isInitialized) return
+        val mode = Prefs.inputLanguage(this)
+        lang.setText(when (mode) {
+            InputLanguage.Mode.AUTO -> R.string.ime_lang_auto
+            InputLanguage.Mode.ENGLISH -> R.string.ime_lang_en
+            InputLanguage.Mode.HEBREW -> R.string.ime_lang_he
+        })
+        lang.alpha = if (mode == InputLanguage.Mode.AUTO) 0.75f else 1f
+        lang.backgroundTintList = if (mode == InputLanguage.Mode.AUTO) null else tint(R.color.ime_mic_idle)
+        lang.contentDescription = getString(when (mode) {
+            InputLanguage.Mode.AUTO -> R.string.ime_lang_cd_auto
+            InputLanguage.Mode.ENGLISH -> R.string.ime_lang_cd_en
+            InputLanguage.Mode.HEBREW -> R.string.ime_lang_cd_he
+        })
+    }
+
+    /** The language a take started now would be in (InputLanguage, decided per take). */
+    private fun decideLanguage() = InputLanguage.forKeyboard(this, ownSubtype, currentInputEditorInfo)
+
+    /** Idle status: "tap to speak", or the hint to get the Hebrew model when the next take would want it. */
+    private fun idleStatus() {
+        hebrewMissing = InputLanguage.model(this, decideLanguage()).second
+        show(getString(if (hebrewMissing) R.string.lang_no_hebrew_model else R.string.ime_tap_to_speak), busy = false)
+    }
+
+    private fun openModels() {
+        startActivity(Intent(this, ModelsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    /** The system switched this IME's subtype (English / Hebrew voice, from the picker or a keyboard's mic key). */
+    override fun onCurrentInputMethodSubtypeChanged(newSubtype: android.view.inputmethod.InputMethodSubtype?) {
+        super.onCurrentInputMethodSubtypeChanged(newSubtype)
+        ownSubtype = newSubtype
+        android.util.Log.i(InputLanguage.TAG, "own subtype now ${InputLanguage.tagOf(newSubtype)}")
+    }
+
+    private fun listening(secs: Int) = getString(when {
+        takeHebrew -> R.string.lang_hebrew_listening
+        hebrewMissing -> R.string.lang_listening_no_he
+        else -> R.string.ime_status_listening
+    }, secs / 60, secs % 60)
+
     /** The "No ." chip: lit while the setting is on, dimmed while off. */
     private fun showNoStop() {
         if (!::noStop.isInitialized) return
@@ -277,6 +344,7 @@ class VoiceImeService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        ownSubtype = runCatching { getSystemService(InputMethodManager::class.java).currentInputMethodSubtype }.getOrNull() ?: ownSubtype
         passwordField = isPassword(info)
         if (open) return resumeAfterHide(info)
         if (restarting) return
@@ -287,11 +355,12 @@ class VoiceImeService : InputMethodService() {
             !hasMic() -> show(getString(R.string.ime_no_permission), busy = false)
             // A floating mic take isn't dropped by a field gaining focus, only by a tap on this mic.
             Prefs.autoStart(this) && !FloatingMicService.takeOpen -> startRecording()
-            else -> { show(getString(R.string.ime_tap_to_speak), busy = false); preload() }
+            else -> { idleStatus(); preload() }
         }
         renderTake()
         showSource()
         showNoStop()
+        showLanguage()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -381,18 +450,27 @@ class VoiceImeService : InputMethodService() {
         }
     }
 
-    private fun preload() = Transcriber.preload(this)
+    /** The main model, and the Hebrew one too when it is on the phone and the next take would use it. */
+    private fun preload() {
+        Transcriber.preload(this)
+        InputLanguage.model(this, decideLanguage()).first?.let { StreamingTranscriber.preload(this, it) }
+    }
 
     private fun startRecording(cue: Feedback.Cue = Feedback.Cue.START) {
         if (passwordField) return show(getString(R.string.ime_password), busy = false)
         // First, so the floating mic's Mic.release can't close a Bluetooth link opened for this take.
         FloatingMicService.yieldMic()
-        preload()
+        // Language per take (2026-11-16): the Hebrew model when the keyboard (or the EN / עב button) says Hebrew.
+        val (he, missing) = InputLanguage.model(this, decideLanguage())
+        takeHebrew = he != null
+        hebrewMissing = missing
+        if (he != null) StreamingTranscriber.preload(this, he) else Transcriber.preload(this)
         var t: Take? = null
         // Live draft (I-4) commits each phrase at its pause, so it needs the pieces as they are decoded.
-        val live = Prefs.liveDraft(this)
+        // Not for Hebrew takes: LiveDraft re-decodes with the main model.
+        val live = Prefs.liveDraft(this) && he == null
         val pieces = live || Prefs.typeAsYouGo(this)
-        val d = TakeDecoder(this, if (pieces) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
+        val d = TakeDecoder(this, he, if (pieces) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
         val current = Take(d)
         t = current
         val r = Recorder(
@@ -419,7 +497,7 @@ class VoiceImeService : InputMethodService() {
         shownSeconds = -1
         Feedback.cue(this, cue)
         if (cue == Feedback.Cue.RESTART) flashRetake()
-        show(getString(R.string.ime_status_listening, 0, 0), busy = false)
+        show(listening(0), busy = false)
         renderTake()
         Mic.substitute(r)?.let { show(getString(R.string.mic_substituted, Mic.label(this, r.preferredDevice), Mic.label(this, it)), busy = false) }
     }
@@ -442,7 +520,7 @@ class VoiceImeService : InputMethodService() {
                 }
                 state = State.RECORDING
                 shownSeconds = -1
-                show(getString(R.string.ime_status_listening, r.seconds / 60, r.seconds % 60), busy = false)
+                show(listening(r.seconds), busy = false)
             }
             else -> return
         }
@@ -518,7 +596,8 @@ class VoiceImeService : InputMethodService() {
             return
         }
         finishing.addLast(t)
-        state = if (Transcriber.isLoaded(this)) State.TRANSCRIBING else State.LOADING
+        val loaded = d.language?.let { StreamingTranscriber.isLoaded(this, it) } ?: Transcriber.isLoaded(this)
+        state = if (loaded) State.TRANSCRIBING else State.LOADING
         renderTake()
         show(getString(if (state == State.LOADING) R.string.ime_loading else R.string.ime_transcribing), busy = true)
         d.finish(samples) { result ->
@@ -852,7 +931,7 @@ class VoiceImeService : InputMethodService() {
         val secs = recorder?.seconds ?: return
         if (state == State.RECORDING && secs != shownSeconds && !flashing) {
             shownSeconds = secs
-            status.text = getString(R.string.ime_status_listening, secs / 60, secs % 60)
+            status.text = listening(secs)
         }
     }
 

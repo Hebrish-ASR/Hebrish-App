@@ -73,11 +73,11 @@ object Transcriber {
      *   open (a decode still running finishes first: the free waits for its lock).
      */
     fun checkIdle() {
-        if (recognizer != null && SystemClock.elapsedRealtime() - lastUse >= IDLE_UNLOAD_MS) freeInBackground(IDLE_UNLOAD_MS, "idle")
+        if ((recognizer != null || StreamingTranscriber.loaded) && SystemClock.elapsedRealtime() - lastUse >= IDLE_UNLOAD_MS) freeInBackground(IDLE_UNLOAD_MS, "idle")
     }
 
     fun onScreenOff(takeOpen: Boolean) {
-        if (!takeOpen && recognizer != null) freeInBackground(0L, "screen off")
+        if (!takeOpen && (recognizer != null || StreamingTranscriber.loaded)) freeInBackground(0L, "screen off")
     }
 
     private val freeing = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -85,7 +85,8 @@ object Transcriber {
     /** Off the caller's thread (it may wait for a decode); one at a time. */
     private fun freeInBackground(idleMs: Long, why: String) {
         if (!freeing.compareAndSet(false, true)) return
-        Thread { try { unloadIfIdle(idleMs, why) } finally { freeing.set(false) } }.start()
+        // The language model (StreamingTranscriber, 2026-11-16) goes with it, on its own idle clock.
+        Thread { try { unloadIfIdle(idleMs, why); StreamingTranscriber.unloadIfIdle(idleMs, why) } finally { freeing.set(false) } }.start()
     }
 
     /**
@@ -107,7 +108,7 @@ object Transcriber {
      */
     fun onTrimMemory(level: Int, takeOpen: Boolean) {
         val pressure = level in 10..15 || level >= 40
-        if (pressure && !takeOpen && recognizer != null) freeInBackground(30_000L, "memory pressure, level $level")
+        if (pressure && !takeOpen && (recognizer != null || StreamingTranscriber.loaded)) freeInBackground(30_000L, "memory pressure, level $level")
     }
 
     fun isLoaded(ctx: Context) = recognizer != null && loadedDir == ModelStore.dir(ctx)?.path
