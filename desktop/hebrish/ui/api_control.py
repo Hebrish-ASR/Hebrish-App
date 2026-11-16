@@ -13,6 +13,69 @@ from ..config import HISTORY_DB
 MAIN_TIMEOUT = 10
 
 
+def _bool(v):
+    if not isinstance(v, bool):
+        raise ValueError("must be true or false")
+    return v
+
+
+def _choice(*allowed):
+    def check(v):
+        if v not in allowed:
+            raise ValueError("must be one of " + ", ".join(f'"{a}"' for a in allowed))
+        return v
+    return check
+
+
+def _int(lo, hi, also=()):
+    def check(v):
+        if isinstance(v, bool) or not isinstance(v, int) or not (lo <= v <= hi or v in also):
+            extra = "".join(f" or {a}" for a in also)
+            raise ValueError(f"must be a whole number from {lo} to {hi}{extra}")
+        return v
+    return check
+
+
+def _chord(v):
+    from ..inserter import parse_chord
+    if not isinstance(v, str) or not v.strip():
+        raise ValueError('must be a shortcut such as "ctrl+v"')
+    parse_chord(v)              # ValueError names the bad key
+    return v.strip().lower()
+
+
+# GET/POST /v1/app/settings (2026-11-16): the settings an agent may change, each with its check.
+# Only settings the app reads when it uses them (no restart, nothing to rebuild), so a change takes
+# effect at the next take. Paths, hotkeys, models, the microphone and the local API's own switches
+# are left out on purpose: a wrong value there can lock the user out or needs a dialog.
+# input_language has its own route (/v1/app/language).
+SETTINGS = {
+    "out_cursor": (_bool, "Output: paste at the cursor"),
+    "out_clipboard": (_bool, "Output: copy each take to the clipboard (keeps it there after the paste)"),
+    "out_window": (_bool, "Output: show takes in the Hebrish window"),
+    "paste_chord": (_chord, "The paste shortcut, e.g. ctrl+v or ctrl+shift+v"),
+    "send_chord": (_chord, "The send key for Stop and send / Enter after silence, e.g. enter or ctrl+enter"),
+    "trailing_space": (_bool, "A space after each pasted take"),
+    "bind_pane": (_bool, "A take goes to the Konsole pane it started in"),
+    "bind_window": (_bool, "KDE: a take's pastes go back to the window it started in"),
+    "detect_no_field": (_bool, "Ask accessibility whether a text field had focus; offer Paste if not"),
+    "auto_enter": (_bool, "Press the send key after a silence"),
+    "auto_enter_s": (_int(2, 60), "Seconds of silence before that send key"),
+    "enter_stops": (_bool, "Enter during a take stops it"),
+    "enter_guard": (_choice("late", "hold", "off"), "Words still coming when you press Enter: late = keep for Paste, hold = hold Enter, off = paste anyway"),
+    "live_insert_s": (_int(3, 60, also=(0,)), "Insert as you go: seconds between pastes; 0 = everything when you stop"),
+    "stream_release": (_choice("word", "phrase", "sentence"), "Streaming models: paste every word, phrase or sentence"),
+    "all_caps": (_bool, "Transcripts in capitals"),
+    "no_final_stop": (_bool, "Drop the full stop at the end of a take"),
+    "clear_each_take": (_bool, "Clear the Dictate box at each take"),
+    "feedback": (_choice("beeps", "voice", "off"), "Start and stop sounds"),
+    "beep_volume": (_int(0, 100), "Sound volume, percent"),
+    "quiet_hours": (_bool, "Quiet hours on"),
+    "vad": (_bool, "Voice detection (skip silence)"),
+}
+OUTPUTS = ("out_cursor", "out_clipboard", "out_window")
+
+
 class Control:
     history_path = HISTORY_DB
 
@@ -28,6 +91,8 @@ class Control:
             ("POST", "/v1/app/models/select"): self.select_model,
             ("GET", "/v1/app/language"): self.language,
             ("POST", "/v1/app/language"): self.set_language,
+            ("GET", "/v1/app/settings"): self.settings,
+            ("POST", "/v1/app/settings"): self.set_settings,
             ("GET", "/v1/app/models/updates"): self.check_models,
             ("POST", "/v1/app/models/updates"): self.install_models,
         }
@@ -171,6 +236,43 @@ class Control:
             raise ValueError('input_language must be "auto", "en" or "he"')
         self._main(lambda: self.ctl.set_input_language(value))
         return self.language(body)
+
+    def settings(self, _body) -> tuple[int, dict]:
+        cfg = self.ctl.cfg
+        return 200, {"settings": {k: cfg[k] for k in SETTINGS},
+                     "help": {k: d for k, (_, d) in SETTINGS.items()}}
+
+    def set_settings(self, body) -> tuple[int, dict]:
+        """Body {"key": value, ...}: all checked first, then all applied, or none (400 names the
+        first bad one). At least one output stays on, as in the window."""
+        if not isinstance(body, dict) or not body:
+            raise ValueError('send the settings to change, e.g. {"out_clipboard": false}')
+        unknown = sorted(set(body) - set(SETTINGS))
+        if unknown:
+            raise ValueError(f"not a setting this route changes: {', '.join(unknown)} (GET /v1/app/settings lists them)")
+        new = {}
+        for k, v in body.items():
+            try:
+                new[k] = SETTINGS[k][0](v)
+            except ValueError as e:
+                raise ValueError(f"{k} {e}") from None
+        c = self.ctl
+        if not any(new.get(k, c.cfg[k]) for k in OUTPUTS):
+            raise ValueError("at least one output (out_cursor, out_clipboard, out_window) must stay on")
+
+        def apply():
+            changed = [k for k, v in new.items() if c.cfg[k] != v]
+            for k in changed:
+                c.cfg.set(k, new[k])
+            if changed and (set(changed) & {*OUTPUTS, "paste_chord"}):
+                c.win.sync_output()
+            if "vad" in changed:
+                c.apply_vad()
+                c.sync_tray_vad()
+            return changed
+        changed = self._main(apply)
+        code, out = self.settings(body)
+        return code, {"changed": changed, **out}
 
     @staticmethod
     def _updates(ups) -> dict:

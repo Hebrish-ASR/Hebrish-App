@@ -76,6 +76,8 @@ ROUTES = [
     ("GET", "/v1/app/language", True, "Input language: setting (auto|en|he), the Hebrew model's state, the last take's language"),
     ("POST", "/v1/app/language", True, 'Body {"input_language": "auto"|"en"|"he"}: Follow keyboard, English, Hebrew'),
     ("POST", "/v1/app/models/select", True, 'Body {"id": ..., "download": false}: switch model'),
+    ("GET", "/v1/app/settings", True, "The settings this API may change, their values and what each does"),
+    ("POST", "/v1/app/settings", True, 'Body {"out_clipboard": false, ...}: change settings; all checked first, then applied together'),
     ("GET", "/v1/app/models/updates", True, "Check every downloaded model and add-on (network)"),
     ("POST", "/v1/app/models/updates", True, "Download what the check finds; poll /v1/app/status"),
     ("GET", "/v1/history", True, "Transcripts. Query: q, limit (max 1000), offset, since, until (unix time), source, edited=1"),

@@ -1822,6 +1822,17 @@ adding find-and-replace rules, shipped with the app. `GET /v1` lists every route
   was lost on the next tab save. `_dict_add` and `_dict_remove` now start from the file, and
   `Control.dictionary_changed` refreshes the table. **1.017 and older still have this**: a word added
   to the file while the app is open needs a restart before the tab is used.
+- **Settings (2026-11-16).** `GET /v1/app/settings` returns `settings` (current values) and `help`
+  (what each does); `POST /v1/app/settings` takes `{"key": value, ...}` and answers with `changed`
+  plus the same lists. The keys are an allowlist, `api_control.SETTINGS`: outputs, paste and send
+  shortcuts, pane and window binding, Enter after silence, Enter guard, insert-as-you-go pacing,
+  capitals, sounds, voice detection. They're all read when used, so a change applies from the next
+  take with no restart. Each value is checked (type, range, choice; shortcuts through `parse_chord`)
+  before any is written, so a bad body changes nothing (400 names the key). At least one output
+  stays on. Applied on the GUI thread with `cfg.set`, then `win.sync_output()` for outputs and the
+  paste shortcut, and `apply_vad` + `sync_tray_vad` for `vad`. Left out on purpose: paths,
+  hotkeys, models, microphones, and the local API's own switches. Other Settings widgets show their
+  old value until the window is reopened; the saved setting is right.
 - **Updates.** `POST /v1/app/update` is the update bar's action: apt only, the user approves pkexec,
   409 with the download page on other installs. `Controller.app_update_error` keeps the failure for
   `/v1/app/status`.
