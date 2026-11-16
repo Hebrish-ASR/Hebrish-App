@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-16",
+      "tag": "Android 1.036",
+      "title": "Model downloads survive a dropped connection",
+      "summary": "A download that loses its connection or times out no longer fails: it waits, retries and carries on from where it stopped.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-11-16",
       "tag": "Android 1.035",
       "title": "Models always stay up to date, and the Models screen shows only what your phone can run",
       "summary": "Downloaded models now always update themselves in the background; the switch to turn that off is gone. \"Only on Wi-Fi\" is still there.",
@@ -175,15 +184,6 @@
       "tag": "Android 1.009",
       "title": "No dead ends, and steadier under load",
       "summary": "Buttons that open a phone settings screen no longer close the app on phones that don't have that screen; the app tells you instead.",
-      "platforms": [
-        "android"
-      ]
-    },
-    {
-      "date": "2026-10-30",
-      "tag": "Android 1.008",
-      "title": "Switch between the phone's mic and Bluetooth with one tap",
-      "summary": "The top of the Hebrish voice keyboard shows which mic it will use: Phone, or BT and your headset's name. Tap it once to switch between the phone's mic and a connected Bluetooth headset, before you start or in the middle of a take; what you have already said is kept.",
       "platforms": [
         "android"
       ]
