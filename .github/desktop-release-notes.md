@@ -1,6 +1,6 @@
-**1.036: Dictate in Hebrew with a Hebrew-only model, used when your keyboard layout is Hebrew.**
+**1.037: Dictation goes where you started it, even if you move to another terminal pane or window while it transcribes.**
 
-- **Hebrew model:** a new download on the Models tab (about 72 MB) that writes in Hebrew letters. It is [Zipformer2 66M by Yakov Kolani](https://huggingface.co/ivrit-ai/zipformer2-66m-streaming-he), trained on [ivrit.ai](https://www.ivrit.ai) data, CC BY 4.0, unchanged (Hebrish fork: [Hebrish/Zipformer2-66M-Streaming-He](https://huggingface.co/Hebrish/Zipformer2-66M-Streaming-He)). Credited on its card and on About.
-- **Automatic switching:** with the Hebrew model downloaded, Voice Typing uses it when your keyboard layout is Hebrew (KDE, GNOME, X11 and Windows); English stays on your main model. Auto / EN / עב buttons under the record button and in Settings choose by hand. Transcription mode stays on the main model.
-- **Local API:** `language: "he"` on transcription requests, and `GET`/`POST /v1/app/language`.
+- **Konsole panes:** a take remembers the Konsole pane it started in, and its text and Enter go there, even after you click into another pane. With Konsole's *Settings → Configure Konsole → General → "Enable the security sensitive parts of the DBus API"* on, the text goes straight into that pane without the clipboard or a paste shortcut. Without it, Hebrish switches back to that pane and pastes, and says once how to turn the setting on.
+- **Other windows (KDE Plasma):** if you move to another window while a take is transcribing, Hebrish brings the window it started in back to the front before it pastes.
+- On by default; `bind_pane` and `bind_window` in the config turn each off.
 - Windows and the AppImage stay on 1.026.
