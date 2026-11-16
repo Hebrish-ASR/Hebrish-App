@@ -222,6 +222,7 @@ class AppUpdateReceiver : BroadcastReceiver() {
                 Intent.ACTION_MY_PACKAGE_REPLACED -> {
                     AppUpdates.announce(ctx)
                     UpdateJobs.sync(ctx)
+                    UpdateJobs.checkModelsNow(ctx)      // D-2026-11-16-03: catch up on model weights now
                 }
                 AppUpdates.ACTION_STATUS -> status(ctx, intent)
             }

@@ -15,7 +15,9 @@ import java.net.URL
  *
  * [Data.models] holds only the variants this build can run ([SUPPORTED_ENGINES], platform
  * android), planned ones included; everything that downloads or selects uses it. [Data.lines]
- * holds every variant, for the Models screen, which lists the others greyed with where they run.
+ * holds every variant; the Models screen lists only the ones this build can run and the catalogue
+ * offers on Android (`offered_on`), plus any already installed (D-2026-11-16-02, Daniel: a model
+ * that isn't available on the platform is not listed at all).
  */
 object Catalogue {
     const val ASSET = "catalogue.json"
@@ -84,6 +86,8 @@ object Catalogue {
         /** sherpa-onnx online `model_type` (catalogue `engine_options.model_type`, "zipformer2"). */
         val modelType: String = "",
         val credit: Credit? = null,
+        /** Catalogue `offered_on` (2026-11-12): the platforms whose Models screen lists it; null = every platform it runs on. */
+        val offeredOn: List<String>? = null,
     ) {
         /** This build can run it: an offline transducer, or a streaming one that is a language model. */
         val supported: Boolean get() = PLATFORM in platforms &&
@@ -182,6 +186,7 @@ object Catalogue {
                                 c.optString("license_url").ifEmpty { null }, c.optString("url").ifEmpty { null },
                                 c.optString("original_url").ifEmpty { null }, c.optString("changes"))
                         }?.takeIf { it.text.isNotEmpty() },
+                        offeredOn = if (m.has("offered_on")) strings(m, "offered_on") else null,
                     )
                 })
         }

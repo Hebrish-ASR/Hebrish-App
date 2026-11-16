@@ -56,6 +56,8 @@ object TakeGuard {
 object UpdateJobs {
     const val APP = 4106
     const val MODELS = 4107
+    /** One-off model check right after the app was updated (D-2026-11-16-03). */
+    const val MODELS_NOW = 4108
     private const val TAG = "HebrishUpdate"
     private const val HOUR = 60 * 60 * 1000L
 
@@ -64,8 +66,26 @@ object UpdateJobs {
         runCatching {
             ensure(app, APP, AppUpdates.backgroundOn(app), 12 * HOUR, JobInfo.NETWORK_TYPE_UNMETERED)
             val net = if (Prefs.modelWifiOnly(app)) JobInfo.NETWORK_TYPE_UNMETERED else JobInfo.NETWORK_TYPE_ANY
-            ensure(app, MODELS, Prefs.modelAutoUpdate(app), 6 * HOUR, net)
+            ensure(app, MODELS, true, 6 * HOUR, net)      // always on (D-2026-11-16-03)
         }.onFailure { Log.w(TAG, "scheduling failed", it) }
+    }
+
+    /**
+     * D-2026-11-16-03 (Daniel): after an app update, look for new model weights now instead of waiting
+     * up to 6 h for the periodic job, so someone several model versions behind catches up. A one-off
+     * job with the same network rule as [MODELS] (Only on Wi-Fi), no battery condition; [ModelUpdates.run]
+     * does the rest. Replaces a pending one-off of its own, never the periodic job.
+     */
+    fun checkModelsNow(ctx: Context) {
+        val app = ctx.applicationContext
+        runCatching {
+            val js = app.getSystemService(JobScheduler::class.java) ?: return
+            val net = if (Prefs.modelWifiOnly(app)) JobInfo.NETWORK_TYPE_UNMETERED else JobInfo.NETWORK_TYPE_ANY
+            js.schedule(JobInfo.Builder(MODELS_NOW, ComponentName(app, UpdateJob::class.java))
+                .setRequiredNetworkType(net)
+                .setOverrideDeadline(24 * HOUR)
+                .build())
+        }.onFailure { Log.w(TAG, "scheduling the post-update model check failed", it) }
     }
 
     @Suppress("DEPRECATION")
@@ -97,7 +117,7 @@ class UpdateJob : JobService() {
             try {
                 again = when (params.jobId) {
                     UpdateJobs.APP -> AppUpdates.run(app, manual = false).kind == AppUpdates.Kind.POSTPONED
-                    UpdateJobs.MODELS -> ModelUpdates.run(app)
+                    UpdateJobs.MODELS, UpdateJobs.MODELS_NOW -> ModelUpdates.run(app)
                     else -> false
                 }
             } catch (t: Throwable) {

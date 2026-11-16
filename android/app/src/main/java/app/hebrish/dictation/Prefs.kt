@@ -81,9 +81,9 @@ object Prefs {
     fun appUpdateInstalling(ctx: Context): String? = sp(ctx).getString("app_update_installing", null)
     fun setAppUpdateInstalling(ctx: Context, v: String?) = sp(ctx).edit().putString("app_update_installing", v).apply()
 
-    /** B-107 (Daniel, 2026-11-13): download new weights for installed models in the background. On by default, every build. */
-    fun modelAutoUpdate(ctx: Context) = sp(ctx).getBoolean("model_auto_update", true)
-    fun setModelAutoUpdate(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("model_auto_update", v).apply()
+    // B-107's "Update models automatically" switch (pref `model_auto_update`) was removed on 2026-11-16
+    // (D-2026-11-16-03, Daniel: "you get the latest model, that's it"). Background model updates are always on;
+    // a stored `false` from an older build is ignored.
     /** B-107: background model downloads only on an unmetered network (Wi-Fi). On by default. */
     fun modelWifiOnly(ctx: Context) = sp(ctx).getBoolean("model_wifi_only", true)
     fun setModelWifiOnly(ctx: Context, v: Boolean) = sp(ctx).edit().putBoolean("model_wifi_only", v).apply()

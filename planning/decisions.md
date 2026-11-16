@@ -9,6 +9,26 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-16-02: An app lists only the models it can run on that platform
+
+- **Decision:** Design rule for every platform and every variant: a Models screen lists a variant only if that
+  build can run it on that platform and the catalogue offers it there (`offered_on`). Variants that run elsewhere are
+  not shown greyed with "runs on …"; they are not listed at all. An installed variant stays listed. A line
+  with nothing left is hidden. Android follows it from 1.035 (`ModelsActivity.listed`); the desktop already
+  did through `offered_on` and its supported engines (`model_store.listed_lines`).
+- **Why:** Daniel, 2026-11-16: "there's no point in Android in showing the models that aren't available on the
+  platform, like Sabich ASR, Qwen; it's just confusing to have them there." The other variants stay on
+  hebrish.app/models and Hugging Face.
+
+### D-2026-11-16-03: Model updates are always automatic, and an app update triggers a model check
+
+- **Decision:** Android drops the "Update models automatically" switch: installed models always get new
+  weights in the background (B-107's job, every ~6 h). "Only on Wi-Fi" stays, as a choice of network.
+  After the app itself is updated, a one-off job checks for new weights immediately (`UpdateJobs.checkModelsNow`).
+  Android 1.035.
+- **Why:** Daniel, 2026-11-16: a user was several model versions behind. "You get the latest model, that's it":
+  no opt-out. The desktop app still has its automatic-updates setting (on by default); not changed here.
+
 ### D-2026-11-16-01: A Hebrew-only model, used when the keyboard is Hebrew
 
 - **Decision:** Both apps get a second, Hebrew-only model, which writes in Hebrew letters. It is used instead of the

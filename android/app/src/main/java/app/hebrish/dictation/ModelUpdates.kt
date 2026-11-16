@@ -14,6 +14,8 @@ import android.util.Log
  * installed models only, one after another. The download may run during a take; the switch-over
  * waits for it ([ModelDownload.holdSwap] = [TakeGuard.busy]). Afterwards a quiet notification
  * says "Sabich updated to v3.1". Every build, Play included (weights are data, not code).
+ * Always on since 2026-11-16 (D-2026-11-16-03): no opt-out; the same run also starts once right after
+ * the app itself is updated ([UpdateJobs.checkModelsNow], from AppUpdateReceiver).
  * docs/maintaining.md, "Model updates in the background (B-107)".
  */
 object ModelUpdates {
@@ -22,7 +24,6 @@ object ModelUpdates {
     /** Blocking; call on a worker thread. True asks the job to retry soon (something was in the way). */
     fun run(ctx: Context): Boolean {
         val app = ctx.applicationContext
-        if (!Prefs.modelAutoUpdate(app)) return false
         if (Prefs.modelWifiOnly(app) && metered(app)) return false
         // A download the user started (or a folder move) is running: leave it alone, try later.
         if (ModelDownload.status is ModelDownload.Status.Running || ModelDownload.moving) return true

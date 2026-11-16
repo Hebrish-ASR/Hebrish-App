@@ -62,15 +62,9 @@ class ModelsActivity : Page() {
         checkStatus = text()
         checkBtn = button(R.string.check_update) { ModelDownload.check(this, force = true) }
         switch(R.string.models_auto_check, { ModelPrefs.autoCheck(this) }, { ModelPrefs.setAutoCheck(this, it) })
-        // B-107: background model updates (UpdateJobs.MODELS), on by default, Wi-Fi only by default.
-        lateinit var wifi: android.widget.Switch
-        switch(R.string.models_auto_update, { Prefs.modelAutoUpdate(this) }, {
-            Prefs.setModelAutoUpdate(this, it)
-            wifi.isEnabled = it
-            UpdateJobs.sync(this)
-        })
-        wifi = switch(R.string.models_wifi_only, { Prefs.modelWifiOnly(this) }, { Prefs.setModelWifiOnly(this, it); UpdateJobs.sync(this) })
-        wifi.isEnabled = Prefs.modelAutoUpdate(this)
+        // B-107: background model updates (UpdateJobs.MODELS), always on since D-2026-11-16-03 (no switch);
+        // Only on Wi-Fi stays a choice of network, not an opt-out.
+        switch(R.string.models_wifi_only, { Prefs.modelWifiOnly(this) }, { Prefs.setModelWifiOnly(this, it); UpdateJobs.sync(this) })
 
         if (Channel.modelLocation) {
             heading(R.string.location_title)
@@ -285,7 +279,13 @@ class ModelsActivity : Page() {
         list.removeAllViews()
         val selected = Catalogue.selected(this)
         // Language lines (the Hebrew model, 2026-11-16) are not dictation choices: their own section below.
-        val (languages, dictation) = Catalogue.get(this).lines.partition { l -> l.variants.isNotEmpty() && l.variants.all { it.language != null } }
+        // D-2026-11-16-02 (Daniel): a variant this phone can't run is not listed at all (it used to be greyed with
+        // where it runs), nor one the catalogue's `offered_on` leaves out; one already installed stays. A line
+        // with nothing left is not shown.
+        val shown = Catalogue.get(this).lines
+            .map { l -> l.copy(variants = l.variants.filter { listed(it) }) }
+            .filter { it.variants.isNotEmpty() }
+        val (languages, dictation) = shown.partition { l -> l.variants.all { it.language != null } }
         for (line in dictation) {
             lineHeader(line)
             for (m in line.variants) card(m, m.id == selected.id, s)
@@ -366,6 +366,10 @@ class ModelsActivity : Page() {
      * hardware, its state, and the actions that make sense for it now. A variant this build can't
      * run is greyed, says where it runs instead, and links to its card.
      */
+    /** Listed on this phone's Models screen (D-2026-11-16-02): runnable here and offered here, or already installed. */
+    private fun listed(m: Catalogue.Model): Boolean =
+        (m.supported && (m.offeredOn == null || Catalogue.PLATFORM in m.offeredOn)) || ModelStore.installed(this, m) != null
+
     private fun card(m: Catalogue.Model, inUse: Boolean, s: ModelDownload.Status) {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL

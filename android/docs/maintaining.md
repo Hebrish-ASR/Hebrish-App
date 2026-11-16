@@ -2204,12 +2204,19 @@ it is granted, background updates are on by default.
 Unreleased. Daniel, 2026-11-13 (R-2026-11-13-4): new weights for the models on the phone should arrive without opening
 the app. Every build, Play included: weights are data, not code.
 
-- **Settings:** Models, Updates: **Update models automatically** (pref `model_auto_update`, default on) and
-  **Only on Wi-Fi** (`model_wifi_only`, default on; greyed out while the first is off). The older
+- **Settings:** Models, Updates: **Only on Wi-Fi** (`model_wifi_only`, default on). The **Update models
+  automatically** switch (pref `model_auto_update`) was removed on 2026-11-16 (D-2026-11-16-03): background
+  model updates are always on, and a stored `false` from an older build is ignored. The older
   "check when the app opens" switch (`auto_check`, off by default for f-droid.org) is unchanged and separate.
 - **Job:** `UpdateJobs.MODELS` (id 4107, the same `UpdateJob` service): every 6 h (flex 2 h), network
   unmetered with Only on Wi-Fi, any network without it, battery not low, persisted. `UpdateJobs.sync` follows
-  the two switches.
+  the Wi-Fi switch.
+- **After an app update** (D-2026-11-16-03, Android 1.035): `AppUpdateReceiver` (`MY_PACKAGE_REPLACED`) also
+  calls `UpdateJobs.checkModelsNow`, a one-off job `MODELS_NOW` (id 4108) with the same network rule, no
+  battery condition and a 24 h deadline, which runs the same `ModelUpdates.run`. Why: a user several model
+  versions behind updated the app and kept the old weights until the periodic job came round. Unverified on a
+  device: that `MY_PACKAGE_REPLACED` arrives for an F-Droid or sideloaded update (it is what B-106's
+  "Hebrish updated" notice already relies on).
 - **Run** (`ModelUpdates.run`): skipped if a download or folder move is already running (retry later), or
   with Only on Wi-Fi and a metered network. Otherwise the existing `ModelDownload.check(force = true)`
   (catalogue refresh, the selected model and every downloaded one), then for each **installed** model with
@@ -2317,3 +2324,14 @@ subtype from the switch history; some keyboards may switch via a path that leave
 `getCurrentInputMethodSubtype()` from the accessibility service reflects Gboard's language switch, whether
 HeliBoard still opens the English subtype with two voice subtypes present, the Zipformer2 model's load time,
 speed and memory on a phone, and Hebrew insertion in real apps.
+
+
+## Models screen lists only what this phone can run (D-2026-11-16-02, Android 1.035)
+
+Daniel, 2026-11-16: models not available on the platform are confusing and are not listed at all. Before, a
+variant this build couldn't run (Qwen3-ASR, Canary-Qwen, Shakshuka, asr4all on builds without its engine) was
+shown greyed with "runs on …". Now `ModelsActivity.listed` keeps a variant only if `Catalogue.Model.supported`
+(platform `android` and an engine this build runs) and the catalogue's `offered_on` (parsed into
+`Model.offeredOn` since 1.035) includes `android` or is absent; a variant already installed stays listed so
+nobody loses a model they have. A line with no listed variants is not shown. The greyed branch of `card` is
+now only reached by an installed variant that is no longer supported.

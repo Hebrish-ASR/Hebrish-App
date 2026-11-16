@@ -270,7 +270,7 @@
     <string name="models_post_cleanup_use">Use for Clean up</string>
     <string name="models_post_cleanup_unsupported">Clean-up models need a newer processor than this phone has (ARMv8.2 with dot product).</string>
     <string name="models_updates">Updates</string>
-    <string name="models_updates_hint">With Update models automatically on, downloaded models get new versions by themselves, checked about every 6 hours. A model being updated stays usable until the new version is downloaded and checked, and a take in progress is never interrupted.</string>
+    <string name="models_updates_hint">Downloaded models get new versions by themselves: checked about every 6 hours and right after Hebrish itself is updated. A model being updated stays usable until the new version is downloaded and checked, and a take in progress is never interrupted.</string>
 
     <string name="keyboard_intro">A voice keyboard that opens from your regular keyboard\'s mic key, records, types the text in and switches back.</string>
 
@@ -699,7 +699,6 @@
     <string name="notes_open_models">Open Models</string>
     <string name="note_delete_confirm">Delete this note? This can\'t be undone.</string>
     <!-- B-107: model updates in the background (Models, Updates). -->
-    <string name="models_auto_update">Update models automatically</string>
     <string name="models_wifi_only">Only on Wi-Fi</string>
     <string name="modelupdate_done">%1$s updated to %2$s</string>
     <!-- B-106: app updates in the background (fdroid build only: Setup, Install and updates). -->
