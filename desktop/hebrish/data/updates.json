@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-16",
+      "tag": "Desktop 1.038",
+      "title": "Dictation goes where you started it, even if you move to another pane or window",
+      "summary": "A take remembers the Konsole pane it started in. Its text and its Enter go there even after you click into another pane, so dictating into one of several terminals split side by side no longer lands in the wrong one.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-16",
       "tag": "Desktop 1.036",
       "title": "Dictate in Hebrew: a Hebrew-only model, used when your keyboard layout is Hebrew",
       "summary": "A new Hebrew model writes in Hebrew letters. With it downloaded, Voice Typing uses it when your keyboard layout is Hebrew; English stays on your main model.",
@@ -176,15 +185,6 @@
       "summary": "Noise filter: a 0 to 100 dial on the Voice Typing tab, set a little stricter than before, to keep room noise from turning into stray words.",
       "platforms": [
         "desktop"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Site",
-      "title": "Home page reordered, and Support the project moves under About",
-      "summary": "The home page now offers the apps before asking for help, and a new section links to the use cases, manual, screenshots, models, blog and roadmap.",
-      "platforms": [
-        "site"
       ]
     }
   ]
