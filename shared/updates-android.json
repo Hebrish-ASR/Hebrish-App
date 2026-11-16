@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-16",
+      "tag": "Android 1.035",
+      "title": "Models always stay up to date, and the Models screen shows only what your phone can run",
+      "summary": "Downloaded models now always update themselves in the background; the switch to turn that off is gone. \"Only on Wi-Fi\" is still there.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-11-16",
       "tag": "Android 1.034",
       "title": "Dictate in Hebrew: a Hebrew-only model, used when your keyboard is in Hebrew",
       "summary": "A new Hebrew model writes in Hebrew letters. With it downloaded, the voice keyboard uses it when the keyboard you came from is set to Hebrew; English stays on your main model.",
@@ -177,17 +186,6 @@
       "summary": "The top of the Hebrish voice keyboard shows which mic it will use: Phone, or BT and your headset's name. Tap it once to switch between the phone's mic and a connected Bluetooth headset, before you start or in the middle of a take; what you have already said is kept.",
       "platforms": [
         "android"
-      ]
-    },
-    {
-      "date": "2026-10-28",
-      "tag": "Models",
-      "title": "Sabich v2.2: more recordings, speed perturbation, and a better score on every measure",
-      "summary": "Sabich v2.2 replaces v2.1 as the recommended model in the apps. It is a Sabich-only update to Release v2; Shakshuka, Jachnun and Meorav are unchanged.",
-      "platforms": [
-        "android",
-        "desktop",
-        "models"
       ]
     }
   ]
