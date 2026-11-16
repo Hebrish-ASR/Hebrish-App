@@ -245,7 +245,7 @@ def test_finish_releases_the_rest():
 
 
 def _run_worker(texts, jobs, cfg=None, enter_at=None, hold=False, late=None, sent=None, send_take=0,
-                heard=0, keys=False, stops=None, maint=None):
+                heard=0, keys=False, stops=None, maint=None, take_info=None):
     """Drive Controller._worker with a scripted Parakeet engine; return (pastes, transcript).
     Skipped where PySide6 isn't installed (Linux CI), as in test_overlay.
     enter_at: the user's send key is pressed while the decode call with that index runs (Enter
@@ -293,6 +293,16 @@ def _run_worker(texts, jobs, cfg=None, enter_at=None, hold=False, late=None, sen
         _guard=threading.Lock(), _unfinished={1}, _diverted=set(), _late={}, _enter_held=False, _hold_timer=None,
         _typed=False, state="recording", recorder=SimpleNamespace(paused=False), _silence=SimpleNamespace(heard=heard),
         _stopped_by_send=False, _maint={}, _maint_ready={})
+    if take_info is not None:     # Hebrew switching: the take's language and engine (take_language)
+        info = dict(take_info)
+        if info.get("engine") == "main":
+            info["engine"] = None
+        elif "engine" in info:
+            info["engine"] = SimpleNamespace(streaming=False, transcribe_after=decode)
+            ctl.engine = SimpleNamespace(streaming=False, transcribe_after=lambda *a, **k: ("WRONG ENGINE", None))
+        ctl._take_info = {1: info}
+        ctl._he_ready = threading.Event()
+        ctl._he_ready.set()
     for name in ("_show", "_insert", "_out", "_finish_take", "_sends", "_send", "_release_hold", "_replay_enter",
                  "_auto_enter", "_maint_end"):
         setattr(ctl, name, getattr(Controller, name).__get__(ctl))
@@ -649,3 +659,13 @@ def test_no_final_stop_keeps_full_stops_inside_the_take():
 def test_no_final_stop_off_keeps_it():
     _, text = _run_worker(["Kitchen sink."], [(None, True)])
     assert text == "Kitchen sink."
+
+
+def test_hebrew_take_uses_its_engine_and_skips_the_chop():
+    """Hebrew switching (2026-11-16): a Hebrew take is decoded by the take's engine, and the
+    disfluency chop (English fillers, a repeat rule that eats Hebrew doubling) is skipped."""
+    pastes, text = _run_worker(["זה מאוד מאוד טוב"], [(None, True)], take_info={"lang": "he", "engine": "he"})
+    assert text == "זה מאוד מאוד טוב" and pastes == ["זה מאוד מאוד טוב "]
+    # the same words on an English take lose the repeat
+    _, text = _run_worker(["זה מאוד מאוד טוב"], [(None, True)], take_info={"lang": "en", "engine": "main"})
+    assert text == "זה מאוד טוב"

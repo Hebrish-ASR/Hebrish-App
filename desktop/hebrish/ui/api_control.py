@@ -26,6 +26,8 @@ class Control:
             ("POST", "/v1/app/restart"): self.restart,
             ("GET", "/v1/app/models"): self.models,
             ("POST", "/v1/app/models/select"): self.select_model,
+            ("GET", "/v1/app/language"): self.language,
+            ("POST", "/v1/app/language"): self.set_language,
             ("GET", "/v1/app/models/updates"): self.check_models,
             ("POST", "/v1/app/models/updates"): self.install_models,
         }
@@ -63,7 +65,8 @@ class Control:
     def status(self, _body) -> tuple[int, dict]:
         c = self.ctl
         return 200, {
-            "app": __version__, "state": c.state, "model": c.api_info(), "keep_history": bool(c.cfg["keep_history"]),
+            "app": __version__, "state": c.state, "model": c.api_info(),
+            "input_language": c.cfg["input_language"], "keep_history": bool(c.cfg["keep_history"]),
             "install_method": c.app_method,
             "app_update": {"running": c.app_updating, "available": c.app_release.version if c.app_release else None,
                            "installed_needs_restart": c.app_installed or None, "error": c.app_update_error},
@@ -124,7 +127,7 @@ class Control:
             data.append({"id": m.id, "name": m.name, "line": m.line, "available": m.available,
                          "streaming": m.streaming, "download_mb": m.download_mb, "installed": m.id in have,
                          "version": act[1].label if act else None, "current": m.id == cur,
-                         "recommended": m.id == rec})
+                         "recommended": m.id == rec, "language": m.language or None})
         return 200, {"object": "list", "data": data}
 
     def select_model(self, body) -> tuple[int, dict]:
@@ -132,6 +135,9 @@ class Control:
         m = model_store.get_model(mid) if isinstance(mid, str) else None
         if m is None:
             raise LookupError(f"no model {mid!r}; GET /v1/app/models lists them")
+        if m.language:
+            raise ValueError(f"{mid} is the Hebrew model: it is used by input language (POST /v1/app/language), "
+                             "not selected")
         if c.state != "idle":
             raise RuntimeError(f"the app is {c.state}: switch models when it is idle")
         if mid in model_store.installed_ids():
@@ -145,6 +151,26 @@ class Control:
             raise RuntimeError("another model is downloading")
         self._main(lambda: c.select_model(mid))
         return 202, {"status": "downloading", "id": mid}
+
+    def language(self, _body) -> tuple[int, dict]:
+        """Hebrew switching (2026-11-16): the setting, the Hebrew model, the last take's language."""
+        c = self.ctl
+        m, cur = c.hebrew_install()
+        last = c.last_lang
+        return 200, {
+            "input_language": c.cfg["input_language"], "choices": ["auto", "en", "he"],
+            "hebrew_model": None if m is None else {
+                "id": m.id, "installed": cur is not None, "version": cur[1].label if cur else None,
+                "loaded": c.he_engine.loaded_dir is not None, "download_mb": m.download_mb},
+            "last_take": None if last is None else {k: last[k] for k in ("lang", "wanted", "source", "method", "layout")},
+        }
+
+    def set_language(self, body) -> tuple[int, dict]:
+        value = body.get("input_language")
+        if value not in ("auto", "en", "he"):
+            raise ValueError('input_language must be "auto", "en" or "he"')
+        self._main(lambda: self.ctl.set_input_language(value))
+        return self.language(body)
 
     @staticmethod
     def _updates(ups) -> dict:

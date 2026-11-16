@@ -22,7 +22,8 @@ from PySide6.QtGui import QActionGroup, QColor, QDesktopServices, QIcon, QPalett
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from .. import __version__, app_update, audio, auto_enter, autostart, dictionary, disfluency, engine, local_api, maintainer, mics, model_store, vad
+from .. import (__version__, app_update, audio, auto_enter, autostart, dictionary, disfluency, engine, keyboard_layout,
+               local_api, maintainer, mics, model_store, vad)
 from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
 from ..engine import REF_S, Engine, draft_text, drop_final_stop, held_mark, live_split, seam_join
@@ -74,6 +75,23 @@ REC_HOLD_S = 3.0
 BEEPS = {"recording": 880, "transcribing": 620, "discarded": (660, 440), "retake": (523, 880)}
 
 
+HE_LOAD_WAIT_S = 30            # a Hebrew take that beats the Hebrew model's load waits this long for it
+INPUT_LANGUAGES = ("auto", "en", "he")    # config input_language: Follow keyboard, English, Hebrew
+
+
+def _take_engine(ctl, job) -> Engine:
+    """The engine decoding take `job` (take_language), else the main one. A function, not a
+    method, so the worker tests' stand-in controllers need nothing new."""
+    info = getattr(ctl, "_take_info", {}).get(job)
+    return (info or {}).get("engine") or ctl.engine
+
+
+def _take_lang(ctl, job) -> str:
+    """"he" when take `job` is decoded by the Hebrew model, else "en"."""
+    info = getattr(ctl, "_take_info", {}).get(job)
+    return (info or {}).get("lang") or "en"
+
+
 def _in_tm_box(win) -> bool:
     """Focus is on the Transcription tab (its Notepad or any of its controls): a bool, safe from
     the decode thread. Voice Typing then writes into the Notepad, not at the system cursor."""
@@ -113,6 +131,7 @@ class Signals(QObject):
     addon_progress = Signal(str, object, object)  # add-on id, bytes done, total
     all_checked = Signal(object, object, bool)    # bundles.Updates or None, error, manual (B-79)
     call = Signal(object)                         # a callable for the GUI thread (ui.api_control)
+    he_loaded = Signal(object)                    # the Hebrew model finished loading: error or None
 
 
 def _before(pieces: list, n: int):
@@ -136,6 +155,15 @@ class Controller(QObject):
         self.cfg = Config()
         model_store.set_root(models_root(self.cfg))
         self.engine = Engine()
+        # Hebrew switching (2026-11-16, docs/maintaining.md "Hebrew switching"): the Hebrew model is
+        # kept loaded beside the main one while it is installed and input_language isn't "en".
+        self.he_engine = Engine()
+        self._he_loading = False
+        self._he_pending = False                  # reload once idle (a take was using it)
+        self._he_ready = threading.Event()        # set when no Hebrew load is in flight
+        self._he_ready.set()
+        self._take_info: dict[int, dict] = {}     # take -> take_language()'s answer
+        self.last_lang: dict | None = None        # the last take's, for the Dictate tab
         self.addon_busy: dict[str, threading.Event] = {}     # add-on id -> cancel, while downloading
         self.addon_done: dict[str, float] = {}               # add-on id -> fraction downloaded
         self.apply_vad()
@@ -194,6 +222,7 @@ class Controller(QObject):
         self.sig.addon_progress.connect(self._addon_progress)
         self.sig.all_checked.connect(self._all_checked)
         self.sig.call.connect(self._call, Qt.QueuedConnection)
+        self.sig.he_loaded.connect(self._he_loaded)
         self.maintaining = False
         self.app_release: app_update.Release | None = None    # newer than this app, else None
         self.app_method = app_update.install_method()         # apt | deb-manual | windows | appimage | source
@@ -326,6 +355,7 @@ class Controller(QObject):
             self.notify("Microphone error", str(e))
             return
         self._take += 1
+        self._take_info[self._take] = self.take_language()
         self._typed = False
         self._stopped_by_send = False
         self._silence.reset(0)
@@ -362,6 +392,7 @@ class Controller(QObject):
         """Discard the take. With live insertion, text already inserted stays."""
         if self.state == "recording":
             self._dropped.add(self._take)
+            self._take_info.pop(self._take, None)       # its pieces are skipped; nothing finishes it
             self.recorder.stop()
             if not quiet:
                 self.cue("discarded")
@@ -616,6 +647,7 @@ class Controller(QObject):
 
     def _finish_take(self, job):
         """The decoder is done with a stopped take (decode thread)."""
+        getattr(self, "_take_info", {}).pop(job, None)
         with self._guard:
             self._unfinished.discard(job)
             late = "".join(self._late.pop(job, [])).strip() if job in self._diverted else ""
@@ -670,7 +702,7 @@ class Controller(QObject):
         if self.state != "recording":
             return
         samples = self.recorder.stop()
-        self._stops.append(time.monotonic())
+        self._stops.append((time.monotonic(), self._take_info.get(self._take)))
         self.pending += 1
         with self._guard:
             self._unfinished.add(self._take)
@@ -711,8 +743,8 @@ class Controller(QObject):
         buf, total = self.recorder.tail()
         if self.cfg["auto_enter"] and self.cfg["out_cursor"] and self._auto_enter_tick(buf, total):
             return
-        if self.engine.streaming:
-            # Shakshuka: everything recorded so far goes to the stream; whole words come back.
+        if self._take_streaming(self._take):
+            # Shakshuka (and the Hebrew model): everything recorded so far goes to the stream; whole words come back.
             if len(buf):
                 self._jobs.put((self._take, self.recorder.consume(len(buf)), False, None))
             return
@@ -744,13 +776,15 @@ class Controller(QObject):
         out = str             # how text leaves the app: as is, or ALL CAPS (read once per take)
         fix = str             # the personal dictionary (read once per take)
         nostop = False        # B-105: no full stop at the end of the take (read once per take)
+        eng = self.engine     # the take's model: the main one, or the Hebrew one (take_language)
+        hebrew = False        # the take is decoded by the Hebrew model: English-only steps are skipped
         while True:
             job, samples, final, pause = self._jobs.get()
             if isinstance(final, str):        # "draft" (I-4): a pass over the open phrase, nothing pasted
                 try:
                     if job == self._take and job not in self._dropped and pause == self._draft_gen:
                         t0 = time.monotonic()
-                        text = draft_text(self.engine.transcribe(samples, record=False))
+                        text = draft_text(_take_engine(self, job).transcribe(samples, record=False))
                         log.debug("draft pass: %.1f s of audio in %.2f s", len(samples) / audio.SAMPLE_RATE,
                                   time.monotonic() - t0)
                         self.sig.draft.emit(job, fix(text) if job == take else text, pause)
@@ -777,6 +811,9 @@ class Controller(QObject):
             if job != take:
                 take, parts, stream, heard_audio, held, ctx = job, [], None, [], "", None
                 fresh, gap = False, False
+                eng, hebrew = _take_engine(self, job), _take_lang(self, job) == "he"
+                if hebrew and not self._he_ready.wait(HE_LOAD_WAIT_S):
+                    log.warning("Hebrew model still loading after %d s", HE_LOAD_WAIT_S)
                 if job not in self._dropped:
                     self.sig.take_began.emit()
                 # ALL CAPS (0.7.2, Daniel 2026-10-22, "just for fun"): applied only to what is pasted
@@ -802,10 +839,10 @@ class Controller(QObject):
             whole_take = (lambda: np.concatenate(heard_audio)) if final else None
             try:
                 live = job not in self._dropped
-                if live and self.engine.streaming and (stream or not final):
+                if live and eng.streaming and (stream or not final):
                     # Shakshuka with live insertion: pieces are whole words that continue the
                     # text exactly (they carry their own spaces), so nothing is added between them.
-                    stream = stream or self.engine.live(self.cfg["stream_release"])
+                    stream = stream or eng.live(self.cfg["stream_release"])
                     text = stream.finish(samples) if final else stream.feed(samples)
                     if mlog is not None:
                         mlog["pieces"].append({"start_s": round(start_s, 3), "len_s": round(len(samples) / audio.SAMPLE_RATE, 3),
@@ -814,7 +851,9 @@ class Controller(QObject):
                     if text and final and nostop:
                         text = drop_final_stop(text)
                     if text:
-                        text = fix(disfluency.chop(text, "".join(parts[-1:])))   # whole words with their own spaces; stream.sent keeps the raw text
+                        # Hebrew: no chop (its fillers are English, and its repeat rule would eat
+                        # Hebrew doubling, "מאוד מאוד", "לאט לאט"); the dictionary still applies
+                        text = fix(text if hebrew else disfluency.chop(text, "".join(parts[-1:])))   # whole words with their own spaces; stream.sent keeps the raw text
                         parts.append(text)
                         typed = text.lstrip() if fresh else text   # no leading space in a new message
                         fresh = False
@@ -833,7 +872,7 @@ class Controller(QObject):
                 # 0.7.6: each piece is decoded after the end of the one before it (engine.CONTEXT_S),
                 # unless that one was cut without a pause (a forced cut may split a word)
                 ref = _before(heard_audio, REF_S * audio.SAMPLE_RATE)
-                text, stop = (self.engine.transcribe_after(samples, ctx, vad=self.cfg["vad"], ref=ref)
+                text, stop = (eng.transcribe_after(samples, ctx, vad=self.cfg["vad"], ref=ref)
                               if live else ("", None))
                 raw, decode_s = text, time.monotonic() - t0
                 if final:
@@ -841,7 +880,8 @@ class Controller(QObject):
                              len(text.split()))
                 # 1.001: fillers out first, 1.007 repeats too (../shared/disfluencies.md); the piece
                 # before (its held full stop back on) catches a repeat across the seam
-                text = disfluency.chop(text, parts[-1] + held if parts else "")
+                if not hebrew:
+                    text = disfluency.chop(text, parts[-1] + held if parts else "")
                 ctx = samples if pause else None
                 end = " " if self.cfg["trailing_space"] else ""
                 lead = ""
@@ -986,7 +1026,7 @@ class Controller(QObject):
 
     def _done(self, text, err, samples=None):
         log.info("transcript %r err=%r", text, err)
-        stopped_at = self._stops.popleft() if self._stops else 0.0
+        stopped_at, tinfo = self._stops.popleft() if self._stops else (0.0, None)
         self.pending = max(0, self.pending - 1)
         if err == NO_SPEECH:
             self._feedback("no_speech")
@@ -1016,7 +1056,7 @@ class Controller(QObject):
             self.last_text = text.upper() if self.cfg["all_caps"] else text
             if self.cfg["out_cursor"] and self.cfg["detect_no_field"]:
                 self._check_field()
-            self._maint_save(self.remember(text, samples), samples)
+            self._maint_save(self.remember(text, samples, lang=tinfo), samples)
         elif samples is not None:
             with self._guard:
                 self._maint_ready.pop(id(samples), None)
@@ -1024,6 +1064,8 @@ class Controller(QObject):
             self.set_state("busy" if self.pending else "idle")
         if self.reload_pending and self.state == "idle":
             self.load_model()
+        elif self._he_pending and self.state == "idle":
+            self.load_hebrew()
 
     def _decode_info(self, source: str) -> dict:
         """What produced a transcript, for History's `decode` column (schema 2, 0.7.3): enough to
@@ -1039,14 +1081,24 @@ class Controller(QObject):
                 d["stream_release"] = self.cfg["stream_release"]
         return d
 
-    def remember(self, text, samples=None, source="dictate", seconds=None, extra=None):
+    def remember(self, text, samples=None, source="dictate", seconds=None, extra=None, lang=None):
         """Add a transcript to the history (when `keep_history`): text only, never audio (0.7.3,
         D-2026-10-22-20); samples only give the take's length. The Transcription tab calls this too, with
         source="file" or "record" (Transcription Mode) and no samples; `extra` is added to the row's
-        decode info (the clean-up model, B-40). Returns the row id, or None."""
+        decode info (the clean-up model, B-40). `lang`: the take's take_language() answer: the row
+        names the model that decoded it (the Hebrew one for a Hebrew take) and the decode info
+        gets language, wanted, source, method and layout. Returns the row id, or None."""
         if not self.cfg["keep_history"] or not text.strip():
             return None
         cur = model_store.active()
+        if lang and lang.get("manifest") is not None:
+            cur = (None, lang["manifest"])
+        if lang:
+            m = lang.get("model")
+            extra = {**(extra or {}), "language": lang["lang"], "language_wanted": lang["wanted"],
+                     "language_source": lang["source"],
+                     **({"layout_method": lang["method"], "layout": lang["layout"]} if lang["source"] == "keyboard" else {}),
+                     **({"engine": m.engine, "threads": self.he_engine.threads} if m is not None else {})}
         model = f"{cur[1].model} {cur[1].version}" if cur else ""
         if samples is not None:
             seconds = len(samples) / audio.SAMPLE_RATE
@@ -1117,6 +1169,118 @@ class Controller(QObject):
             self._end_rec_hold()
         self._overlay_push()
 
+    # -- input language (Hebrew switching, 2026-11-16) ----------------------------------
+    def hebrew_install(self):
+        """(Model, (folder, Manifest)) of the installed Hebrew model, or (Model or None, None)."""
+        m = model_store.language_model("he")
+        return m, (model_store.active(m.id) if m else None)
+
+    def take_language(self, detect=None) -> dict:
+        """Decide a take's language once, as it starts. input_language "en" / "he" is the user's
+        toggle; "auto" asks keyboard_layout (unknown counts as English). Hebrew is decoded by the
+        Hebrew model only when it is installed; otherwise the main model, and a hint says why.
+        Returns {lang (what decodes it: he | en), wanted, source (manual | keyboard), method,
+        layout, engine (None = the main one), model, manifest, missing}."""
+        setting = self.cfg.get("input_language") or "auto"
+        if setting in ("en", "he"):
+            wanted, source, method, layout = setting, "manual", "", ""
+        else:
+            d = (detect or keyboard_layout.detect)()
+            wanted, source, method, layout = ("he" if d.lang == "he" else "en"), "keyboard", d.method, d.layout
+        info = {"lang": "en", "wanted": wanted, "source": source, "method": method, "layout": layout,
+                "engine": None, "model": None, "manifest": None, "missing": False, "streaming": None}
+        if wanted == "he":
+            m, cur = self.hebrew_install()
+            if cur is not None:
+                if self.he_engine.loaded_dir != cur[0] and not self._he_loading:
+                    self.load_hebrew()          # not preloaded (just downloaded, or a failed load): now
+            if cur is not None and (self._he_loading or self.he_engine.loaded_dir == cur[0]):
+                info.update(lang="he", engine=self.he_engine, model=m, manifest=cur[1],
+                            streaming=m.engine == "sherpa_online_transducer")
+            elif cur is None:
+                info["missing"] = m is not None
+            else:
+                log.warning("Hebrew model installed but not loaded (deferred or failed): main model")
+        log.info("take language: %s (wanted %s, %s%s)", info["lang"], wanted, source,
+                 f" via {method}: {layout or 'unknown'}" if source == "keyboard" else "")
+        self.last_lang = info
+        win = getattr(self, "win", None)
+        if win is not None and hasattr(win, "show_language"):
+            win.show_language(info)
+        return info
+
+    def _take_streaming(self, job) -> bool:
+        info = self._take_info.get(job) or {}
+        if info.get("streaming") is not None:
+            return info["streaming"]
+        return _take_engine(self, job).streaming
+
+    def set_input_language(self, value: str):
+        """Settings, the Dictate tab's toggle and the local API: auto | en | he."""
+        if value not in INPUT_LANGUAGES:
+            raise ValueError(f"input_language must be one of {', '.join(INPUT_LANGUAGES)}")
+        if value != self.cfg["input_language"]:
+            self.cfg.set("input_language", value)
+            self.load_hebrew()
+        win = getattr(self, "win", None)
+        if win is not None and hasattr(win, "sync_language"):
+            win.sync_language()
+
+    def load_hebrew(self):
+        """Load the Hebrew model beside the main one when it is installed and input_language isn't
+        "en"; unload it otherwise (about 300 MB of memory). Deferred while a take is in flight: a
+        Hebrew take's stream belongs to the loaded recognizer."""
+        if self.state != "idle" and (self._take_info or self.state == "recording"):
+            self._he_pending = True
+            return
+        self._he_pending = False
+        m, cur = self.hebrew_install()
+        if cur is None or self.cfg["input_language"] == "en":
+            if self.he_engine.loaded_dir is not None:
+                self.he_engine.unload()
+                log.info("Hebrew model unloaded")
+            return
+        if self._he_loading or self.he_engine.loaded_dir == cur[0]:
+            return
+        self._he_loading = True
+        self._he_ready.clear()
+        opts = m.engine_options or {}
+
+        def work():
+            try:
+                self.he_engine.load(cur[0], threads(self.cfg), int(opts.get("feature_dim") or m.feature_dim),
+                                    streaming=m.engine == "sherpa_online_transducer",
+                                    model_type=opts.get("model_type", ""))
+                log.info("Hebrew model %s loaded in %.1f s", cur[1].full_label, self.he_engine.load_s)
+                self.sig.he_loaded.emit(None)
+            except Exception as e:
+                log.exception("couldn't load the Hebrew model")
+                self.sig.he_loaded.emit(e)
+            finally:
+                self._he_loading = False
+                self._he_ready.set()
+        threading.Thread(target=work, daemon=True, name="hebrew-load").start()
+
+    def _reload_hebrew(self):
+        """A new Hebrew version is on disk: load it (when idle)."""
+        if self.state != "idle":
+            self._he_pending = True
+            return
+        self.he_engine.unload()
+        self.load_hebrew()
+
+    def _he_loaded(self, err):
+        if err:
+            self.win.status(f"Couldn't load the Hebrew model: {err}")
+        if hasattr(self.win, "sync_language"):
+            self.win.sync_language()
+
+    def download_hebrew(self):
+        """The Dictate tab's hint and the Models tab's Hebrew section: download it."""
+        m = model_store.language_model("he")
+        if m and m.available and not self.downloading:
+            self.download_model(m.id)
+
     # -- model ---------------------------------------------------------------------
     def load_model(self):
         """(Re)load the active install. Deferred while a take is in flight."""
@@ -1129,6 +1293,7 @@ class Controller(QObject):
             self.engine.unload()
             self.win.update_model()
             self._update_tray()
+            self.load_hebrew()          # no main model yet: the Hebrew one still loads
             return
         self.loading = True
         self.set_state("busy")
@@ -1156,6 +1321,7 @@ class Controller(QObject):
             cur = model_store.active()
             self.win.status(f"Loaded {cur[1].full_label}." if cur else "")
         self.set_state("idle")
+        self.load_hebrew()
 
     def select_model(self, mid: str):
         """Switch to another catalogue model. One that isn't on disk yet is downloaded."""
@@ -1306,6 +1472,8 @@ class Controller(QObject):
             self.win.status(f"Installed {manifest.full_label}.")
             if manifest.model == model_store.current_id():
                 self.load_model()
+            elif any(m.id == manifest.model for m in model_store.language_models()):
+                self.load_hebrew() if self.he_engine.loaded_dir is None else self._reload_hebrew()
             elif self.switch_after_download and self.switch_after_download[0] == manifest.model:
                 mid, was = self.switch_after_download
                 self.switch_after_download = None
@@ -1467,6 +1635,7 @@ class Controller(QObject):
         old, new = model_store.ROOT, models_root({"models_dir": path})
         if move and old.is_dir() and old.resolve() != new.resolve():
             self.engine.unload()
+            self.he_engine.unload()
             self.set_state("busy")
             self.win.status(f"Moving models to {new}…")
 
@@ -1859,9 +2028,19 @@ class Controller(QObject):
                 "version": cur[1].version if cur else None,
                 "streaming": self.engine.streaming}
 
-    def api_transcribe(self, samples) -> str:
-        """A file sent to the local API (HTTP thread): Transcription Mode's text before paragraphs."""
+    def api_transcribe(self, samples, language=None) -> str:
+        """A file sent to the local API (HTTP thread): Transcription Mode's text before paragraphs.
+        language "he" (OpenAI's `language` field): the Hebrew model, without the disfluency chop;
+        the keyboard layout never decides for a file."""
         fix = dictionary.compile(dictionary.load())
+        if language == "he":
+            m, cur = self.hebrew_install()
+            if cur is None:
+                raise local_api.ApiError(409, "the Hebrew model isn't downloaded: Models tab, Hebrew")
+            if self.he_engine.loaded_dir != cur[0]:
+                raise local_api.ApiError(503, "the Hebrew model isn't loaded (input language is English only, "
+                                              "or it is still loading)")
+            return " ".join(fix(t) for t in self.he_engine.transcribe_chunks(samples, vad=self.cfg["vad"])).strip()
         return " ".join(fix(disfluency.chop(t))
                         for t in self.engine.transcribe_chunks(samples, vad=self.cfg["vad"])).strip()
 

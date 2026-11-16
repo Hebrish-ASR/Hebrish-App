@@ -16,6 +16,7 @@ sherpa-onnx 1.13.8); (I) = inferred / not yet tested.
 | `hotkey.py` | the shared state machine for the two keys (toggle, push-to-talk) and the action keys, on evdev-style key names |
 | `hotkey_evdev.py` / `hotkey_win.py` | per-OS key sources: `/dev/input` on Linux, a pynput low-level hook on Windows |
 | `inserter.py` + `inserter_linux.py` / `inserter_win.py` | clipboard, then a paste chord (uinput / SendInput) |
+| `keyboard_layout.py` | Hebrew switching (2026-11-16): is the active keyboard layout Hebrew? Windows, KDE, GNOME and X11 probes and their parsers; asked once per take. See "Hebrew switching" |
 | `autostart.py` | XDG autostart entry / HKCU `Run` key, toggled from Settings → System or the tray's *Start at login* (both go through `Controller.set_autostart`). `refresh()` rewrites the stored command at every start, because it is the path at the time it was turned on: a portable Windows zip unzipped to a new folder for a new version left the Run key starting the old exe (I, from the code; not seen on Windows hardware). Checkable tray actions connect `triggered` themselves: PySide's `addAction(text, slot)` calls the slot with no `checked` argument, so up to 0.6.3 the tray's *Show overlay* raised `TypeError` and did nothing (V, off-screen, 2026-10-21) |
 | `ui/app.py` | `Controller`, tray, single instance + `--toggle` over `QLocalServer`, `--selftest`, `main()`. The tray's *Output* submenu (0.7.5) toggles the outputs (`out_cursor` / `out_clipboard` / `out_window` since 1.000, independent checks, from `window.OUTPUT`; up to 0.8.0 one radio choice, `insert`) and `paste_chord` (Ctrl+V or Ctrl+Shift+V, `window.PASTE_CHORDS`); its checks are re-read from the config on `aboutToShow`, and a pick calls `MainWindow.sync_output()`, so tray and Settings stay in step. A custom chord typed in Settings leaves both chord items unchecked |
 | `ui/overlay.py` | the floating overlay widget, `OverlayHost` (in-process or an XWayland child), and the child's `__main__` |
@@ -2560,3 +2561,87 @@ did this (`auto_update`, on by default since 0.5.1: `_checked` downloads a newer
 defaults to 6; `config.upgrade` moves a stored 24 (the old default) to 6 once (marker `model_check_6h`);
 any other value the user chose stays. The 10-minute `_periodic_check` timer is unchanged. Test:
 `test_config_outputs.py::test_model_check_moves_from_24_to_6_hours_once`.
+
+## Hebrew switching (2026-11-16, unreleased)
+
+Daniel (D-2026-11-16-01): a Hebrew-only model, used when the user dictates in Hebrew. The catalogue line `hebrew`
+(variant `hebrew-zipformer-66m`, Zipformer2 66M by Yakov Kolani, ivrit.ai data, CC BY 4.0, 72 MB) carries
+`language: "he"`; see its `_doc` and `shared/update-protocol.md` (2026-11-16). Android's side: a0695a6.
+
+- **Not a dictation model.** `model_store.Model.language` marks it. `listed_lines()` (the family tabs),
+  `dictation_models()` (About's list), `current_id()`'s fallback, `select()` (raises), bundles (`bundles.items`) and
+  the local API's `models/select` (400) all leave it out. It has its own **Hebrew** card on the Models tab
+  (`MainWindow._hebrew_section`): the usual row with Download / Delete and no *Use this one*, no speed/accuracy dots,
+  no "non-commercial terms" line, and the catalogue `credit` (`about.credit_html`: text, model, original and licence
+  links). About has a *Model credits* card with the same text. CC BY 4.0 requires the credit wherever it is listed.
+  Updates: it is an installed model, so *Check for updates* / *Update all* (`bundles.check`) cover it; a new version
+  reloads it (`Controller._reload_hebrew`, deferred while a take runs).
+- **Input language.** Config `input_language`: `auto` (default, Follow the keyboard), `en`, `he`. Set from three
+  buttons under the record button (Auto / EN / עב, Voice Typing tab), Settings → Voice Typing → *Input language*, or
+  `POST /v1/app/language`; all go through `Controller.set_input_language`, which re-syncs the others.
+- **Per take.** `Controller.start` calls `take_language()` once and stores the answer in `_take_info[take]`
+  (dropped by `_finish_take` or `cancel`). `auto` asks `keyboard_layout.detect()`; Hebrew → the Hebrew model when it
+  is installed, else the main model and a one-line hint on the Voice Typing tab with *Download it*. Anything but a
+  Hebrew layout, and any failure ("unknown"), is English. The worker reads the take's engine through
+  `_take_engine(ctl, job)` (a function so the worker tests' stand-in controllers need nothing new), and
+  `_live_tick` asks `_take_streaming`: the Hebrew model is streaming, so a Hebrew take goes the Shakshuka way
+  (`LiveStream`, phrase release) even when the main model is Sabich. Every route into a take goes through `start`:
+  the hotkeys, the record button, the action keys and `POST /v1/app/dictation`.
+- **Both models stay loaded.** `Controller.he_engine` is a second `Engine`, loaded in the background after the main
+  model (`_loaded` → `load_hebrew`, also when no main model is installed) whenever the Hebrew model is installed and
+  `input_language` isn't `en`; `en` unloads it. Chosen over lazy loading because a load takes about 3 s and the first
+  Hebrew take would wait for it; the cost is about 300 MB of memory while switching is possible. A take that starts
+  while the load is still running waits for it in the worker (`_he_ready`, up to `HE_LOAD_WAIT_S` = 30 s); a Hebrew
+  model that is installed but not loaded (deferred or failed) gives the take to the main model, logged.
+  `Engine.load` passes the variant's `engine_options.model_type` (`zipformer2`, as the upstream card does) and
+  `feature_dim` 80.
+- **What is skipped for Hebrew.** The disfluency chop: its fillers are English, and its repeated-word rule would eat
+  Hebrew doubling ("מאוד מאוד", "לאט לאט"). Kept: the personal dictionary (user-written, may hold Hebrew), ALL CAPS
+  (`str.upper` leaves Hebrew alone), B-105's final full stop, `drop_unk`, the seam rules (they act on marks and Latin
+  case, so do nothing to Hebrew), the trailing space. Clean-up, paragraphs and titles are Transcription Mode only.
+- **Transcription Mode stays on the main model.** The keyboard says where the user types, not what language a file
+  or tape is in, and its clean-up, title and paragraph models are English. Not built: a per-transcript language choice
+  there.
+- **Local API.** `POST /v1/audio/transcriptions` takes OpenAI's `language` field: `he` (also `iw`, `he-il`, `heb`) uses
+  the Hebrew model (409 when it isn't downloaded, 503 while it isn't loaded), `en` or none the main model; anything else
+  400. The keyboard never decides for a file. `GET /v1/app/language` (setting, the Hebrew model's state, the last
+  take's language and how it was decided), `POST /v1/app/language` `{"input_language": "auto"|"en"|"he"}`;
+  `/v1/app/status` has `input_language`; `/v1/app/models` marks it with `"language": "he"`.
+- **History.** A Hebrew take's row has `model` = the Hebrew model's id and version and its revision; `decode` gets
+  `language` (what decoded it), `language_wanted`, `language_source` (`keyboard` | `manual`) and, for the keyboard,
+  `layout_method` and `layout`. No schema change.
+- **Pasting Hebrew.** Text leaves through the clipboard and a paste chord, never typed key by key (`inserter.py`), so
+  Unicode and right-to-left text need nothing new: `wl-copy` / `xclip` get UTF-8, Windows' `pyperclip` uses
+  `CF_UNICODETEXT`. One fix on Windows: the paste chord's letter went through pynput's `KeyCode.from_char`, which maps
+  a character to a key with `VkKeyScan` on the current layout; a Hebrew layout has no "v", so Ctrl+V would have gone
+  out as a Unicode "v" that pastes nothing. Letters and digits in a chord are now sent by virtual-key code
+  (`inserter_win.parse_chord`). Found by reading pynput's `_win32.py`, not seen on a Windows machine (I).
+  On Linux the chord is a uinput keycode, which apps read through the layout; Ctrl+V on a Hebrew layout pastes in
+  KDE, GTK and Chromium-based apps through their Latin-layout shortcut fallback (I, not re-tested here).
+
+Layout detection (`keyboard_layout.py`), first route that answers wins, 0.5 s timeout each; the log line
+`take language: he (wanted he, keyboard via kde: il)` says which:
+
+| Route | How | Status |
+| --- | --- | --- |
+| Windows | `GetKeyboardLayout(GetWindowThreadProcessId(GetForegroundWindow()))`: the window the take types into; LANGID primary language `0x0D` | unit-tested (`lang_from_hkl`); not run on Windows (I) |
+| KDE Plasma (Wayland, X11) | `dbus-send` `org.kde.keyboard /Layouts` `getLayout` (index) + `getLayoutsList` (`a(sss)`: short name, variant, long name) | V, 2026-11-16, Plasma 6 Wayland: `gb` → en, `il` → he, about 10 ms |
+| GNOME | `gsettings get org.gnome.desktop.input-sources mru-sources` (first entry), else `current` as an index into `sources` | parsers unit-tested; not run on GNOME (I). GNOME 4x often leaves `current` at 0, which is why `mru-sources` goes first |
+| X11, any desktop | `setxkbmap -query` layouts, `XkbGetState` group (ctypes, libX11) | not run (I). Skipped under Wayland: XWayland's group doesn't follow the compositor |
+
+Hebrew names: `il` (with any variant), `he`, `heb`, `Hebrew…`, IBus `m17n:he:…`.
+
+**Verified (V, 2026-11-16, Ubuntu, KDE Plasma 6 Wayland, sherpa-onnx 2.0.1):** the real `Controller` off-screen with
+an isolated HOME holding only the Hebrew model (downloaded from the CDN through `hebrish-model download`), the inserter
+stubbed. The Hebrew model loaded at start; the KDE layout set to Hebrew over D-Bus for the detection (and set back at
+once); a TTS Hebrew clip (edge-tts `he-IL-AvriNeural`, 16 kHz mono) fed to the worker as two live pieces came out as
+`שלום, אני מכתיב עכשיו בעברית. זה עובד מאוד מאוד טוב` (pasted, the doubling kept), History named the Hebrew model with
+`language: he, layout_method: kde, layout: il`; `api_transcribe(..., language="he")` gave the same text; `en` unloaded
+the Hebrew model and `he` reloaded it. The Models tab's Hebrew card and the Voice Typing tab's toggle and hint were
+rendered off-screen. Unit tests: `tests/test_keyboard_layout.py`, `tests/test_hebrew_switching.py`, the Hebrew cases in
+`tests/test_live.py`, `test_model_store.py`, `test_bundles.py`, `test_local_api.py`. **Not run:** a live take with a
+microphone and a real paste, Windows (detection and the chord fix), GNOME, plain X11, the installed .deb.
+
+Found along the way: the CDN manifest's `version` is a display string ("Hebrew Zipformer 66M v1 (upstream, unchanged)"),
+so the install folder is named after it, spaces and brackets included, and the Models tab shows "v1 (upstream,
+unchanged)". It works on both OSes; a short `version` ("v1") in `latest.json` would give a tidier folder.

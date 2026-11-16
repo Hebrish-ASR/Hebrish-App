@@ -194,11 +194,33 @@ def test_models_tab_lists_only_models_offered_on_the_desktop():
     installed stays listed (and usable) so nobody loses the model they have."""
     def listed():
         return {v.id for ln in ms.listed_lines() for v in ln.variants}
-    assert listed() == {"sabich-rolling", "shakshuka", "falafel", "falafel-110m", "hebrew-zipformer-66m", "stock"}
+    # The Hebrew line (2026-11-16) is a language model: its own section, not a family tab.
+    assert listed() == {"sabich-rolling", "shakshuka", "falafel", "falafel-110m", "stock"}
     assert ms.get_model("sabich-parakeet-110m") is not None       # hidden, not removed
     install(ms.manifest_from_tree(ms.get_model("sabich-parakeet-110m"), "s" * 40, STOCK_TREE, None))
     assert "sabich-parakeet-110m" in listed()
     shutil.rmtree(ms.model_dir("sabich-parakeet-110m"))
+
+
+def test_hebrew_is_a_language_model_not_a_dictation_choice():
+    """Hebrew switching (2026-11-16): the Hebrew line is used by input language, never picked."""
+    he = ms.language_model("he")
+    assert he is not None and he.id == "hebrew-zipformer-66m" and he.language == "he"
+    assert he.engine_options["model_type"] == "zipformer2" and he.credit["license"] == "CC-BY-4.0"
+    assert [m.id for m in ms.language_models()] == ["hebrew-zipformer-66m"]
+    assert he.id not in {m.id for m in ms.dictation_models()}
+    assert ms.language_model("en") is None
+    with pytest.raises(ValueError):
+        ms.select(he.id)
+    # Only the Hebrew model on disk and no pick: the dictation model is still the recommended one.
+    state = ms.load_json(ms.STATE_PATH)
+    state.pop("model", None)
+    ms.save_json(ms.STATE_PATH, state)
+    install(ms.manifest_from_tree(he, "h" * 40, STOCK_TREE, None))
+    assert ms.current_id() == "sabich-rolling"
+    state["model"] = he.id                   # a hand-edited or older state.json naming it
+    ms.save_json(ms.STATE_PATH, state)
+    assert ms.current_id() == "sabich-rolling"
 
 
 def test_no_pick_prefers_a_downloaded_model_then_recommended():

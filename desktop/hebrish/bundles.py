@@ -44,7 +44,7 @@ def addon_installed(aid: str) -> bool:
 
 def items(b: dict) -> tuple[list[str], list[str]]:
     """(speech model ids, add-on ids) of bundle `b` that run here, in bundle order."""
-    models = [m for m in b.get("models", []) if (v := model_store.get_model(m)) and v.available]
+    models = [m for m in b.get("models", []) if (v := model_store.get_model(m)) and v.available and not v.language]
     offered = addon_ids()
     return models, [a for a in b.get("addons", []) if a in offered]
 

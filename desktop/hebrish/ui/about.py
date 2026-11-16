@@ -96,6 +96,23 @@ TRAINING = {  # v1.0, the version this app downloads as of 2026-10-19
 }
 
 
+def credit_html(m) -> str:
+    """A third-party model's credit (catalogue `credit`, 2026-11-16): who made it, the data, the
+    licence with its link, the source, and what Hebrish changed. CC BY 4.0 requires it wherever the
+    model is listed (Models tab's Hebrew section, About)."""
+    c = getattr(m, "credit", None) or {}
+    if not c.get("text"):
+        return ""
+    links = [f"<a href='{c['url']}'>Model</a>" if c.get("url") else "",
+             f"<a href='{c['original_url']}'>Original</a>" if c.get("original_url") else "",
+             f"<a href='{c['license_url']}'>{c.get('license', 'Licence')}</a>" if c.get("license_url") else ""]
+    changes = c.get("changes", "")
+    tail = " · ".join(x for x in links if x)
+    return (f"{html.escape(c['text'])}"
+            + (f" Changes: {html.escape(changes)}." if changes and changes != "none" and changes not in c["text"] else "")
+            + (f"<br>{tail}" if tail else ""))
+
+
 def _link_button(text: str, url: str, primary=False) -> QPushButton:
     b = QPushButton(text, objectName="primary" if primary else "")
     b.setCursor(Qt.PointingHandCursor)
@@ -139,8 +156,16 @@ class AboutPage(QScrollArea):
             f"<p style='margin:0 0 6px 0'><b>{m.name}</b>"
             f"{'' if m.available else ' <i>(coming soon)</i>'}: {m.summary}"
             + (f" <a href='{m.card}'>Model card</a>" if m.card else "") + "</p>"
-            for m in model_store.models())))
+            for m in model_store.dictation_models())))
         lay.addWidget(box)
+
+        # Third-party weights (2026-11-16: the Hebrew model, CC BY 4.0): the credit its licence asks for.
+        credited = [m for m in model_store.models() if getattr(m, "credit", None)]
+        if credited:
+            box, b = card("Model credits")
+            for m in credited:
+                b.addWidget(_rich(f"<b>{html.escape(m.name)}</b><br>{credit_html(m)}"))
+            lay.addWidget(box)
 
         box, b = card(f"How well it works ({BENCH_VERSION})")
         rows = "".join(

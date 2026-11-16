@@ -506,12 +506,15 @@ class Engine:
     def loaded_dir(self) -> Path | None:
         return self._dir
 
-    def load(self, model_dir: Path, num_threads: int = 4, feature_dim: int = 128, streaming: bool = False):
+    def load(self, model_dir: Path, num_threads: int = 4, feature_dim: int = 128, streaming: bool = False,
+             model_type: str = ""):
         """feature_dim comes from the catalogue variant (128 for the 0.6B models, 80 for
         Sabich-Parakeet-110M). sherpa-onnx also reads it from the encoder metadata, which wins:
         the 110M decoded the same clip identically with 80 and 128 (2026-10-21, sherpa-onnx 1.13.8).
         streaming: the variant's engine is sherpa_online_transducer (Shakshuka, exported at
-        560 ms chunks; the chunk size is in the encoder metadata, not passed here)."""
+        560 ms chunks; the chunk size is in the encoder metadata, not passed here). model_type: the
+        variant's engine_options.model_type for a streaming model ("zipformer2" for the Hebrew model,
+        as its upstream card passes; without it sherpa reads the encoder metadata, which also worked)."""
         import sherpa_onnx
         t0 = time.monotonic()
         files = dict(encoder=str(model_dir / "encoder.int8.onnx"),
@@ -521,7 +524,8 @@ class Engine:
                      decoding_method="greedy_search", num_threads=num_threads,
                      sample_rate=SAMPLE_RATE, feature_dim=feature_dim, provider="cpu")
         if streaming:
-            rec = sherpa_onnx.OnlineRecognizer.from_transducer(**files)
+            rec = sherpa_onnx.OnlineRecognizer.from_transducer(**files, **({"model_type": model_type}
+                                                                          if model_type else {}))
         else:
             rec = sherpa_onnx.OfflineRecognizer.from_transducer(model_type="nemo_transducer", **files)
         with self._lock:

@@ -106,6 +106,10 @@ DEFAULTS = {
     # I-4 (D-2026-11-13-01): while recording, re-decode the open phrase every LIVE_DRAFT_S and show
     # it, dimmed, in the overlay; it is replaced on each pass and goes out at the pause as before.
     "live_draft": False,
+    # Hebrew switching (2026-11-16): which model decodes a take. auto = follow the keyboard layout at
+    # the start of each take (keyboard_layout.py; unknown = English); en | he = the Dictate tab's toggle.
+    # Hebrew uses the catalogue's Hebrew language model when it is downloaded, else the main model.
+    "input_language": "auto",
     "feedback": "beeps",          # beeps | voice (spoken status: data/voice/<voice>/) | off
     "voice": "herman",            # herman | corn | hilbert (audio.VOICES; 0.7.0)
     "beep_style": "soft",         # soft | classic (shown as Loud: the beep up to 1.007); audio.BEEP_STYLES

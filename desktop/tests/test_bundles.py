@@ -57,3 +57,11 @@ def test_addon_stale_only_with_an_older_version_on_disk(tmp_path, monkeypatch):
     old.mkdir(parents=True)
     (old / "manifest.json").write_text("{}")
     assert B._addon_stale("title-gemma-270m")
+
+
+def test_language_models_never_in_a_bundle(monkeypatch):
+    """Hebrew switching (2026-11-16): the Hebrew model downloads from its own section, not a bundle."""
+    real = model_store.bundled_catalogue()
+    monkeypatch.setattr(model_store, "catalogue", lambda: {**real, "bundles": [
+        {"id": "h", "name": "H", "models": ["hebrew-zipformer-66m", "stock"]}]})
+    assert B.items(B.get("h")) == (["stock"], [])

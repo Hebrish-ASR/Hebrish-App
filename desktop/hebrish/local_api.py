@@ -14,7 +14,9 @@ Endpoints (OpenAI-compatible where one exists, so existing clients work unchange
                                    audio as the body (any Content-Type but multipart). Optional
                                    `response_format`: json (default) | text | verbose_json; as a
                                    form field or a query parameter. `model` is accepted and ignored:
-                                   the app's loaded model answers.
+                                   the app's loaded model answers. `language` (2026-11-16): `he`
+                                   uses the Hebrew model (409 when it isn't downloaded); `en` or
+                                   none, the main model. The keyboard layout never decides here.
 
 The text is what Transcription Mode gives for the same file before paragraphs: voice detection per
 `vad`, then the disfluency chop and the personal dictionary per piece, pieces joined by spaces.
@@ -71,6 +73,8 @@ ROUTES = [
     ("POST", "/v1/app/update", True, "Install it. apt only: the user approves a system prompt; poll /v1/app/status"),
     ("POST", "/v1/app/restart", True, "Restart into a version already installed, when idle"),
     ("GET", "/v1/app/models", True, "Every model: id, name, installed, current, recommended"),
+    ("GET", "/v1/app/language", True, "Input language: setting (auto|en|he), the Hebrew model's state, the last take's language"),
+    ("POST", "/v1/app/language", True, 'Body {"input_language": "auto"|"en"|"he"}: Follow keyboard, English, Hebrew'),
     ("POST", "/v1/app/models/select", True, 'Body {"id": ..., "download": false}: switch model'),
     ("GET", "/v1/app/models/updates", True, "Check every downloaded model and add-on (network)"),
     ("POST", "/v1/app/models/updates", True, "Download what the check finds; poll /v1/app/status"),
@@ -361,8 +365,13 @@ class _Handler(BaseHTTPRequestHandler):
                 samples = audio.load_file(path)
             except Exception as e:
                 raise ApiError(400, f"couldn't read the audio: {e}") from None
+        lang = (fields.get("language") or "").strip().lower()
+        if lang in ("iw", "he-il", "heb"):
+            lang = "he"
+        if lang not in ("", "he", "en"):
+            raise ApiError(400, "language must be he or en (or left out: the main model)")
         t0 = time.monotonic()
-        text = self.owner.transcribe(samples)
+        text = self.owner.transcribe(samples, language=lang) if lang else self.owner.transcribe(samples)
         took = time.monotonic() - t0
         seconds = len(samples) / audio.SAMPLE_RATE
         if fmt == "text":
@@ -371,4 +380,5 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(200, {"text": text})
         else:
             self._send(200, {"task": "transcribe", "text": text, "duration": round(seconds, 3),
-                             "processing_s": round(took, 3), "model": self.owner.info()})
+                             "processing_s": round(took, 3), "model": self.owner.info(),
+                             "language": lang or "en"})

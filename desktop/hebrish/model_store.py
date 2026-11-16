@@ -94,6 +94,9 @@ class Model:
     runs_on: str = ""                # where an unsupported variant runs instead
     streaming: bool = False
     offered_on: list | None = None   # platforms whose Models screen lists it; None = every platform it runs on
+    language: str = ""               # "he": a language model (Hebrew switching, 2026-11-16), not a dictation choice
+    engine_options: dict = field(default_factory=dict)   # e.g. {"feature_dim", "chunk_ms", "model_type"}
+    credit: dict = field(default_factory=dict)           # third-party weights: text, author, license(_url), url
 
     @property
     def offered(self) -> bool:
@@ -185,12 +188,14 @@ def lines() -> list[Line]:
 
 
 def listed_lines() -> list[Line]:
-    """What the Models tab shows: lines() without the variants not offered here, except one that is
-    installed or in use, so nobody loses sight of the model they have. Empty lines are dropped."""
+    """What the Models tab's family tabs show: lines() without the variants not offered here, except
+    one that is installed or in use, so nobody loses sight of the model they have. Empty lines are
+    dropped. Language models (`language`, the Hebrew line) are not dictation choices: they have their
+    own section (language_models())."""
     keep = set(installed_ids()) | {load_json(STATE_PATH).get("model")}
     out = []
     for ln in lines():
-        vs = [v for v in ln.variants if v.offered or v.id in keep]
+        vs = [v for v in ln.variants if (v.offered or v.id in keep) and not v.language]
         if vs:
             out.append(Line(ln.id, ln.name, ln.summary, ln.card, vs))
     return out
@@ -204,6 +209,24 @@ def models() -> list[Model]:
     """The variants this build can run (planned ones included), in catalogue order. Everything
     that downloads, selects or lists installs goes through this, never through variants()."""
     return [v for v in variants() if v.supported]
+
+
+def language_models(lang: str | None = None) -> list[Model]:
+    """The variants this build runs that serve one input language (`language`, 2026-11-16: the
+    Hebrew line), in catalogue order; `lang` None = every language."""
+    return [m for m in models() if m.language and (lang is None or m.language == lang)]
+
+
+def language_model(lang: str) -> Model | None:
+    """The model used when the input language is `lang`: the first one installed, else the first
+    available (what Download fetches). None when the catalogue has none for it."""
+    ms = [m for m in language_models(lang) if m.available]
+    return next((m for m in ms if installed(m.id)), ms[0] if ms else None)
+
+
+def dictation_models() -> list[Model]:
+    """models() without the language models: what the picker, chooser and bundles offer."""
+    return [m for m in models() if not m.language]
 
 
 def get_model(mid: str) -> Model | None:
@@ -236,10 +259,10 @@ def current_id() -> str:
     install that ran schema 1's default (stock) keeps working; else the recommended model."""
     mid = load_json(STATE_PATH).get("model")
     m = get_model(mid) if mid else None
-    if m and m.available:
+    if m and m.available and not m.language:
         return m.id
     rec = recommended_id()
-    order = sorted((m for m in models() if m.available), key=lambda m: m.id != rec)
+    order = sorted((m for m in dictation_models() if m.available), key=lambda m: m.id != rec)
     for m in order:
         if installed(m.id):
             return m.id
@@ -314,6 +337,8 @@ def select(mid: str):
     m = get_model(mid)
     if not m or not m.available:
         raise ValueError(f"{mid} is not available")
+    if m.language:
+        raise ValueError(f"{mid} is a language model: it is used by input language, not chosen")
     state = load_json(STATE_PATH)
     state["model"] = mid
     save_json(STATE_PATH, state)

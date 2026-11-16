@@ -17,6 +17,12 @@ def parse_chord(chord: str) -> list:
         k = name.removeprefix("KEY_")
         if name in _KEYS:
             keys.append(_KEYS[name])
+        elif len(k) == 1 and k.isascii() and k.isalnum():
+            # By virtual-key code (VK_A..VK_Z, VK_0..VK_9 equal the ASCII capitals and digits), not
+            # by character: pynput turns a character into a key through VkKeyScan on the current
+            # layout, and a Hebrew layout has no "v", so Ctrl+V went out as a Unicode "v" that pastes
+            # nothing (Hebrew switching, 2026-11-16; from pynput's source, not seen on Windows).
+            keys.append(KeyCode.from_vk(ord(k.upper())))
         elif len(k) == 1:
             keys.append(KeyCode.from_char(k.lower()))
         elif hasattr(Key, k.lower()):

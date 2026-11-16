@@ -48,6 +48,10 @@ class Ctl(Controller):
                                    piece=SimpleNamespace(emit=lambda t: None),
                                    transcribed=SimpleNamespace(emit=lambda *a: self.done.append(a)))
         self.done = []
+        # Hebrew switching (2026-11-16): English fixed, so start() asks no keyboard
+        self.cfg["input_language"] = "en"
+        self._take_info, self._he_pending, self._he_loading, self.last_lang = {}, False, False, None
+        self.he_engine = SimpleNamespace(loaded_dir=None)
 
     def set_state(self, state):
         self.state = state

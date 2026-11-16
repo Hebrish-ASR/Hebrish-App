@@ -1484,6 +1484,28 @@
         "verified": false
       },
       "notes": ""
+    },
+    {
+      "id": "hebrew-model-switching",
+      "group": "models",
+      "name": "Hebrew model switching: input language Auto (keyboard layout) / EN / Hebrew, Hebrew-only model in its own Models section with its CC BY 4.0 credit",
+      "android": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "android/app/src/main/java/app/hebrish/dictation/InputLanguage.kt (a0695a6; not run on a device)"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/keyboard_layout.py, desktop/hebrish/ui/app.py (take_language); KDE detection and a Hebrew decode verified 2026-11-16, GNOME and X11 detection unit-tested only"
+      },
+      "windows": {
+        "status": "present",
+        "since": "unreleased",
+        "evidence": "desktop/hebrish/keyboard_layout.py (_windows: GetKeyboardLayout of the foreground window's thread)",
+        "verified": false
+      },
+      "notes": "Desktop: Transcription Mode stays on the main model; the local API takes OpenAI's language=he."
     }
   ],
   "engine_rules": [
@@ -1562,7 +1584,8 @@
       "Transcription Mode Paragraphs setting (B-44)",
       "Transcription Mode Pause button and levels docked by default (B-45)",
       "Clean-up model add-on for Transcription Mode (B-40)",
-      "Press Enter after silence (B-72)"
+      "Press Enter after silence (B-72)",
+      "Hebrew model switching (2026-11-16)"
     ]
   },
   "twin_lag": {

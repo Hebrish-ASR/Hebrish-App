@@ -244,3 +244,32 @@ def test_control_errors_map_to_status(ctl):
     assert _json(ctl, "POST", "/v1/app/models/select", {"id": "x"})[0] == 404
     assert _json(ctl, "POST", "/v1/app/dictation", {"action": "x"})[0] == 400
     assert _json(ctl, "GET", "/v1/nope")[0] == 404
+
+
+def test_language_field_reaches_the_app(monkeypatch):
+    """Hebrew switching (2026-11-16): OpenAI's `language` picks the Hebrew model; anything but he/en is 400,
+    and the app's refusal (Hebrew model not downloaded) comes back as its status."""
+    monkeypatch.setattr(local_api.audio, "load_file", _read_wav)
+    seen = []
+
+    def transcribe(samples, language=None):
+        seen.append(language)
+        if language == "he" and len(seen) > 2:
+            raise local_api.ApiError(409, "the Hebrew model isn't downloaded")
+        return "שלום" if language == "he" else "hello"
+    a = local_api.LocalApi(transcribe, lambda: {"id": "x", "version": "1"}, _free_port())
+    assert a.start()
+    try:
+        body, h = _multipart({"language": "he"}, _wav())
+        st, _, d = _req(a, "POST", "/v1/audio/transcriptions", body, h)
+        assert st == 200 and json.loads(d) == {"text": "שלום"}
+        st, _, d = _req(a, "POST", "/v1/audio/transcriptions?language=iw&response_format=verbose_json", _wav(),
+                        {"Content-Type": "audio/wav"})
+        assert st == 200 and json.loads(d)["language"] == "he"
+        st, _, _ = _req(a, "POST", "/v1/audio/transcriptions?language=fr", _wav(), {"Content-Type": "audio/wav"})
+        assert st == 400
+        st, _, d = _req(a, "POST", "/v1/audio/transcriptions?language=he", _wav(), {"Content-Type": "audio/wav"})
+        assert st == 409
+        assert seen == ["he", "he", "he"]
+    finally:
+        a.stop()

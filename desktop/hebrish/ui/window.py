@@ -11,7 +11,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QSize, Qt, QTime, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QIcon
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout,
+from PySide6.QtWidgets import (QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout,
                                QInputDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit,
                                QAbstractItemView, QHeaderView, QPushButton, QScrollArea,
                                QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTabWidget, QTimeEdit,
@@ -22,6 +22,7 @@ from ..config import APP_NAME, CONFIG_PATH, DATA_DIR, MODELS_DIR, STATE_PATH, TA
 from ..hotkey import ACTIONS, SLOTS, describe, pretty
 from ..inserter import copy_to_clipboard, parse_chord
 from . import about
+from .about import credit_html
 from .mics import MicsCard, fill_combo, in_use
 from .app import ICONS, icon
 from .meter import LevelMeter, verdict
@@ -465,6 +466,7 @@ class MainWindow(QMainWindow):
         row.addWidget(self.btn_pause)
         row.addWidget(self.btn_discard)
         col.addLayout(row)
+        col.addLayout(self._language_toggle())
         col.addStretch(1)
         top.addLayout(col)
 
@@ -522,6 +524,13 @@ class MainWindow(QMainWindow):
 
         self.hint_label = muted()
         lay.addWidget(self.hint_label)
+        # Hebrew chosen but the Hebrew model isn't downloaded: one line, with Download (2026-11-16)
+        self.lang_hint = QLabel()
+        self.lang_hint.setTextFormat(Qt.RichText)
+        self.lang_hint.setStyleSheet("font-size: 12px;")
+        self.lang_hint.linkActivated.connect(lambda _: self._lang_download())
+        self.lang_hint.hide()
+        lay.addWidget(self.lang_hint)
 
         box, b = card()
         head = QHBoxLayout()
@@ -560,6 +569,65 @@ class MainWindow(QMainWindow):
         lay.addWidget(box, 1)
         self._count()
         return page
+
+    # -- input language (Hebrew switching, 2026-11-16) ----------------------------------
+    LANGUAGES = (("auto", "Auto", "Follow the keyboard: Hebrew layout, Hebrew model; anything else, English"),
+                 ("en", "EN", "English (and code-switching): the main model"),
+                 ("he", "עב", "Hebrew: the Hebrew model, whatever the keyboard"))
+
+    def _language_toggle(self) -> QHBoxLayout:
+        """Three buttons under the record button: Follow keyboard, EN, עב (config input_language)."""
+        row = QHBoxLayout()
+        row.setSpacing(2)
+        self.lang_buttons: dict[str, QPushButton] = {}
+        group = QButtonGroup(self)
+        group.setExclusive(True)
+        for val, label, tip in self.LANGUAGES:
+            btn = QPushButton(label, checkable=True, objectName="outputToggle")
+            btn.setToolTip(tip)
+            btn.setChecked(self.cfg["input_language"] == val)
+            btn.clicked.connect(lambda _=False, v=val: self.ctl.set_input_language(v))
+            group.addButton(btn)
+            self.lang_buttons[val] = btn
+            row.addWidget(btn)
+        self._lang_group = group
+        return row
+
+    def sync_language(self):
+        """The toggle, the Settings combo and the hint, after a change from anywhere."""
+        val = self.cfg["input_language"]
+        for v, btn in getattr(self, "lang_buttons", {}).items():
+            btn.setChecked(v == val)
+        combo = getattr(self, "lang_combo", None)
+        if combo is not None and combo.currentData() != val:
+            combo.blockSignals(True)
+            combo.setCurrentIndex(max(0, combo.findData(val)))
+            combo.blockSignals(False)
+        m, cur = self.ctl.hebrew_install()
+        if val == "he" and cur is None and m is not None:
+            self._lang_hint_missing()
+        else:
+            self.lang_hint.hide()
+        self.update_model()
+
+    def _lang_hint_missing(self):
+        m = model_store.language_model("he")
+        busy = m is not None and self.ctl.downloading_id == m.id
+        self.lang_hint.setText(
+            "Hebrew model not downloaded: dictating with your main model. "
+            + ("<i>Downloading…</i>" if busy else f"<a href='#'>Download it ({m.download_mb if m else 72} MB)</a>"))
+        self.lang_hint.show()
+
+    def show_language(self, info: dict):
+        """A take just started (Controller.take_language)."""
+        if info.get("missing"):
+            self._lang_hint_missing()
+        elif self.cfg["input_language"] != "he" or info.get("lang") == "he":
+            self.lang_hint.hide()
+
+    def _lang_download(self):
+        self.ctl.download_hebrew()
+        self.present_tab("model")
 
     def _fill_mics(self):
         fill_combo(self.mic, self.cfg, "audio_device")
@@ -1092,6 +1160,8 @@ class MainWindow(QMainWindow):
         b.addWidget(self.family_tabs)
         self.model_rows: dict[str, dict] = {}
         lay.addWidget(box)
+        self.hebrew_box, self.hebrew_lay = card("Hebrew")     # filled in update_model (_hebrew_section)
+        lay.addWidget(self.hebrew_box)
         box, b = card("Updates")
         self.model_label = QLabel()
         self.model_label.setWordWrap(True)
@@ -1185,10 +1255,11 @@ class MainWindow(QMainWindow):
             words = QLabel(m.recommendation)
             words.setWordWrap(True)
             col.addWidget(words)
-        facts = muted()
-        facts.setTextFormat(Qt.RichText)
-        facts.setText(f"Speed {dots(m.speed, GOLD)} &nbsp; Accuracy {dots(m.accuracy, BRAND_GREEN)}")
-        col.addWidget(facts)
+        if not m.language:            # a language model isn't on the English speed/accuracy scale
+            facts = muted()
+            facts.setTextFormat(Qt.RichText)
+            facts.setText(f"Speed {dots(m.speed, GOLD)} &nbsp; Accuracy {dots(m.accuracy, BRAND_GREEN)}")
+            col.addWidget(facts)
         status = QLabel()
         status.setStyleSheet("font-size: 12px;")
         status.setWordWrap(True)
@@ -1487,7 +1558,7 @@ class MainWindow(QMainWindow):
         size = f"{m.download_mb} MB download" if m.download_mb else ""
         card_link = f"<a href='{m.card}'>Model card</a>" if m.card else ""
         terms = (f"Free for personal and non-commercial use: <a href='{about.TERMS}'>terms</a>"
-                 if m.line != "stock" else "")
+                 if m.line != "stock" and not m.credit else "")   # third-party weights: their own licence
         lines = [t for t in (" · ".join(x for x in (size, m.hardware) if x),
                              m.base_label and f"Base model: {m.base_label}", terms, card_link,
                              m.technical, m.base_model and f"Base model id: {m.base_model}",
@@ -1568,7 +1639,11 @@ class MainWindow(QMainWindow):
         if QMessageBox.question(self, "Delete model", f"Delete {m.name} "
                                 f"({model_store.disk_usage(mid) >> 20} MB)? You can download it "
                                 "again later.") == QMessageBox.Yes:
+            if m.language:
+                self.ctl.he_engine.unload()         # Windows can't delete files a loaded model holds
             model_store.remove_model(mid)
+            if m.language:
+                self.ctl.load_hebrew()
             if model_store.installed(mid):          # rmtree ignores errors: a file was locked or read-only
                 self.banner(f"Couldn't delete all of {m.name} in {model_store.model_dir(mid)}. Close "
                             "anything using it and try again, or delete the folder yourself.")
@@ -1621,6 +1696,8 @@ class MainWindow(QMainWindow):
         sel = model_store.current()
         lines = model_store.listed_lines()
         shape = [(v.id, v.available, v.supported) for ln in lines for v in ln.variants]
+        he_shape = [(m.id, m.available) for m in model_store.language_models()]
+        shape.append(tuple(he_shape))
         if getattr(self, "_model_shape", None) != shape:          # catalogue changed: rebuild
             tabs = self.family_tabs
             shown = tabs.tabBar().tabData(tabs.currentIndex()) if tabs.count() else sel.line
@@ -1636,6 +1713,7 @@ class MainWindow(QMainWindow):
                 tabs.tabBar().setTabData(i, ln.id)
                 if ln.id == shown:
                     tabs.setCurrentIndex(i)
+            self._hebrew_section()
             self._model_shape = shape
         self._update_addons()
         self._update_bundles()
@@ -1682,7 +1760,13 @@ class MainWindow(QMainWindow):
             r["dl"].setText("Downloading…" if here else "Download")
             r["dl"].setToolTip("One download at a time: wait for the one running to finish"
                                if busy and not here else "")
-            r["use"].setVisible(inst is not None and not in_use)
+            if m.language and inst:
+                loaded = ctl.he_engine.loaded_dir == inst[0]
+                text += (" · <span style='color:#2e9e5b'>loaded</span>" if loaded else
+                         " · loads when Input language isn't English" if self.cfg["input_language"] == "en" else
+                         " · loading…")
+                r["status"].setText(text)
+            r["use"].setVisible(inst is not None and not in_use and not m.language)
             r["use"].setEnabled(ctl.state == "idle")
             r["use"].setToolTip("" if ctl.state == "idle" else
                                 "Available when dictation and model loading have finished")
@@ -1721,6 +1805,32 @@ class MainWindow(QMainWindow):
             + "Each model is a subfolder named by its id (Jachnun's is codeswitch), with the "
             "version in use inside it.</small>")
         self.btn_store_default.setVisible(custom)
+
+    def _hebrew_section(self):
+        """The Models tab's Hebrew card (2026-11-16): the language models, each with Download and
+        Delete (no Use: the input language decides), and the credit the CC BY 4.0 licence requires."""
+        lay = self.hebrew_lay
+        while lay.count() > 1:                       # keep the card's title
+            item = lay.takeAt(1)
+            if item.widget():
+                item.widget().deleteLater()
+        ms = [m for m in model_store.language_models() if m.available]
+        self.hebrew_box.setVisible(bool(ms))
+        if not ms:
+            return
+        lay.addWidget(muted("Hebrew only, for dictating in Hebrew letters. It isn't a model you pick: "
+                            "Hebrish uses it when your keyboard is set to Hebrew, or when the עב switch under "
+                            "the record button is on. English stays on your main model."))
+        for m in ms:
+            self.model_rows[m.id] = self._model_row(m, lay)
+            credit = credit_html(m)
+            if credit:
+                c = QLabel(credit)
+                c.setWordWrap(True)
+                c.setTextFormat(Qt.RichText)
+                c.setOpenExternalLinks(True)
+                c.setStyleSheet("font-size: 11px; color: gray;")
+                lay.addWidget(c)
 
     def progress(self, frac: float, text: str):
         self._download_text = text
@@ -1763,6 +1873,14 @@ class MainWindow(QMainWindow):
         chord.setToolTip("ctrl+v for most apps; ctrl+shift+v for terminals")
         chord.textChanged.connect(lambda t: self._on_chord(chord, t))
         form.addRow("Paste shortcut", chord)
+        self.lang_combo = QComboBox()
+        for val, label in (("auto", "Follow the keyboard layout"), ("en", "English"), ("he", "Hebrew")):
+            self.lang_combo.addItem(label, val)
+        self.lang_combo.setCurrentIndex(max(0, self.lang_combo.findData(self.cfg["input_language"])))
+        self.lang_combo.setToolTip("Which model writes a take. Hebrew needs the Hebrew model (Models tab); "
+                                   "the same switch is under the record button on the Voice Typing tab.")
+        self.lang_combo.currentIndexChanged.connect(lambda _i: self.ctl.set_input_language(self.lang_combo.currentData()))
+        form.addRow("Input language", self.lang_combo)
         b.addLayout(form)
         b.addWidget(muted("Output (at the cursor, clipboard, this window: any combination) and the "
                           "microphone are on the Voice Typing tab."))
