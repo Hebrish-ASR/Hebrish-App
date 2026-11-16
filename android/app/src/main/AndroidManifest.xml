@@ -10,6 +10,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Model downloads (2026-11-16): a dataSync foreground service while a user-started download
+         runs (DownloadService), with a partial wake lock and a Wi-Fi lock; ACCESS_NETWORK_STATE to
+         wait for a network instead of failing (and for ModelUpdates' metered check, B-107). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Mic (0.6.0): routing a take to a Bluetooth headset mic (setCommunicationDevice / SCO). -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Used once, to download the model from Hugging Face. Recognition itself is offline. -->
@@ -64,6 +70,7 @@
         <activity android:name=".FloatingMicGuideActivity" android:exported="false" android:label="@string/title_guide" android:parentActivityName=".MainActivity" />
         <activity android:name=".TranscriptionActivity" android:exported="false" android:label="@string/title_transcription" android:parentActivityName=".MainActivity" android:windowSoftInputMode="adjustResize" />
         <service android:name=".TranscriptionService" android:exported="false" android:foregroundServiceType="microphone" />
+        <service android:name=".DownloadService" android:exported="false" android:foregroundServiceType="dataSync" />
         <activity android:name=".DictationActivity" android:exported="false" android:label="@string/title_dictation" android:parentActivityName=".MainActivity" />
         <activity android:name=".FloatingMicAppsActivity" android:exported="false" android:label="@string/title_bubble_apps" android:parentActivityName=".FloatingMicActivity" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".FloatingMicConsentActivity" android:exported="false" android:label="@string/title_consent" android:parentActivityName=".MainActivity" />

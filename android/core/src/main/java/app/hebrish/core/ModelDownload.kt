@@ -14,7 +14,11 @@ import android.os.Looper
 object ModelDownload {
     sealed class Status {
         object Idle : Status()
-        data class Running(val done: Long, val total: Long) : Status()
+        /**
+         * [waiting]: non-null while the download is stalled and retrying or waiting for a network
+         * (2026-11-16, [DownloadRetry]); [done] and [total] keep their last values meanwhile.
+         */
+        data class Running(val done: Long, val total: Long, val waiting: DownloadRetry.Wait? = null) : Status()
         object Done : Status()
         data class Failed(val message: String) : Status()
     }
@@ -62,6 +66,31 @@ object ModelDownload {
      * B-107: a take is open). Null = never wait (Hebrish Keyboard, and before B-107). Worker thread.
      */
     @Volatile var holdSwap: (() -> Boolean)? = null
+
+    /**
+     * Called on the main thread after every status change with whether a user-started download is
+     * running (or about to hand over to the next queued one). The Hebrish app keeps a foreground
+     * service (type dataSync, with wake and Wi-Fi locks) alive while it is true, so the download
+     * survives the screen going off or the app being left (2026-11-16). Null = nothing (Hebrish
+     * Keyboard). Never true for a [background] run: a job may not start a foreground service.
+     */
+    @Volatile var keepAlive: ((Context, Boolean) -> Unit)? = null
+    /** True while the running download was started by a background job (B-107), not by the user. */
+    @Volatile var background = false
+        private set
+    /** Set just before a finished run hands over to the next queued model, so [keepAlive] stays on across the gap. */
+    @Volatile private var handover = false
+    @Volatile private var appCtx: Context? = null
+
+    /**
+     * Whether the phone has a network that claims internet access. Needs ACCESS_NETWORK_STATE;
+     * without it (or on any error) answers true, so the download only backs off.
+     */
+    fun online(ctx: Context): Boolean = runCatching {
+        val cm = ctx.getSystemService(android.net.ConnectivityManager::class.java) ?: return@runCatching true
+        val n = cm.activeNetwork ?: return@runCatching false
+        cm.getNetworkCapabilities(n)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) ?: false
+    }.getOrDefault(true)
     private const val SWAP_WAIT_MS = 30 * 60 * 1000L
 
     /** Waits up to 30 min for [holdSwap] to clear; then fails, leaving the verified files for the next try. */
@@ -137,14 +166,15 @@ object ModelDownload {
     }
 
     /** Downloads [model]'s latest version; the current one keeps working until it verifies. */
-    fun update(ctx: Context, model: Catalogue.Model = Catalogue.selected(ctx)) {
-        install(ctx, model, latestById[model.id] ?: return)
+    /** [background]: started by a job (ModelUpdates, B-107), so no foreground service ([keepAlive]). */
+    fun update(ctx: Context, model: Catalogue.Model = Catalogue.selected(ctx), background: Boolean = false) {
+        install(ctx, model, latestById[model.id] ?: return, background)
     }
 
-    private fun install(ctx: Context, model: Catalogue.Model, m: ModelStore.Manifest?) {
+    private fun install(ctx: Context, model: Catalogue.Model, m: ModelStore.Manifest?, background: Boolean = false) {
         val guess = m ?: latestById[model.id] ?: ModelStore.installed(ctx, model)
         failedId = null
-        run(ctx, moving = false, total = guess?.totalBytes ?: 0L, model = model) { app, report ->
+        run(ctx, moving = false, total = guess?.totalBytes ?: 0L, model = model, background = background) { app, report ->
             target = model to guess
             val chosen = m ?: latestById[model.id]
                 ?: try {
@@ -157,7 +187,7 @@ object ModelDownload {
                 ?: ModelStore.installed(app, model)
                 ?: throw java.io.IOException("Couldn't reach Hugging Face to find ${model.name}")
             target = model to chosen
-            ModelStore.download(app, model, chosen, { cancel }, report)
+            ModelStore.download(app, model, chosen, { cancel }, DownloadRetry.Hooks(online = { online(app) }, onWait = ::waiting), report)
             // Only now that every file is verified: switch over, then delete the old weights.
             waitForSwap()
             if (Catalogue.selected(app).id == model.id) Transcriber.unload()
@@ -212,12 +242,21 @@ object ModelDownload {
         for (m in Catalogue.get(app).models) if (m.available && !ModelStore.isReady(app, root, m)) ModelStore.adopt(app, root, m)
     }
 
+    /** The download is stalled ([w] non-null) or flowing again (null): same numbers, new [Status.Running.waiting]. */
+    private fun waiting(w: DownloadRetry.Wait?) {
+        val s = status as? Status.Running ?: return
+        if (s.waiting != w) publish(s.copy(waiting = w))
+    }
+
     private fun run(ctx: Context, moving: Boolean, total: Long, model: Catalogue.Model? = null,
-                    job: (Context, (Long) -> Unit) -> Unit) {
+                    background: Boolean = false, job: (Context, (Long) -> Unit) -> Unit) {
         if (status is Status.Running) return
         val app = ctx.applicationContext
+        appCtx = app
         cancel = false
+        handover = false
         this.moving = moving
+        this.background = background
         target = model?.let { it to null }
         publish(Status.Running(0, total))
         Thread {
@@ -229,29 +268,49 @@ object ModelDownload {
                     // Every 2 MB and at most 5 times a second: each one redraws every model card,
                     // and on fast Wi-Fi 2 MB alone meant several redraws a second (up to 1.008).
                     val now = android.os.SystemClock.elapsedRealtime()
-                    if ((done - last > 2_000_000 && now - lastAt >= 200) || done == t) {
+                    // Also at once when bytes flow again after a wait, so "retrying" clears.
+                    val stalled = (status as? Status.Running)?.waiting != null
+                    if ((done - last > 2_000_000 && now - lastAt >= 200) || done == t || stalled) {
                         last = done
                         lastAt = now
                         publish(Status.Running(done, t))
                     }
                 }
-                publish(Status.Done)
                 // Next in the queue, if any; it is started from the main thread like any other.
-                queue.poll()?.let { next -> main.post { download(app, next) } }
+                val next = queue.poll()
+                handover = next != null
+                publish(Status.Done)
+                next?.let { startNext(app, it) }
             } catch (e: InterruptedException) {
                 queue.clear()
                 publish(Status.Idle)
             } catch (e: ModelStore.NotPublished) {
                 // Not released yet: the card says "Coming soon"; the rest of the queue carries on.
                 failedId = null
+                val next = queue.poll()
+                handover = next != null
                 publish(Status.Idle)
-                queue.poll()?.let { next -> main.post { download(app, next) } }
+                next?.let { startNext(app, it) }
             } catch (e: Exception) {
                 failedId = target?.first?.id
                 queue.clear()
                 publish(Status.Failed(e.message ?: e.javaClass.simpleName))
             }
         }.start()
+    }
+
+    /**
+     * Starts [next] on the main thread; if it doesn't start (already on the phone, no longer
+     * available), the one after it, so the queue and [keepAlive] never stall half-way.
+     */
+    private fun startNext(app: Context, next: Catalogue.Model) = main.post {
+        var m: Catalogue.Model? = next
+        while (m != null && status !is Status.Running) {
+            download(app, m)
+            if (status !is Status.Running) m = queue.poll()
+        }
+        handover = false
+        if (status !is Status.Running) publish(status)
     }
 
     /** Stops the running download and empties the queue. */
@@ -273,6 +332,10 @@ object ModelDownload {
 
     private fun publish(s: Status) {
         status = s
-        main.post { listener?.invoke(s) }
+        val alive = (s is Status.Running && !moving && !background) || handover
+        main.post {
+            listener?.invoke(s)
+            appCtx?.let { c -> keepAlive?.invoke(c, alive) }
+        }
     }
 }

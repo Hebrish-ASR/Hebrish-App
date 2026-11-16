@@ -158,7 +158,8 @@ class MainActivity : Page() {
         val others = ModelStore.readyModels(this).count { it.id != model.id }
         modelsSummary.text = when {
             s is ModelDownload.Status.Running && !ModelDownload.moving -> getString(R.string.home_models_downloading,
-                ModelDownload.target?.first?.name ?: "", s.done / 1_000_000, s.total / 1_000_000)
+                ModelDownload.target?.first?.name ?: "", s.done / 1_000_000, s.total / 1_000_000) +
+                (downloadWaitLine(this, s.waiting)?.let { " · $it" } ?: "")
             ready -> getString(R.string.home_models_ready, model.name, installed!!.label) +
                 (if (others > 0) getString(R.string.home_models_others, others) else "") +
                 (if (ModelDownload.updateAvailable(this) != null) getString(R.string.home_models_update) else "")

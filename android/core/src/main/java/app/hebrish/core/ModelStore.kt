@@ -317,25 +317,33 @@ object ModelStore {
      * Downloads every missing file of [m] into its own folder, resuming partial `.part` files
      * with a Range request, and verifies SHA-256 before renaming into place. Does not touch the
      * installed model. Blocking; call from a worker thread. [progress] receives bytes done
-     * across all files.
+     * across all files. Transient network errors are retried per [retry] ([DownloadRetry]).
      */
-    fun download(ctx: Context, model: Catalogue.Model, m: Manifest, cancelled: () -> Boolean, progress: (Long) -> Unit) {
+    fun download(ctx: Context, model: Catalogue.Model, m: Manifest, cancelled: () -> Boolean,
+                 retry: DownloadRetry.Hooks = DownloadRetry.Hooks(), progress: (Long) -> Unit) {
         val d = dir(ctx, model = model, m = m)!!
-        downloadFiles(d, m.files, { url(model, m, it) }, cancelled, progress)
+        downloadFiles(d, m.files, { url(model, m, it) }, cancelled, retry, progress)
         writeFolderManifest(d, m, model.id, model.name)
     }
 
     /**
      * [download]'s loop for any set of files: each missing file of [files] into [dir] from
      * [urlOf] (by file name), resumable `.part`, size and SHA-256 checked before it is renamed into
-     * place. Also used for the paragraph-break model (the app's ParagraphStore, B-44a), which is
-     * not a catalogue model. Blocking; call from a worker thread.
+     * place. Also used for the paragraph-break model (the app's ParagraphStore, B-44a) and the
+     * clean-up models (CleanupStore), which are not catalogue models. Blocking; call from a worker thread.
+     *
+     * Since 2026-11-16 a transient error (timeout, reset, no route, HTTP 408/429/5xx; see
+     * [DownloadRetry.transient]) no longer ends the download: the `.part` stays, the loop backs off
+     * ([DownloadRetry.backoffMs]) or waits for a network ([DownloadRetry.Hooks.online]) and resumes
+     * the same file. It gives up ([DownloadRetry.GaveUp]) after the [DownloadRetry.Policy] budget
+     * with no new bytes. [cancelled] is checked during every wait.
      */
-    fun downloadFiles(dir: File, files: List<ModelFile>, urlOf: (String) -> String, cancelled: () -> Boolean, progress: (Long) -> Unit) {
+    fun downloadFiles(dir: File, files: List<ModelFile>, urlOf: (String) -> String, cancelled: () -> Boolean,
+                      retry: DownloadRetry.Hooks = DownloadRetry.Hooks(), progress: (Long) -> Unit) {
         dir.mkdirs()
         val need = files.sumOf { f -> File(dir, f.name).let { if (it.exists() && it.length() == f.size) 0L else f.size - File(it.path + ".part").length().coerceAtMost(f.size) } }
         if (dir.usableSpace < need + 50_000_000) {
-            throw java.io.IOException("Not enough free space: need ${need / 1_000_000} MB, have ${dir.usableSpace / 1_000_000} MB")
+            throw DownloadRetry.NoSpace("Not enough free space: need ${need / 1_000_000} MB, have ${dir.usableSpace / 1_000_000} MB")
         }
         var doneBefore = 0L
         for (f in files) {
@@ -347,45 +355,99 @@ object ModelStore {
             }
             val part = File(target.path + ".part")
             if (part.length() > f.size) part.delete()
-            while (part.length() < f.size) {
-                if (cancelled()) throw InterruptedException("cancelled")
-                val conn = URL(urlOf(f.name)).openConnection() as HttpURLConnection
-                conn.connectTimeout = 20_000
-                conn.readTimeout = 30_000
-                conn.instanceFollowRedirects = true
-                val have = part.length()
-                if (have > 0) conn.setRequestProperty("Range", "bytes=$have-")
-                // finally: a cancel, a timeout or a read error mid-file used to skip disconnect.
-                try {
-                    val code = conn.responseCode
-                    val append = code == HttpURLConnection.HTTP_PARTIAL
-                    if (code != HttpURLConnection.HTTP_OK && !append) throw java.io.IOException("HTTP $code for ${f.name}")
-                    // A server that ignores Range sends the whole file with 200: start over.
-                    var written = if (append) have else 0L
-                    conn.inputStream.use { input ->
-                        FileOutputStream(part, append).use { out ->
-                            val buf = ByteArray(1 shl 16)
-                            while (true) {
-                                if (cancelled()) throw InterruptedException("cancelled")
-                                val n = input.read(buf)
-                                if (n < 0) break
-                                out.write(buf, 0, n)
-                                written += n
-                                progress(doneBefore + written)
-                            }
-                        }
-                    }
-                } finally {
-                    conn.disconnect()
-                }
-            }
+            fetchWithRetry(urlOf(f.name), f, part, cancelled, retry) { progress(doneBefore + it) }
             if (f.sha256 != null && sha256(part) != f.sha256) {
                 part.delete()
-                throw java.io.IOException("Checksum mismatch for ${f.name}; deleted, try again")
+                throw DownloadRetry.ChecksumMismatch(f.name)
             }
-            if (!part.renameTo(target)) throw java.io.IOException("Could not move ${f.name} into place")
+            if (!part.renameTo(target)) throw DownloadRetry.LocalFileError("Could not move ${f.name} into place")
             doneBefore += f.size
             progress(doneBefore)
+        }
+    }
+
+    /** Brings [part] up to [f]'s size from [url], retrying transient errors per [retry]. [written] = bytes of this file. */
+    private fun fetchWithRetry(url: String, f: ModelFile, part: File, cancelled: () -> Boolean,
+                               retry: DownloadRetry.Hooks, written: (Long) -> Unit) {
+        val budget = DownloadRetry.Budget(retry.policy, retry.clock())
+        var attempt = 0
+        var waiting = false
+        while (part.length() < f.size) {
+            if (cancelled()) throw InterruptedException("cancelled")
+            // No network at all: wait for one instead of spending attempts.
+            if (!retry.isOnline()) {
+                budget.offline(retry.clock())
+                if (budget.offlineTooLong(retry.clock())) {
+                    throw DownloadRetry.GaveUp("No connection for ${retry.policy.offlineMs / 60_000} minutes", null)
+                }
+                waiting = true
+                retry.onWait(DownloadRetry.Wait.Offline)
+                retry.pause(retry.policy.offlinePollMs, cancelled)
+                continue
+            }
+            budget.online(retry.clock())
+            val before = part.length()
+            try {
+                fetchOnce(url, f, part, cancelled) { n ->
+                    if (waiting) { waiting = false; retry.onWait(null) }
+                    written(n)
+                }
+            } catch (e: Exception) {
+                if (e is InterruptedException || !DownloadRetry.transient(e)) throw e
+                val now = retry.clock()
+                if (part.length() > before) { budget.progress(now); attempt = 0 }
+                if (budget.exhausted(now)) {
+                    throw DownloadRetry.GaveUp("No progress for ${retry.policy.noProgressMs / 60_000} minutes (${e.message ?: e.javaClass.simpleName})", e)
+                }
+                if (!retry.isOnline()) continue  // straight to waiting for a network
+                val delay = DownloadRetry.backoffMs(attempt)
+                attempt++
+                waiting = true
+                retry.onWait(DownloadRetry.Wait.Retrying(attempt, e.message ?: e.javaClass.simpleName, delay))
+                retry.pause(delay, cancelled)
+            }
+        }
+        if (waiting) retry.onWait(null)
+    }
+
+    /** One request for the rest of [part]. Network errors propagate as they are; local file errors as [DownloadRetry.LocalFileError]. */
+    private fun fetchOnce(url: String, f: ModelFile, part: File, cancelled: () -> Boolean, written: (Long) -> Unit) {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        conn.connectTimeout = 20_000
+        // 60 s (30 s until 2026-11-16): a slow CDN edge or a weak signal can stall that long and still recover.
+        conn.readTimeout = 60_000
+        conn.useCaches = false
+        conn.instanceFollowRedirects = true
+        val have = part.length()
+        if (have > 0) conn.setRequestProperty("Range", "bytes=$have-")
+        // finally: a cancel, a timeout or a read error mid-file used to skip disconnect.
+        try {
+            val code = conn.responseCode
+            val append = code == HttpURLConnection.HTTP_PARTIAL
+            if (code != HttpURLConnection.HTTP_OK && !append) throw DownloadRetry.HttpError(code, f.name)
+            // A server that ignores Range sends the whole file with 200: start over.
+            var done = if (append) have else 0L
+            conn.inputStream.use { input ->
+                val out = try { FileOutputStream(part, append) } catch (e: java.io.IOException) {
+                    throw DownloadRetry.LocalFileError("Could not write ${f.name}: ${e.message}", e)
+                }
+                out.use {
+                    val buf = ByteArray(1 shl 16)
+                    while (true) {
+                        if (cancelled()) throw InterruptedException("cancelled")
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        try { out.write(buf, 0, n) } catch (e: java.io.IOException) {
+                            throw DownloadRetry.LocalFileError("Could not write ${f.name}: ${e.message}", e)
+                        }
+                        done += n
+                        written(done)
+                    }
+                }
+            }
+            if (done < f.size) throw DownloadRetry.ClosedEarly(f.name)
+        } finally {
+            conn.disconnect()
         }
     }
 

@@ -1,5 +1,7 @@
 package app.hebrish.dictation
 
+import app.hebrish.core.DownloadRetry
+import app.hebrish.core.ModelDownload
 import app.hebrish.core.ModelStore
 import android.content.Context
 import android.os.Handler
@@ -109,7 +111,8 @@ object ParagraphStore {
             try {
                 val m = Installed.fromJson(get(MANIFEST_URL))
                 var last = 0L
-                ModelStore.downloadFiles(dir(app, m), m.files, { m.baseUrl + it }, { cancel }) { done ->
+                ModelStore.downloadFiles(dir(app, m), m.files, { m.baseUrl + it }, { cancel },
+                    DownloadRetry.Hooks(online = { ModelDownload.online(app) })) { done ->
                     if (done - last > 500_000 || done == m.totalBytes) {
                         last = done
                         publish(Status.Running(done, m.totalBytes))

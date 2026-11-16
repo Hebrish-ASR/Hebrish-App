@@ -27,6 +27,13 @@
     <string name="model_failed">Download failed: %1$s. Tap Download to resume.</string>
     <string name="download">Download</string>
     <string name="model_downloading_version">Downloading %1$s… %2$d / %3$d MB · %4$d%%</string>
+    <!-- Download robustness (2026-11-16): the card and notification while a download is stalled. -->
+    <string name="download_retrying">Connection lost: retrying in %1$d s…</string>
+    <string name="download_waiting_network">Waiting for a connection…</string>
+    <string name="model_downloading_waiting">%1$s · %2$d / %3$d MB · %4$s</string>
+    <string name="download_channel">Model downloads</string>
+    <string name="download_notif_title">Downloading %1$s</string>
+    <string name="download_notif_progress">%1$d / %2$d MB</string>
     <string name="check_update">Check for update</string>
     <string name="model_moving">Moving models… %1$d / %2$d MB</string>
     <string name="location_title">Model location</string>

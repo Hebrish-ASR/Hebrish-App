@@ -2335,3 +2335,79 @@ shown greyed with "runs on …". Now `ModelsActivity.listed` keeps a variant onl
 `Model.offeredOn` since 1.035) includes `android` or is absent; a variant already installed stays listed so
 nobody loses a model they have. A line with no listed variants is not shown. The greyed branch of `card` is
 now only reached by an installed variant that is no longer supported.
+
+## Download robustness: retries, waiting for a network, foreground service (unreleased, 2026-11-16)
+
+Report (a user on a Pixel, 2026-11-16): "Hard to get the downloads to finish, they keep timing out."
+Debug log: [`docs/debug-log/2026-11-16-model-downloads-time-out.md`](../../docs/debug-log/2026-11-16-model-downloads-time-out.md).
+
+**What was broken (up to 1.035).** `ModelStore.downloadFiles` made one `HttpURLConnection` per file (connect 20 s,
+read 30 s); any `IOException` (a read timeout, a reset, a DNS failure while Wi-Fi reconnects) went straight up to
+`ModelDownload.run`, which showed `Status.Failed` and cleared the queue. The `.part` resumed on the next tap, but
+nothing retried by itself. The download was a plain `Thread`: no foreground service, wake lock or Wi-Fi lock, so with
+the screen off or the app left, Doze and Wi-Fi power save could stall the socket until the 30 s read timeout fired.
+Also: the manifest lacked `ACCESS_NETWORK_STATE`, so `ModelUpdates.metered` (B-107) hit a `SecurityException`, which
+its `runCatching` turned into "metered", so with **Only on Wi-Fi** (the default) background model updates never ran (I:
+from the code and `ConnectivityManager.isActiveNetworkMetered` requiring that permission; not seen on a device).
+
+**Retry inside the download** (`core/.../DownloadRetry.kt`, used by `ModelStore.downloadFiles` → `fetchWithRetry` →
+`fetchOnce`):
+
+- Transient (`DownloadRetry.transient`): any connection `IOException` (SocketTimeout, UnknownHost, Connect, Socket
+  "connection reset", SSL, EOF), `ClosedEarly` (the body ended before the file was complete, which before looped with
+  no delay), `HttpError` 408, 429, 5xx. Not transient, thrown as before: `NotPublished` (404 manifest), any other HTTP
+  status (`HttpError`, e.g. 404/403/416), `ChecksumMismatch` after a full read (the `.part` is deleted), `NoSpace`,
+  `LocalFileError` (writing or renaming the local file; wrapped in `fetchOnce` so a full disk is not retried for 10
+  min), cancel (`InterruptedException`). All new exceptions are `IOException`s, so callers showing `e.message` are unchanged.
+- On a transient error the `.part` stays and the same file resumes with `Range` after a backoff of 2, 4, 8, 15, then
+  30 s (`backoffMs`). Any new bytes in the failed attempt reset the attempt counter and the budget.
+- No network (`Hooks.online` false): no request is made; it polls every 2 s (`Policy.offlinePollMs`) instead of
+  spending attempts. `ModelDownload.online(ctx)` = active network with `NET_CAPABILITY_INTERNET` (not `VALIDATED`, so
+  a captive portal is retried, not waited on). Without `ACCESS_NETWORK_STATE` (Hebrish Keyboard) it answers true and
+  only the backoff applies.
+- Gives up (`GaveUp`, a normal failure: "Tap Download to resume") after 10 min online without one new byte
+  (`Policy.noProgressMs`) or 30 min in one stretch without a network (`Policy.offlineMs`); offline time does not count
+  against the 10 min. Cancel is checked every 250 ms during any wait (`Hooks.pause`).
+- `fetchOnce`: `readTimeout` 60 s (was 30 s), `useCaches = false`, redirects still followed (HF → CDN).
+- Every caller gets it: `ModelDownload.install` (user downloads and B-107 background updates), `ParagraphStore`,
+  `CleanupStore` (with the online check; their cards don't show the retry state), and Hebrish Keyboard through the
+  default `DownloadRetry.Hooks()` (backoff only). `downloadFiles`/`download` keep their old call shape: the new
+  `retry` parameter has a default and sits before the trailing `progress` lambda.
+
+**Visible state.** `ModelDownload.Status.Running` gained `waiting: DownloadRetry.Wait?` (default null, so
+`Running(done, total)` still compiles). The Models card and home line say "… · Connection lost: retrying in 8 s…"
+or "… · Waiting for a connection…" (`downloadWaitLine`, strings `download_retrying`, `download_waiting_network`,
+`model_downloading_waiting`) and clear as soon as bytes flow again.
+
+**Foreground service** (`app/.../DownloadService.kt`, app module only). Core has a new hook
+`ModelDownload.keepAlive: ((Context, Boolean) -> Unit)?`, null by default (Hebrish Keyboard unaffected), called on
+the main thread after every status change with "a user-started download is running, or is handing over to the next
+queued model". `DownloadService.install()` sets it from `ModelsActivity.onResume` (the only screen that starts
+downloads). The service: type `dataSync` (`FOREGROUND_SERVICE_DATA_SYNC`), started with `startForegroundService`
+only for a running download (the app is in front: the user just tapped), never for a handover alone; an ongoing
+low-importance notification on channel `downloads` ("Model downloads": name, MB, a progress bar, the retry line,
+tap → Models, **Cancel** → `ModelDownload.cancel()`); a partial wake lock (6 h ceiling) and a
+`WIFI_MODE_FULL_HIGH_PERF` Wi-Fi lock (deprecated on recent Android and possibly a no-op there) held only while it
+runs; stops itself when the run ends with nothing queued. `ModelDownload.startNext` now also skips queued models that
+no longer need a download, so neither the queue nor the service stalls half-way. Without notification permission
+the service still runs; only the notification is hidden. Android 15+: `onTimeout` (dataSync's 6 h in 24 h) stops the
+service; the download thread carries on while the app is in front and the `.part` resumes otherwise. New
+permissions: `FOREGROUND_SERVICE_DATA_SYNC`, `WAKE_LOCK`, `ACCESS_NETWORK_STATE` (all normal, install-time).
+Google Play: a `dataSync` foreground service has to be declared in the Play Console (App content → Foreground
+service permissions) with a short video; not done yet.
+
+**Background updates (B-107).** `ModelUpdates.run` calls `ModelDownload.update(app, m, background = true)`:
+`ModelDownload.background` is true for that run, so `keepAlive` stays false and no foreground service is started
+from the job (Android 12+ forbids it from the background). The retries happen inside the job's download; if the job
+is stopped or the budget runs out, the job's own retry and the `.part` files carry on next time.
+
+**Verified (V, 2026-11-16):** `compileFdroidDebugKotlin compilePlayDebugKotlin` and `testFdroidDebugUnitTest` pass.
+`DownloadRetryTest` (17 tests): the transient/permanent split, the backoff schedule, the budget (progress resets it,
+offline time doesn't count, offline limit), and `downloadFiles` against a local socket server that drops the
+connection at 100 KB and 180 KB of a 300 KB file (it resumes with `Range` from each `.part` length and the SHA-256
+matches), 503/503/429 then success (backs off 2 + 4 + 8 s), 404 and a checksum mismatch not retried, waiting
+offline without a request, giving up after 10 min of 503s, cancel during the backoff keeping the `.part`, and the
+old call shape without hooks. Time is faked in the tests (no real waiting).
+**Not verified (I):** everything on a device (no phone was connected): that the service starts and its notification
+shows, Cancel from the notification, the locks keeping Wi-Fi up with the screen off on a Pixel, Doze behaviour,
+the Android 15 `onTimeout`, the card's retry line, and that the user's timeouts are gone.

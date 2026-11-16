@@ -77,6 +77,7 @@ class ModelsActivity : Page() {
 
     override fun onResume() {
         super.onResume()
+        DownloadService.install()
         ModelDownload.listener = { onDownload(it) }
         ParagraphStore.listener = { renderPost() }
         CleanupStore.listener = { renderPost() }
@@ -254,9 +255,13 @@ class ModelsActivity : Page() {
 
     private fun fraction(s: ModelDownload.Status.Running) = s.done.toFloat() / s.total.coerceAtLeast(1)
 
-    private fun downloadingLine(m: Catalogue.Model, s: ModelDownload.Status.Running) = getString(
-        R.string.model_downloading_version, listOfNotNull(m.name, ModelDownload.target?.second?.label).joinToString(" "),
-        mb(s.done), mb(s.total), (fraction(s) * 100).toInt())
+    /** Progress, or while stalled (2026-11-16) "… · Connection lost: retrying in 8 s…" instead of a frozen percentage. */
+    private fun downloadingLine(m: Catalogue.Model, s: ModelDownload.Status.Running): String {
+        val name = listOfNotNull(m.name, ModelDownload.target?.second?.label).joinToString(" ")
+        val wait = downloadWaitLine(this, s.waiting)
+            ?: return getString(R.string.model_downloading_version, name, mb(s.done), mb(s.total), (fraction(s) * 100).toInt())
+        return getString(R.string.model_downloading_waiting, name, mb(s.done), mb(s.total), wait)
+    }
 
     private fun render() {
         barShown = bar?.shown ?: 0f

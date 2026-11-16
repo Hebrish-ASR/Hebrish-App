@@ -42,7 +42,7 @@ object ModelUpdates {
             val next = ModelDownload.updateAvailable(app, m) ?: continue
             if (ModelDownload.status is ModelDownload.Status.Running) { retry = true; break }
             Log.i(TAG, "background update of ${m.id} to ${next.version}")
-            onMain { ModelDownload.update(app, m) }
+            onMain { ModelDownload.update(app, m, background = true) }
             // update() sets Running before it returns (on the main thread, done by now); wait for the download and switch-over.
             waitWhile(Long.MAX_VALUE) { ModelDownload.status is ModelDownload.Status.Running }
             val now = ModelStore.installed(app, m)

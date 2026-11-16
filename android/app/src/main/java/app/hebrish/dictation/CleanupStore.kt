@@ -2,6 +2,8 @@ package app.hebrish.dictation
 
 import app.hebrish.core.Catalogue
 import app.hebrish.core.ModelPrefs
+import app.hebrish.core.DownloadRetry
+import app.hebrish.core.ModelDownload
 import app.hebrish.core.ModelStore
 import android.content.Context
 import android.os.Handler
@@ -144,7 +146,8 @@ object CleanupStore {
         Thread {
             try {
                 var last = 0L
-                ModelStore.downloadFiles(File(base(app, e.id), e.version), listOf(e.file), { e.url }, { cancel }) { done ->
+                ModelStore.downloadFiles(File(base(app, e.id), e.version), listOf(e.file), { e.url }, { cancel },
+                    DownloadRetry.Hooks(online = { ModelDownload.online(app) })) { done ->
                     if (done - last > 2_000_000 || done == e.file.size) {
                         last = done
                         publish(Status.Running(e.id, done, e.file.size))
