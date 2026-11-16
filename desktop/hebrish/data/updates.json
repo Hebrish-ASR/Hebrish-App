@@ -2,9 +2,28 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "desktop",
-  "built": "2026-11-15",
+  "built": "2026-11-16",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-16",
+      "tag": "Desktop 1.036",
+      "title": "Dictate in Hebrew: a Hebrew-only model, used when your keyboard layout is Hebrew",
+      "summary": "A new Hebrew model writes in Hebrew letters. With it downloaded, Voice Typing uses it when your keyboard layout is Hebrew; English stays on your main model.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-16",
+      "tag": "Models",
+      "title": "Meorav-Multi-Voice: voice names and avatars, a proof-of-concept label, and how it was trained",
+      "summary": "The five voices of Meorav-Multi-Voice have names and illustrated avatars: Josh (American male, the same designed voice as Meorav v3.0), Rivka (American female), Nigel (British male), Fiona (British female) and Bazza (Australian male).",
+      "platforms": [
+        "models",
+        "site"
+      ]
+    },
     {
       "date": "2026-11-15",
       "tag": "Ubuntu 1.035",
@@ -164,24 +183,6 @@
       "tag": "Site",
       "title": "Home page reordered, and Support the project moves under About",
       "summary": "The home page now offers the apps before asking for help, and a new section links to the use cases, manual, screenshots, models, blog and roadmap.",
-      "platforms": [
-        "site"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Site",
-      "title": "Daniel's story, a new support page, and breadcrumbs on model pages",
-      "summary": "About now opens with who makes Hebrish and why, with a real photo and some dictation facts.",
-      "platforms": [
-        "site"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Site",
-      "title": "The training blend, and category charts",
-      "summary": "/models now explains the training blend: the five ingredients, what each one is for, and why LibriSpeech is in the mix, with Corn at the blender.",
       "platforms": [
         "site"
       ]

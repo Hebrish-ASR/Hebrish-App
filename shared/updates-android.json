@@ -2,9 +2,18 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "android",
-  "built": "2026-11-15",
+  "built": "2026-11-16",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-16",
+      "tag": "Android 1.034",
+      "title": "Dictate in Hebrew: a Hebrew-only model, used when your keyboard is in Hebrew",
+      "summary": "A new Hebrew model writes in Hebrew letters. With it downloaded, the voice keyboard uses it when the keyboard you came from is set to Hebrew; English stays on your main model.",
+      "platforms": [
+        "android"
+      ]
+    },
     {
       "date": "2026-11-15",
       "tag": "Android 1.033",
@@ -179,15 +188,6 @@
         "android",
         "desktop",
         "models"
-      ]
-    },
-    {
-      "date": "2026-10-27",
-      "tag": "Android 1.007",
-      "title": "Clearer controls in the voice keyboard",
-      "summary": "The Hebrish voice keyboard has one row of round, colour-coded buttons: Discard (red), Retake (amber), the mic in the middle, Pause (gold while paused) and Insert last.",
-      "platforms": [
-        "android"
       ]
     }
   ]
