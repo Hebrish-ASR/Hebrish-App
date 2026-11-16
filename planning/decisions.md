@@ -9,6 +9,27 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-16-01: A Hebrew-only model, used when the keyboard is Hebrew
+
+- **Decision:** Both apps get a second, Hebrew-only model, which writes in Hebrew letters. It is used instead of the
+  dictation model when the input language is Hebrew. Android follows the previous keyboard's language, has an EN / עב
+  toggle in the voice keyboard and declares an `he` voice subtype. The desktop app follows the active keyboard layout
+  and has its own toggle. The model is Yakov Kolani's `zipformer2-66m-streaming-he` (66M Zipformer2 streaming
+  transducer, ivrit.ai data, CC BY 4.0). It is forked unchanged to `Hebrish/Zipformer2-66M-Streaming-He` (HF commit
+  `ee858e4`, from `ivrit-ai/zipformer2-66m-streaming-he` at `ee769a2`) and served from
+  `cdn.hebrish.app/models/ivrit-zipformer-he/latest.json`. In `shared/catalogue.json` it is line `hebrew`, variant
+  `hebrew-zipformer-66m`, with `language: "he"` and a `credit` block that each app shows wherever the model is listed.
+- **Why:** Daniel, 2026-11-16: when he switches his keyboard to Hebrew he wants real Hebrew text, which the Hebrish
+  models (English with romanised Hebrew) do not produce. The fork exists so he can fine-tune it on more Hebrew he
+  gathers; it is served from our CDN like every other Hebrish model so a fine-tune replaces it in place.
+- **Checked:** On the desktop engine unchanged (`streaming=True`, `feature_dim=80`), two synthetic Hebrew clips (edge-tts
+  he-IL voices, about 6 s each) came back almost word for word in Hebrew script in 0.2 s each on 2 threads (2026-11-16).
+  The upstream card reports WER 5.1 (ivrit.ai eval-d1) and 8.9 (eval-whatsapp). English is spelled letter by letter.
+- **Alternatives:** MaorB/whistle-he (55M, 24.7 MB, WER 8.8-18.8, needs the Cactus engine); flowty1/qwen-asr-0.6b-he
+  (1.56 GB, no WER published, no ONNX); Omnilingual ASR CTC 300M (no Hebrew score at that size);
+  ivrit.ai Whisper-large-v3-turbo (0.8B, too heavy for a phone CPU). Serving the files from Hugging Face was also
+  considered and set aside once the fork existed.
+
 ### D-2026-11-13-01: Live revision is the reason for streaming, and Parakeet re-decoding is the first route to it
 
 - **Decision:** Live text that revises itself while you speak (I-4) is planned as a deliberate feature. It is the main reason

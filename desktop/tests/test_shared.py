@@ -63,6 +63,9 @@ def test_variants_are_well_formed():
         assert v["status"] in ("available", "planned"), v["id"]
         assert set(v["platforms"]) <= {"android", "linux", "windows"} and v["platforms"], v["id"]
         assert set(v["devices"]) <= {"wearable", "phone", "desktop"} and v["devices"], v["id"]
+        if v.get("language"):       # a language line (Hebrew, 2026-11-16): not on the English tier scale
+            assert v["language"] == "he" and v["credit"]["license"] and v["credit"]["url"], v["id"]
+            continue
         assert 1 <= v["speed"] <= 5 and 1 <= v["accuracy"] <= 5 and 0 <= v["gradient"] <= 100, v["id"]
         if v["engine"] == "sherpa_offline_transducer":
             assert v["feature_dim"] in (80, 128), v["id"]
@@ -105,8 +108,9 @@ def test_hebrish_ships_only_code_switching_lines_and_stock():
     (streaming, trained on Sabich's blend) and stock Parakeet last. Jachnun left the apps on 2026-11-04 (Daniel: two active models).
     The fine-tunes without Hebrew (Boxty, tech, personal) belong to Parlance
     (danielrosehill/Parlance-Dictation). Schema 1 keeps its three models."""
-    # Falafel (voice commands, Daniel 2026-11-10) before stock, which stays last.
-    assert [ln["id"] for ln in v2()["lines"]] == ["sabich", "shakshuka", "falafel", "stock"]
+    # Falafel (voice commands, Daniel 2026-11-10) before stock, which stays last. Hebrew (2026-11-16, Daniel)
+    # is a language line, not a dictation model: the Hebrew-only model used when the keyboard is Hebrew.
+    assert [ln["id"] for ln in v2()["lines"]] == ["sabich", "shakshuka", "falafel", "hebrew", "stock"]
     # Daniel, 2026-11-02: Sabich (Rolling) is the default while he tests it; Sabich stays in the line.
     assert v2()["lines"][0]["variants"][0]["id"] == v2()["recommended"] == "sabich-rolling"
     assert v2()["lines"][0]["variants"][0]["name"] == "Sabich"

@@ -393,6 +393,65 @@
       ]
     },
     {
+      "id": "hebrew",
+      "name": "Hebrew",
+      "language": "he",
+      "summary": "Hebrew only: writes in Hebrew letters. Used automatically when your keyboard is set to Hebrew.",
+      "card": "https://huggingface.co/Hebrish/Zipformer2-66M-Streaming-He",
+      "_doc": "Added 2026-11-16 (Daniel). A language line, not a dictation model you choose: `language` marks it. Apps that know `language` keep it out of the model picker, the chooser and bundles and use it as the Hebrew model: when the keyboard (Android: the previous keyboard's subtype; desktop: the active layout) is Hebrew, or the user's EN/HE toggle says so. Older builds ignore `language` and list it as an ordinary model (Android older builds grey it: no online engine). Third-party weights: Yakov Kolani's zipformer2-66m-streaming-he (ivrit.ai data, CC BY 4.0), forked unchanged to Hebrish/Zipformer2-66M-Streaming-He from ivrit-ai/zipformer2-66m-streaming-he at ee769a2; `credit` must be shown wherever the model is listed (Models screen, About).",
+      "variants": [
+        {
+          "id": "hebrew-zipformer-66m",
+          "name": "Hebrew Zipformer 66M",
+          "language": "he",
+          "base_model": "ivrit-ai/zipformer2-66m-streaming-he",
+          "base_label": "Zipformer2 66M by Yakov Kolani (ivrit.ai)",
+          "size_label": "66M",
+          "engine": "sherpa_online_transducer",
+          "engine_options": {
+            "feature_dim": 80,
+            "chunk_ms": 1280,
+            "model_type": "zipformer2"
+          },
+          "feature_dim": 80,
+          "status": "available",
+          "platforms": [
+            "android",
+            "linux",
+            "windows"
+          ],
+          "devices": [
+            "phone",
+            "desktop"
+          ],
+          "streaming": true,
+          "requirements": {
+            "ram_mb": 300,
+            "gpu": null
+          },
+          "hardware": "Phone or computer, no graphics card needed; about 0.3 GB of memory",
+          "technical": "sherpa-onnx int8 online (streaming) Zipformer2 transducer on the CPU, 80 mel features, 1.28 s chunks, 1,493-token Hebrew SentencePiece vocabulary. English comes out spelled letter by letter.",
+          "download_mb": 72,
+          "recommendation": "For dictating in Hebrew. Hebrish switches to it when your keyboard is in Hebrew; English stays on your main model.",
+          "runs_on": "Hebrish for Android and the Hebrish desktop app, in versions with Hebrew switching.",
+          "credit": {
+            "text": "Hebrew speech model by Yakov Kolani, trained on ivrit.ai data. Licensed CC BY 4.0. Unchanged from ivrit-ai/zipformer2-66m-streaming-he.",
+            "author": "Yakov Kolani",
+            "data": "ivrit.ai",
+            "license": "CC-BY-4.0",
+            "license_url": "https://creativecommons.org/licenses/by/4.0/",
+            "url": "https://huggingface.co/ivrit-ai/zipformer2-66m-streaming-he",
+            "original_url": "https://huggingface.co/thewh1teagle/zipformer2-66m-streaming-he",
+            "changes": "none"
+          },
+          "repo": "Hebrish/Zipformer2-66M-Streaming-He",
+          "subdir": "sherpa-onnx",
+          "card": "https://huggingface.co/Hebrish/Zipformer2-66M-Streaming-He",
+          "manifest_url": "https://cdn.hebrish.app/models/ivrit-zipformer-he/latest.json"
+        }
+      ]
+    },
+    {
       "id": "stock",
       "name": "Parakeet (stock)",
       "summary": "Standard English, without the Hebrew words. NVIDIA's release, unchanged.",

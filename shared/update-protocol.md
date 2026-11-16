@@ -21,6 +21,16 @@ its place; if not, set `recommended` back to `sabich`. Same day the `sabich` var
 
 **2026-11-05: one CDN folder for Sabich** (Daniel: one set of weights per model, overwritten on publish; the manifest says the version). `sabich-rolling` now pulls `cdn.hebrish.app/models/sabich/latest.json`; the stable v2.4 weights there were replaced by the current ones and `models/sabich-rolling/` was removed. The manifest's `version` reads `Sabich vN` and `model` is `sabich`. Installed apps do not re-download: both apps compare file hashes (`sameWeights`, `Manifest` equality), and the files are identical. The internal id `sabich-rolling` and the HF repo names stay, because changing the id would make every install fetch 661 MB again; users never see it. v1.0 to v2.4 stay on HF (`Hebrish/Sabich-sherpa-onnx-int8`, gated, v2.4 at `d0a6f111`).
 
+**2026-11-16: the Hebrew language line** (D-2026-11-16-01). Line `hebrew`, variant `hebrew-zipformer-66m`,
+`sherpa_online_transducer` with 80 mels, 1.28 s chunks and `model_type: zipformer2` (`engine_options`).
+`cdn.hebrish.app/models/ivrit-zipformer-he/latest.json` (`type: streaming`, plus `license`, `credit`, `source`, `upstream`).
+Its files are byte-identical to `Hebrish/Zipformer2-66M-Streaming-He` `sherpa-onnx/` at `ee858e4`, which is
+upstream `ivrit-ai/zipformer2-66m-streaming-he` at `ee769a2`. It was uploaded by hand: no training pipeline writes it.
+A Hebrish fine-tune replaces the four files and the manifest in the same folder. `language: "he"` on the line and the variant marks a model
+picked by input language, not by the user as the dictation model. Builds that do not know the field list it as an
+ordinary model. `credit` (author, data, licence, upstream URL, changes) is CC BY 4.0's attribution and must be
+shown wherever the model is listed.
+
 **2026-11-10: Falafel listed before its first release; a 404 manifest is "Coming soon"** (Daniel: installed apps
 should be able to download Falafel as soon as its first training finishes). Falafel is the voice-command line
 (short spoken commands to a computer or phone, Hebrew words included; ASR-Training `voice-commands/`), between

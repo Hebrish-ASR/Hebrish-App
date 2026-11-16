@@ -194,7 +194,7 @@ def test_models_tab_lists_only_models_offered_on_the_desktop():
     installed stays listed (and usable) so nobody loses the model they have."""
     def listed():
         return {v.id for ln in ms.listed_lines() for v in ln.variants}
-    assert listed() == {"sabich-rolling", "shakshuka", "falafel", "falafel-110m", "stock"}
+    assert listed() == {"sabich-rolling", "shakshuka", "falafel", "falafel-110m", "hebrew-zipformer-66m", "stock"}
     assert ms.get_model("sabich-parakeet-110m") is not None       # hidden, not removed
     install(ms.manifest_from_tree(ms.get_model("sabich-parakeet-110m"), "s" * 40, STOCK_TREE, None))
     assert "sabich-parakeet-110m" in listed()
