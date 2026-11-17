@@ -187,7 +187,7 @@ jobs:
           --collect-data hebrish
           --hidden-import hebrish.hotkey_win --hidden-import hebrish.inserter_win
           --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32
-          --collect-all winrt
+          --collect-all winrt --hidden-import PySide6.QtSvg
           packaging/windows/launcher.py
       - name: Self-test the frozen exe
         run: |

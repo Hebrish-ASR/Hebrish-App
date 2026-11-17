@@ -409,6 +409,60 @@ still running when the new one first starts, the move pulls the model out from u
 old app then sees no model and downloads 660 MB again into its own folder. Quit the old app
 (and purge its package) before the first Hebrish start.
 
+## Windows: installer that updates itself, and the Microsoft Store (2026-11-17, first in 1.041)
+
+Until 1.040 Windows was a portable zip only; its update check linked to the download page, so Windows users
+stayed behind (1.026 while the .deb was at 1.040). Daniel, 2026-11-17: a proper installer that updates with no
+user action, plus the Microsoft Store, unsigned for now ("whatever is quickest and simplest"). Research and
+sources: `research/windows-distribution/README.md`.
+
+One PyInstaller folder (`dist\Hebrish`, job `windows` in `.github/workflows/desktop.yml`) is shipped three ways;
+`app_update.install_method()` tells them apart at run time:
+
+| Form | Method | Updates | Built by |
+| --- | --- | --- | --- |
+| Velopack installer `HebrishDictation-stable-Setup.exe` | `velopack` (`<root>\current\Hebrish.exe` with `<root>\Update.exe`) | itself, silently | `vpk pack` |
+| MSIX (Microsoft Store) | `msix` (exe under `\WindowsApps\`) | the Store | `packaging/windows/msix/make_msix.py` + `makeappx` |
+| Portable zip | `windows` | link to the download page (now the installer) | `Compress-Archive` |
+
+**Velopack.** `vpk` (a .NET tool) and the PyPI `velopack` package are both pinned to 1.2.161 and must stay equal.
+packId `HebrishDictation`, never `Hebrish`: Velopack installs to `%LOCALAPPDATA%\<packId>`, and
+`%LOCALAPPDATA%\Hebrish` is the data folder (models, history). Per-user, no admin; Start menu and desktop
+shortcuts; Apps & Features entry. Versions: Velopack needs SemVer, so `M.NNN` maps to `M.N.0`
+(`app_update.velopack_version`, 1.041 → 1.41.0; the counter is always three digits, so order holds).
+- `packaging/windows/launcher.py` runs `velopack.App().run()` before anything else (not in MSIX): it handles
+  Velopack's install/update/uninstall hook arguments and applies an update downloaded earlier (auto-apply on
+  startup).
+- `Controller.check_app_update` (method `velopack`) calls `app_update.velopack_stage()` on a thread: check the
+  feed `https://cdn.hebrish.app/apps/windows/velopack/` (channel `stable`, User-Agent header because Cloudflare
+  403s unknown agents), download (deltas when the previous full package is in the feed). The new version installs
+  at the next start; one quiet notification per version; the tray's "Restart Hebrish to finish updating" applies
+  it at once (`velopack_restart`: `wait_exit_then_apply_updates(restart=True)`, then quit). A check from the menu
+  while idle asks to restart. It never reads `latest.json`.
+- `HEBRISH_VELOPACK_FEED` overrides the feed (CI only).
+- CI (V, run 44104121375, 2026-11-17): installs Setup.exe with `--silent`, self-tests the installed copy
+  (`install: velopack`), then packs N+1 into a copy of the feed, serves it on `127.0.0.1:8765`, runs
+  `Hebrish.exe --velopack-update` (stage + apply after exit) and checks `current\sq.version` names N+1: 1.40.0 →
+  1.41.0 by delta, passed. Not yet tested on a real desktop: the tray notification, restart from the tray,
+  SmartScreen on the unsigned Setup.exe.
+- Unsigned: SmartScreen warns on first install; updates after that are silent. Azure Artifact Signing is not open
+  to individuals outside the US/Canada (research).
+
+**MSIX (Store).** Full trust (`runFullTrust`), microphone capability, alias `hebrish.exe`, a `StartupTask` (off by
+default; the user turns it on in Windows Settings → Apps → Startup). A packaged app's HKCU Run key is private, so
+the tray's "Start at login" item is disabled there and names the Settings page. The StartupTask can't pass
+`--hidden`: `winstore.started_at_login()` (pywinrt) checks the activation kind so a login start goes to the tray.
+Writes to `%LOCALAPPDATA%`/`%APPDATA%` are redirected per package and deleted on uninstall (the models too).
+Identity comes from repository variables `MSIX_NAME`, `MSIX_PUBLISHER`, `MSIX_PUBLISHER_DISPLAY` (Partner Center →
+Product identity, once the name is reserved); unset, dev placeholders. The `msix` artifact is unsigned: the Store
+signs what it is given. CI signs a copy with a throwaway self-signed certificate, installs it and self-tests it.
+
+**Publishing a stable Windows release:** after the promotion run passes, download its `velopack` and
+`windows-build` artifacts and run `with-secrets scripts/publish-windows-cdn.sh dist/velopack <zip> v<ver>` (repo
+root; `DRY_RUN=1` first). It uploads the feed (feed files last), `apps/windows/Hebrish-Setup-latest.exe`
+(`files.windows`, which `hebrish.app/get/windows` follows) and the zip (`files.windows_zip`). The Store: upload the
+`msix` artifact in Partner Center as a new submission.
+
 ## AppImage (B-80, 2026-10-31, first in 1.017)
 
 One file for Linux beyond Debian/Ubuntu (R-2026-10-31-8). Build: `desktop/build-appimage.sh`,
