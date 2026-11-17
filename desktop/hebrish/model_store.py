@@ -25,11 +25,13 @@ once its manifest.json exists (written last, after every file verified).
 """
 
 import hashlib
+import http.client
 import json
 import re
 import shutil
 import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
@@ -594,12 +596,74 @@ def _sha256(path: Path, cancel: threading.Event | None) -> str:
     return h.hexdigest()
 
 
+# Retry rules (2026-11-17, the desktop port of Android's DownloadRetry, 2026-11-16): a dropped
+# connection, a timeout or a server hiccup no longer fails the download. The `.part` file stays,
+# the loop backs off (2, 4, 8, 15, then 30 s) and resumes the same file with a Range request. It
+# gives up only after NO_PROGRESS_S without a single new byte; any progress resets the clock.
+# Not retried: a checksum mismatch, a full disk or other local file error, a 4xx other than 408/429.
+BACKOFF_S = (2, 4, 8, 15, 30)
+NO_PROGRESS_S = 600
+RETRYING = "retrying"           # on_progress name prefix while waiting to retry
+
+
+class LocalFileError(OSError):
+    """Writing or renaming a local file failed: not the network's fault, so not retried."""
+
+
+class ClosedEarly(OSError):
+    """The server ended the body before the file was complete, without an error."""
+
+
+def transient(e: BaseException) -> bool:
+    """True for download errors worth retrying from the `.part` file."""
+    if isinstance(e, (Cancelled, LocalFileError)):
+        return False
+    if isinstance(e, urllib.error.HTTPError):
+        return e.code in (408, 429) or 500 <= e.code < 600
+    # URLError (DNS, refused, TLS), TimeoutError, ConnectionResetError, http.client.IncompleteRead
+    # and RemoteDisconnected (HTTPException), ClosedEarly.
+    return isinstance(e, (OSError, http.client.HTTPException))
+
+
+def backoff_s(attempt: int) -> int:
+    return BACKOFF_S[min(max(attempt, 0), len(BACKOFF_S) - 1)]
+
+
+def _fetch_once(url: str, part: Path, size: int, on_bytes, cancel):
+    """One GET of `url` into `part`, resuming from its current length. Returns when the server
+    ends the body; on_bytes(file_bytes_so_far) after each chunk."""
+    have = part.stat().st_size if part.exists() else 0
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    if have:
+        req.add_header("Range", f"bytes={have}-")
+    with urllib.request.urlopen(req, timeout=60) as r:
+        if have and r.status != 206:      # server ignored Range: start over
+            have = 0
+        try:
+            f = part.open("ab" if have else "wb")
+        except OSError as e:
+            raise LocalFileError(f"{part.name}: {e}") from e
+        with f:
+            while chunk := r.read(1 << 20):
+                if cancel and cancel.is_set():
+                    raise Cancelled()
+                try:
+                    f.write(chunk)
+                except OSError as e:
+                    raise LocalFileError(f"{part.name}: {e}") from e
+                have += len(chunk)
+                on_bytes(have)
+    if have < size:
+        raise ClosedEarly(f"Connection closed early for {part.name}")
+
+
 def fetch_files(dest: Path, files: dict, url_for, on_progress=None,
-                cancel: threading.Event | None = None):
+                cancel: threading.Event | None = None, sleep=time.sleep, clock=time.monotonic):
     """Fetch `files` ({name: {"size", "sha256"}}) into `dest`, each from url_for(name), resuming
     `.part` files and checking size and SHA-256 before the rename. A file already there at the
-    right size is kept. on_progress(done_bytes, total_bytes, name). Shared by the speech models
-    and the paragraph model (paragraphs.download)."""
+    right size is kept. Transient network errors are retried (see BACKOFF_S). on_progress(done_bytes,
+    total_bytes, name); while waiting to retry, name is "retrying <n> in <s> s: <reason>". Shared by
+    the speech models, the paragraph model and the clean-up add-on."""
     dest.mkdir(parents=True, exist_ok=True)
     total = sum(f["size"] for f in files.values())
     need = total - sum((dest / n).stat().st_size for n in files if (dest / n).exists())
@@ -607,31 +671,46 @@ def fetch_files(dest: Path, files: dict, url_for, on_progress=None,
     if need > free:
         raise RuntimeError(f"Not enough disk space: need {need >> 20} MB, have {free >> 20} MB")
 
+    def pause(seconds):
+        end = clock() + seconds
+        while (left := end - clock()) > 0:
+            if cancel and cancel.is_set():
+                raise Cancelled()
+            sleep(min(left, 0.25))
+        if cancel and cancel.is_set():
+            raise Cancelled()
+
     done = 0
     for name, info in files.items():
         final, part = dest / name, dest / (name + ".part")
         if final.exists() and final.stat().st_size == info["size"]:
             done += info["size"]
             continue
-        have = part.stat().st_size if part.exists() else 0
-        if have > info["size"]:
+        if part.exists() and part.stat().st_size > info["size"]:
             part.unlink()
-            have = 0
-        req = urllib.request.Request(url_for(name), headers={"User-Agent": USER_AGENT})
-        if have:
-            req.add_header("Range", f"bytes={have}-")
-        with urllib.request.urlopen(req, timeout=60) as r:
-            if have and r.status != 206:      # server ignored Range: start over
-                have = 0
-            with part.open("ab" if have else "wb") as f:
-                done_file = have
-                while chunk := r.read(1 << 20):
-                    if cancel and cancel.is_set():
-                        raise Cancelled()
-                    f.write(chunk)
-                    done_file += len(chunk)
-                    if on_progress:
-                        on_progress(done + done_file, total, name)
+        last_progress, attempt = clock(), 0
+
+        def on_bytes(n, _done=done, _name=name):
+            nonlocal last_progress, attempt
+            last_progress, attempt = clock(), 0
+            if on_progress:
+                on_progress(_done + n, total, _name)
+
+        while not (part.exists() and part.stat().st_size == info["size"]):   # complete: no 416
+            try:
+                _fetch_once(url_for(name), part, info["size"], on_bytes, cancel)
+            except Exception as e:
+                if not transient(e):
+                    raise
+                if clock() - last_progress > NO_PROGRESS_S:
+                    raise RuntimeError(f"{name}: no progress for {NO_PROGRESS_S // 60} min, "
+                                       f"giving up ({e})") from e
+                wait = backoff_s(attempt)
+                attempt += 1
+                if on_progress:
+                    have = part.stat().st_size if part.exists() else 0
+                    on_progress(done + have, total, f"{RETRYING} {attempt} in {wait} s: {e}")
+                pause(wait)
         if part.stat().st_size != info["size"]:
             raise RuntimeError(f"{name}: size {part.stat().st_size} != {info['size']}")
         if info.get("sha256"):

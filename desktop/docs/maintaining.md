@@ -64,6 +64,24 @@ with no "Model download failed" notice and move on to the next queued model; the
 published yet. Download checks again." Tests: `test_a_404_manifest_is_coming_soon_not_an_error`,
 `test_other_http_errors_stay_errors`.
 
+### Downloads survive connectivity blips (1.040, 2026-11-17)
+
+The desktop port of Android's fix (1.036, debug log `docs/debug-log/2026-11-16-model-downloads-time-out.md`).
+Before, `model_store.fetch_files` made one `urlopen` per file: a timeout or reset mid-file failed the download, and
+only the next click resumed from the `.part`. Now each file loops on `_fetch_once` (a Range GET from the `.part`'s
+length): an error `transient()` accepts backs off `BACKOFF_S` (2, 4, 8, 15, then 30 s) and resumes; any new byte
+resets the backoff and the give-up clock; it gives up after `NO_PROGRESS_S` (600 s) with no new byte.
+Retried: `URLError` (DNS, refused, TLS), timeouts, resets, `http.client.HTTPException` (`IncompleteRead`,
+`RemoteDisconnected`), a body shorter than the file (`ClosedEarly`), HTTP 408, 429 and 5xx. Not retried: other 4xx
+(a 404 stays an error), `LocalFileError` (opening or writing the `.part`), a SHA-256 mismatch (the `.part` is
+deleted), `Cancelled`. A `.part` already at full size is verified without a request (a Range past the end is 416).
+Unlike Android there is no "waiting for a network" state: the desktop has no cheap reliable online check, so offline
+time is just retries within the 10-minute budget. Cancel is checked every 0.25 s during a backoff.
+Because speech models, the paragraph model and the clean-up add-on all download through `fetch_files`, all three get
+it. While waiting, `on_progress`'s name is `"retrying <n> in <s> s: <error>"` (`RETRYING` prefix); `ui/app.py`
+`download.progress` shows "connection lost, retrying ·" on the model card. `sleep` and `clock` are injectable.
+Tests: `tests/test_download_retry.py` (a local server that cuts the body or answers 5xx/429/408/404; fake clock).
+
 ## Silence guard (1.035, 2026-11-15)
 
 Daniel, 2026-11-15: a take had been recording for more than 10 s with the input at nothing, so

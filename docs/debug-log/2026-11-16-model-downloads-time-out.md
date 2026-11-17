@@ -66,5 +66,6 @@ Unreleased, 2026-11-16. Details and the lasting rules: `android/docs/maintaining
 
 ## Related
 
-- The desktop app (`desktop/hebrish/model_store.py`, `download`) has the same single-attempt weakness (one
-  `urlopen` per file, no retry; resumes from `.part` on the next click). Unchanged.
+- The desktop app (`desktop/hebrish/model_store.py`, `fetch_files`) had the same single-attempt weakness (one
+  `urlopen` per file, no retry). Fixed 2026-11-17 in desktop 1.040 with the same backoff and no-progress budget, without the
+  offline wait: `desktop/docs/maintaining.md`, "Downloads survive connectivity blips".

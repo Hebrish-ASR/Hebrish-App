@@ -1471,7 +1471,8 @@ class Controller(QObject):
         self.win.update_model()
 
         def progress(done, total, name):
-            state = "verifying · " if name.startswith("verifying") else ""
+            state = ("verifying · " if name.startswith("verifying") else
+                     "connection lost, retrying · " if name.startswith(model_store.RETRYING) else "")
             self.sig.progress.emit(done / total, f"{state}{done >> 20} / {total >> 20} MB · {done * 100 // total}%")
 
         def work():
