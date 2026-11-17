@@ -54,7 +54,8 @@ jobs:
           [ "desktop-v$code" = "$TAG" ] || { echo "::error::tag $TAG but __version__ is $code"; exit 1; }
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: sudo apt-get install -y -q libportaudio2 pulseaudio
+      # update first: the runner image's package index goes stale (404s, 2026-11-17, run 44173033094)
+      - run: sudo apt-get update -q && sudo apt-get install -y -q libportaudio2 pulseaudio
       - run: pip install numpy sounddevice onnxruntime pytest     # onnxruntime: the paragraph-model parity tests
       # Since the ubuntu-26.04 runner image (2026-11-11), importing sounddevice fails with
       # "PulseAudio_Initialize: Can't connect to server" (desktop-v1.037's first run): a user
