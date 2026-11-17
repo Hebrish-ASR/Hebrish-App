@@ -81,6 +81,18 @@ Builds are on the [releases page](https://github.com/Hebrish-ASR/Hebrish-App/rel
 tags `android-v*` carry the APK, tags `desktop-v*` the .deb and the Windows zip. The Windows
 build and the Android app have not yet been tried on real hardware.
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org)
+(applied for 2026-11-17; Windows builds are unsigned until it is approved).
+
+- Signed: the Windows desktop builds (the Velopack installer, `Hebrish.exe` and the portable zip's executables), built from this
+  repository by GitHub Actions on GitHub-hosted runners (`.github/workflows/desktop.yml`).
+- Committers and reviewers: [members of Hebrish-ASR](https://github.com/orgs/Hebrish-ASR/people).
+  Approvers: [owners of Hebrish-ASR](https://github.com/orgs/Hebrish-ASR/people?query=role%3Aowner). Every release is approved by hand.
+- Privacy: the app does not upload audio or transcripts and has no telemetry; it contacts `cdn.hebrish.app` only to download models
+  and updates. [Privacy policy](https://hebrish.app/privacy). Full policy: [hebrish.app/code-signing](https://hebrish.app/code-signing).
+
 ## Desktop app (Linux and Windows)
 
 - **Dictate**: press a hotkey anywhere (or Talk in the window), talk, and the text is pasted
