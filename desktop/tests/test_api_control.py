@@ -168,3 +168,69 @@ def test_tm_mic_not_switched_under_a_recording(mic_ctl):
         _control(mic_ctl).set_mics({"tm_audio_device": "Headset USB", "audio_device": "Headset USB"})
     assert mic_ctl.cfg["audio_device"] == ""                            # nothing applied
     assert _control(mic_ctl).set_mics({"tm_audio_device": ""})[1]["changed"] == []
+
+
+# -- models ----------------------------------------------------------------------------------
+
+@pytest.fixture
+def model_ctl(monkeypatch):
+    from hebrish import model_store
+    cat = {"sabich": SimpleNamespace(id="sabich", language=""), "shakshuka": SimpleNamespace(id="shakshuka", language=""),
+           "hebrew": SimpleNamespace(id="hebrew", language="he"), "falafel": SimpleNamespace(id="falafel", language="")}
+    installed = {"sabich", "shakshuka", "hebrew"}
+    monkeypatch.setattr(model_store, "get_model", cat.get)
+    monkeypatch.setattr(model_store, "installed_ids", lambda: sorted(installed))
+    monkeypatch.setattr(model_store, "current_id", lambda: "sabich")
+    monkeypatch.setattr(model_store, "disk_usage", lambda mid: 300 << 20)
+    monkeypatch.setattr(model_store, "model_dir", lambda mid: f"/models/{mid}")
+    ctl = FakeCtl()
+    ctl.downloading_id, ctl.model_queue, ctl.removed = None, [], []
+
+    def remove(mid):
+        ctl.removed.append(mid)
+        installed.discard(mid)
+        return mid != "stuck"
+    ctl.remove_model = remove
+    return ctl
+
+
+def test_remove_model_frees_it(model_ctl):
+    assert _control(model_ctl).remove_model({"id": "shakshuka"}) == \
+        (200, {"status": "removed", "id": "shakshuka", "freed_mb": 300})
+    assert model_ctl.removed == ["shakshuka"]
+
+
+@pytest.mark.parametrize("mid,state,err", [
+    ("sabich", "idle", RuntimeError),       # in use
+    ("falafel", "idle", RuntimeError),      # not downloaded
+    ("nope", "idle", LookupError),
+    (None, "idle", LookupError),
+    ("hebrew", "busy", RuntimeError),       # Hebrew mid-take
+])
+def test_remove_model_refusals(model_ctl, mid, state, err):
+    model_ctl.state = state
+    with pytest.raises(err):
+        _control(model_ctl).remove_model({"id": mid})
+    assert model_ctl.removed == []
+
+
+def test_remove_model_not_while_downloading(model_ctl):
+    model_ctl.model_queue = [SimpleNamespace(model="shakshuka")]
+    with pytest.raises(RuntimeError, match="downloading"):
+        _control(model_ctl).remove_model({"id": "shakshuka"})
+    model_ctl.state = "idle"
+    assert _control(model_ctl).remove_model({"id": "hebrew"})[1]["status"] == "removed"
+
+
+def test_status_carries_download_progress():
+    ctl = FakeCtl("recording", paused=True)
+    ctl.cfg.update(input_language="auto", keep_history=True)
+    prog = {"id": "shakshuka", "version": "v1.2", "fraction": 0.5, "done_mb": 150, "total_mb": 300, "phase": "downloading"}
+    ctl.__dict__.update(api_info=lambda: None, app_method="apt", app_updating=False, app_release=None,
+                        app_installed=None, app_update_error=None, downloading_id="shakshuka",
+                        download_progress=prog, model_queue=["falafel", SimpleNamespace(model="hebrew")],
+                        addon_busy={"s1-mini": object()}, addon_done={"s1-mini": 0.25})
+    out = _control(ctl).status({})[1]
+    assert out["state"] == "recording" and out["paused"] is True
+    assert out["models"]["progress"] == prog and out["models"]["queued_ids"] == ["falafel", "hebrew"]
+    assert out["models"]["addons_progress"] == {"s1-mini": 0.25} and out["models"]["queued"] == 2

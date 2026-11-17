@@ -1656,15 +1656,9 @@ class MainWindow(QMainWindow):
         if QMessageBox.question(self, "Delete model", f"Delete {m.name} "
                                 f"({model_store.disk_usage(mid) >> 20} MB)? You can download it "
                                 "again later.") == QMessageBox.Yes:
-            if m.language:
-                self.ctl.he_engine.unload()         # Windows can't delete files a loaded model holds
-            model_store.remove_model(mid)
-            if m.language:
-                self.ctl.load_hebrew()
-            if model_store.installed(mid):          # rmtree ignores errors: a file was locked or read-only
+            if not self.ctl.remove_model(mid):
                 self.banner(f"Couldn't delete all of {m.name} in {model_store.model_dir(mid)}. Close "
                             "anything using it and try again, or delete the folder yourself.")
-            self.update_model()
 
     def _change_store(self):
         start = str(model_store.ROOT if model_store.ROOT.exists() else Path.home())

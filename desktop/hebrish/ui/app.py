@@ -183,6 +183,7 @@ class Controller(QObject):
         self.latest: model_store.Manifest | None = None
         self.downloading: threading.Event | None = None
         self.downloading_id: str | None = None     # the model being downloaded
+        self.download_progress: dict | None = None # its progress, for the local API (B-108)
         self._quiet_download = False               # the download in flight is a background auto-update
         # Speech models waiting to download after the current one (B-79: a bundle, Update all):
         # a model id (download_model) or a Manifest (download). One at a time, as before.
@@ -1475,6 +1476,11 @@ class Controller(QObject):
         def progress(done, total, name):
             state = ("verifying · " if name.startswith("verifying") else
                      "connection lost, retrying · " if name.startswith(model_store.RETRYING) else "")
+            self.download_progress = {        # one assignment: the API's HTTP thread reads it whole
+                "id": manifest.model, "version": manifest.version, "fraction": round(done / max(1, total), 4),
+                "done_mb": done >> 20, "total_mb": total >> 20,
+                "phase": "verifying" if name.startswith("verifying") else
+                         "retrying" if name.startswith(model_store.RETRYING) else "downloading"}
             self.sig.progress.emit(done / total, f"{state}{done >> 20} / {total >> 20} MB · {done * 100 // total}%")
 
         def work():
@@ -1486,7 +1492,7 @@ class Controller(QObject):
         threading.Thread(target=work, daemon=True).start()
 
     def _downloaded(self, manifest, err):
-        self.downloading = self.downloading_id = None
+        self.downloading = self.downloading_id = self.download_progress = None
         quiet, self._quiet_download = self._quiet_download, False
         if err:
             self.switch_after_download = None      # retried at the next start (flag still unset)
@@ -1515,6 +1521,19 @@ class Controller(QObject):
         self._next_queued()
         self.win.update_model()
         self._update_tray()
+
+    def remove_model(self, mid: str) -> bool:
+        """Delete every version of a downloaded model: the Models tab's Delete (after it asked)
+        and the local API (B-108). Callers refuse the model in use. The Hebrew model is unloaded
+        first: Windows can't delete files a loaded model holds. False when files were left."""
+        m = model_store.get_model(mid)
+        if m.language:
+            self.he_engine.unload()
+        model_store.remove_model(mid)
+        if m.language:
+            self.load_hebrew()
+        self.win.update_model()
+        return not model_store.installed(mid)    # rmtree ignores errors: a file was locked or read-only
 
     def download_model(self, mid: str):
         """Download a catalogue model without switching to it (the Models tab's buttons)."""

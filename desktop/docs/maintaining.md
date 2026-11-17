@@ -1964,6 +1964,18 @@ Daniel approved filling the gaps on 2026-11-17: everything an agent needed the w
   the tab's `_on_mic`. Refused (409): changing `tm_audio_device` while Transcription Mode records; the
   tab switches the live stream and shows a dialog if that fails, which an HTTP request can't answer.
   A dictation mic change during a take applies from the next take (`mics.resolve` runs at start).
+- **Model housekeeping.** Download progress: `Controller.download_progress`, set by `download()`'s
+  progress callback on the download thread as one dict assignment (`id`, `version`, `fraction`, `done_mb`,
+  `total_mb`, `phase` downloading | verifying | retrying), cleared in `_downloaded`. `/v1/app/status`
+  `models` carries it as `progress`, plus `queued_ids` and `addons_progress` (add-on id to fraction,
+  from `addon_done`); `/v1/app/models` adds `downloading`, `progress` and `disk_mb` per model. The model
+  lookup before a download (`download_model` → `fetch_latest`) has `downloading` set but no progress
+  yet. `POST /v1/app/models/remove` `{"id"}` is the Models tab's Delete without its question:
+  `Controller.remove_model` (moved there from `window._delete_model`, which now calls it) unloads the
+  Hebrew model first, deletes every version, reloads Hebrew, redraws the tab, and reports a folder
+  rmtree couldn't empty (409). Refused (409): not downloaded, the model in use (`current_id`), one
+  downloading or queued, and the Hebrew model while the app isn't idle (a take may be decoding on it).
+  Add-ons (clean-up, title, paragraph models) have no remove route yet.
 
 ### Macro Deck controller (2026-11-16, no app change)
 

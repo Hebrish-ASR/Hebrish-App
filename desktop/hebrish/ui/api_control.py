@@ -105,6 +105,7 @@ class Control:
             ("POST", "/v1/app/restart"): self.restart,
             ("GET", "/v1/app/models"): self.models,
             ("POST", "/v1/app/models/select"): self.select_model,
+            ("POST", "/v1/app/models/remove"): self.remove_model,
             ("GET", "/v1/app/language"): self.language,
             ("POST", "/v1/app/language"): self.set_language,
             ("GET", "/v1/app/settings"): self.settings,
@@ -182,8 +183,11 @@ class Control:
             "install_method": c.app_method,
             "app_update": {"running": c.app_updating, "available": c.app_release.version if c.app_release else None,
                            "installed_needs_restart": c.app_installed or None, "error": c.app_update_error},
-            "models": {"downloading": c.downloading_id, "queued": len(c.model_queue),
-                       "addons_downloading": sorted(c.addon_busy)},
+            "models": {"downloading": c.downloading_id, "progress": c.download_progress,
+                       "queued": len(c.model_queue),
+                       "queued_ids": [q if isinstance(q, str) else q.model for q in list(c.model_queue)],
+                       "addons_downloading": sorted(c.addon_busy),
+                       "addons_progress": {a: round(f, 4) for a, f in dict(c.addon_done).items()}},
         }
 
     def take_state(self) -> dict:
@@ -315,14 +319,43 @@ class Control:
     def models(self, _body) -> tuple[int, dict]:
         cur, rec = model_store.current_id(), model_store.recommended_id()
         have = set(model_store.installed_ids())
+        dl, prog = self.ctl.downloading_id, self.ctl.download_progress
         data = []
         for m in model_store.models():
             act = model_store.active(m.id) if m.id in have else None
             data.append({"id": m.id, "name": m.name, "line": m.line, "available": m.available,
                          "streaming": m.streaming, "download_mb": m.download_mb, "installed": m.id in have,
+                         "disk_mb": model_store.disk_usage(m.id) >> 20 if m.id in have else 0,
                          "version": act[1].label if act else None, "current": m.id == cur,
-                         "recommended": m.id == rec, "language": m.language or None})
+                         "recommended": m.id == rec, "language": m.language or None,
+                         "downloading": m.id == dl,
+                         "progress": prog if prog and prog["id"] == m.id else None})
         return 200, {"object": "list", "data": data}
+
+    def remove_model(self, body) -> tuple[int, dict]:
+        """POST /v1/app/models/remove: the Models tab's Delete, without its question. Refused (409):
+        the model in use, one downloading, and the Hebrew model while a take is in flight."""
+        mid, c = body.get("id"), self.ctl
+        m = model_store.get_model(mid) if isinstance(mid, str) else None
+        if m is None:
+            raise LookupError(f"no model {mid!r}; GET /v1/app/models lists them")
+
+        def go():
+            if mid not in model_store.installed_ids():
+                raise RuntimeError(f"{mid} is not downloaded")
+            if mid == model_store.current_id():
+                raise RuntimeError(f"{mid} is the model in use: select another first (POST /v1/app/models/select)")
+            if mid == c.downloading_id or mid in [q if isinstance(q, str) else q.model for q in c.model_queue]:
+                raise RuntimeError(f"{mid} is downloading")
+            if m.language and c.state != "idle":
+                raise RuntimeError(f"the app is {c.state}: remove the Hebrew model when it is idle")
+            mb = model_store.disk_usage(mid) >> 20
+            return mb, c.remove_model(mid)
+        mb, gone = self._main(go)
+        if not gone:
+            raise RuntimeError(f"couldn't delete all of {mid} in {model_store.model_dir(mid)}: a file is in use "
+                               "or read-only")
+        return 200, {"status": "removed", "id": mid, "freed_mb": mb}
 
     def select_model(self, body) -> tuple[int, dict]:
         mid, c = body.get("id"), self.ctl

@@ -67,17 +67,21 @@ ROUTES = [
     ("GET", "/health", False, "App version, loaded model, whether control is on"),
     ("GET", "/v1/models", False, "The loaded model, OpenAI list shape"),
     ("POST", "/v1/audio/transcriptions", False, "Transcribe a file, OpenAI shape"),
-    ("GET", "/v1/app/status", True, "State (idle, recording, busy), paused, model, update and history state"),
+    ("GET", "/v1/app/status", True, "State (idle, recording, busy), paused, model, app update, model downloads "
+     "with progress (fraction, MB), input language"),
     ("POST", "/v1/app/dictation", True, 'Body {"action": ...}: start, stop, toggle, pause, resume, retake, discard, '
      'send (stop, then the send key), paste_last. The action keys: uses the mic, types into the focused window. '
      '409 when there is no take to act on'),
     ("GET", "/v1/app/update", True, "Check for a newer app (network)"),
     ("POST", "/v1/app/update", True, "Install it. apt only: the user approves a system prompt; poll /v1/app/status"),
     ("POST", "/v1/app/restart", True, "Restart into a version already installed, when idle"),
-    ("GET", "/v1/app/models", True, "Every model: id, name, installed, current, recommended"),
+    ("GET", "/v1/app/models", True, "Every model: id, name, installed, disk_mb, current, recommended, downloading, progress"),
     ("GET", "/v1/app/language", True, "Input language: setting (auto|en|he), the Hebrew model's state, the last take's language"),
     ("POST", "/v1/app/language", True, 'Body {"input_language": "auto"|"en"|"he"}: Follow keyboard, English, Hebrew'),
-    ("POST", "/v1/app/models/select", True, 'Body {"id": ..., "download": false}: switch model'),
+    ("POST", "/v1/app/models/select", True, 'Body {"id": ..., "download": false}: switch model; poll /v1/app/status '
+     'for download progress'),
+    ("POST", "/v1/app/models/remove", True, 'Body {"id": ...}: delete a downloaded model (not the one in use, '
+     'not one downloading)'),
     ("GET", "/v1/app/settings", True, "The settings this API may change, their values and what each does"),
     ("POST", "/v1/app/settings", True, 'Body {"out_clipboard": false, ...}: change settings; all checked first, then applied together'),
     ("GET", "/v1/app/mics", True, "Microphones: the connected ones (choices), and what dictation (audio_device) and "
