@@ -160,6 +160,7 @@ class Control:
                 return row, False
             c.history.update_text(rid, text)
             c.win.show_history(keep_limit=True)
+            c.emit("history", {"action": "edited", "id": rid, "source": row["source"]})
             return c.history.get(rid), True
         row, changed = self._main(go)
         return {**row, "changed": changed}
@@ -169,10 +170,12 @@ class Control:
         c = self.ctl
 
         def go():
-            if c.history.get(rid) is None:
+            row = c.history.get(rid)
+            if row is None:
                 raise LookupError(f"no transcript {rid}")
             c.history.delete(rid)
             c.win.show_history(keep_limit=True)
+            c.emit("history", {"action": "deleted", "id": rid, "source": row["source"]})
         self._main(go)
         return {"id": rid, "deleted": True}
 

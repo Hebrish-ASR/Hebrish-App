@@ -34,6 +34,7 @@ served from their files here, since the app's own History connection is tied to 
 import json
 import logging
 import os
+import queue
 import sys
 import tempfile
 import threading
@@ -61,6 +62,19 @@ FORMATS = ("json", "text", "verbose_json")
 _LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]"}
 MAX_JSON = 1024 * 1024
 MAX_PAGE = 1000
+# GET /v1/app/events (B-108): Server-Sent Events. Each stream holds one HTTP thread, so they are
+# capped; a stream ends on disconnect (found by the heartbeat write within HEARTBEAT_S), stop(),
+# control turned off, or a client too slow to keep EVENT_BACKLOG events queued.
+MAX_STREAMS = 8
+HEARTBEAT_S = 15.0
+EVENT_BACKLOG = 256
+EVENTS = {
+    "ready": "Sent first: app version and the dictation state",
+    "state": "Dictation state changed: {state, paused}",
+    "take": "A dictation take finished: {text, history_id, language, seconds} or {text: null, error}",
+    "history": "History changed: {action: added|edited|deleted|cleared, id, source}",
+    "model": "A model download: {id, status: downloading|installed|failed|cancelled, error}",
+}
 
 # (method, path, needs local_api_control, what it does). Served as GET /v1.
 ROUTES = [
@@ -70,6 +84,8 @@ ROUTES = [
     ("POST", "/v1/app/transcribe", True, 'Transcription Mode on a file. Body {"path": "/abs/file.mp3", "paragraphs": '
      '"none"|"time"|"model", "cleanup": bool, "save_history": false, "save_file": false}; paragraphs and cleanup '
      'default to the Transcription tab\'s settings. Answers when done (minutes for a long file)'),
+    ("GET", "/v1/app/events", True, "Server-Sent Events (text/event-stream) instead of polling: "
+     + "; ".join(f"{k}: {v}" for k, v in EVENTS.items()) + f". A comment line every {HEARTBEAT_S:.0f} s"),
     ("GET", "/v1/app/status", True, "State (idle, recording, busy), paused, model, app update, model downloads "
      "with progress (fraction, MB), input language"),
     ("POST", "/v1/app/dictation", True, 'Body {"action": ...}: start, stop, toggle, pause, resume, retake, discard, '
@@ -162,6 +178,45 @@ class LocalApi:
         self._server: _Server | None = None
         self._thread: threading.Thread | None = None
         self.error: str | None = None          # why the last start failed (port in use, ...)
+        self._streams: set[_Stream] = set()
+        self._streams_lock = threading.Lock()
+        self._seq = 0
+
+    def publish(self, event: str, data: dict):
+        """Send an event to every open GET /v1/app/events stream. Any thread; never blocks: a
+        stream whose queue is full is closed instead."""
+        with self._streams_lock:
+            self._seq += 1
+            item = (self._seq, event, data)
+            for st in list(self._streams):
+                try:
+                    st.q.put_nowait(item)
+                except queue.Full:
+                    st.close("too slow: events were dropped")
+                    self._streams.discard(st)
+
+    def close_streams(self, why: str = "closed"):
+        """End every event stream (stop, or control turned off)."""
+        with self._streams_lock:
+            for st in self._streams:
+                st.close(why)
+            self._streams.clear()
+
+    @property
+    def streams(self) -> int:
+        return len(self._streams)
+
+    def _subscribe(self) -> "_Stream":
+        with self._streams_lock:
+            if len(self._streams) >= MAX_STREAMS:
+                raise ApiError(503, f"{MAX_STREAMS} event streams are open already")
+            st = _Stream()
+            self._streams.add(st)
+            return st
+
+    def _unsubscribe(self, st: "_Stream"):
+        with self._streams_lock:
+            self._streams.discard(st)
 
     @property
     def running(self) -> bool:
@@ -192,11 +247,25 @@ class LocalApi:
         return True
 
     def stop(self):
+        self.close_streams("the app's local API stopped")
         srv, self._server = self._server, None
         if srv:
             srv.shutdown()
             srv.server_close()
             log.info("local API stopped")
+
+
+class _Stream:
+    def __init__(self):
+        self.q: queue.Queue = queue.Queue(EVENT_BACKLOG)
+        self.why: str | None = None
+
+    def close(self, why: str):
+        self.why = why
+        try:
+            self.q.put_nowait(None)            # wake the stream's thread
+        except queue.Full:
+            pass                               # it is busy draining, and sees `why` next
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -308,6 +377,9 @@ class _Handler(BaseHTTPRequestHandler):
             if isinstance(body, ApiError):
                 raise body
             q = {k: v[-1] for k, v in query.items()}
+            if method == "GET" and path == "/v1/app/events":
+                self._events()
+                return
             status, out = self._route(method, path, q, body or {})
             self._send(status, out)
         except ApiError as e:
@@ -352,6 +424,48 @@ class _Handler(BaseHTTPRequestHandler):
             c.dictionary_changed()
             return 200, {"removed": True}
         return c.handle(method, path, body)
+
+    def _events(self):
+        """GET /v1/app/events: one event per `publish`, `id: <n>` numbered across the app's run. The
+        connection closes when the stream ends; reconnect for more (no replay: GET /v1/app/status
+        and /v1/history catch up)."""
+        st = self.owner._subscribe()          # ApiError 503 at the cap, before any header is sent
+        self.close_connection = True
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "close")
+            self.end_headers()
+            c = self.owner.control
+            ready = {"app": __version__, **(c.take_state() if hasattr(c, "take_state") else {})}
+            self._event(0, "ready", ready)
+            while True:
+                try:
+                    item = st.q.get(timeout=HEARTBEAT_S)
+                except queue.Empty:
+                    item = ()
+                if st.why is None and not self._control_on():
+                    st.why = "control is off"
+                if st.why is not None:
+                    self._event(0, "closed", {"reason": st.why})
+                    break
+                if item:
+                    self._event(*item)
+                else:
+                    self.wfile.write(b": keep-alive\n\n")
+                    self.wfile.flush()
+        except OSError:                        # the client went away (broken pipe, reset)
+            pass
+        except Exception:                      # headers are out: no error reply possible, just end
+            log.exception("local API event stream failed")
+        finally:
+            self.owner._unsubscribe(st)
+
+    def _event(self, seq: int, event: str, data: dict):
+        head = f"id: {seq}\n" if seq else ""
+        self.wfile.write(f"{head}event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n".encode())
+        self.wfile.flush()
 
     @staticmethod
     def _history(q: dict, path) -> dict:

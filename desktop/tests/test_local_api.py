@@ -302,3 +302,108 @@ def test_history_writes_route_to_the_app(ctl):
     assert _json(ctl, "PATCH", "/v1/history/2", {"text": "x"})[0] == 403
     assert _json(ctl, "DELETE", "/v1/history/2")[0] == 403
     assert _req(ctl, "DELETE", "/v1/history/2", headers={"Origin": "https://example.com"})[0] == 403
+
+
+# -- GET /v1/app/events (B-108) ----------------------------------------------------------------
+
+def _stream(api):
+    c = http.client.HTTPConnection("127.0.0.1", api.port, timeout=5)
+    c.request("GET", "/v1/app/events")
+    r = c.getresponse()
+    return c, r
+
+
+def _next_event(r) -> dict:
+    ev = {}
+    while True:
+        line = r.readline().decode()
+        if line in ("\n", ""):
+            if ev or line == "":
+                return ev
+            continue
+        if line.startswith(":"):
+            ev.setdefault("comments", 0)
+            ev["comments"] += 1
+            continue
+        k, _, v = line.rstrip("\n").partition(": ")
+        ev[k] = json.loads(v) if k == "data" else v
+
+
+def _wait(pred, timeout=5.0):
+    import time
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        if pred():
+            return True
+        time.sleep(0.02)
+    return False
+
+
+def test_events_stream_published_events(ctl):
+    c, r = _stream(ctl)
+    assert r.status == 200 and r.getheader("Content-Type").startswith("text/event-stream")
+    assert _next_event(r)["event"] == "ready"
+    assert _wait(lambda: ctl.streams == 1)
+    ctl.publish("take", {"text": "שלום world", "history_id": 4})
+    ctl.publish("state", {"state": "idle", "paused": False})
+    a, b = _next_event(r), _next_event(r)
+    assert a["event"] == "take" and a["data"] == {"text": "שלום world", "history_id": 4}
+    assert b["event"] == "state" and int(b["id"]) == int(a["id"]) + 1
+    c.close()
+
+
+def test_events_end_on_stop_and_leave_no_thread(tmp_path):
+    import threading
+    before = threading.active_count()
+    fake = FakeControl(tmp_path / "history.db")
+    a = local_api.LocalApi(lambda s: "", lambda: None, _free_port(), fake)
+    assert a.start()
+    c, r = _stream(a)
+    assert _next_event(r)["event"] == "ready"
+    a.stop()
+    assert _next_event(r) == {"event": "closed", "data": {"reason": "the app's local API stopped"}}
+    assert r.read() == b""                                      # the server closed the connection
+    c.close()
+    assert _wait(lambda: threading.active_count() <= before) and a.streams == 0
+
+
+def test_events_end_when_control_goes_off_or_the_client_leaves(ctl, monkeypatch):
+    monkeypatch.setattr(local_api, "HEARTBEAT_S", 0.1)
+    c, r = _stream(ctl)
+    _next_event(r)
+    assert _next_event(r).get("comments")                      # a heartbeat
+    ctl.fake.on = False
+    ev = _next_event(r)
+    while ev.get("comments") and "event" not in ev:
+        ev = _next_event(r)
+    assert ev["event"] == "closed" and ev["data"]["reason"] == "control is off"
+    c.close()
+    assert _wait(lambda: ctl.streams == 0)
+    ctl.fake.on = True
+    c, r = _stream(ctl)
+    _next_event(r)
+    assert _wait(lambda: ctl.streams == 1)
+    r.close()
+    c.close()                                                   # found by the next heartbeat write
+    assert _wait(lambda: ctl.streams == 0)
+
+
+def test_events_refused_when_off_and_capped(ctl, monkeypatch):
+    ctl.fake.on = False
+    assert _json(ctl, "GET", "/v1/app/events")[0] == 403
+    assert _req(ctl, "GET", "/v1/app/events", headers={"Origin": "https://example.com"})[0] == 403
+    ctl.fake.on = True
+    monkeypatch.setattr(local_api, "MAX_STREAMS", 1)
+    c, r = _stream(ctl)
+    _next_event(r)
+    assert _json(ctl, "GET", "/v1/app/events")[0] == 503
+    c.close()
+
+
+def test_slow_stream_is_closed_not_blocking(monkeypatch):
+    monkeypatch.setattr(local_api, "EVENT_BACKLOG", 2)
+    a = local_api.LocalApi(lambda s: "", lambda: None, _free_port())
+    st = a._subscribe()
+    for i in range(5):
+        a.publish("state", {"n": i})                            # never blocks
+    assert a.streams == 0 and st.why.startswith("too slow")

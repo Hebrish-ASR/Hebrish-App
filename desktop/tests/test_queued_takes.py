@@ -115,3 +115,19 @@ def test_worker_decodes_in_order_and_skips_discarded():
         time.sleep(0.01)
     assert [d[0] for d in c.done] == ["take of 100", "take of 300"]
     assert c.out == ["|", "take of 100 ", "|", "take of 300 "]
+
+
+def test_finished_take_is_published_for_event_streams():
+    """B-108: GET /v1/app/events gets each take's text and History id; failures say why."""
+    c = Ctl()
+    got = []
+    c.api = SimpleNamespace(publish=lambda e, d: got.append((e, d)))
+    c.remember = lambda text, samples=None, lang=None: 12
+    c.notify = lambda *a, **k: None
+    c.start()
+    c.stop()
+    c._done("hello world", None, np.ones(16000, np.float32))
+    c._done("", "decoder crashed")
+    takes = [d for e, d in got if e == "take"]
+    assert takes[0] == {"text": "hello world", "history_id": 12, "language": "en", "seconds": 1.0}
+    assert takes[1] == {"text": None, "error": "decoder crashed"}

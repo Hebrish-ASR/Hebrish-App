@@ -1989,6 +1989,25 @@ Daniel approved filling the gaps on 2026-11-17: everything an agent needed the w
   note says so); `save_file` writes Markdown as the tab's Save (`transcripts.save`, title first when the
   title model is there and `titles` is on, raw text beside it). Not done: cancel, progress while it
   runs, recording from the mic (the tab's recorder), a Hebrew-model run (`language`).
+- **Change events.** `GET /v1/app/events` is a Server-Sent Events stream, so an agent waits for a take
+  instead of polling. Events (`local_api.EVENTS`): `ready` first (version, state, paused); `state`
+  (`set_state` when the state changes, and Pause/Resume); `take` from `Controller._done`: `{text,
+  history_id, language, seconds}`, `history_id` null when keep_history is off, or `{text: null, error}`
+  (`no_speech` or the failure); `history` `{action: added | edited | deleted | cleared, id, source}` from
+  `remember`, the History tab, the API's writes and Clear; `model` `{id, status: downloading | installed
+  | failed | cancelled, error}`. Each carries `id: <n>`, numbered across the app's run. The Controller
+  calls `emit(event, data)` (nothing when the API is off); `LocalApi.publish` puts the event on every
+  stream's queue with `put_nowait`, so the GUI thread never blocks on a client.
+  **Threads.** Each stream holds one handler thread of the `ThreadingHTTPServer` for as long as it is
+  open, so the stream must end by itself: on a client that went away (the heartbeat comment written
+  every `HEARTBEAT_S` = 15 s fails with a broken pipe), `stop()` (`close_streams` wakes every stream
+  with a sentinel, before `shutdown`), control turned off (the Settings switch calls `close_streams`;
+  also checked at every wake-up), and a client that falls `EVENT_BACKLOG` (256) events behind (closed
+  instead of blocking `publish`). A `closed` event with the reason is sent when the server ends it.
+  At most `MAX_STREAMS` (8) at once: the ninth gets 503. No replay on reconnect: `/v1/app/status` and
+  `/v1/history?since=` catch up. Tests: `tests/test_local_api.py` (events in order with ids, stop
+  closes the stream and leaves no thread, control off, client gone, the cap, a slow client), and
+  `tests/test_queued_takes.py` (a take's event from `_done`).
 
 ### Macro Deck controller (2026-11-16, no app change)
 

@@ -84,7 +84,8 @@ def hist_ctl(tmp_path):
     h.add("I listen to my word prompts", at=100.0, source="file")
     h.add("Nothing to see here", at=200.0)
     ctl = FakeCtl()
-    ctl.history, ctl.redrawn = h, []
+    ctl.history, ctl.redrawn, ctl.events = h, [], []
+    ctl.emit = lambda e, d: ctl.events.append((e, d["action"], d["id"]))
     ctl.win = SimpleNamespace(show_history=lambda keep_limit=False: ctl.redrawn.append(keep_limit))
     yield ctl
     h.close()
@@ -99,6 +100,7 @@ def test_edit_keeps_the_original_and_redraws(hist_ctl):
     assert out["original"] == "I listen to my word prompts"         # the model's text, not the first fix
     assert c.edit_history(2, "Nothing to see here")["changed"] is False
     assert hist_ctl.history.get(2)["original"] is None and len(hist_ctl.redrawn) == 2
+    assert hist_ctl.events == [("history", "edited", 1)] * 2
     with pytest.raises(LookupError):
         c.edit_history(9, "x")
 

@@ -431,6 +431,7 @@ class Controller(QObject):
     def pause(self):
         if self.state == "recording":
             self.recorder.resume() if self.recorder.paused else self.recorder.pause()
+            self.emit("state", {"state": self.state, "paused": bool(self.recorder.paused)})
             played = self.cue("paused" if self.recorder.paused else "resumed")
             if not self.recorder.paused:
                 self.recorder.mute(played + CUE_MARGIN_S)
@@ -1061,9 +1062,11 @@ class Controller(QObject):
         if err == NO_SPEECH:
             self._feedback("no_speech")
             self.win.status("No speech heard, so nothing was inserted. (Voice detection is on the Voice Typing tab.)")
+            self.emit("take", {"text": None, "error": "no_speech"})
         elif err:
             self._feedback("failed")
             self.notify("Transcription failed", str(err))
+            self.emit("take", {"text": None, "error": str(err)})
         elif text:
             if stopped_at:
                 self.latencies.append(time.monotonic() - stopped_at)
@@ -1086,7 +1089,11 @@ class Controller(QObject):
             self.last_text = text.upper() if self.cfg["all_caps"] else text
             if self.cfg["out_cursor"] and self.cfg["detect_no_field"]:
                 self._check_field()
-            self._maint_save(self.remember(text, samples, lang=tinfo), samples)
+            rid = self.remember(text, samples, lang=tinfo)
+            self._maint_save(rid, samples)
+            self.emit("take", {"text": self.last_text, "history_id": rid,
+                               "language": tinfo["lang"] if tinfo else None,
+                               "seconds": round(len(samples) / audio.SAMPLE_RATE, 2) if samples is not None else None})
         elif samples is not None:
             with self._guard:
                 self._maint_ready.pop(id(samples), None)
@@ -1140,6 +1147,7 @@ class Controller(QObject):
             log.exception("couldn't save the transcript to history")
             return None
         self.win.show_history()
+        self.emit("history", {"action": "added", "id": rid, "source": source})
         return rid
 
     def relayout_history(self, rid: int, text: str):
@@ -1160,6 +1168,7 @@ class Controller(QObject):
             log.exception("clearing the history failed")
             self.win.banner(f"Couldn't clear the history: {e}")
         self.win.show_history()
+        self.emit("history", {"action": "cleared", "id": None, "source": None})
 
     def maintain_history(self, manual=False):
         """History upkeep (1.009, B-69: hebrish.history.maintain) in a background thread, about
@@ -1184,9 +1193,18 @@ class Controller(QObject):
                      out["seconds"], " (converted to incremental vacuum)" if out["vacuumed"] else "")
         self.win.history_maintained(out, err)
 
+    def emit(self, event: str, data: dict):
+        """An event for the local API's GET /v1/app/events streams (B-108); nothing without the API."""
+        api = getattr(self, "api", None)      # tests build Controllers without __init__
+        if api is not None:
+            api.publish(event, data)
+
     def set_state(self, state):
         log.info("state %s -> %s", self.state, state)
+        changed = state != self.state
         self.state = state
+        if changed:
+            self.emit("state", {"state": state, "paused": False})
         self._update_tray()
         self.win.update_state()
         for t in (self._level_timer, self._live_timer):
@@ -1472,6 +1490,7 @@ class Controller(QObject):
         self.downloading = cancel = threading.Event()
         self.downloading_id = manifest.model
         self.win.update_model()
+        self.emit("model", {"id": manifest.model, "status": "downloading", "error": None})
 
         def progress(done, total, name):
             state = ("verifying · " if name.startswith("verifying") else
@@ -1493,6 +1512,8 @@ class Controller(QObject):
 
     def _downloaded(self, manifest, err):
         self.downloading = self.downloading_id = self.download_progress = None
+        self.emit("model", {"id": manifest.model, "error": str(err) if err else None, "status":
+                            "cancelled" if isinstance(err, model_store.Cancelled) else "failed" if err else "installed"})
         quiet, self._quiet_download = self._quiet_download, False
         if err:
             self.switch_after_download = None      # retried at the next start (flag still unset)

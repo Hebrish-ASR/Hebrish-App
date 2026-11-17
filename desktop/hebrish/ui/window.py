@@ -969,9 +969,11 @@ class MainWindow(QMainWindow):
             self.show_history(keep_limit=True)
             return
         self._history_edit(self.ctl.history.update_text, h["id"], text)
+        self.ctl.emit("history", {"action": "edited", "id": h["id"], "source": h["source"]})
 
     def _delete_entry(self, h):
         self._history_edit(self.ctl.history.delete, h["id"])
+        self.ctl.emit("history", {"action": "deleted", "id": h["id"], "source": h["source"]})
 
     def _history_edit(self, fn, *args):
         try:
@@ -2168,9 +2170,12 @@ class MainWindow(QMainWindow):
 
         box, b = card("Local API")
         b.addWidget(self._local_api_row())
-        ctl = self._check("local_api_control", "Let agents read history and control the app")
-        ctl.setToolTip("Adds history, the dictionary, updates, model choice and start/stop dictation to "
-                       "the local API. No password: anything running on this computer can use it.")
+        ctl = self._check("local_api_control", "Let agents read history and control the app",
+                          then=lambda: self.ctl.api and not self.cfg["local_api_control"]
+                          and self.ctl.api.close_streams("control is off"))
+        ctl.setToolTip("Adds history (read, correct, delete), the dictionary, updates, models, microphones, "
+                       "dictation, Transcription Mode and change events to the local API. No password: "
+                       "anything running on this computer can use it.")
         b.addWidget(ctl)
         skills = QHBoxLayout()
         self.agent_skills_label = muted("Skills teach coding agents to update Hebrish, read history "
