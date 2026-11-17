@@ -2719,7 +2719,8 @@ Daniel (D-2026-11-16-01): a Hebrew-only model, used when the user dictates in He
   links). About has a *Model credits* card with the same text. CC BY 4.0 requires the credit wherever it is listed.
   Updates: it is an installed model, so *Check for updates* / *Update all* (`bundles.check`) cover it; a new version
   reloads it (`Controller._reload_hebrew`, deferred while a take runs).
-- **Input language.** Config `input_language`: `auto` (default, Follow the keyboard), `en`, `he`. Set from three
+- **Input language.** Config `input_language`: `auto` (Follow the keyboard), `en` (default since 2026-11-17; was `auto`), `he`.
+  Saved configs keep their value; only a fresh config gets `en`. Set from three
   buttons under the record button (Auto / EN / עב, Voice Typing tab), Settings → Voice Typing → *Input language*, or
   `POST /v1/app/language`; all go through `Controller.set_input_language`, which re-syncs the others.
 - **Per take.** `Controller.start` calls `take_language()` once and stores the answer in `_take_info[take]`

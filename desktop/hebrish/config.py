@@ -114,7 +114,8 @@ DEFAULTS = {
     # Hebrew switching (2026-11-16): which model decodes a take. auto = follow the keyboard layout at
     # the start of each take (keyboard_layout.py; unknown = English); en | he = the Dictate tab's toggle.
     # Hebrew uses the catalogue's Hebrew language model when it is downloaded, else the main model.
-    "input_language": "auto",
+    # Default English since 2026-11-17 (was auto): new installs dictate English until changed.
+    "input_language": "en",
     "feedback": "beeps",          # beeps | voice (spoken status: data/voice/<voice>/) | off
     "voice": "herman",            # herman | corn | hilbert (audio.VOICES; 0.7.0)
     "beep_style": "soft",         # soft | classic (shown as Loud: the beep up to 1.007); audio.BEEP_STYLES

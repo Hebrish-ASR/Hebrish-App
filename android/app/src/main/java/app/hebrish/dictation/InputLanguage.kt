@@ -64,7 +64,8 @@ object InputLanguage {
         Mode.HEBREW -> Mode.AUTO
     }
 
-    fun parse(s: String?): Mode = Mode.values().firstOrNull { it.name == s } ?: Mode.AUTO
+    /** Nothing saved (or unknown) = English: the default since 2026-11-17 (was Auto). */
+    fun parse(s: String?): Mode = Mode.values().firstOrNull { it.name == s } ?: Mode.ENGLISH
 
     /** A subtype's language: `languageTag` (API 24+), else the old `locale` string ("iw_IL"). */
     fun tagOf(s: InputMethodSubtype?): String? =

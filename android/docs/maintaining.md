@@ -2272,7 +2272,7 @@ move or a delete of the Hebrew model.
 `adb logcat -s HebrishLanguage` with the source that decided):
 
 1. The **EN / עב** button in the voice keyboard header (`Prefs.inputLanguage`, key `input_language`):
-   Auto (default, label "EN / עב", dimmed) → English → Hebrew → Auto. English or Hebrew wins over everything.
+   Auto (label "EN / עב", dimmed) → English (default since 2026-11-17; was Auto) → Hebrew → Auto. English or Hebrew wins over everything.
    The same setting applies to the floating mic, Try it and Notes.
 2. Auto, voice keyboard (`forKeyboard`): this IME's own subtype if it is Hebrew; else
    `InputMethodManager.getLastInputMethodSubtype()` (the keyboard the user came from) → its `languageTag`, else
