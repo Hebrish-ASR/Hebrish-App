@@ -80,6 +80,10 @@ ROUTES = [
     ("POST", "/v1/app/models/select", True, 'Body {"id": ..., "download": false}: switch model'),
     ("GET", "/v1/app/settings", True, "The settings this API may change, their values and what each does"),
     ("POST", "/v1/app/settings", True, 'Body {"out_clipboard": false, ...}: change settings; all checked first, then applied together'),
+    ("GET", "/v1/app/mics", True, "Microphones: the connected ones (choices), and what dictation (audio_device) and "
+     "Transcription Mode (tm_audio_device) use now"),
+    ("POST", "/v1/app/mics", True, 'Body {"audio_device": ..., "tm_audio_device": ...}: "" system default, '
+     '"@preferred" the preferred order, or a connected mic by value or key'),
     ("GET", "/v1/app/models/updates", True, "Check every downloaded model and add-on (network)"),
     ("POST", "/v1/app/models/updates", True, "Download what the check finds; poll /v1/app/status"),
     ("GET", "/v1/history", True, "Transcripts. Query: q, limit (max 1000), offset, since, until (unix time), source, edited=1"),

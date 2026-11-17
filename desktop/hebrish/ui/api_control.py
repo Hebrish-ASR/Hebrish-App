@@ -7,7 +7,7 @@ Raises what local_api turns into a status: LookupError 404, ValueError 400, Runt
 
 import threading
 
-from .. import __version__, app_update, bundles, model_store
+from .. import __version__, app_update, bundles, mics, model_store
 from ..config import HISTORY_DB
 
 MAIN_TIMEOUT = 10
@@ -46,9 +46,9 @@ def _chord(v):
 
 # GET/POST /v1/app/settings (2026-11-16): the settings an agent may change, each with its check.
 # Only settings the app reads when it uses them (no restart, nothing to rebuild), so a change takes
-# effect at the next take. Paths, hotkeys, models, the microphone and the local API's own switches
-# are left out on purpose: a wrong value there can lock the user out or needs a dialog.
-# input_language has its own route (/v1/app/language).
+# effect at the next take. Paths, hotkeys, models and the local API's own switches are left out on
+# purpose: a wrong value there can lock the user out or needs a dialog. input_language, the
+# microphones (/v1/app/mics) and models have their own routes.
 SETTINGS = {
     "out_cursor": (_bool, "Output: paste at the cursor"),
     "out_clipboard": (_bool, "Output: copy each take to the clipboard (keeps it there after the paste)"),
@@ -74,6 +74,7 @@ SETTINGS = {
     "vad": (_bool, "Voice detection (skip silence)"),
 }
 OUTPUTS = ("out_cursor", "out_clipboard", "out_window")
+MIC_SETTINGS = {"audio_device": "Voice Typing (dictation)", "tm_audio_device": "Transcription Mode"}
 
 # POST /v1/app/dictation (B-87; the rest 2026-11-17, B-104): each runs the action key's handler
 # (Controller.do_action), so the API does exactly what the key does. pause and resume are the
@@ -108,6 +109,8 @@ class Control:
             ("POST", "/v1/app/language"): self.set_language,
             ("GET", "/v1/app/settings"): self.settings,
             ("POST", "/v1/app/settings"): self.set_settings,
+            ("GET", "/v1/app/mics"): self.mics,
+            ("POST", "/v1/app/mics"): self.set_mics,
             ("GET", "/v1/app/models/updates"): self.check_models,
             ("POST", "/v1/app/models/updates"): self.install_models,
         }
@@ -210,6 +213,67 @@ class Control:
             c.do_action(action)
         self._main(go)
         return 200, {"action": action, **self.take_state()}
+
+    def _mic_list(self):
+        """GUI thread: the connected mics (PortAudio re-initialised, as the mic boxes do), each new
+        one remembered in config `mics`, and what each mic setting uses now."""
+        from .mics import in_use
+        c = self.ctl
+        found = mics.list_mics()
+        known = c.cfg["mics"]
+        if mics.remember(known, found):
+            c.cfg.set("mics", known)
+        here = [{"value": m.device, "key": m.key, "name": mics.name(known.get(m.key, {"label": m.label})),
+                 "label": m.label, "type": known.get(m.key, {}).get("type") or m.type_guess or None,
+                 "bus": m.bus or None} for m in found if m.device]
+        order = [mics.name(known[k]) for k in mics.ordered(known, c.cfg["mic_order"])]
+        current = {k: {"for": what, "value": c.cfg[k], "in_use": in_use(c.cfg, k)} for k, what in MIC_SETTINGS.items()}
+        return here, order, current
+
+    def mics(self, _body) -> tuple[int, dict]:
+        here, order, current = self._main(self._mic_list)
+        return 200, {**current, "choices": [
+            {"value": "", "name": "System default"},
+            {"value": mics.PREFERRED, "name": "Preferred order (Settings → Microphones)", "order": order},
+            *here]}
+
+    def set_mics(self, body) -> tuple[int, dict]:
+        """Body {"audio_device": ..., "tm_audio_device": ...}, either or both: "" (system default),
+        "@preferred", or a connected mic by `value` (device name) or `key`. As choosing in the tab's
+        mic box: the boxes are refilled, a running Test mic follows. Transcription Mode's mic is not
+        switched under a running recording (409): the tab does that with a dialog on failure."""
+        if not isinstance(body, dict) or not body or set(body) - set(MIC_SETTINGS):
+            raise ValueError("send audio_device and/or tm_audio_device (GET /v1/app/mics lists the choices)")
+        c = self.ctl
+
+        def go():
+            here, _, _ = self._mic_list()
+            by = {m["value"]: m["value"] for m in here} | {m["key"]: m["value"] for m in here}
+            new = {}
+            for k, v in body.items():
+                if v in ("", mics.PREFERRED):
+                    new[k] = v
+                elif isinstance(v, str) and v in by:
+                    new[k] = by[v]
+                else:
+                    raise ValueError(f"{k}: {v!r} is not a connected microphone (GET /v1/app/mics lists them)")
+            if "tm_audio_device" in new and new["tm_audio_device"] != c.cfg["tm_audio_device"] \
+                    and c.win.transcribe.tape.active:
+                raise RuntimeError("Transcription Mode is recording: change its mic when it has stopped")
+            changed = [k for k, v in new.items() if c.cfg[k] != v]
+            for k in changed:
+                c.cfg.set(k, new[k])
+            if changed:
+                c.win.mics_changed()            # both mic boxes and the "In use" line
+                if hasattr(c.win, "mics_card"):
+                    c.win.mics_card.sync()
+                if "audio_device" in changed and c.monitor.active:     # Test mic follows, as in the tab
+                    c.stop_monitor()
+                    c.win._on_test(True)
+            return changed
+        changed = self._main(go)
+        code, out = self.mics(body)
+        return code, {"changed": changed, **out}
 
     def check_app(self, _body) -> tuple[int, dict]:
         rel = app_update.fetch()

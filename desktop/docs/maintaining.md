@@ -1903,7 +1903,7 @@ adding find-and-replace rules, shipped with the app. `GET /v1` lists every route
   before any is written, so a bad body changes nothing (400 names the key). At least one output
   stays on. Applied on the GUI thread with `cfg.set`, then `win.sync_output()` for outputs and the
   paste shortcut, and `apply_vad` + `sync_tray_vad` for `vad`. Left out on purpose: paths,
-  hotkeys, models, microphones, and the local API's own switches. Other Settings widgets show their
+  hotkeys, models, microphones (their own route since B-108), and the local API's own switches. Other Settings widgets show their
   old value until the window is reopened; the saved setting is right.
 - **Updates.** `POST /v1/app/update` is the update bar's action: apt only, the user approves pkexec,
   409 with the download page on other installs. `Controller.app_update_error` keeps the failure for
@@ -1952,6 +1952,18 @@ Daniel approved filling the gaps on 2026-11-17: everything an agent needed the w
   loop, so an API write can land meanwhile): deleted means a status line, changed means "Save your
   version over it?". And `History.relayout` (the Transcription tab re-flowing paragraphs) now skips
   a row with `original` set, so a correction, by hand or by API, is never re-flowed away.
+- **Microphones.** `GET /v1/app/mics`: `choices` (System default `""`, Preferred order `"@preferred"`
+  with the order by name, then each connected mic that can be opened: `value` = the device name the
+  setting stores, `key` = its stable identity from `hebrish.mics`, alias as `name`, `type`, `bus`),
+  and for `audio_device` (Voice Typing) and `tm_audio_device` (Transcription Mode) the stored `value`
+  and `in_use` (the tab's "In use:" text). Listing runs on the GUI thread: `mics.list_mics` re-initialises
+  PortAudio (skipped while a stream is open) and must not race a stream opening; new mics are
+  remembered in `mics`, as the mic boxes do. `POST /v1/app/mics` takes either or both settings, a mic
+  by `value` or `key`, all checked before any is written. Then `win.mics_changed()` refills both mic
+  boxes, the Microphones card's switch is synced, and a running Test mic re-opens on the new mic, as
+  the tab's `_on_mic`. Refused (409): changing `tm_audio_device` while Transcription Mode records; the
+  tab switches the live stream and shows a dialog if that fails, which an HTTP request can't answer.
+  A dictation mic change during a take applies from the next take (`mics.resolve` runs at start).
 
 ### Macro Deck controller (2026-11-16, no app change)
 
