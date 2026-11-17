@@ -47,8 +47,8 @@ class InputLanguageTest {
         assertEquals(Mode.ENGLISH, InputLanguage.next(Mode.AUTO))
         assertEquals(Mode.HEBREW, InputLanguage.next(Mode.ENGLISH))
         assertEquals(Mode.AUTO, InputLanguage.next(Mode.HEBREW))
-        assertEquals(Mode.AUTO, InputLanguage.parse(null))
-        assertEquals(Mode.AUTO, InputLanguage.parse("nonsense"))
+        assertEquals(Mode.ENGLISH, InputLanguage.parse(null))
+        assertEquals(Mode.ENGLISH, InputLanguage.parse("nonsense"))
         assertEquals(Mode.HEBREW, InputLanguage.parse("HEBREW"))
     }
 }
