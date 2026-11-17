@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MSIX for the Microsoft Store (1.041, 2026-11-17; research/windows-distribution). Filled in by
+     make_msix.py: {NAME} {PUBLISHER} {PUBLISHER_DISPLAY} {VERSION}. The Store's values come from
+     Partner Center (Product identity) once the name is reserved; CI dev builds use placeholders and a
+     self-signed certificate whose subject equals {PUBLISHER}. Full trust (runFullTrust): the same
+     PyInstaller folder as the zip and the Velopack installer, in Hebrish\. -->
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+         xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap uap3 desktop rescap">
+  <Identity Name="{NAME}" Publisher="{PUBLISHER}" Version="{VERSION}" ProcessorArchitecture="x64"/>
+  <Properties>
+    <DisplayName>Hebrish</DisplayName>
+    <PublisherDisplayName>{PUBLISHER_DISPLAY}</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0"/>
+  </Dependencies>
+  <Resources>
+    <Resource Language="en-us"/>
+  </Resources>
+  <Applications>
+    <Application Id="Hebrish" Executable="Hebrish\Hebrish.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Hebrish" Description="On-device dictation for English with Hebrew words"
+                          BackgroundColor="transparent"
+                          Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"/>
+      </uap:VisualElements>
+      <Extensions>
+        <!-- Start at login: a packaged app's HKCU Run key is private, so this replaces it. Off until
+             the user turns it on in Windows Settings > Apps > Startup; started this way, the app
+             goes to the tray (winstore.started_at_login). -->
+        <desktop:Extension Category="windows.startupTask" Executable="Hebrish\Hebrish.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="HebrishStartup" Enabled="false" DisplayName="Hebrish"/>
+        </desktop:Extension>
+        <!-- `hebrish` on the command line (and CI's self-test of the installed package). -->
+        <uap3:Extension Category="windows.appExecutionAlias" Executable="Hebrish\Hebrish.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap3:AppExecutionAlias>
+            <desktop:ExecutionAlias Alias="hebrish.exe"/>
+          </uap3:AppExecutionAlias>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust"/>
+    <DeviceCapability Name="microphone"/>
+  </Capabilities>
+</Package>

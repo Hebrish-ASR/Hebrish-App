@@ -2220,7 +2220,11 @@ def main():
     p.add_argument("--install-agent-skills", action="store_true",
                    help="copy the bundled agent skills into each coding agent found, then exit")
     p.add_argument("--selftest", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument("--velopack-update", action="store_true", help=argparse.SUPPRESS)   # CI update test
     args, qt_args = p.parse_known_args()
+    if sys.platform == "win32" and not args.hidden and app_update.install_method() == "msix":
+        from .. import winstore              # the Store build's StartupTask can't pass --hidden
+        args.hidden = winstore.started_at_login()
     if args.install_agent_skills:
         from .. import agent_skills
         print(agent_skills.report(agent_skills.install()))
@@ -2234,6 +2238,11 @@ def main():
         logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     if args.selftest:
         sys.exit(_selftest())
+    if args.velopack_update:
+        out = os.environ.get("HEBRISH_SELFTEST_OUT")
+        if out:                                  # --windowed exe: no console, so write to a file
+            sys.stdout = sys.stderr = open(out, "w", encoding="utf-8")
+        sys.exit(app_update.velopack_update_test())
 
     migrate_legacy()
     app = QApplication([sys.argv[0], *qt_args])

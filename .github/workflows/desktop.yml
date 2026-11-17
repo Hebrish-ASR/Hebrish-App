@@ -187,6 +187,7 @@ jobs:
           --collect-data hebrish
           --hidden-import hebrish.hotkey_win --hidden-import hebrish.inserter_win
           --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32
+          --collect-all winrt
           packaging/windows/launcher.py
       - name: Self-test the frozen exe
         run: |
@@ -228,8 +229,77 @@ jobs:
           Get-Content selftest-installed.txt
           if ($q.ExitCode -ne 0) { exit 1 }
           if (-not (Select-String -Path selftest-installed.txt -Pattern "install: velopack" -Quiet)) { Write-Host "not detected as velopack"; exit 1 }
+      # The update path itself: pack the same folder as the next version into a copy of the feed,
+      # serve it locally, and have the installed copy stage it (--velopack-update) and Velopack apply
+      # it after exit. Passes when current\sq.version names the next version.
+      - name: Update test (installed N -> N+1 from a local feed)
+        timeout-minutes: 10
+        run: |
+          $root = "$env:LOCALAPPDATA\HebrishDictation"
+          $next = python -c "from hebrish import __version__ as v; a,b=v.split('.'); print(f'{int(a)}.{int(b)+1}.0')"
+          Copy-Item Releases Releases-next -Recurse
+          vpk pack --packId HebrishDictation --packVersion $next --packDir dist\Hebrish --mainExe Hebrish.exe `
+            --packTitle Hebrish --packAuthors Hebrish --icon packaging\windows\icon.ico `
+            --channel stable --outputDir Releases-next
+          $srv = Start-Process python -ArgumentList "-m", "http.server", "8765", "--directory", "Releases-next" -PassThru
+          Start-Sleep 3
+          $env:HEBRISH_VELOPACK_FEED = "http://127.0.0.1:8765/"
+          $env:HEBRISH_SELFTEST_OUT = "$PWD\update-test.txt"
+          $q = Start-Process "$root\current\Hebrish.exe" -ArgumentList "--velopack-update" -PassThru
+          $q.WaitForExit()
+          Get-Content update-test.txt
+          if ($q.ExitCode -ne 0) { Stop-Process $srv.Id; exit 1 }
+          $ok = $false
+          foreach ($i in 1..30) {
+            Start-Sleep 2
+            if ((Test-Path "$root\current\sq.version") -and (Select-String -Path "$root\current\sq.version" -Pattern ([regex]::Escape($next)) -Quiet)) { $ok = $true; break }
+          }
+          Stop-Process $srv.Id -ErrorAction SilentlyContinue
+          Get-ChildItem $root, "$root\current" | Select-Object -First 30
+          if (Test-Path "$root\current\sq.version") { Get-Content "$root\current\sq.version" }
+          Get-ChildItem $root -Recurse -Filter *.log -ErrorAction SilentlyContinue | ForEach-Object { Get-Content $_.FullName -Tail 30 }
+          if (-not $ok) { Write-Host "update to $next was not applied"; exit 1 }
+          Write-Host "updated to $next"
       - uses: actions/upload-artifact@v4
         with: { name: velopack, path: "desktop/Releases" }
+      # MSIX for the Microsoft Store (1.041). The artifact is unsigned: the Store signs what it is
+      # given. To test the install here, a copy is signed with a throwaway self-signed certificate
+      # whose subject is the manifest's Publisher, trusted on the runner only. Store identity (Name,
+      # Publisher) comes from repository variables once the name is reserved in Partner Center.
+      - name: MSIX pack
+        env:
+          MSIX_NAME: "${{ vars.MSIX_NAME }}"
+          MSIX_PUBLISHER: "${{ vars.MSIX_PUBLISHER }}"
+          MSIX_PUBLISHER_DISPLAY: "${{ vars.MSIX_PUBLISHER_DISPLAY }}"
+        run: |
+          python packaging/windows/msix/make_msix.py dist\Hebrish msix-layout
+          $bin = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\10.*\x64" -Directory | Sort-Object Name | Select-Object -Last 1
+          "WINSDK=$($bin.FullName)" | Out-File -Append $env:GITHUB_ENV
+          & "$($bin.FullName)\makeappx.exe" pack /d msix-layout /p Hebrish.msix /o
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Install the MSIX (self-signed copy) and self-test it
+        timeout-minutes: 10
+        run: |
+          [xml]$m = Get-Content msix-layout\AppxManifest.xml
+          $pub = $m.Package.Identity.Publisher
+          $cert = New-SelfSignedCertificate -Type Custom -Subject $pub -KeyUsage DigitalSignature `
+            -CertStoreLocation Cert:\CurrentUser\My -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
+          $pw = ConvertTo-SecureString -String "ci" -Force -AsPlainText
+          Export-PfxCertificate -Cert $cert -FilePath ci.pfx -Password $pw | Out-Null
+          Import-PfxCertificate -FilePath ci.pfx -CertStoreLocation Cert:\LocalMachine\TrustedPeople -Password $pw | Out-Null
+          Copy-Item Hebrish.msix Hebrish-test.msix
+          & "$env:WINSDK\signtool.exe" sign /fd SHA256 /f ci.pfx /p ci Hebrish-test.msix
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Add-AppxPackage Hebrish-test.msix
+          Get-AppxPackage *Hebrish* | Format-List Name, Version, InstallLocation
+          $env:HEBRISH_SELFTEST_OUT = "$PWD\selftest-msix.txt"
+          $q = Start-Process "$env:LOCALAPPDATA\Microsoft\WindowsApps\hebrish.exe" -ArgumentList "--selftest" -PassThru
+          $q.WaitForExit()
+          Get-Content selftest-msix.txt
+          if ($q.ExitCode -ne 0) { exit 1 }
+          if (-not (Select-String -Path selftest-msix.txt -Pattern "install: msix" -Quiet)) { Write-Host "not detected as msix"; exit 1 }
+      - uses: actions/upload-artifact@v4
+        with: { name: msix, path: "desktop/Hebrish.msix" }
       - name: Zip
         run: |
           $ver = "${{ inputs.tag }}".Replace("desktop-", "")

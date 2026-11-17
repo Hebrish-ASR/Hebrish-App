@@ -21,7 +21,8 @@ dependencies = [
 
 [project.optional-dependencies]
 windows = ["PySide6-Essentials>=6.8", "pynput>=1.7", "pyperclip>=1.8", "soundfile>=0.12", "soxr>=0.3",
-           "velopack==1.2.161"]   # pinned: must equal the vpk CLI version in desktop.yml
+           "velopack==1.2.161",   # pinned: must equal the vpk CLI version in desktop.yml
+           "winrt-Windows.ApplicationModel>=3", "winrt-Windows.ApplicationModel.Activation>=3"]   # MSIX: winstore.py
 
 [project.scripts]
 hebrish = "hebrish.ui.app:main"

@@ -241,7 +241,8 @@ def velopack_manager():
     import velopack
     from .model_store import USER_AGENT          # Cloudflare 403s unknown user agents on the CDN
     http = velopack.HttpOptions([velopack.HttpHeader("User-Agent", USER_AGENT)], 120_000)
-    return velopack.UpdateManager(velopack.HttpSource(VELOPACK_FEED, http),
+    feed = os.environ.get("HEBRISH_VELOPACK_FEED") or VELOPACK_FEED       # override: CI's update test
+    return velopack.UpdateManager(velopack.HttpSource(feed, http),
                                   velopack.UpdateOptions(False, 10, VELOPACK_CHANNEL))
 
 
@@ -266,3 +267,18 @@ def velopack_restart():
     pending = um.get_update_pending_restart()
     if pending:
         um.wait_exit_then_apply_updates(pending, silent=True, restart=True)
+
+
+def velopack_update_test() -> int:
+    """`Hebrish.exe --velopack-update` (CI, desktop.yml): stage an update from the feed and have
+    Velopack apply it once this process exits, without restarting. Prints what it did."""
+    staged = velopack_stage()
+    print("velopack staged:", staged, flush=True)
+    if not staged:
+        return 1
+    um = velopack_manager()
+    pending = um.get_update_pending_restart()
+    if not pending:
+        return 1
+    um.wait_exit_then_apply_updates(pending, silent=True, restart=False)
+    return 0
