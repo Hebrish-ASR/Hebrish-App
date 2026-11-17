@@ -45,6 +45,11 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
         run: ./gradlew assembleFdroidRelease
+      # JVM unit tests (app/src/test) on a manual run, so a branch build checks them too; tag builds
+      # skip them and stay exactly as before (2026-11-17, B-13).
+      - name: Unit tests
+        if: github.event_name == 'workflow_dispatch'
+        run: ./gradlew testFdroidDebugUnitTest
       # Play upload key if its secrets exist, else the release key (Play App Signing accepts the
       # app signing key as upload key). Hebrish-App-Planning google-play.md §4.
       - name: Upload keystore
