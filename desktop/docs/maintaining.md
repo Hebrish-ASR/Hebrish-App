@@ -1938,6 +1938,20 @@ Daniel approved filling the gaps on 2026-11-17: everything an agent needed the w
   take recording; `send` with nothing recording or transcribing; `paste_last` while not idle) the API
   answers 409, so an agent knows. `retake` when idle starts a take, as the key does. The reply and
   `/v1/app/status` carry `paused`.
+- **History writes.** `PATCH /v1/history/{id}` `{"text": ...}` corrects a transcript and
+  `DELETE /v1/history/{id}` deletes one. Both run on the GUI thread through the app's own `History`
+  connection (`update_text`, `delete`), exactly as the History tab's Correct and Delete, then
+  `show_history(keep_limit=True)` redraws the tab (or marks it dirty when hidden). `update_text`
+  keeps the model's first text in `original`, so `GET /v1/history?edited=1` finds API corrections too;
+  the same text again changes nothing (`changed: false`, `original` stays empty). Reads still use
+  their own read-only connection. `DELETE /v1/history` with no id is 404 (`local_api._matches`: `{id}`
+  is one non-empty segment; before, the prefix match let `/v1/history` stand in for `/v1/history/{id}`).
+  **Stale GUI, the B-87 dictionary problem for History:** the tab's Correct used the row as drawn, so
+  it showed text an agent had since replaced and wrote the user's edit over it. `_edit_entry` now
+  re-reads the row (`History.get`) before the dialog, and again after it (the dialog spins the event
+  loop, so an API write can land meanwhile): deleted means a status line, changed means "Save your
+  version over it?". And `History.relayout` (the Transcription tab re-flowing paragraphs) now skips
+  a row with `original` set, so a correction, by hand or by API, is never re-flowed away.
 
 ### Macro Deck controller (2026-11-16, no app change)
 

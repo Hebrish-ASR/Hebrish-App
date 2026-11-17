@@ -946,12 +946,29 @@ class MainWindow(QMainWindow):
             self.status(f"Exported {n:,} transcripts to {path}")
 
     def _edit_entry(self, h):
+        # From the file, not the row as drawn: the local API may have corrected or deleted it (B-108)
+        h = self.ctl.history.get(h["id"])
+        if h is None:
+            self.status("That transcript has been deleted.")
+            self.show_history(keep_limit=True)
+            return
         text, ok = QInputDialog.getMultiLineText(
             self, "Correct the transcript",
             "Fix any words the model got wrong. The original is kept alongside, so corrections "
             "can become training data.", h["text"])
-        if ok and text.strip() and text.strip() != h["text"]:
-            self._history_edit(self.ctl.history.update_text, h["id"], text)
+        if not (ok and text.strip() and text.strip() != h["text"]):
+            return
+        now = self.ctl.history.get(h["id"])     # the dialog spins the event loop: the API can run meanwhile
+        if now is None:
+            self.status("That transcript was deleted while you were correcting it.")
+            self.show_history(keep_limit=True)
+            return
+        if now["text"] != h["text"] and QMessageBox.question(
+                self, "Correct the transcript", "This transcript was changed while you were correcting "
+                "it (by an agent, through the local API). Save your version over it?") != QMessageBox.Yes:
+            self.show_history(keep_limit=True)
+            return
+        self._history_edit(self.ctl.history.update_text, h["id"], text)
 
     def _delete_entry(self, h):
         self._history_edit(self.ctl.history.delete, h["id"])

@@ -84,11 +84,22 @@ ROUTES = [
     ("POST", "/v1/app/models/updates", True, "Download what the check finds; poll /v1/app/status"),
     ("GET", "/v1/history", True, "Transcripts. Query: q, limit (max 1000), offset, since, until (unix time), source, edited=1"),
     ("GET", "/v1/history/{id}", True, "One transcript"),
+    ("PATCH", "/v1/history/{id}", True, 'Body {"text": ...}: correct a transcript; the model\'s first text stays in `original` (edited=1 finds it)'),
+    ("DELETE", "/v1/history/{id}", True, "Delete a transcript"),
     ("GET", "/v1/dictionary", True, "The personal dictionary (find and replace)"),
     ("POST", "/v1/dictionary", True, 'Body {"word": ..., "heard": [...]}: add a word, or add phrases to it'),
     ("POST", "/v1/dictionary/preview", True, 'Body {"word": ..., "heard": [...], "limit": 20}: what it would change in History; writes nothing'),
     ("DELETE", "/v1/dictionary", True, "Query word=..., optionally heard=...: remove a word or one phrase"),
 ]
+
+
+def _matches(pattern: str, path: str) -> bool:
+    """A ROUTES path against a request path: `{id}` is one non-empty segment."""
+    if "{" not in pattern:
+        return pattern == path
+    head = pattern.split("{")[0]
+    rest = path[len(head):]
+    return path.startswith(head) and bool(rest) and "/" not in rest
 
 
 class ApiError(Exception):
@@ -249,6 +260,12 @@ class _Handler(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         self._control("DELETE", url.path.rstrip("/"), parse_qs(url.query), None)
 
+    def do_PATCH(self):
+        if not self._guard():
+            return
+        url = urlsplit(self.path)
+        self._control("PATCH", url.path.rstrip("/"), parse_qs(url.query), self._json_body())
+
     def _control_on(self) -> bool:
         c = self.owner.control
         return bool(c and c.enabled())
@@ -272,8 +289,7 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _control(self, method: str, path: str, query: dict, body):
         try:
-            if not any(p.split("{")[0].rstrip("/") == path or (p.endswith("}") and path.startswith(p.split("{")[0]))
-                       for m, p, c, _ in ROUTES if c and m == method):
+            if not any(_matches(p, path) for m, p, c, _ in ROUTES if c and m == method):
                 raise ApiError(404, f"no route {method} {path}; GET /v1 lists them")
             if not self._control_on():
                 raise ApiError(403, "control is off: in Hebrish, Settings → Local API, tick "
@@ -285,6 +301,12 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(status, out)
         except ApiError as e:
             self._error(e.status, str(e))
+        except LookupError as e:
+            self._error(404, str(e.args[0]) if e.args else "not found")
+        except ValueError as e:
+            self._error(400, str(e))
+        except RuntimeError as e:         # the app can't do it right now, or not on this install
+            self._error(409, str(e))
         except Exception as e:
             log.exception("local API control failed")
             self._error(500, str(e) or e.__class__.__name__)
@@ -295,6 +317,10 @@ class _Handler(BaseHTTPRequestHandler):
             return 200, self._history(q, c.history_path)
         if path.startswith("/v1/history/"):
             rid = _number(path.rsplit("/", 1)[1], int, "id")
+            if method == "PATCH":
+                return 200, c.edit_history(rid, _text(body, "text"))
+            if method == "DELETE":
+                return 200, c.delete_history(rid)
             row = history.get(c.history_path, rid)
             if row is None:
                 raise ApiError(404, f"no transcript {rid}")
@@ -314,14 +340,7 @@ class _Handler(BaseHTTPRequestHandler):
                 raise ApiError(404, "no such word or phrase in the dictionary")
             c.dictionary_changed()
             return 200, {"removed": True}
-        try:
-            return c.handle(method, path, body)
-        except LookupError as e:
-            raise ApiError(404, str(e.args[0])) from None
-        except ValueError as e:
-            raise ApiError(400, str(e)) from None
-        except RuntimeError as e:         # the app can't do it right now, or not on this install
-            raise ApiError(409, str(e)) from None
+        return c.handle(method, path, body)
 
     @staticmethod
     def _history(q: dict, path) -> dict:

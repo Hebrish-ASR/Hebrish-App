@@ -139,6 +139,35 @@ class Control:
             raise box["error"]
         return box.get("value")
 
+    def edit_history(self, rid: int, text: str) -> dict:
+        """PATCH /v1/history/{id}: History.update_text through the app's own connection (GUI
+        thread), as the History tab's Correct does, then the tab is redrawn. Same text: nothing."""
+        c = self.ctl
+
+        def go():
+            row = c.history.get(rid)
+            if row is None:
+                raise LookupError(f"no transcript {rid}")
+            if row["text"] == text.strip():
+                return row, False
+            c.history.update_text(rid, text)
+            c.win.show_history(keep_limit=True)
+            return c.history.get(rid), True
+        row, changed = self._main(go)
+        return {**row, "changed": changed}
+
+    def delete_history(self, rid: int) -> dict:
+        """DELETE /v1/history/{id}, as the History tab's Delete."""
+        c = self.ctl
+
+        def go():
+            if c.history.get(rid) is None:
+                raise LookupError(f"no transcript {rid}")
+            c.history.delete(rid)
+            c.win.show_history(keep_limit=True)
+        self._main(go)
+        return {"id": rid, "deleted": True}
+
     def dictionary_changed(self):
         self.ctl.sig.call.emit(lambda: self.ctl.win._dict_show())
 

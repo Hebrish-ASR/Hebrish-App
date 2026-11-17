@@ -73,3 +73,42 @@ def test_send_while_the_last_take_transcribes_and_paste_when_idle():
 def test_unknown_action_is_400():
     with pytest.raises(ValueError, match="paste_last"):
         _control(FakeCtl()).dictation({"action": "dance"})
+
+
+# -- history writes ------------------------------------------------------------------------
+
+@pytest.fixture
+def hist_ctl(tmp_path):
+    from hebrish.history import History
+    h = History(tmp_path / "history.db")
+    h.add("I listen to my word prompts", at=100.0, source="file")
+    h.add("Nothing to see here", at=200.0)
+    ctl = FakeCtl()
+    ctl.history, ctl.redrawn = h, []
+    ctl.win = SimpleNamespace(show_history=lambda keep_limit=False: ctl.redrawn.append(keep_limit))
+    yield ctl
+    h.close()
+
+
+def test_edit_keeps_the_original_and_redraws(hist_ctl):
+    c = _control(hist_ctl)
+    out = c.edit_history(1, "I listen to My Weird Prompts ")
+    assert out["changed"] and out["text"] == "I listen to My Weird Prompts"
+    assert out["original"] == "I listen to my word prompts" and hist_ctl.redrawn == [True]
+    out = c.edit_history(1, "I listen to My Weird Prompts, daily")
+    assert out["original"] == "I listen to my word prompts"         # the model's text, not the first fix
+    assert c.edit_history(2, "Nothing to see here")["changed"] is False
+    assert hist_ctl.history.get(2)["original"] is None and len(hist_ctl.redrawn) == 2
+    with pytest.raises(LookupError):
+        c.edit_history(9, "x")
+
+
+def test_delete_and_relayout_leave_corrections(hist_ctl):
+    c = _control(hist_ctl)
+    assert c.delete_history(2) == {"id": 2, "deleted": True}
+    assert hist_ctl.history.get(2) is None
+    with pytest.raises(LookupError):
+        c.delete_history(2)
+    c.edit_history(1, "I listen to My Weird Prompts")
+    hist_ctl.history.relayout(1, "I listen to\n\nmy word prompts")   # the Transcription tab re-flowing
+    assert hist_ctl.history.get(1)["text"] == "I listen to My Weird Prompts"

@@ -135,6 +135,18 @@ class FakeControl:
     def dictionary_changed(self):
         self.changed += 1
 
+    def edit_history(self, rid, text):
+        from hebrish import history
+        if history.get(self.history_path, rid) is None:
+            raise LookupError(f"no transcript {rid}")
+        self.edits = getattr(self, "edits", []) + [(rid, text)]
+        return {"id": rid, "text": text, "changed": True}
+
+    def delete_history(self, rid):
+        if rid == 99:
+            raise LookupError("no transcript 99")
+        return {"id": rid, "deleted": True}
+
     def handle(self, method, path, body):
         if path == "/v1/app/status":
             return 200, {"state": "idle"}
@@ -273,3 +285,20 @@ def test_language_field_reaches_the_app(monkeypatch):
         assert seen == ["he", "he", "he"]
     finally:
         a.stop()
+
+
+def test_history_writes_route_to_the_app(ctl):
+    """B-108: PATCH and DELETE /v1/history/{id} go to the app (its own History connection)."""
+    st, j = _json(ctl, "PATCH", "/v1/history/2", {"text": "I listen to My Weird Prompts"})
+    assert st == 200 and j["changed"] is True and ctl.fake.edits == [(2, "I listen to My Weird Prompts")]
+    assert _json(ctl, "PATCH", "/v1/history/2", {"text": "  "})[0] == 400
+    assert _json(ctl, "PATCH", "/v1/history/99", {"text": "x"})[0] == 404
+    assert _json(ctl, "PATCH", "/v1/history/x", {"text": "x"})[0] == 400
+    assert _json(ctl, "DELETE", "/v1/history/1") == (200, {"id": 1, "deleted": True})
+    assert _json(ctl, "DELETE", "/v1/history/99")[0] == 404
+    assert _json(ctl, "DELETE", "/v1/history")[0] == 404           # never the whole history
+    assert _json(ctl, "PATCH", "/v1/history", {"text": "x"})[0] == 404
+    ctl.fake.on = False
+    assert _json(ctl, "PATCH", "/v1/history/2", {"text": "x"})[0] == 403
+    assert _json(ctl, "DELETE", "/v1/history/2")[0] == 403
+    assert _req(ctl, "DELETE", "/v1/history/2", headers={"Origin": "https://example.com"})[0] == 403

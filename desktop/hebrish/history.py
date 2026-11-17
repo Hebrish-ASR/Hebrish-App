@@ -253,9 +253,17 @@ class History:
 
     def relayout(self, rid: int, text: str):
         """Same words, new paragraphs (the Transcription tab's Paragraphs setting, B-44). Not a
-        correction, so `original` is left alone; only whitespace may differ."""
+        correction, so `original` is left alone; only whitespace may differ. A row corrected since
+        (History tab or the local API, B-108) is left as corrected."""
         with self.db:
-            self.db.execute("UPDATE dictations SET text = ? WHERE id = ?", (text.strip(), rid))
+            self.db.execute("UPDATE dictations SET text = ? WHERE id = ? AND original IS NULL",
+                            (text.strip(), rid))
+
+    def get(self, rid: int) -> dict | None:
+        """One row as stored now (the History tab re-reads before a correction: the local API may
+        have changed or deleted it since the tab was drawn)."""
+        r = self.db.execute(f"SELECT {FIELDS} FROM dictations WHERE id = ?", (rid,)).fetchone()
+        return dict(r) if r else None
 
     def delete(self, rid: int):
         r = self.db.execute("SELECT audio FROM dictations WHERE id = ?", (rid,)).fetchone()
