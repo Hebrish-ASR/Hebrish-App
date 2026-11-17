@@ -234,3 +234,85 @@ def test_status_carries_download_progress():
     assert out["state"] == "recording" and out["paused"] is True
     assert out["models"]["progress"] == prog and out["models"]["queued_ids"] == ["falafel", "hebrew"]
     assert out["models"]["addons_progress"] == {"s1-mini": 0.25} and out["models"]["queued"] == 2
+
+
+# -- Transcription Mode (POST /v1/app/transcribe) ----------------------------------------------
+
+class FakeEngine:
+    """Three pieces, 20 s each: Time-based starts a paragraph about every 30 s."""
+    loaded_dir = "/models/sabich"
+
+    def __init__(self):
+        self.last_progress = (0, 1)
+
+    def transcribe_chunks(self, samples, cancel=None, vad=False):
+        n = len(samples)
+        for i, t in enumerate(["um so my word prompts", "is a podcast", "about prompts"]):
+            self.last_progress = ((i + 1) * n // 3, n)
+            yield t
+
+
+@pytest.fixture
+def tm_ctl(tmp_path, monkeypatch):
+    import numpy as np
+    from hebrish import audio, dictionary, paragraphs
+    monkeypatch.setattr(dictionary, "PATH", tmp_path / "dictionary.json")
+    dictionary.add("My Weird Prompts", ["my word prompts"])
+    monkeypatch.setattr(audio, "load_file", lambda p: np.zeros(60 * audio.SAMPLE_RATE, np.float32))
+    monkeypatch.setattr(paragraphs, "installed", lambda: None)
+    f = tmp_path / "talk.mp3"
+    f.write_bytes(b"x")
+    ctl = FakeCtl()
+    ctl.cfg.update(tm_paragraphs="time", tm_cleanup=False, tm_cleanup_model="", vad=True, titles=False,
+                   title_max_chars=60, transcripts_dir=str(tmp_path / "out"))
+    ctl.engine, ctl.saved = FakeEngine(), []
+    ctl.api_info = lambda: {"id": "sabich"}
+
+    def remember(text, source="dictate", seconds=None, extra=None):
+        ctl.saved.append((text, source, seconds))
+        return 7
+    ctl.remember = remember
+    ctl.file = str(f)
+    return ctl
+
+
+def test_transcribe_like_the_tab(tm_ctl):
+    out = _control(tm_ctl).transcribe({"path": tm_ctl.file})[1]
+    assert out["paragraphs"] == "time" and out["seconds"] == 60.0 and out["cleaned"] is False
+    assert "My Weird Prompts" in out["text"] and "\n\n" in out["text"]        # dictionary, chop, paragraphs
+    assert not out["text"].lower().startswith("um")
+    assert out["history_id"] is None and out["file"] is None and tm_ctl.saved == []
+    flat = _control(tm_ctl).transcribe({"path": tm_ctl.file, "paragraphs": "none"})[1]
+    assert "\n" not in flat["text"]
+
+
+def test_transcribe_saves_when_asked(tm_ctl, tmp_path):
+    out = _control(tm_ctl).transcribe({"path": tm_ctl.file, "save_history": True, "save_file": True})[1]
+    assert out["history_id"] == 7 and tm_ctl.saved == [(out["text"], "file", 60.0)]
+    saved = open(out["file"], encoding="utf-8").read()
+    assert out["file"].startswith(str(tmp_path / "out")) and "My Weird Prompts" in saved
+
+
+def test_transcribe_paragraph_model_missing_falls_back(tm_ctl):
+    out = _control(tm_ctl).transcribe({"path": tm_ctl.file, "paragraphs": "model"})[1]
+    assert out["paragraphs"] == "time" and "time-based" in out["notes"][0]
+
+
+@pytest.mark.parametrize("body,err", [
+    ({}, ValueError), ({"path": "talk.mp3"}, ValueError), ({"path": "/nope/talk.mp3"}, LookupError),
+    ({"paragraphs": "pages"}, ValueError), ({"save_file": "yes"}, ValueError),
+    ({"cleanup": True}, RuntimeError),          # the clean-up model isn't downloaded
+])
+def test_transcribe_refusals(tm_ctl, body, err, monkeypatch):
+    from hebrish import cleanup
+    monkeypatch.setattr(cleanup, "ready", lambda pick=None: None)
+    if body and "path" not in body:
+        body = {"path": tm_ctl.file, **body}
+    with pytest.raises(err):
+        _control(tm_ctl).transcribe(body)
+
+
+def test_transcribe_no_model_loaded(tm_ctl):
+    tm_ctl.engine.loaded_dir = None
+    with pytest.raises(RuntimeError, match="no model"):
+        _control(tm_ctl).transcribe({"path": tm_ctl.file})

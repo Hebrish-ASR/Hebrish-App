@@ -67,6 +67,9 @@ ROUTES = [
     ("GET", "/health", False, "App version, loaded model, whether control is on"),
     ("GET", "/v1/models", False, "The loaded model, OpenAI list shape"),
     ("POST", "/v1/audio/transcriptions", False, "Transcribe a file, OpenAI shape"),
+    ("POST", "/v1/app/transcribe", True, 'Transcription Mode on a file. Body {"path": "/abs/file.mp3", "paragraphs": '
+     '"none"|"time"|"model", "cleanup": bool, "save_history": false, "save_file": false}; paragraphs and cleanup '
+     'default to the Transcription tab\'s settings. Answers when done (minutes for a long file)'),
     ("GET", "/v1/app/status", True, "State (idle, recording, busy), paused, model, app update, model downloads "
      "with progress (fraction, MB), input language"),
     ("POST", "/v1/app/dictation", True, 'Body {"action": ...}: start, stop, toggle, pause, resume, retake, discard, '

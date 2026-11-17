@@ -50,15 +50,15 @@ from PySide6.QtWidgets import (QApplication, QMenu, QCheckBox, QComboBox, QFileD
                                QMessageBox, QProgressBar, QPushButton, QSlider, QSplitter,
                                QToolButton, QVBoxLayout, QWidget)
 
-from .. import (__version__, audio, cleanup, config, dictionary, disfluency, longform, mics, model_store,
-               paragraphs, titles, transcripts, transforms)
+from .. import (__version__, audio, cleanup, config, dictionary, longform, mics, model_store,
+               paragraphs, titles, tm, transcripts, transforms)
 from .glidebar import GlideBar
 from .icons import line_icon
 from .mics import fill_combo
 from .meter import LevelMeter, verdict
 from .notepad import Notepad
 
-PARAGRAPH_S = 30
+PARAGRAPH_S = tm.PARAGRAPH_S                # hebrish.tm makes the transcript (B-108)
 SHOW_PROGRESS_S = 5      # the progress bar shows only once a transcription has run this long
 NEXT_MODES = (("Adds to this transcript", "append"), ("Starts a new transcript", "new"))
 CONFIRM_DROP_S = 60      # Retake / Discard ask first when the recording is longer than this
@@ -879,28 +879,11 @@ class TranscribePage(QWidget):
 
         def work():
             try:
-                words = dictionary.load()
-                fix = dictionary.compile(words)                  # personal dictionary, as in dictation
-                # pieces are ~10-25 s; Time-based starts a paragraph every ~30 s of audio. With
-                # the Paragraph model they are joined with spaces until the end.
-                pieces = paragraphs.Pieces(PARAGRAPH_S * audio.SAMPLE_RATE)
-                for text in self.ctl.engine.transcribe_chunks(samples, cancel, vad=self.cfg["vad"]):
-                    done, total = self.ctl.engine.last_progress
-                    text = fix(disfluency.chop(text))
-                    pieces.add(text, done, mode)     # shown when it is all done (2026-10-31)
-                    self.sig.progress.emit(done / total)
-                body, err, tidied = None, None, None
-                if tidy and pieces.items and not cancel.is_set():
-                    self.sig.stage.emit("Cleaning up the transcript…")
-                    tidied = cleanup.run(pieces.text(paragraphs.NONE), keep=tuple(e["word"] for e in words),
-                                         aid=tidy_id)
-                    if tidied.cleaned:
-                        body = tidied.text
-                if body is None and mode == paragraphs.MODEL and pieces.items:
-                    try:
-                        body = pieces.text(paragraphs.MODEL, paragraphs.breaker())
-                    except Exception as e:   # fall back, never lose text
-                        body, err = pieces.text(paragraphs.TIME), e
+                # hebrish.tm, shared with the local API (B-108); shown when it is all done (2026-10-31)
+                pieces, body, err, tidied = tm.run(self.ctl.engine, samples, mode, vad=self.cfg["vad"],
+                                                   cancel=cancel, tidy_id=tidy_id,
+                                                   on_progress=self.sig.progress.emit,
+                                                   on_stage=self.sig.stage.emit)
                 self.sig.done.emit((len(samples) / audio.SAMPLE_RATE, time.monotonic() - started,
                                     cancel.is_set(), pieces, mode, body, err, note, tidied))
             except Exception as e:
@@ -918,28 +901,9 @@ class TranscribePage(QWidget):
             QMessageBox.warning(self, "Transcription failed", str(result))
             return
         audio_s, took, cancelled, pieces, mode, body, err, note, tidied = result
-        cleaned = tidied is not None and tidied.cleaned
-        flow = mode
-        if mode == paragraphs.MODEL and pieces.items:
-            flow = paragraphs.TIME if (err or body is None or cleaned) else paragraphs.MODEL
-        raw = pieces.text(paragraphs.TIME if flow == paragraphs.MODEL and cleaned else flow) if pieces.items else ""
-        if cleaned:
-            shown = body
-        elif mode == paragraphs.MODEL and pieces.items and body is not None:
-            shown = body
-        else:
-            shown = pieces.text(mode if mode != paragraphs.MODEL else paragraphs.TIME) if pieces.items else ""
-        extra = None
-        if cleaned:
-            extra = {"cleanup": f"{tidied.model} {tidied.version}",     # id and version that ran
-                     "cleanup_kept_raw": tidied.kept_raw}
-            note += (f" Cleaned up with {tidied.name}." if not tidied.kept_raw else
-                     f" Cleaned up, except {tidied.kept_raw} of {tidied.chunks} parts kept as "
-                     f"transcribed ({tidied.error}).")
-        elif tidied is not None:
-            note += f" Clean-up failed ({tidied.error}), so the transcript is as transcribed."
-        if not cleaned and mode == paragraphs.MODEL and err:
-            note += f" The paragraph model failed ({err}), so paragraphs are time-based."
+        lay = tm.layout(pieces, mode, body, err, tidied)
+        cleaned, flow, raw, shown, extra = lay.cleaned, lay.flow, lay.raw, lay.shown, lay.extra
+        note += lay.note
         self._from = self._place(shown)
         if pieces.items and not cleaned:     # the model's own words and paragraphs: never re-flowed
             self._last = {"from": self._from, "pieces": pieces, "mode": flow,

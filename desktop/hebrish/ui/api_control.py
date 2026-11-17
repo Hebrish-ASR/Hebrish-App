@@ -5,9 +5,12 @@ anything touching the Controller or the window goes through `_main`, onto the GU
 Raises what local_api turns into a status: LookupError 404, ValueError 400, RuntimeError 409.
 """
 
+import os
 import threading
+import time
 
-from .. import __version__, app_update, bundles, mics, model_store
+from .. import __version__, app_update, audio, bundles, cleanup, config, mics, model_store, paragraphs, titles, tm, \
+    transcripts
 from ..config import HISTORY_DB
 
 MAIN_TIMEOUT = 10
@@ -111,6 +114,7 @@ class Control:
             ("GET", "/v1/app/settings"): self.settings,
             ("POST", "/v1/app/settings"): self.set_settings,
             ("GET", "/v1/app/mics"): self.mics,
+            ("POST", "/v1/app/transcribe"): self.transcribe,
             ("POST", "/v1/app/mics"): self.set_mics,
             ("GET", "/v1/app/models/updates"): self.check_models,
             ("POST", "/v1/app/models/updates"): self.install_models,
@@ -278,6 +282,85 @@ class Control:
         changed = self._main(go)
         code, out = self.mics(body)
         return code, {"changed": changed, **out}
+
+    def transcribe(self, body) -> tuple[int, dict]:
+        """POST /v1/app/transcribe: Transcription Mode on a file, on this HTTP thread (hebrish.tm, the
+        tab's own steps), without touching the tab. Body: path (required), paragraphs none | time |
+        model (default the tab's setting), cleanup (default the tab's switch), save_history, save_file
+        (both default false). The reply comes when the transcript is done: minutes for a long file."""
+        path = body.get("path")
+        if not isinstance(path, str) or not os.path.isabs(path):
+            raise ValueError("path must be the absolute path of an audio file on this computer")
+        if not os.path.isfile(path):
+            raise LookupError(f"no file {path}")
+        flags = {}
+        for k in ("cleanup", "save_history", "save_file"):
+            if k in body and not isinstance(body[k], bool):
+                raise ValueError(f"{k} must be true or false")
+            flags[k] = body.get(k)
+        c, cfg, notes = self.ctl, self.ctl.cfg, []
+        mode = body.get("paragraphs")
+        if mode is None:
+            m = cfg.get("tm_paragraphs")
+            mode = m if m in paragraphs.MODES else paragraphs.MODEL if paragraphs.installed() else paragraphs.TIME
+        elif mode not in paragraphs.MODES:
+            raise ValueError("paragraphs must be one of " + ", ".join(paragraphs.MODES))
+        want_tidy = cfg["tm_cleanup"] if flags["cleanup"] is None else flags["cleanup"]
+        tidy = cleanup.ready(cfg["tm_cleanup_model"]) if want_tidy else None
+        if want_tidy and tidy is None:
+            if flags["cleanup"]:
+                raise RuntimeError("the clean-up model isn't downloaded: Models tab, Utilities")
+            notes.append("Clean-up is on but its model isn't downloaded, so the transcript is as transcribed.")
+        if mode == paragraphs.MODEL and paragraphs.installed() is None and tidy is None:
+            mode = paragraphs.TIME
+            notes.append("The paragraph model isn't downloaded, so paragraphs are time-based.")
+        if c.engine.loaded_dir is None:
+            raise RuntimeError("no model is loaded yet")
+        try:
+            samples = audio.load_file(path)
+        except Exception as e:
+            raise ValueError(f"couldn't read the audio: {e}") from None
+        seconds = len(samples) / audio.SAMPLE_RATE
+        if seconds < 0.5:
+            raise ValueError("under half a second of audio")
+        t0 = time.monotonic()
+        pieces, out, err, tidied = tm.run(c.engine, samples, mode, vad=cfg["vad"], tidy_id=tidy["id"] if tidy else None)
+        lay = tm.layout(pieces, mode, out, err, tidied)
+        if lay.note.strip():
+            notes.append(lay.note.strip())
+        text = lay.shown.strip()
+        reply = {"text": text, "raw": lay.raw.strip(), "paragraphs": lay.flow, "cleaned": lay.cleaned,
+                 "cleanup_model": lay.extra["cleanup"] if lay.extra else None, "seconds": round(seconds, 3),
+                 "processing_s": round(time.monotonic() - t0, 3), "model": c.api_info(),
+                 "history_id": None, "file": None, "notes": notes}
+        if not text:
+            notes.append("No speech found: nothing saved.")
+            return 200, reply
+        if flags["save_history"]:
+            reply["history_id"] = self._main(lambda: c.remember(text, source="file", seconds=seconds, extra=lay.extra))
+            if reply["history_id"] is None:
+                notes.append("Not saved to History: keeping history is off (Settings), or saving failed.")
+        if flags["save_file"]:
+            reply["file"], reply["title"] = self._save_file(text, lay, seconds, tidied)
+        return 200, reply
+
+    def _save_file(self, text, lay, seconds, tidied) -> tuple[str, str | None]:
+        """As the tab's Save (_save_now): Markdown in the transcripts folder, a title first when the
+        title model is there and `titles` is on, the raw text beside it when it differs."""
+        cfg = self.ctl.cfg
+        title = None
+        if cfg["titles"] and titles.ready() is not None:
+            title = titles.title(text, titles.limit(cfg["title_max_chars"]))
+        cur = model_store.active()
+        meta = {"generator": f"Hebrish {__version__}", "model": cur[1].version if cur else None,
+                "audio_seconds": round(seconds, 1), "source": "file",
+                "cleanup_model": f"{tidied.name} {tidied.version}" if lay.cleaned else None}
+        try:
+            p = transcripts.save(text, str(config.transcripts_folder(cfg)), title=title,
+                                 meta={k: v for k, v in meta.items() if v}, raw=lay.raw)
+        except OSError as e:
+            raise RuntimeError(f"couldn't save the transcript: {e}") from None
+        return str(p), title
 
     def check_app(self, _body) -> tuple[int, dict]:
         rel = app_update.fetch()

@@ -1976,6 +1976,19 @@ Daniel approved filling the gaps on 2026-11-17: everything an agent needed the w
   rmtree couldn't empty (409). Refused (409): not downloaded, the model in use (`current_id`), one
   downloading or queued, and the Hebrew model while the app isn't idle (a take may be decoding on it).
   Add-ons (clean-up, title, paragraph models) have no remove route yet.
+- **Transcription Mode.** `POST /v1/app/transcribe` `{"path", "paragraphs", "cleanup", "save_history",
+  "save_file"}`. The tab's worker and `_finished` layout moved into Qt-free `hebrish/tm.py` (`run`,
+  `layout`), which both the tab and the API now call, so the text is the same for the same file:
+  voice detection per `vad`, disfluency chop and dictionary per piece, paragraphs per `paragraphs`
+  (default `tm_paragraphs`; `model` without the paragraph model falls back to Time-based with a note),
+  then clean-up (default `tm_cleanup`; asked for explicitly without its model: 409). It runs on the HTTP
+  thread, blocking until done (minutes for a long file; the engine's per-piece lock lets dictation in
+  between), and does not touch the tab's text box. By path only: the agent is on the same computer,
+  and a 1 MB JSON body can't carry audio (`/v1/audio/transcriptions` takes uploads). `save_history`
+  calls `Controller.remember(source="file")` on the GUI thread (nothing when keep_history is off; a
+  note says so); `save_file` writes Markdown as the tab's Save (`transcripts.save`, title first when the
+  title model is there and `titles` is on, raw text beside it). Not done: cancel, progress while it
+  runs, recording from the mic (the tab's recorder), a Hebrew-model run (`language`).
 
 ### Macro Deck controller (2026-11-16, no app change)
 
