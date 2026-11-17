@@ -198,9 +198,7 @@
           "subdir": "",
           "card": "https://huggingface.co/Hebrish/Sabich-Parakeet-110M",
           "manifest_url": "https://cdn.hebrish.app/models/sabich-110m/latest.json",
-          "offered_on": [
-            "android"
-          ]
+          "offered_on": []
         },
         {
           "id": "sabich-asr4all-m",
@@ -363,6 +361,7 @@
           "size_label": "110M",
           "engine": "sherpa_offline_transducer",
           "feature_dim": 80,
+          "offered_on": ["linux", "windows"],
           "status": "available",
           "platforms": [
             "android",

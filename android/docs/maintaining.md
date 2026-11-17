@@ -2346,6 +2346,10 @@ shown greyed with "runs on …". Now `ModelsActivity.listed` keeps a variant onl
 nobody loses a model they have. A line with no listed variants is not shown. The greyed branch of `card` is
 now only reached by an installed variant that is no longer supported.
 
+**2026-11-17 (Daniel):** the two 110M variants leave the Android list: `sabich-parakeet-110m` `offered_on` `[]`
+(was `["android"]`), `falafel-110m` `offered_on` `["linux", "windows"]`. A copy already installed stays listed.
+Catalogue-only, so it applies to 1.035+ at the next catalogue fetch; older builds ignore `offered_on`.
+
 ## Download robustness: retries, waiting for a network, foreground service (unreleased, 2026-11-16)
 
 Report (a user on a Pixel, 2026-11-16): "Hard to get the downloads to finish, they keep timing out."
