@@ -204,9 +204,13 @@ jobs:
           dotnet tool install -g vpk --version 1.2.161
           $sv = python -c "from hebrish import __version__ as v; from hebrish.app_update import velopack_version as f; print(f(v))"
           "VPK_VERSION=$sv" | Out-File -Append $env:GITHUB_ENV
-          # The previous release, so vpk can build a delta; nothing there yet on the first one.
-          vpk download http --url https://cdn.hebrish.app/apps/windows/velopack/ --channel stable --outputDir Releases
-          if ($LASTEXITCODE -ne 0) { Write-Host "no previous release: full package only"; $global:LASTEXITCODE = 0 }
+          # The previous release, so vpk can build a delta; nothing there yet on the first one. Tagged
+          # releases only: a dev build of an already-published version would be refused ("equal or
+          # greater to the current version"), as run 44121090900 was (2026-11-17).
+          if ("${{ inputs.tag }}" -ne "") {
+            vpk download http --url https://cdn.hebrish.app/apps/windows/velopack/ --channel stable --outputDir Releases
+            if ($LASTEXITCODE -ne 0) { Write-Host "no previous release: full package only"; $global:LASTEXITCODE = 0 }
+          }
           vpk pack --packId HebrishDictation --packVersion $sv --packDir dist\Hebrish --mainExe Hebrish.exe `
             --packTitle Hebrish --packAuthors Hebrish --icon packaging\windows\icon.ico `
             --channel stable --outputDir Releases
