@@ -53,6 +53,7 @@ Newest first.
 
 | Date | Platform | Symptom | Status | Entry |
 | --- | --- | --- | --- | --- |
+| 2026-11-17 | desktop-windows | MSIX build: every SVG icon fails (packaged apps don't search PATH for qsvg.dll's Qt6Svg.dll) | fixed, unreleased; CI only | [2026-11-17-msix-svg-icons-fail.md](2026-11-17-msix-svg-icons-fail.md) |
 | 2026-11-16 | android | Model downloads keep timing out on a Pixel (one attempt per download, no foreground service) | fixed, unreleased; not run on a device | [2026-11-16-model-downloads-time-out.md](2026-11-16-model-downloads-time-out.md) |
 | 2026-11-12 | desktop-linux | Transcription: levels fine, but no transcript in the Notepad (Stop only held the audio; Voice Typing was kept out of the box) | fixed in 1.032 | [2026-11-12-transcription-nothing-in-notepad.md](2026-11-12-transcription-nothing-in-notepad.md) |
 | 2026-11-10 | android | The app crashes when the floating mic is dragged (`place()` re-entered through the ACTION_CANCEL its own removeAllViews sends) | fixed, unreleased (1.029) | [2026-11-10-floating-mic-drag-crash.md](2026-11-10-floating-mic-drag-crash.md) |

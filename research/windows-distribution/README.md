@@ -10,7 +10,7 @@ Store. The Linux .deb waits and goes out with the first such Windows release.
 
 ## Status
 
-Open (2026-11-17). Findings read 2026-11-17 by an agent from vendor docs. Nothing is prototyped yet.
+Answered (2026-11-17): built. Daniel chose both channels, unsigned for now ("whatever is quickest and simplest"). Shipped behaviour and CI verification: `desktop/docs/maintaining.md`, "Windows: installer that updates itself, and the Microsoft Store". Findings read 2026-11-17 by an agent from vendor docs.
 Tags: **(S)** confirmed from the source, **(I)** inferred or not found in a source.
 
 ## Findings
@@ -68,7 +68,7 @@ Tags: **(S)** confirmed from the source, **(I)** inferred or not found in a sour
   stable URL and a SHA-256. `wingetcreate` can open the PR from CI. Signing is in practice expected. (S/I)
   https://learn.microsoft.com/en-us/windows/package-manager/package/manifest
 
-## Recommendation (draft, pending Daniel's choices)
+## Recommendation (adopted 2026-11-17, except signing and winget: later)
 
 1. **Direct channel: Velopack**, packId `HebrishDictation`, channels `beta` and `stable`, with the feed on
    `cdn.hebrish.app/apps/windows/velopack/`. `app_update.py` gains a `velopack` method that checks, downloads in the
