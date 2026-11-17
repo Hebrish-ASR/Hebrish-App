@@ -2178,6 +2178,12 @@ def _selftest() -> int:
             latest = f"none ({e})"
         print("latest app:", latest, "| install:", app_update.install_method(), file=out)
         if not sizes or any(sizes.values()):
+            from PySide6.QtCore import QCoreApplication
+            from PySide6.QtGui import QImageReader
+            print("diagnostics: executable", sys.executable, "| argv0", sys.argv[0], "| meipass",
+                  getattr(sys, "_MEIPASS", None), "| icons dir", ICONS, ICONS.is_dir(), "| QT_PLUGIN_PATH",
+                  os.environ.get("QT_PLUGIN_PATH"), "| library paths", QCoreApplication.libraryPaths(),
+                  "| formats", [bytes(f).decode() for f in QImageReader.supportedImageFormats()], file=out)
             raise RuntimeError("an icon failed to load (missing Qt SVG plugin?)")
         voice = [f"{v}/{k}" for v, _ in audio.VOICES for k in audio.VOICE_PROMPTS
                  if not (audio.VOICE_DIR / v / f"{k}.wav").is_file()]
