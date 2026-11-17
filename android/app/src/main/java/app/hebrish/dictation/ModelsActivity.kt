@@ -306,7 +306,9 @@ class ModelsActivity : Page() {
             list.addView(TextView(this).apply { setText(R.string.models_hebrew_intro); setPadding(0, dp(4), 0, 0) })
             for (line in languages) {
                 lineHeader(line)
-                for (m in line.variants) card(m, inUse = false, s = s)
+                // The one Hebrew takes go to (Catalogue.forLanguage), badged In use once downloaded.
+                val forHe = line.variants.firstOrNull()?.language?.let { Catalogue.forLanguage(this, it) }
+                for (m in line.variants) card(m, inUse = m.id == forHe?.id && ModelStore.isReady(this, model = m), s = s)
             }
         }
 
@@ -459,12 +461,19 @@ class ModelsActivity : Page() {
             ModelDownload.queued(m.id) -> button(R.string.models_unqueue, r) { ModelDownload.unqueue(m) }
             !ready -> button(R.string.download, r) { ModelDownload.download(this, m); render() }
         }
-        // A language model is used by itself for that language, never picked (2026-11-16).
+        // A language model is not a dictation choice (2026-11-16); with more than one for a language
+        // (Hebrew: Zipformer and Gefilte, 2026-11-17) the user picks which one that language uses.
         if (ready && !inUse && m.language == null) button(R.string.models_use, r) { use(m) }
+        val lang = m.language
+        if (ready && !inUse && lang != null) button(R.string.models_use_for_hebrew, r) {
+            ModelPrefs.setLanguageModel(this, lang, m.id)
+            Thread { StreamingTranscriber.unload() }.start()
+            render()
+        }
         if (ready && update != null && s !is ModelDownload.Status.Running) button(getString(R.string.update_button, update.label), r) {
             ModelDownload.update(this, m)
         }
-        if (ready && !inUse && !active) button(R.string.delete, r) { confirmDelete(m) }
+        if (ready && (!inUse || m.language != null) && !active) button(R.string.delete, r) { confirmDelete(m) }
         // Attribution (CC BY 4.0 for the Hebrew model): required wherever the model is listed.
         m.credit?.let { credit(it, card) }
         technical(m, card)

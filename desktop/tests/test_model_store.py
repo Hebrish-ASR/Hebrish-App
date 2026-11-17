@@ -207,7 +207,7 @@ def test_hebrew_is_a_language_model_not_a_dictation_choice():
     he = ms.language_model("he")
     assert he is not None and he.id == "hebrew-zipformer-66m" and he.language == "he"
     assert he.engine_options["model_type"] == "zipformer2" and he.credit["license"] == "CC-BY-4.0"
-    assert [m.id for m in ms.language_models()] == ["hebrew-zipformer-66m"]
+    assert [m.id for m in ms.language_models()] == ["hebrew-zipformer-66m", "gefilte"]
     assert he.id not in {m.id for m in ms.dictation_models()}
     assert ms.language_model("en") is None
     with pytest.raises(ValueError):
@@ -221,6 +221,25 @@ def test_hebrew_is_a_language_model_not_a_dictation_choice():
     state["model"] = he.id                   # a hand-edited or older state.json naming it
     ms.save_json(ms.STATE_PATH, state)
     assert ms.current_id() == "sabich-rolling"
+
+
+def test_hebrew_model_pick_needs_it_installed():
+    """Gefilte PoC (2026-11-17): Use for Hebrew picks among the Hebrew line's variants; the pick
+    counts only once installed, else the first installed, else the first in the catalogue."""
+    zf, gf = ms.get_model("hebrew-zipformer-66m"), ms.get_model("gefilte")
+    assert gf is not None and gf.language == "he" and gf.engine_options["model_type"] == "zipformer2"
+    assert ms.language_model("he").id == zf.id                   # nothing on disk: the first
+    install(ms.manifest_from_tree(gf, "g" * 40, STOCK_TREE, None))
+    assert ms.language_model("he").id == gf.id                   # only Gefilte on disk
+    install(ms.manifest_from_tree(zf, "h" * 40, STOCK_TREE, None))
+    assert ms.language_model("he").id == zf.id                   # both, no pick: the first
+    ms.select_language_model(gf.id)
+    assert ms.language_model("he").id == gf.id
+    assert ms.current_id() == "sabich-rolling"                   # the dictation pick is untouched
+    shutil.rmtree(ms.model_dir(gf.id))
+    assert ms.language_model("he").id == zf.id                   # pick deleted: falls back
+    with pytest.raises(ValueError):
+        ms.select_language_model("sabich-rolling")
 
 
 def test_no_pick_prefers_a_downloaded_model_then_recommended():

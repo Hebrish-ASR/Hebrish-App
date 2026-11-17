@@ -261,6 +261,7 @@
     <string name="models_not_downloaded">Not downloaded. About %1$d MB.</string>
     <string name="models_unqueue">Don\'t download</string>
     <string name="models_use">Use this model</string>
+    <string name="models_use_for_hebrew">Use for Hebrew</string>
     <string name="models_post">Add-on models</string>
     <string name="models_addons_jump">Add-on models: paragraphs, clean-up and titles ↓</string>
     <string name="models_post_intro">Paragraphs, clean-up and titles: small models that run after speech is turned into text, in Transcription Mode only. Download them here, then turn them on in Transcription Mode (Paragraphs, Clean up, Give saved transcripts a title).</string>
@@ -327,7 +328,7 @@
     <string name="lang_listening_no_he">Listening (no Hebrew model, tap)… %1$d:%2$02d</string>
     <string name="lang_no_hebrew_model_toast">Your keyboard is in Hebrew, but the Hebrew model isn\'t downloaded: using your main model. Get it in Models.</string>
     <string name="models_hebrew_heading">Hebrew</string>
-    <string name="models_hebrew_intro">Not a dictation model you choose: Hebrish uses it by itself when your keyboard is in Hebrew, or when the EN / עב button on the voice keyboard is set to Hebrew. English keeps using the model above.</string>
+    <string name="models_hebrew_intro">Not a dictation model you choose: Hebrish uses it by itself when your keyboard is in Hebrew, or when the EN / עב button on the voice keyboard is set to Hebrew. English keeps using the model above. With more than one Hebrew model downloaded, tap Use for Hebrew on the one you want.</string>
     <string name="models_credit_license">Licence: %1$s</string>
     <string name="models_credit_source">Original model</string>
     <string name="models_credit_upstream">Upstream</string>

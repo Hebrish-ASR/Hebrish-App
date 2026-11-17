@@ -1634,7 +1634,15 @@ class Controller(QObject):
         self.win.update_model()
 
     def use_model(self, mid: str):
-        """Switch to a model that is already downloaded."""
+        """Switch to a model that is already downloaded. A language model (the Hebrew line) becomes
+        the one its language uses, beside the main model (2026-11-17)."""
+        m = model_store.get_model(mid)
+        if m is not None and m.language:
+            if model_store.active(mid):
+                model_store.select_language_model(mid)
+                self.load_hebrew()
+                self.win.update_model()
+            return
         if mid != model_store.current_id() and model_store.active(mid):
             model_store.select(mid)
             self.latest = None

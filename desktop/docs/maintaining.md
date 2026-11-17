@@ -2788,3 +2788,15 @@ microphone and a real paste, Windows (detection and the chord fix), GNOME, plain
 Found along the way: the CDN manifest's `version` is a display string ("Hebrew Zipformer 66M v1 (upstream, unchanged)"),
 so the install folder is named after it, spaces and brackets included, and the Models tab shows "v1 (upstream,
 unchanged)". It works on both OSes; a short `version` ("v1") in `latest.json` would give a tidier folder.
+
+### Choosing the Hebrew model: Gefilte PoC (2026-11-17)
+
+The `hebrew` line has a second variant, `gefilte` (Gefilte PoC-1, HF `Hebrish/Gefilte`, the Zipformer fine-tuned on
+4.9 minutes of Daniel's voice), `cdn.hebrish.app/models/gefilte/latest.json` (schema 1, `type: streaming`, `version` "Gefilte PoC-1", `run` `gefilte-poc-1`), files byte-identical to `Hebrish/Gefilte` `sherpa-onnx/` at HF commit `861f5fa` (sha256 checked after upload, 2026-11-17). `model_store.language_model(lang)` now returns state.json
+`language_models[lang]` if that variant is installed, else the first installed, else the first available;
+`select_language_model(mid)` writes it. Models tab, Hebrew section: the row in use gets the **✓ In use** chip, other
+downloaded rows show **Use for Hebrew** (`Controller.use_model` routes a language model to
+`select_language_model` + `load_hebrew`, which loads the new folder because `he_engine.loaded_dir` differs).
+Delete stays on the in-use Hebrew row. The local API still refuses to select a language model
+(`POST /v1/app/model`). (V) `tests/test_model_store.py::test_hebrew_model_pick_needs_it_installed`.
+

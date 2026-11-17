@@ -1728,7 +1728,11 @@ class MainWindow(QMainWindow):
             "download them (GGUF, ONNX) for other apps.")
         for m in cat:
             r, inst = self.model_rows[m.id], model_store.active(m.id)
-            in_use = m.id == sel.id
+            if m.language:                          # the Hebrew section: in use = the one Hebrew takes go to
+                he = model_store.language_model(m.language)
+                in_use = he is not None and m.id == he.id
+            else:
+                in_use = m.id == sel.id
             # The row in use is tinted and outlined in brand green, so it reads as "this one" rather
             # than as a row with its buttons missing (Daniel, 2026-10-21: the in-use row looked greyed
             # out next to rows that had Use / Delete buttons).
@@ -1766,11 +1770,12 @@ class MainWindow(QMainWindow):
                          " · loads when Input language isn't English" if self.cfg["input_language"] == "en" else
                          " · loading…")
                 r["status"].setText(text)
-            r["use"].setVisible(inst is not None and not in_use and not m.language)
+            r["use"].setText("Use for Hebrew" if m.language else "Use this one")
+            r["use"].setVisible(inst is not None and not in_use)
             r["use"].setEnabled(ctl.state == "idle")
             r["use"].setToolTip("" if ctl.state == "idle" else
                                 "Available when dictation and model loading have finished")
-            r["rm"].setVisible(inst is not None and not in_use)
+            r["rm"].setVisible(inst is not None and (not in_use or bool(m.language)))
             r["rm"].setEnabled(not here)
 
         if cur is None:
@@ -1818,9 +1823,10 @@ class MainWindow(QMainWindow):
         self.hebrew_box.setVisible(bool(ms))
         if not ms:
             return
-        lay.addWidget(muted("Hebrew only, for dictating in Hebrew letters. It isn't a model you pick: "
+        lay.addWidget(muted("Hebrew only, for dictating in Hebrew letters. It isn't your main model: "
                             "Hebrish uses it when your keyboard is set to Hebrew, or when the עב switch under "
-                            "the record button is on. English stays on your main model."))
+                            "the record button is on. English stays on your main model. With more than one "
+                            "downloaded, click Use for Hebrew on the one you want."))
         for m in ms:
             self.model_rows[m.id] = self._model_row(m, lay)
             credit = credit_html(m)

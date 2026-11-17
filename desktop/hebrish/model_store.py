@@ -220,10 +220,26 @@ def language_models(lang: str | None = None) -> list[Model]:
 
 
 def language_model(lang: str) -> Model | None:
-    """The model used when the input language is `lang`: the first one installed, else the first
-    available (what Download fetches). None when the catalogue has none for it."""
+    """The model used when the input language is `lang`: the user's pick (Use for Hebrew, state
+    `language_models`, 2026-11-17: the Hebrew line has the base Zipformer and Gefilte PoC) if it is
+    installed, else the first one installed, else the first available (what Download fetches).
+    None when the catalogue has none for it."""
     ms = [m for m in language_models(lang) if m.available]
+    pick = load_json(STATE_PATH).get("language_models", {}).get(lang)
+    m = next((m for m in ms if m.id == pick), None)
+    if m and installed(m.id):
+        return m
     return next((m for m in ms if installed(m.id)), ms[0] if ms else None)
+
+
+def select_language_model(mid: str):
+    """Make `mid` the model its input language uses (Models tab, Use for Hebrew)."""
+    m = get_model(mid)
+    if not m or not m.available or not m.language:
+        raise ValueError(f"{mid} is not an available language model")
+    state = load_json(STATE_PATH)
+    state.setdefault("language_models", {})[m.language] = mid
+    save_json(STATE_PATH, state)
 
 
 def dictation_models() -> list[Model]:

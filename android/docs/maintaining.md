@@ -2325,6 +2325,16 @@ subtype from the switch history; some keyboards may switch via a path that leave
 HeliBoard still opens the English subtype with two voice subtypes present, the Zipformer2 model's load time,
 speed and memory on a phone, and Hebrew insertion in real apps.
 
+### Choosing the Hebrew model: Gefilte PoC (2026-11-17)
+
+The `hebrew` line has a second variant, `gefilte` (Gefilte PoC-1: the Zipformer fine-tuned on 4.9 minutes of
+Daniel's voice, HF `Hebrish/Gefilte`), `cdn.hebrish.app/models/gefilte/latest.json` (schema 1, `type: streaming`, `version` "Gefilte PoC-1", `run` `gefilte-poc-1`), files byte-identical to `Hebrish/Gefilte` `sherpa-onnx/` at HF commit `861f5fa` (sha256 checked after upload, 2026-11-17). Same engine and settings as `hebrew-zipformer-66m`; only the weights differ.
+`Catalogue.forLanguage` picks: `ModelPrefs.languageModel(ctx, "he")` (key `language_model_he`) if that variant is
+downloaded, else the first downloaded Hebrew variant, else the first available (what the keyboard hint offers).
+Builds up to 1.036 took the first available one, so they decode with the Zipformer whenever it is on the phone.
+Models, Hebrew section: the variant Hebrew takes go to has the **In use** badge; another downloaded one has
+**Use for Hebrew** (sets the pref, unloads `StreamingTranscriber` so the next Hebrew take loads the new folder).
+Delete stays available on the in-use Hebrew model (deleting unloads it). (I) compiled in CI only, not run on a device.
 
 ## Models screen lists only what this phone can run (D-2026-11-16-02, Android 1.035)
 

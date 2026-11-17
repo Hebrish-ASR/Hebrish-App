@@ -31,6 +31,13 @@ picked by input language, not by the user as the dictation model. Builds that do
 ordinary model. `credit` (author, data, licence, upstream URL, changes) is CC BY 4.0's attribution and must be
 shown wherever the model is listed.
 
+**2026-11-17: Gefilte PoC, a second Hebrew variant.** Variant `gefilte` on the `hebrew` line, after
+`hebrew-zipformer-66m` (which stays the default). `cdn.hebrish.app/models/gefilte/latest.json` (schema 1, `type: streaming`, `version` "Gefilte PoC-1", `run` `gefilte-poc-1`), files byte-identical to `Hebrish/Gefilte` `sherpa-onnx/` at HF commit `861f5fa` (sha256 checked after upload, 2026-11-17); uploaded by hand to R2 bucket `hebrish-cdn`, no pipeline
+writes it yet. Its `credit` keeps the CC BY 4.0 attribution and says what changed (weights fine-tuned). Apps with the
+**Use for Hebrew** choice (Android `ModelPrefs.languageModel`, desktop state.json `language_models`) use the pick if
+installed, else the first installed, else the first listed. Older desktop builds use the first installed, older
+Android builds the first listed.
+
 **2026-11-10: Falafel listed before its first release; a 404 manifest is "Coming soon"** (Daniel: installed apps
 should be able to download Falafel as soon as its first training finishes). Falafel is the voice-command line
 (short spoken commands to a computer or phone, Hebrew words included; ASR-Training `voice-commands/`), between

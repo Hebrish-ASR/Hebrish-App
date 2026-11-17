@@ -22,6 +22,10 @@ object ModelPrefs {
     fun selectedModel(ctx: Context): String? = sp(ctx).getString("model_id", null)
     fun setSelectedModel(ctx: Context, v: String) = sp(ctx).edit().putString("model_id", v).apply()
 
+    /** Catalogue id of the model the user chose for input language [lang] ("he"; Use for Hebrew, 2026-11-17); null = automatic. */
+    fun languageModel(ctx: Context, lang: String): String? = sp(ctx).getString("language_model_$lang", null)
+    fun setLanguageModel(ctx: Context, lang: String, v: String?) = sp(ctx).edit().putString("language_model_$lang", v).apply()
+
     /** JSON of [model]'s last fully downloaded ModelStore.Manifest; null means its ModelStore.BUNDLED one. */
     fun installedManifest(ctx: Context, model: String): String? = sp(ctx).getString("installed_manifest_$model", null)
     fun setInstalledManifest(ctx: Context, model: String, v: String?) =

@@ -124,8 +124,14 @@ object Catalogue {
     fun model(ctx: Context, id: String): Model? = get(ctx).models.firstOrNull { it.id == id }
 
     /** The available model for [language] ("he"), downloaded or not; null if the catalogue has none. */
-    fun forLanguage(ctx: Context, language: String): Model? =
-        get(ctx).models.firstOrNull { it.language == language && it.available }
+    fun forLanguage(ctx: Context, language: String): Model? {
+        // Since 2026-11-17 the Hebrew line has two variants (the base Zipformer and Gefilte PoC): the
+        // user's pick (Use for Hebrew) if downloaded, else the first downloaded, else the first available.
+        val ms = get(ctx).models.filter { it.language == language && it.available }
+        val pick = ModelPrefs.languageModel(ctx, language)?.let { id -> ms.firstOrNull { it.id == id } }
+        if (pick != null && ModelStore.isReady(ctx, model = pick)) return pick
+        return ms.firstOrNull { ModelStore.isReady(ctx, model = it) } ?: ms.firstOrNull()
+    }
 
     /**
      * The model the keyboard uses: the user's pick if still available. Without a pick, a model
