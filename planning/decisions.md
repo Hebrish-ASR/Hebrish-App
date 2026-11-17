@@ -9,6 +9,20 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-17-01: Shakshuka is the desktop default; Android keeps Sabich
+
+- **Decision:** `recommended_by_platform` for Linux and Windows is `shakshuka` (streaming, Nemotron 0.6B).
+  `recommended` stays `sabich-rolling`, so Android (Shakshuka is desktop-only) and pre-0.7 desktop builds
+  are unchanged. Desktop installs that never picked a model keep the Sabich they have on disk
+  (`model_store.current_id` prefers an installed model); new installs get Shakshuka. Shakshuka gets a
+  catch-up training run on all data since v2.1 (ASR-Training, 2026-11-17).
+- **Why:** Daniel, 2026-11-17, after Sabich v4.8 broke dictation and he moved to Shakshuka: "I'm actually very
+  much enjoying typing with Shakshuka". He chose to make it the default now with v2.1, not after the catch-up run.
+- **Alternatives:** Waiting for the caught-up release before switching (offered, not chosen). Keeping Sabich as
+  the default and Shakshuka as an option (D-2026-10-22-18, which this supersedes on desktop).
+- **By:** Daniel.
+- **Links:** `docs/debug-log/2026-11-17-sabich-v4-8-no-speech.md`; supersedes D-2026-10-22-18 for desktop.
+
 ### D-2026-11-16-02: An app lists only the models it can run on that platform
 
 - **Decision:** Design rule for every platform and every variant: a Models screen lists a variant only if that
