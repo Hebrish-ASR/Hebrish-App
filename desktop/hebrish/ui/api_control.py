@@ -75,6 +75,21 @@ SETTINGS = {
 }
 OUTPUTS = ("out_cursor", "out_clipboard", "out_window")
 
+# POST /v1/app/dictation (B-87; the rest 2026-11-17, B-104): each runs the action key's handler
+# (Controller.do_action), so the API does exactly what the key does. pause and resume are the
+# Pause key split in two, so an agent can't toggle the wrong way.
+DICTATION = {
+    "start": "Start a take (resumes a paused one)",
+    "stop": "Stop the take; its text goes where the outputs say",
+    "toggle": "Start, or stop the take",
+    "pause": "Pause the take (nothing if already paused)",
+    "resume": "Resume a paused take (nothing if not paused)",
+    "retake": "Discard the take and start a new one",
+    "discard": "Discard the take; text already inserted stays",
+    "send": "Stop, then press the send key once the last text is in",
+    "paste_last": "Paste the last transcription at the cursor (when idle)",
+}
+
 
 class Control:
     history_path = HISTORY_DB
@@ -130,7 +145,7 @@ class Control:
     def status(self, _body) -> tuple[int, dict]:
         c = self.ctl
         return 200, {
-            "app": __version__, "state": c.state, "model": c.api_info(),
+            "app": __version__, **self.take_state(), "model": c.api_info(),
             "input_language": c.cfg["input_language"], "keep_history": bool(c.cfg["keep_history"]),
             "install_method": c.app_method,
             "app_update": {"running": c.app_updating, "available": c.app_release.version if c.app_release else None,
@@ -139,12 +154,33 @@ class Control:
                        "addons_downloading": sorted(c.addon_busy)},
         }
 
+    def take_state(self) -> dict:
+        c = self.ctl
+        return {"state": c.state, "paused": c.state == "recording" and bool(c.recorder.paused)}
+
     def dictation(self, body) -> tuple[int, dict]:
+        """The action keys (DICTATION). 409 when the action has nothing to act on, rather than the
+        key's silent no-op, so an agent knows."""
         action = body.get("action")
-        if action not in ("start", "stop", "toggle"):
-            raise ValueError("action must be start, stop or toggle")
-        self._main(getattr(self.ctl, action))
-        return 200, {"state": self.ctl.state}
+        if action not in DICTATION:
+            raise ValueError("action must be one of " + ", ".join(DICTATION))
+        c = self.ctl
+
+        def go():
+            rec = c.state == "recording"
+            if action in ("pause", "resume", "discard") and not rec:
+                raise RuntimeError(f"no take is recording (the app is {c.state})")
+            if action == "send" and not (rec or (c.state == "busy" and c.pending)):
+                raise RuntimeError(f"no take to send (the app is {c.state})")
+            if action == "paste_last" and c.state != "idle":
+                raise RuntimeError(f"the app is {c.state}: paste the last take when it is idle")
+            if action in ("pause", "resume"):
+                if c.recorder.paused != (action == "pause"):
+                    c.do_action("pause")
+                return
+            c.do_action(action)
+        self._main(go)
+        return 200, {"action": action, **self.take_state()}
 
     def check_app(self, _body) -> tuple[int, dict]:
         rel = app_update.fetch()

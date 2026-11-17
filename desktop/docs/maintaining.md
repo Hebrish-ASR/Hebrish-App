@@ -1924,6 +1924,21 @@ adding find-and-replace rules, shipped with the app. `GET /v1` lists every route
   a downloaded model, a model download, anything on Windows (the beta tag skips the Windows job). `python -m hebrish` is unusable for this test while the installed app
   runs: the single-instance socket hands off to it and shows its window.
 
+### Control API: the rest of the app (B-108, unreleased, 2026-11-17)
+
+Daniel approved filling the gaps on 2026-11-17: everything an agent needed the window for. HTTP only
+(no MCP server, no CLI); the security model is B-87's unchanged (127.0.0.1, Origin and Host guards,
+403 with `local_api_control` off, no token). `GET /v1` describes every route.
+
+- **Dictation actions.** `POST /v1/app/dictation` takes every action key that works on a take:
+  `start stop toggle pause resume retake discard send paste_last` (`api_control.DICTATION`). Each runs
+  `Controller.do_action`, the action keys' own dispatcher, on the GUI thread, so the API can't drift
+  from the keys. Differences on purpose: the Pause key toggles, the API has `pause` and `resume`, each a
+  no-op when already there; and where the key silently does nothing (`pause`, `resume`, `discard` with no
+  take recording; `send` with nothing recording or transcribing; `paste_last` while not idle) the API
+  answers 409, so an agent knows. `retake` when idle starts a take, as the key does. The reply and
+  `/v1/app/status` carry `paused`.
+
 ### Macro Deck controller (2026-11-16, no app change)
 
 Daniel: the local API is meant for hardware and soft controllers too, starting with

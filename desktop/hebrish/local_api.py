@@ -67,8 +67,10 @@ ROUTES = [
     ("GET", "/health", False, "App version, loaded model, whether control is on"),
     ("GET", "/v1/models", False, "The loaded model, OpenAI list shape"),
     ("POST", "/v1/audio/transcriptions", False, "Transcribe a file, OpenAI shape"),
-    ("GET", "/v1/app/status", True, "State (idle, recording, busy), model, update and history state"),
-    ("POST", "/v1/app/dictation", True, 'Body {"action": "start"|"stop"|"toggle"}: uses the mic, types into the focused window'),
+    ("GET", "/v1/app/status", True, "State (idle, recording, busy), paused, model, update and history state"),
+    ("POST", "/v1/app/dictation", True, 'Body {"action": ...}: start, stop, toggle, pause, resume, retake, discard, '
+     'send (stop, then the send key), paste_last. The action keys: uses the mic, types into the focused window. '
+     '409 when there is no take to act on'),
     ("GET", "/v1/app/update", True, "Check for a newer app (network)"),
     ("POST", "/v1/app/update", True, "Install it. apt only: the user approves a system prompt; poll /v1/app/status"),
     ("POST", "/v1/app/restart", True, "Restart into a version already installed, when idle"),
