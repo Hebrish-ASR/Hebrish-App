@@ -60,7 +60,7 @@ if [ -n "${DRY_RUN:-}" ]; then diff "$TMP/old.json" "$TMP/new.json" || true; ls 
 
 cp_() { aws s3 cp "$@" --endpoint-url $E --only-show-errors; }
 for f in "$VDIR"/*; do
-  case $(basename "$f") in releases.*.json|assets.*.json|RELEASES*) continue ;; esac
+  case $(basename "$f") in releases.*.json|assets.*.json|RELEASES*|*-Portable.zip) continue ;; esac   # our own zip goes separately
   cp_ "$f" "$S3/$FEED/$(basename "$f")" --cache-control "public, max-age=300"
 done
 for f in "$VDIR"/releases.*.json "$VDIR"/assets.*.json "$VDIR"/RELEASES*; do
