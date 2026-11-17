@@ -1,5 +1,5 @@
-**1.039: Change Hebrish's settings from a script or an AI agent through the local API.**
+**1.040: Model downloads survive a dropped connection.**
 
-- **`GET /v1/app/settings`** lists the settings it can change, with their values and what each does. **`POST /v1/app/settings`** with `{"out_clipboard": false}` (any of them, several at once) changes them. Everything is checked before anything is saved, at least one output stays on, and changes apply from the next take.
-- Covers outputs, the paste and send shortcuts, pane and window binding (1.038), Enter after silence, the Enter guard, insert-as-you-go pacing, capitals, sounds and voice detection. Needs *Settings → Local API* with control on.
-- Windows and the AppImage stay on 1.026.
+- A download that loses its connection, times out or hits a server error (408, 429, 5xx) no longer fails: it backs off (2 to 30 s) and resumes the same file from where it stopped. It gives up only after 10 minutes without a new byte. The model card shows "connection lost, retrying" meanwhile.
+- Covers the speech models, the paragraph model and the clean-up add-on. The desktop port of Android 1.036's fix.
+- Promoted to stable: Windows and the AppImage move up from 1.026 and get everything since.

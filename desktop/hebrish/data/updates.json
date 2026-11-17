@@ -2,9 +2,18 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "desktop",
-  "built": "2026-11-16",
+  "built": "2026-11-17",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-17",
+      "tag": "Desktop 1.040",
+      "title": "Model downloads survive a dropped connection",
+      "summary": "A model download that loses its connection or times out no longer fails: it waits, retries and carries on from where it stopped.",
+      "platforms": [
+        "desktop"
+      ]
+    },
     {
       "date": "2026-11-16",
       "tag": "Desktop 1.039",
@@ -176,15 +185,6 @@
       "summary": "The home page now says Sabich, with no version number. The model page shows the version in the apps, read live, and the latest benchmarked release.",
       "platforms": [
         "site"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Desktop 1.025",
-      "title": "Benchmarks, to see how Hebrish runs on your computer",
-      "summary": "Benchmarks: a new window, opened from Diagnostics, measures how fast Hebrish transcribes and how much memory and CPU it uses.",
-      "platforms": [
-        "desktop"
       ]
     }
   ]
