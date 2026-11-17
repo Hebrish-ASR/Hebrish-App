@@ -138,6 +138,19 @@ model; nothing is kept in History. For Claude Code and other agents: the `transc
 skill in [Hebrish-Agent-Skills](https://github.com/Hebrish-ASR/Hebrish-Agent-Skills). Details:
 `docs/maintaining.md`, "Local API".
 
+A second switch, *Let agents read history and control the app* (off by default), adds control
+routes: history (read, search, correct, delete), the personal dictionary, dictation (every action
+key: start, stop, pause, resume, retake, discard, send, paste last), Transcription Mode on a file
+(paragraphs, clean-up, saved to History or the transcripts folder), microphones, models (choose,
+download progress, remove), a set of settings, updates, and a Server-Sent Events stream of state
+changes and finished takes (`GET /v1/app/events`). `GET /v1` lists every route with what it does:
+
+```bash
+curl -s http://127.0.0.1:8723/v1
+curl -s -X POST http://127.0.0.1:8723/v1/app/dictation -H 'Content-Type: application/json' -d '{"action": "pause"}'
+curl -sN http://127.0.0.1:8723/v1/app/events
+```
+
 A second switch, *Let agents read history and control the app*, adds history, the personal
 dictionary, updates, model choice and start/stop dictation to the same port (unreleased,
 2026-11-04); `GET /v1` lists the routes. **Install agent skills** in the same card, or

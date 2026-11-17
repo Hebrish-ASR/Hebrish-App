@@ -23,12 +23,20 @@ The text is what Transcription Mode gives for the same file before paragraphs: v
 No clean-up model, no paragraphs, nothing kept in History. Qt-free: the controller passes in
 `transcribe(samples) -> str` and `info() -> dict | None`.
 
-Control endpoints (B-87): everything in ROUTES past the transcription ones, for coding agents.
-A second opt-in (`local_api_control`, off by default): with it off they answer 403, because a user
-who turned on transcription did not agree to serve their transcripts. Same guards, no token
+Control endpoints (B-87; B-108 filled the gaps, 2026-11-17): everything in ROUTES past the
+transcription ones, for coding agents and controllers: history (read, correct, delete), dictionary,
+dictation actions, Transcription Mode on a file, microphones, models, settings, updates, and change
+events. A second opt-in (`local_api_control`, off by default): with it off they answer 403, because
+a user who turned on transcription did not agree to serve their transcripts. Same guards, no token
 (Daniel's 2026-10-31 decision for this port). `GET /v1` lists the routes, so an agent needs no docs.
-The controller passes in `control` (hebrish.ui.api_control.Control); history and dictionary are
-served from their files here, since the app's own History connection is tied to the GUI thread.
+The controller passes in `control` (hebrish.ui.api_control.Control). History reads and the
+dictionary are served from their files here; history writes go through the app's own History
+connection, which is tied to the GUI thread. Control raises LookupError (404), ValueError (400),
+RuntimeError (409).
+
+GET /v1/app/events is a Server-Sent Events stream: the Controller calls `publish` (any thread, never
+blocks), each open stream holds one HTTP thread until the client leaves, the server stops, control
+goes off or the client falls EVENT_BACKLOG behind; at most MAX_STREAMS at once.
 """
 
 import json

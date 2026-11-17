@@ -17,7 +17,8 @@ computer. The text is English with Hebrew words romanized (*makolet*, *arnona*).
 - Do not send an `Origin` header: requests with one are refused (403).
 - Transcripts are private. Fetch what the task needs, and do not paste long stretches back or send
   them to another service unless the user asks.
-- The API reads only. Editing or deleting transcripts is done in the app's History tab.
+- Change or delete a transcript only when the user asks for that transcript (section 5). Hebrish
+  1.041 and older can't: there it is done in the app's History tab.
 
 ## 1. Check that control is on
 
@@ -82,9 +83,36 @@ done
 Needs `jq`. Ask where to write it if the user did not say. The app's Settings, Your data also
 exports and backs up.
 
+## 5. Correct or delete a transcript (only when asked)
+
+Hebrish newer than 1.041. A correction keeps the model's first text in `original`, as the History
+tab's Correct does, so it shows in `edited=1`; the History tab updates by itself:
+
+```bash
+curl -s -X PATCH http://127.0.0.1:8723/v1/history/123 -H 'Content-Type: application/json' \
+  -d '{"text": "The corrected transcript"}'
+curl -s -X DELETE http://127.0.0.1:8723/v1/history/123
+```
+
+Send the whole text, not a fragment. A delete can't be undone: confirm the id and text first.
+
+## 6. Wait for new transcripts
+
+Instead of polling, read the app's event stream (Hebrish newer than 1.041). Each finished take
+arrives as `event: take` with its `text` and `history_id`; `event: history` reports added, edited
+and deleted rows:
+
+```bash
+curl -sN http://127.0.0.1:8723/v1/app/events
+```
+
+The stream ends when the app closes or control is turned off; reconnect, then catch up with
+`since=`.
+
 ## Limits
 
 - `GET /v1/app/status` has `keep_history`. When it is false the app is not saving new transcripts,
   so an empty result says nothing about what was dictated.
 - History is per computer. The Android app's history is not here.
-- Files sent to the local API for transcription are not saved in History.
+- Files sent to `/v1/audio/transcriptions` are not saved in History (`/v1/app/transcribe` saves
+  them when asked to).

@@ -2008,6 +2008,25 @@ Daniel approved filling the gaps on 2026-11-17: everything an agent needed the w
   `/v1/history?since=` catch up. Tests: `tests/test_local_api.py` (events in order with ids, stop
   closes the stream and leaves no thread, control off, client gone, the cap, a slow client), and
   `tests/test_queued_takes.py` (a take's event from `_done`).
+- **Skills.** The bundled `read-hebrish-history` (correct or delete on request, wait on `/v1/app/events`),
+  `fix-hebrish-mistranscriptions` (fix past transcripts with `PATCH` on request) and
+  `transcribe-with-hebrish` (`/v1/app/transcribe` for paragraphs, clean-up and saving) use the new
+  routes, each marked "newer than 1.041". They were edited here first, so Hebrish-ASR/Hebrish-Agent-Skills
+  needs the same change before the next copy from there overwrites them (2026-11-17). Not changed:
+  `update-hebrish`, `set-up-hebrish-macro-deck` (its button set is the user's layout; pause, retake
+  and send buttons are an option for it).
+- **Verified** (V, 2026-11-17, Ubuntu): the desktop suite (`tests/test_api_control.py`,
+  `tests/test_local_api.py`, `tests/test_tm.py`, `tests/test_queued_takes.py`, `tests/test_agent_skills.py`); and
+  the real `Controller` (offscreen, isolated HOME and XDG dirs, port 18731, hotkey listener stubbed,
+  downloads and update checks stubbed out, no model) over HTTP: `GET /v1` lists the new routes;
+  status has `paused` and `progress`; `pause` when idle is 409; `PATCH /v1/history/1` seen by the
+  GUI thread's own connection and by `edited=1`; `DELETE /v1/history/2`; `DELETE /v1/history` 404;
+  `GET /v1/app/mics` against the real sound server; `POST /v1/app/mics`; removing a model not
+  downloaded and transcribing with no model loaded both 409; an open event stream got `ready`, then
+  `history` edited and deleted. **Not run:** any action that records, pauses a real take or pastes
+  (no dictation was started); `/v1/app/transcribe` with a model, clean-up or the paragraph model; a
+  real download's progress or a real model removal; Test mic following a mic change; anything on
+  Windows; the History tab's "changed while you were correcting" question (no GUI was driven).
 
 ### Macro Deck controller (2026-11-16, no app change)
 

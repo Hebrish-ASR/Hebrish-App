@@ -119,7 +119,11 @@ Leave out `heard` to remove the whole word.
 
 ## Limits
 
-- Old transcripts are not rewritten. Rules apply to new text.
+- Old transcripts are not rewritten by a rule: it applies to new text. If the user asks to fix past
+  transcripts too (Hebrish newer than 1.041), take the ids from the preview's `samples`, fetch each
+  row (`GET /v1/history/123`), apply the change to its full `text` and send it back with
+  `PATCH /v1/history/123` `{"text": ...}`. Those rows then count as the user's corrections
+  (`edited=1`), so leave them out when looking for candidates next time (step 2).
 - A rule fixes a word the model writes wrongly **and consistently**. If it writes something
   different each time, each form needs a phrase, and retraining is the real fix: tell the user to
   send it through <https://hebrish.app/feedback>.

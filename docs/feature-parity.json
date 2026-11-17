@@ -1322,7 +1322,7 @@
     {
       "id": "local-api-control",
       "group": "app",
-      "name": "Local API control and agent skills: history, dictionary, updates, models and dictation for coding agents, opt-in (B-87)",
+      "name": "Local API control and agent skills: history, dictionary, updates, models and dictation for coding agents, opt-in (B-87); every action key, history writes, microphones, model removal and progress, Transcription Mode on a file, change events (B-108, unreleased)",
       "android": {
         "status": "n/a",
         "evidence": "Desktop request (R-2026-11-04-1): the client is a coding agent on the same computer"
@@ -1330,7 +1330,7 @@
       "ubuntu": {
         "status": "present",
         "since": "1.018",
-        "evidence": "desktop/hebrish/local_api.py (ROUTES), ui/api_control.py, agent_skills.py; Settings → Local API; tests/test_local_api.py, tests/test_agent_skills.py"
+        "evidence": "desktop/hebrish/local_api.py (ROUTES), ui/api_control.py, tm.py, agent_skills.py; Settings → Local API; tests/test_local_api.py, tests/test_api_control.py, tests/test_agent_skills.py"
       },
       "windows": {
         "status": "present",

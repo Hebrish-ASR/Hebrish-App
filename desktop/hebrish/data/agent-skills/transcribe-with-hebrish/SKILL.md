@@ -21,8 +21,9 @@ English with Hebrew words in romanized form (*makolet*, *arnona*), never Hebrew 
 - Do not send a browser-style `Origin` header: requests with one are refused (403).
 - One request at a time is enough; the app decodes on the CPU and queues requests behind
   each other and behind the user's own dictation.
-- The text has no paragraphs. If the user wants paragraphs or a summary, do that yourself from
-  the returned text, and say so.
+- The text has no paragraphs. For paragraphs, the clean-up model or a copy in the app's History,
+  use Transcription Mode (section 5) when it is available; otherwise lay out or summarise the text
+  yourself, and say so.
 
 ## 1. Check that the API is up
 
@@ -83,6 +84,25 @@ done
 
 Ask before writing into a folder the user did not name.
 
+## 5. Transcription Mode: paragraphs, clean-up, saved in the app
+
+Hebrish newer than 1.041, with *Let agents read history and control the app* on (Settings, Local
+API; `/health` shows `"control": true`). The app reads the file by its path, so it must be on this
+computer:
+
+```bash
+curl -s -X POST http://127.0.0.1:8723/v1/app/transcribe -H 'Content-Type: application/json' \
+  -d '{"path": "/home/me/talk.mp3", "paragraphs": "time", "save_history": false, "save_file": false}'
+```
+
+The text is the app's Transcription tab's for the same file. `paragraphs` is `none`, `time` or `model`
+(the paragraph model; Time-based when it isn't downloaded); `cleanup` true runs the clean-up model
+(409 when it isn't downloaded); both default to the tab's settings. `save_history` adds it to History,
+`save_file` writes Markdown to the user's transcripts folder: only when the user asks. The reply
+(`text`, `raw`, `paragraphs`, `cleaned`, `seconds`, `history_id`, `file`, `notes`) comes when the whole
+file is done, so allow minutes for a long recording (`curl --max-time 0`). A 404 for the route means an
+older app: use section 2.
+
 ## 4. From code
 
 The endpoint follows the OpenAI audio transcription API, so the OpenAI SDKs work with a
@@ -104,5 +124,5 @@ model on the Hebrish Models tab.
 - The models are trained on one speaker's voice; other voices work, with more errors.
 - Speech that is entirely in Hebrew is not what Hebrish is for: it writes English, with Hebrew
   words romanized.
-- Transcription Mode in the app gives the same text, plus paragraphs and the optional clean-up
-  model; the API returns the text without them, and nothing is saved in the app's History.
+- `/v1/audio/transcriptions` returns the text without paragraphs or clean-up and saves nothing in
+  the app's History; `/v1/app/transcribe` (section 5) adds them.
