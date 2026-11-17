@@ -9,6 +9,16 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-17-02: Sabich stays the default on desktop too (reverses D-2026-11-17-01)
+
+- **Decision:** `recommended_by_platform` for Linux and Windows goes back to `sabich-rolling`. Shakshuka stays a desktop option.
+- **Why:** Daniel, 2026-11-17, after Shakshuka v2.2 (r62-shak) validated at 8.88% WER against 4.8–5.3% for Sabich
+  v4.0–v4.6: "let's actually continue with Sabich as the default. I forgot that the word error was significantly higher
+  for the streaming model." (Validation sets differ slightly between runs; the gap is still large.)
+- **Alternatives:** Keeping Shakshuka as the default for its streaming feel (D-2026-11-17-01, live for a few hours).
+- **By:** Daniel.
+- **Links:** supersedes D-2026-11-17-01; Sabich v4.9 (r63-roll) trained the same day with validation on.
+
 ### D-2026-11-17-01: Shakshuka is the desktop default; Android keeps Sabich
 
 - **Decision:** `recommended_by_platform` for Linux and Windows is `shakshuka` (streaming, Nemotron 0.6B).

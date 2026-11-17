@@ -4,9 +4,9 @@
   "catalogue_v2_url": "https://raw.githubusercontent.com/Hebrish-ASR/Hebrish-App/main/shared/catalogue.json",
   "recommended": "sabich-rolling",
   "recommended_by_platform": {
-    "_doc": "Desktop builds 0.7.0+ read this before `recommended`. 0.7.0 shipped with Shakshuka here (D-2026-10-22-12); Daniel reversed that the same day (D-2026-10-22-18): Parakeet (Sabich) dictates better, and Shakshuka stays a choice. Android and older desktop builds read only `recommended`. 2026-11-04 (Daniel): both follow `recommended`, sabich-rolling, shown as Sabich; the old Sabich (Stable) is out of the catalogue. 2026-11-17 (Daniel, D-2026-11-17-01): Shakshuka is the desktop default again; Android keeps Sabich via `recommended`.",
-    "linux": "shakshuka",
-    "windows": "shakshuka"
+    "_doc": "Desktop builds 0.7.0+ read this before `recommended`. 0.7.0 shipped with Shakshuka here (D-2026-10-22-12); Daniel reversed that the same day (D-2026-10-22-18): Parakeet (Sabich) dictates better, and Shakshuka stays a choice. Android and older desktop builds read only `recommended`. 2026-11-04 (Daniel): both follow `recommended`, sabich-rolling, shown as Sabich; the old Sabich (Stable) is out of the catalogue. 2026-11-17: Shakshuka was the desktop default for a few hours (D-2026-11-17-01), reversed the same day (D-2026-11-17-02): Sabich everywhere.",
+    "linux": "sabich-rolling",
+    "windows": "sabich-rolling"
   },
   "version_file": "version.json",
   "sample_rate": 16000,
@@ -83,7 +83,7 @@
           "speed": 3,
           "accuracy": 4,
           "gradient": 67,
-          "recommendation": "The recommended model on phones, updated as new recordings come in. On a computer, Shakshuka is the default.",
+          "recommendation": "The recommended model, updated as new recordings come in.",
           "repo": "Hebrish/Sabich-Rolling-sherpa-onnx-int8",
           "subdir": "",
           "card": "https://hebrish.app/models/sabich",
@@ -306,7 +306,7 @@
           "speed": 4,
           "accuracy": 4,
           "gradient": 54,
-          "recommendation": "The recommended model on a computer: the words appear while you talk.",
+          "recommendation": "An option for dictating on a computer: the words appear while you talk. Sabich is the default.",
           "runs_on": "the Hebrish desktop app (0.7.0 and later). Coming to Android in a later release.",
           "repo": "Hebrish/Shakshuka-sherpa-onnx-int8",
           "subdir": "",
@@ -572,7 +572,7 @@
         "reason": "Shakshuka is the streaming line: the words appear while you are still talking.",
         "runner_up": "sabich-rolling",
         "runner_how": "if you can wait a moment after you stop speaking: the Hebrish apps",
-        "note": "Shakshuka streams in the Hebrish desktop app (0.7.0+, Ubuntu and Windows) as the default for dictation; Sabich is the other choice and the Android default. Not on Android yet."
+        "note": "Shakshuka streams in the Hebrish desktop app (0.7.0+, Ubuntu and Windows) as an option for dictation; Sabich is the default. Not on Android yet."
       },
       {
         "when": {
@@ -702,7 +702,7 @@
         },
         "pick": "sabich-rolling",
         "how": "the Hebrish app for Ubuntu or Windows, or the F16 GGUF or ONNX (both v2.3) in your own tools",
-        "reason": "Sabich is the Android default and the other choice on a computer, where Shakshuka is the default in the Hebrish apps: Sabich is the one kept up to date and it is scored on the public benchmark. It is quick on a GPU and still fast on the CPU.",
+        "reason": "Sabich is the recommended model on every computer: it is the one kept up to date, it is in the Hebrish apps, and it is scored on the public benchmark. It is quick on a GPU and still fast on the CPU.",
         "runner_up": "shakshuka",
         "runner_how": "in the Hebrish app: text appears while you speak"
       },

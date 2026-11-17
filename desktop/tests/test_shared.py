@@ -115,7 +115,7 @@ def test_hebrish_ships_only_code_switching_lines_and_stock():
     assert v2()["lines"][0]["variants"][0]["id"] == v2()["recommended"] == "sabich-rolling"
     assert v2()["lines"][0]["variants"][0]["name"] == "Sabich"
     assert "sabich" not in [v["id"] for v in v2()["lines"][0]["variants"]]   # Stable left 2026-11-04 (Daniel)
-    assert set(v2()["recommended_by_platform"].values()) - {v2()["recommended_by_platform"]["_doc"]} == {"shakshuka"}   # desktop default (D-2026-11-17-01)
+    assert set(v2()["recommended_by_platform"].values()) - {v2()["recommended_by_platform"]["_doc"]} == {"sabich-rolling"}   # desktop default (D-2026-11-17-02)
     assert not any("boxty" in v["id"] or v["id"] in ("tech", "personal") for v in all_variants())
     with open(SHARED_V1) as f:
         assert [m["id"] for m in json.load(f)["models"]] == ["sabich", "codeswitch", "stock"]
