@@ -573,7 +573,7 @@
         "reason": "Shakshuka is the streaming line: the words appear while you are still talking.",
         "runner_up": "sabich-rolling",
         "runner_how": "if you can wait a moment after you stop speaking: the Hebrish apps",
-        "note": "Shakshuka streams in the Hebrish desktop app (0.7.0+, Ubuntu and Windows) as an option for dictation; Sabich is the default. Not on Android yet."
+        "note": "Shakshuka streams in the Hebrish desktop app (0.7.0+, Ubuntu and Windows) and in Hebrish for Android from the release after 1.036, as an option for dictation; Sabich is the default."
       },
       {
         "when": {

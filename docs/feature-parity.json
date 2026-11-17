@@ -39,7 +39,7 @@
         "since": "unreleased (B-13, 2026-11-17)",
         "evidence": "android/core/src/main/java/app/hebrish/core/TakeDecoder.kt follow, streamPiece; StreamRelease.kt; StreamingTranscriber.kt OnlineSlot.Live",
         "verified": false,
-        "notes": "Keyboard, floating mic, Try it and Notes; desktop's phrase release rule. Compiled and unit-tested in CI only, not run on a phone (android/docs/maintaining.md, Shakshuka streaming)."
+        "notes": "Keyboard, floating mic, Try it and Notes; desktop's phrase release rule. Keyboard and floating mic type during the take only with Type as you go on, as on desktop (2026-11-17); off, the take goes in at Stop, and the keyboard's Live draft shows the streamed words as a draft. Compiled and unit-tested in CI only, not run on a phone (android/docs/maintaining.md, Shakshuka streaming)."
       },
       "ubuntu": {
         "status": "present",

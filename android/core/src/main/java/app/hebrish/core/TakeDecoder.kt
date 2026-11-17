@@ -39,6 +39,9 @@ import java.util.concurrent.Executors
  * goes out at a time (whole words, a phrase at a time, as on desktop); each released piece gets
  * the disfluency chop, the personal dictionary and ALL CAPS. [finish] feeds what is left, pads,
  * ends the stream and hands over the rest. The noise filter does not apply (as on desktop).
+ * Without [onText] (Type as you go off, 2026-11-17), nothing is handed over before [finish], which
+ * returns the whole take as for any model; [onDraft] then gets the take so far while it is recorded
+ * (the keyboard's Live draft shows it), and [follow] runs only when [onDraft] is set.
  */
 class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private val onText: ((String) -> Unit)? = null) {
     /** The signature before 2026-11-16 (onText second), for callers outside this app that link android/core. */
@@ -127,6 +130,14 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
     private var cutsAdded = 0
     @Volatile private var follower: java.util.concurrent.ScheduledExecutorService? = null
     private val polling = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /**
+     * Streaming takes without [onText] (2026-11-17, "Shakshuka streaming"): called on the worker with
+     * the whole take released so far (styled, as [finish] will return it apart from [dropFinalStop])
+     * each time it grows. Nothing is committed through it; [finish] still returns the whole take.
+     * Set it before [follow]. Ignored for other takes and when [onText] is set.
+     */
+    @Volatile var onDraft: ((String) -> Unit)? = null
 
     /** The whole take's text, including parts already handed to [onText]. Valid once [finish] is done. */
     val text: String get() = synchronized(all) { all.toString() }
@@ -226,13 +237,14 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
     }
 
     /**
-     * Streaming takes with [onText] only (else a no-op): every [FOLLOW_MS] feeds [recorder]'s open
-     * segment (the audio not cut yet) into the stream on the worker, so words are handed over while
-     * the user speaks instead of at the next pause cut. One poll at a time; stops at [finish] or
-     * [cancel]. Call once, after creating the recorder whose `onSegment` calls [add].
+     * Streaming takes with [onText] or [onDraft] only (else a no-op): every [FOLLOW_MS] feeds
+     * [recorder]'s open segment (the audio not cut yet) into the stream on the worker, so words are
+     * handed over (or drafted) while the user speaks instead of at the next pause cut. One poll at a
+     * time; stops at [finish] or [cancel]. Call once, after creating the recorder whose `onSegment`
+     * calls [add].
      */
     fun follow(recorder: Recorder) {
-        if (streamModel == null || onText == null || follower != null || cancelled) return
+        if (streamModel == null || (onText == null && onDraft == null) || follower != null || cancelled) return
         val timer = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "stream-follow").apply { isDaemon = true } }
         follower = timer
         timer.scheduleWithFixedDelay({
@@ -255,12 +267,19 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
             .onSuccess { text ->
                 if (text.isEmpty() || cancelled) return@onSuccess
                 keep(text)
-                onText?.invoke(text)
+                hand(text)
             }
             .onFailure { failure = it }
     }
 
     private fun keep(text: String) = synchronized(all) { all.append(join(all, text)) }
+
+    /** Worker thread: [text] to [onText], else held for [finish] (and drafted, when streaming). */
+    private fun hand(text: String) {
+        if (onText != null) return onText.invoke(text)
+        held.append(join(held, text))
+        if (streamModel != null) onDraft?.invoke(held.toString())
+    }
 
     /** Queues one recorded segment. Called from the recorder's capture thread. */
     fun add(samples: FloatArray) {
@@ -275,7 +294,7 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
                     segmentsDecoded++
                     if (text.isEmpty() || cancelled) return@onSuccess
                     keep(text)
-                    if (onText != null) onText.invoke(text) else held.append(join(held, text))
+                    hand(text)
                 }
                 .onFailure { failure = it }
         } }

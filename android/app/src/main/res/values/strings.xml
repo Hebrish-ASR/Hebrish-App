@@ -309,7 +309,7 @@
     <string name="dictation_no_final_stop">No full stop at the end</string>
     <string name="dictation_no_final_stop_hint">For short entries such as a search or a lookup: the full stop the model puts at the end of a take is left out. Question and exclamation marks, \"...\" and full stops inside the text stay. Keyboard and floating mic. The keyboard\'s \"No .\" chip, next to the mic source, switches it too, also during a take.</string>
     <string name="dictation_live_draft">Live draft (voice keyboard, experimental)</string>
-    <string name="dictation_live_draft_hint">Words appear while you speak (most apps underline them) and correct themselves as you go on; at a pause or when you stop, the phrase is transcribed once more and fixed in place. Turns on Insert as you go in the keyboard. Uses more battery, and on a slow phone the draft lags. The floating mic can\'t show a draft.</string>
+    <string name="dictation_live_draft_hint">Words appear while you speak (most apps underline them) and correct themselves as you go on; at a pause or when you stop, the phrase is transcribed once more and fixed in place. Turns on Insert as you go in the keyboard. With Shakshuka, the draft is the words as they stream, and the whole take goes in when you stop unless Insert as you go is on. Uses more battery, and on a slow phone the draft lags. The floating mic can\'t show a draft.</string>
     <string name="ime_no_stop">No .</string>
     <string name="ime_no_stop_cd_on">No full stop at the end: on. Tap to turn off.</string>
     <string name="ime_no_stop_cd_off">No full stop at the end: off. Tap to turn on.</string>

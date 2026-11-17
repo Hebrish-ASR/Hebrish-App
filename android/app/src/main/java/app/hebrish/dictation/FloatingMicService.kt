@@ -754,10 +754,9 @@ class FloatingMicService : AccessibilityService(), SharedPreferences.OnSharedPre
         // A take started from a remote keeps the bubble up afterwards.
         stuck = true
         // Type as you go: each segment goes in when decoded. Otherwise it is all held for Stop.
-        // A streaming dictation model (Shakshuka, B-13) always types as you go: words as you speak.
-        val streams = he == null && Transcriber.streamingModel(this) != null
+        // Shakshuka (B-13) too, since 2026-11-17: words as you speak only with Type as you go on.
         var t: Take? = null
-        val d = TakeDecoder(this, he, if (streams || Prefs.typeAsYouGo(this)) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
+        val d = TakeDecoder(this, he, if (Prefs.typeAsYouGo(this)) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
         t = Take(into, d)
         val r = Recorder(
             onLevel = { l -> main.post { setLevel(l) } },

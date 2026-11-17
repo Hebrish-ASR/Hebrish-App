@@ -466,15 +466,16 @@ class VoiceImeService : InputMethodService() {
         hebrewMissing = missing
         if (he != null) StreamingTranscriber.preload(this, he) else Transcriber.preload(this)
         var t: Take? = null
-        // A streaming dictation model (Shakshuka, B-13) types words as you speak, whatever Type as you go says.
+        // A streaming dictation model (Shakshuka, B-13) types words as you speak only with Type as you go
+        // on (2026-11-17, as on desktop); with it off and Live draft on, they show as a draft until Stop.
         val streams = he == null && Transcriber.streamingModel(this) != null
+        val routing = TakeRouting.keyboard(he != null, streams, Prefs.typeAsYouGo(this), Prefs.liveDraft(this))
         // Live draft (I-4) commits each phrase at its pause, so it needs the pieces as they are decoded.
-        // Not for Hebrew takes (LiveDraft re-decodes with the main model), nor streaming ones (they need no draft).
-        val live = Prefs.liveDraft(this) && he == null && !streams
-        val pieces = live || streams || Prefs.typeAsYouGo(this)
-        val d = TakeDecoder(this, he, if (pieces) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
+        val live = routing == TakeRouting.PHRASE_DRAFT
+        val d = TakeDecoder(this, he, if (routing.pieces) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
         val current = Take(d)
         t = current
+        if (routing == TakeRouting.STREAM_DRAFT) d.onDraft = { text -> main.post { showStreamDraft(current, text) } }
         val r = Recorder(
             onLevel = { l -> main.post { setLevel(l) } },
             onLimit = { main.post { if (state == State.RECORDING) stopAndTranscribe() } },
@@ -848,6 +849,19 @@ class VoiceImeService : InputMethodService() {
     private fun showDraft(t: Take, cut: Int, text: String) {
         if (!canDraft(t) || cut != t.decoder.segmentsQueued) return
         if (text.isEmpty()) return clearDraft()
+        val ic = currentInputConnection ?: return
+        if (!draftShown) draftBefore = ic.getTextBeforeCursor(1, 0) ?: ""
+        if (ic.setComposingText(TakeDecoder.join(draftBefore, text), 1)) draftShown = true
+    }
+
+    /**
+     * Shakshuka's draft (TakeRouting.STREAM_DRAFT): [text] is the whole take released so far, shown as
+     * composing text; the take's text replaces it at Stop (commit). Same conditions as [canDraft],
+     * except that streamed pieces need no decode of their own to wait for.
+     */
+    private fun showStreamDraft(t: Take, text: String) {
+        if (take !== t || state != State.RECORDING || finishing.isNotEmpty() || t.waiting.isNotEmpty() || passwordField) return
+        if (t.decoder.isCancelled || text.isEmpty()) return
         val ic = currentInputConnection ?: return
         if (!draftShown) draftBefore = ic.getTextBeforeCursor(1, 0) ?: ""
         if (ic.setComposingText(TakeDecoder.join(draftBefore, text), 1)) draftShown = true

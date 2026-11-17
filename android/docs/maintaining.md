@@ -2362,8 +2362,10 @@ strings: `desktop/tests/test_shared.py` compares them with the desktop's, and it
 `shared/catalogue.json` (and its desktop copy): the `shakshuka` variant has `android` in `platforms`, `phone` in
 `devices`, phone-or-computer `hardware`, and `runs_on` "... Hebrish for Android after 1.036". Builds up to 1.036
 fetch that catalogue too, but their `supported` still needs `language` for the online engine, so they keep hiding
-(1.035, 1.036) or greying (older) it. The chooser note "Not on Android yet" (`chooser.rules`, the `live` rule) is
-left for the release, because it must match hebrish.app's `data/variants.json`.
+(1.035, 1.036) or greying (older) it. The chooser note (`chooser.rules`, the `live` rule) said "Not on Android
+yet" until 2026-11-17; it now says "... and in Hebrish for Android from the release after 1.036", the `runs_on`
+wording, changed together with hebrish.app's `data/variants.json`, which must match it. At the release, reword both
+(and `runs_on`) to name the version.
 
 **Loading.** Shakshuka is a dictation model (`language` null), so `Catalogue.selected` can return it, and **Use
 this model**, Download and updates work as for any variant (same four file names, CDN manifest
@@ -2384,7 +2386,7 @@ for the whole take, opened at its first audio (the load, if needed, is timed as 
   no seams), no `stretch_pauses`-style tricks, and the noise filter does not apply (desktop: streaming takes skip
   voice detection).
 - `follow(recorder)` (called by the keyboard, the floating mic and `DictationPad`, i.e. Try it and Notes; a no-op
-  without `onText`) polls `Recorder.openSegment()` every `FOLLOW_MS` = 500 ms (desktop `_live_tick`) on the
+  without `onText` or `onDraft`) polls `Recorder.openSegment()` every `FOLLOW_MS` = 500 ms (desktop `_live_tick`) on the
   decoder's worker and feeds what is new. Positions are counted in samples from the start of the take (`base`,
   `fedTo`), so audio fed before a hard cut (which keeps chunks after the cut point as the next segment's start)
   is not fed twice; a poll that sees a cut whose `add` hasn't run yet skips (the `add` is queued right behind it).
@@ -2396,9 +2398,24 @@ for the whole take, opened at its first audio (the load, if needed, is timed as 
   released (not seen with greedy decoding on desktop) releases nothing more.
 - `finish` feeds the rest of the tail, pads 1.5 s (`StreamingTranscriber.PAD_SECONDS`), ends the stream and
   hands over everything not yet released; `dropFinalStop` applies to that last piece only (as on desktop).
-- The keyboard and the floating mic hand pieces over for a streaming take even with **Type as you go** off
-  (decision: words as you speak is the point of Shakshuka; desktop ties it to *Insert as you go*). Live draft
-  (I-4) is off for streaming takes. Transcription Mode decodes Shakshuka takes segment by segment through the
+- **Type as you go decides (2026-11-17, Daniel: "Android should follow the setting, like the desktop does").**
+  The keyboard and the floating mic hand Shakshuka's pieces over during the take only with **Type as you go**
+  (UI label "Insert as you go") on. With it off, `onText` is null: released text is held, nothing is typed,
+  and `finish` returns the whole take at Stop, as for any model (Discard throws it all away). This replaced
+  the first B-13 build (`d8e6448`, same day, never released), where a streaming take always typed as you
+  spoke. The keyboard's choice is `TakeRouting.keyboard` (`android/app/.../dictation/TakeRouting.kt`,
+  `TakeRoutingTest`): Type as you go on gives `TYPED`; off with Live draft on gives `STREAM_DRAFT`; both off,
+  `AT_STOP`. Offline models are unchanged (Live draft on is `PHRASE_DRAFT` whatever Type as you go says).
+- **Live draft with Shakshuka (decided 2026-11-17 by the implementing agent, on Daniel's "show the streamed
+  words as the draft if that's straightforward").** `STREAM_DRAFT`: `TakeDecoder.onDraft` gets the whole
+  take released so far each time it grows (`follow` runs for it), and `VoiceImeService.showStreamDraft` shows it
+  as composing text (same guards as `canDraft`: open take, recording, nothing earlier landing, no password
+  field). Nothing is committed during the take; at Stop the whole take replaces the draft (`commit`,
+  `draftShown`), so a draft cleared by a key (cursor, space, Enter) loses nothing. There is no `LiveDraft`
+  re-decode for streaming takes and no phrase cap on the recorder. With Type as you go on, words are committed
+  as they are released and Live draft adds nothing. The floating mic has no draft (as for every model). Desktop
+  has no twin: its `live_draft` is not offered with Shakshuka. The Live draft setting's hint says this.
+- Transcription Mode decodes Shakshuka takes segment by segment through the
   same stream, without `follow`. History records `StreamingTranscriber.ENGINE` (`TakeDecoder.Stats.streaming`).
 - Hebrew takes are unchanged: they go to the Hebrew model whatever the dictation model is.
 
@@ -2407,7 +2424,8 @@ desktop-only and other engines are not; the shared catalogue offers Shakshuka on
 still recommended) and `StreamReleaseTest` (the release rule), run in CI with the fdroid unit tests; desktop
 `test_shared` passes. **Not verified (I):** everything on a device: Shakshuka's load time and memory on a phone
 (about 1.5 GB on desktop), whether a 500 ms feed decodes in under 500 ms on a phone CPU (desktop: at most 245 ms),
-how often pieces land and how that looks in real apps, and the floating mic pasting pieces with Type as you go off.
+how often pieces land and how that looks in real apps, and the Shakshuka draft (`STREAM_DRAFT`) in real apps.
+`TakeRoutingTest` covers only the routing table, not the decoder's `onDraft` or the keyboard's composing text.
 
 ## Download robustness: retries, waiting for a network, foreground service (unreleased, 2026-11-16)
 
