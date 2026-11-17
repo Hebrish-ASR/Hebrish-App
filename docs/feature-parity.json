@@ -35,9 +35,11 @@
       "group": "insertion",
       "name": "Streaming dictation with Shakshuka (words inserted as you speak)",
       "android": {
-        "status": "missing",
-        "evidence": "android/core/src/main/java/app/hebrish/core/Catalogue.kt SUPPORTED_ENGINES",
-        "notes": "planning/backlog.md B-13"
+        "status": "present",
+        "since": "unreleased (B-13, 2026-11-17)",
+        "evidence": "android/core/src/main/java/app/hebrish/core/TakeDecoder.kt follow, streamPiece; StreamRelease.kt; StreamingTranscriber.kt OnlineSlot.Live",
+        "verified": false,
+        "notes": "Keyboard, floating mic, Try it and Notes; desktop's phrase release rule. Compiled and unit-tested in CI only, not run on a phone (android/docs/maintaining.md, Shakshuka streaming)."
       },
       "ubuntu": {
         "status": "present",
@@ -604,9 +606,10 @@
       "group": "transcription-engine",
       "name": "Streaming recognizer (live text while speaking; Shakshuka)",
       "android": {
-        "status": "missing",
-        "since": "",
-        "evidence": "Catalogue.SUPPORTED_ENGINES"
+        "status": "present",
+        "since": "unreleased (B-13, 2026-11-17)",
+        "evidence": "Catalogue.SUPPORTED_ENGINES; StreamingTranscriber.kt",
+        "verified": false
       },
       "ubuntu": {
         "status": "missing",

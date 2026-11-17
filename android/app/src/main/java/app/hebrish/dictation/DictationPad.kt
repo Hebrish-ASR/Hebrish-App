@@ -116,7 +116,7 @@ class DictationPad(
         setState(State.LOADING, act.getString(R.string.try_loading))
         val app = act.applicationContext   // the load takes seconds: don't hold the screen meanwhile
         Thread {
-            val err = runCatching { Transcriber.load(app) }.exceptionOrNull()
+            val err = runCatching { Transcriber.loadSelected(app) }.exceptionOrNull()
             ui.post {
                 if (act.isDestroyed) return@post
                 if (err == null) setState(State.IDLE, act.getString(R.string.try_ready))
@@ -144,7 +144,8 @@ class DictationPad(
         // Language per take (2026-11-16, InputLanguage.forApp): the EN / עב setting, else the keyboard in use.
         val (he, missing) = InputLanguage.model(act, InputLanguage.forApp(act))
         if (missing) android.widget.Toast.makeText(act, R.string.lang_no_hebrew_model_toast, android.widget.Toast.LENGTH_LONG).show()
-        decoder = TakeDecoder(act, he) { said -> ui.post { insert(said) } }
+        val d = TakeDecoder(act, he) { said -> ui.post { insert(said) } }
+        decoder = d
         Mic.prepare(act, recorder)
         try {
             recorder.start()
@@ -156,6 +157,7 @@ class DictationPad(
             setState(State.IDLE, act.getString(R.string.ime_mic_error, e.message ?: "?"))
             return
         }
+        d.follow(recorder)             // a streaming model (Shakshuka): words while you speak
         Feedback.cue(act, Feedback.Cue.START)
         micName = Mic.label(act, recorder.routedDevice)
         setState(State.RECORDING, act.getString(R.string.try_listening, 0, 0))

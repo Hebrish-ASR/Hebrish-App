@@ -547,7 +547,7 @@ class ModelsActivity : Page() {
             .setPositiveButton(R.string.delete) { _, _ ->
                 // About 650 MB of files: delete them on a worker thread, then redraw.
                 val app = applicationContext
-                Thread { if (m.language != null) StreamingTranscriber.unload(); ModelStore.delete(app, m); runOnUiThread { if (!isDestroyed) render() } }.start()
+                Thread { if (m.language != null) StreamingTranscriber.unload() else if (m.streaming) StreamingTranscriber.dictation.unload(); ModelStore.delete(app, m); runOnUiThread { if (!isDestroyed) render() } }.start()
             }
             .setNegativeButton(R.string.cancel, null)
             .show()

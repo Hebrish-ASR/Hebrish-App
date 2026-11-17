@@ -466,10 +466,12 @@ class VoiceImeService : InputMethodService() {
         hebrewMissing = missing
         if (he != null) StreamingTranscriber.preload(this, he) else Transcriber.preload(this)
         var t: Take? = null
+        // A streaming dictation model (Shakshuka, B-13) types words as you speak, whatever Type as you go says.
+        val streams = he == null && Transcriber.streamingModel(this) != null
         // Live draft (I-4) commits each phrase at its pause, so it needs the pieces as they are decoded.
-        // Not for Hebrew takes: LiveDraft re-decodes with the main model.
-        val live = Prefs.liveDraft(this) && he == null
-        val pieces = live || Prefs.typeAsYouGo(this)
+        // Not for Hebrew takes (LiveDraft re-decodes with the main model), nor streaming ones (they need no draft).
+        val live = Prefs.liveDraft(this) && he == null && !streams
+        val pieces = live || streams || Prefs.typeAsYouGo(this)
         val d = TakeDecoder(this, he, if (pieces) { text -> main.post { t?.takeIf { !it.decoder.isCancelled }?.let { deliverPart(it, text) } } } else null)
         val current = Take(d)
         t = current
@@ -491,6 +493,7 @@ class VoiceImeService : InputMethodService() {
         }
         recorder = r
         take = current
+        d.follow(r)
         if (live) draft = LiveDraft(this, r, main, { canDraft(current) }, { cut, text -> showDraft(current, cut, text) }).also { it.start() }
         state = State.RECORDING
         showSource()

@@ -79,7 +79,7 @@ object History {
         val installed = ModelStore.installed(app, model)
         val decode = JSONObject().apply {
             put("app", "android " + app.packageManager.getPackageInfo(app.packageName, 0).versionName)
-            put("engine", "${if (stats.model != null) StreamingTranscriber.ENGINE else Transcriber.ENGINE}, sherpa-onnx ${BuildConfig.SHERPA_VERSION}")
+            put("engine", "${if (stats.model != null || stats.streaming) StreamingTranscriber.ENGINE else Transcriber.ENGINE}, sherpa-onnx ${BuildConfig.SHERPA_VERSION}")
             put("language", stats.language)
             put("threads", Transcriber.threads)
             put("cores", Runtime.getRuntime().availableProcessors())

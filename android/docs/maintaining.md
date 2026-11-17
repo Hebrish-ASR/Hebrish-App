@@ -2250,8 +2250,8 @@ English comes out spelled letter by letter, so it is used only for Hebrew takes.
 model. `Catalogue.selected` never returns one, Download all skips them, Models shows no **Use this model** or
 **Recommended** for them, and the main list leaves their line out. They have their own **Hebrew** section at the
 end of the model list (download, update, delete as any model; same `ModelDownload` queue and `ModelStore`
-folders). `Catalogue.forLanguage(ctx, "he")` finds it. `supported` is true for `sherpa_online_transducer`
-**only** with `language` set, so Shakshuka (0.6B streaming, no `language`) stays greyed "desktop only" as before.
+folders). `Catalogue.forLanguage(ctx, "he")` finds it. Up to 1.036 `supported` was true for `sherpa_online_transducer`
+**only** with `language` set, so Shakshuka stayed desktop-only; since B-13 (2026-11-17, "Shakshuka streaming" below) any variant on that engine is supported.
 The `credit` block (CC BY 4.0 attribution, required) is shown on the Hebrew card and on About ("Third-party
 models", every variant with a `credit`): the sentence plus links to the model, the licence and the upstream
 (`Page.credit`).
@@ -2349,6 +2349,65 @@ now only reached by an installed variant that is no longer supported.
 **2026-11-17 (Daniel):** the two 110M variants leave the Android list: `sabich-parakeet-110m` `offered_on` `[]`
 (was `["android"]`), `falafel-110m` `offered_on` `["linux", "windows"]`. A copy already installed stays listed.
 Catalogue-only, so it applies to 1.035+ at the next catalogue fetch; older builds ignore `offered_on`.
+
+## Shakshuka streaming (unreleased, B-13, 2026-11-17)
+
+Daniel, 2026-11-17: "let's also add shakshuka back to the Android app, I currently don't see it there at all."
+Parity with desktop B-12 ("Shakshuka: streaming dictation" in `desktop/docs/maintaining.md`). Sabich stays the
+recommended model (catalogue `recommended`); Shakshuka is an option on Models.
+
+**Catalogue.** `Catalogue.SUPPORTED_ENGINES` = `sherpa_offline_transducer`, `sherpa_online_transducer` (literal
+strings: `desktop/tests/test_shared.py` compares them with the desktop's, and its B-13 exception is gone);
+`Model.supported` is just platform `android` + engine in that set; `Model.streaming` = engine is the online one.
+`shared/catalogue.json` (and its desktop copy): the `shakshuka` variant has `android` in `platforms`, `phone` in
+`devices`, phone-or-computer `hardware`, and `runs_on` "... Hebrish for Android after 1.036". Builds up to 1.036
+fetch that catalogue too, but their `supported` still needs `language` for the online engine, so they keep hiding
+(1.035, 1.036) or greying (older) it. The chooser note "Not on Android yet" (`chooser.rules`, the `live` rule) is
+left for the release, because it must match hebrish.app's `data/variants.json`.
+
+**Loading.** Shakshuka is a dictation model (`language` null), so `Catalogue.selected` can return it, and **Use
+this model**, Download and updates work as for any variant (same four file names, CDN manifest
+`models/shakshuka/latest.json`). It can't load as an `OfflineRecognizer`, so `Transcriber` checks
+`streamingModel(ctx)` (the selected model if streaming) and sends `isLoaded`, `preload`, `transcribe`,
+`transcribeAfter` (no seam: plain `transcribe`) to `StreamingTranscriber.dictation`; `Transcriber.load` refuses a
+streaming model and `loadSelected` (Try it's warm-up) picks the right one. `StreamingTranscriber.kt` is now
+`open class OnlineSlot` with two instances: `StreamingTranscriber` itself (the Hebrew model, unchanged API) and
+`StreamingTranscriber.dictation`, so a Hebrew take and a Shakshuka take don't reload each other.
+`Transcriber.unload()` (Use this model, an update swap of the selected model, a folder move) frees the dictation
+slot too, and the idle, screen-off and memory-pressure hooks free all three. Config: `featureDim` 128 (the
+catalogue default; sherpa-onnx reads the encoder metadata anyway), no `modelType` (sherpa-onnx reads the
+metadata, as the desktop does; the 560 ms chunk is in there too), greedy, endpoints off.
+
+**A take** (`TakeDecoder`, when `language` is null and the selected model streams): one `OnlineSlot.Live` stream
+for the whole take, opened at its first audio (the load, if needed, is timed as `load_s`).
+- Each segment the recorder cuts (`add`) is fed into it; no seam context and no held full stop (one stream has
+  no seams), no `stretch_pauses`-style tricks, and the noise filter does not apply (desktop: streaming takes skip
+  voice detection).
+- `follow(recorder)` (called by the keyboard, the floating mic and `DictationPad`, i.e. Try it and Notes; a no-op
+  without `onText`) polls `Recorder.openSegment()` every `FOLLOW_MS` = 500 ms (desktop `_live_tick`) on the
+  decoder's worker and feeds what is new. Positions are counted in samples from the start of the take (`base`,
+  `fedTo`), so audio fed before a hard cut (which keeps chunks after the cut point as the next segment's start)
+  is not fed twice; a poll that sees a cut whose `add` hasn't run yet skips (the `add` is queued right behind it).
+- `StreamRelease` (port of the desktop's `LiveStream._ready` with the default `stream_release` "phrase" rule:
+  up to a sentence mark at once, up to a clause mark after 4+ words, everything after 0.8 s without growth,
+  whole words keeping the last two back after 2.5 s) decides what goes out. Releases are whole words only;
+  each one gets the disfluency chop (the take so far as `before`), the personal dictionary and ALL CAPS, and is
+  handed to `onText`, which commits it like a type-as-you-go piece. A result that stops starting with what was
+  released (not seen with greedy decoding on desktop) releases nothing more.
+- `finish` feeds the rest of the tail, pads 1.5 s (`StreamingTranscriber.PAD_SECONDS`), ends the stream and
+  hands over everything not yet released; `dropFinalStop` applies to that last piece only (as on desktop).
+- The keyboard and the floating mic hand pieces over for a streaming take even with **Type as you go** off
+  (decision: words as you speak is the point of Shakshuka; desktop ties it to *Insert as you go*). Live draft
+  (I-4) is off for streaming takes. Transcription Mode decodes Shakshuka takes segment by segment through the
+  same stream, without `follow`. History records `StreamingTranscriber.ENGINE` (`TakeDecoder.Stats.streaming`).
+- Hebrew takes are unchanged: they go to the Hebrew model whatever the dictation model is.
+
+**Verified:** `CatalogueEnginesTest` (a non-language online variant is supported, streaming and in `models`;
+desktop-only and other engines are not; the shared catalogue offers Shakshuka on Android with `sabich-rolling`
+still recommended) and `StreamReleaseTest` (the release rule), run in CI with the fdroid unit tests; desktop
+`test_shared` passes. **Not verified (I):** everything on a device: Shakshuka's load time and memory on a phone
+(about 1.5 GB on desktop), whether a 500 ms feed decodes in under 500 ms on a phone CPU (desktop: at most 245 ms),
+how often pieces land and how that looks in real apps, and the floating mic pasting pieces with Type as you go off.
 
 ## Download robustness: retries, waiting for a network, foreground service (unreleased, 2026-11-16)
 

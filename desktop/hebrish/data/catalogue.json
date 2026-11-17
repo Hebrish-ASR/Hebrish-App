@@ -287,10 +287,12 @@
           },
           "status": "available",
           "platforms": [
+            "android",
             "linux",
             "windows"
           ],
           "devices": [
+            "phone",
             "desktop"
           ],
           "streaming": true,
@@ -298,14 +300,14 @@
             "ram_mb": 1500,
             "gpu": null
           },
-          "hardware": "Computer, no graphics card needed; about 1.5 GB of memory",
+          "hardware": "Phone or computer, no graphics card needed; about 1.5 GB of memory",
           "technical": "sherpa-onnx int8 online (streaming) transducer on the CPU, 560 ms chunks, about 1.5 GB of RAM, no GPU.",
           "download_mb": 662,
           "speed": 4,
           "accuracy": 4,
           "gradient": 54,
-          "recommendation": "An option for dictating on a computer: the words appear while you talk. Sabich is the default.",
-          "runs_on": "the Hebrish desktop app (0.7.0 and later). Coming to Android in a later release.",
+          "recommendation": "An option for dictating: the words appear while you talk. Sabich is the default.",
+          "runs_on": "the Hebrish desktop app (0.7.0 and later) and Hebrish for Android after 1.036. Update the app to use it.",
           "repo": "Hebrish/Shakshuka-sherpa-onnx-int8",
           "subdir": "",
           "card": "https://hebrish.app/models/shakshuka",

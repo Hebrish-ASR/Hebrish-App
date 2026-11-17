@@ -23,12 +23,13 @@ object Catalogue {
     const val ASSET = "catalogue.json"
     const val SCHEMA = 2
     const val PLATFORM = "android"
-    /** Engines this build can run as a dictation model. Phase 2 adds sherpa_online_transducer (Shakshuka). */
-    val SUPPORTED_ENGINES = setOf("sherpa_offline_transducer")
     /**
-     * The streaming engine ([StreamingTranscriber], 2026-11-16). Runs only for language variants
-     * (the Hebrew line), so Shakshuka's 0.6B streaming model stays desktop-only.
+     * Engines this build runs. sherpa_online_transducer since B-13 (2026-11-17): Shakshuka streams on
+     * Android too ([Model.streaming]); before that it ran only for language variants (the Hebrew line).
+     * Literal strings: desktop/tests/test_shared.py reads this line.
      */
+    val SUPPORTED_ENGINES = setOf("sherpa_offline_transducer", "sherpa_online_transducer")
+    /** The streaming engine: [StreamingTranscriber] (language models) and [StreamingTranscriber.dictation] (Shakshuka). */
     const val ONLINE_ENGINE = "sherpa_online_transducer"
 
     /**
@@ -89,9 +90,10 @@ object Catalogue {
         /** Catalogue `offered_on` (2026-11-12): the platforms whose Models screen lists it; null = every platform it runs on. */
         val offeredOn: List<String>? = null,
     ) {
-        /** This build can run it: an offline transducer, or a streaming one that is a language model. */
-        val supported: Boolean get() = PLATFORM in platforms &&
-            (engine in SUPPORTED_ENGINES || (engine == ONLINE_ENGINE && language != null))
+        /** This build can run it: an Android variant on an engine in [SUPPORTED_ENGINES]. */
+        val supported: Boolean get() = PLATFORM in platforms && engine in SUPPORTED_ENGINES
+        /** A streaming model: decoded by an OnlineRecognizer, words as you speak (Shakshuka, the Hebrew line). */
+        val streaming: Boolean get() = engine == ONLINE_ENGINE
         /** Listed but not downloadable: "planned" models show as coming soon. */
         val available: Boolean get() = supported && status == "available" && !(repo.isNullOrEmpty() && manifestUrl.isNullOrEmpty())
     }

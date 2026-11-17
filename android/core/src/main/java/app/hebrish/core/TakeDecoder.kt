@@ -30,6 +30,15 @@ import java.util.concurrent.Executors
  * [StreamingTranscriber] whole, with none of the English-only steps: no seam context or held full
  * stop (the model writes no punctuation or case), no disfluency chop (English fillers), no
  * personal dictionary (Latin-letter spellings) and no ALL CAPS. [dropFinalStop] still applies.
+ *
+ * Streaming (B-13, 2026-11-17; docs/maintaining.md "Shakshuka streaming"): when the selected model
+ * streams ([Catalogue.Model.streaming], Shakshuka) and this is not a language take, the whole take is
+ * one [OnlineSlot.Live] stream: each segment [add]ed is fed into it (no seams, so no seam context
+ * or held full stop), and with [onText] set, [follow] also feeds the recorder's open segment every
+ * [FOLLOW_MS], so words are handed over while the user speaks. [StreamRelease] decides how much
+ * goes out at a time (whole words, a phrase at a time, as on desktop); each released piece gets
+ * the disfluency chop, the personal dictionary and ALL CAPS. [finish] feeds what is left, pads,
+ * ends the stream and hands over the rest. The noise filter does not apply (as on desktop).
  */
 class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private val onText: ((String) -> Unit)? = null) {
     /** The signature before 2026-11-16 (onText second), for callers outside this app that link android/core. */
@@ -37,6 +46,10 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
 
     private val app = ctx.applicationContext
     private val worker = Executors.newSingleThreadExecutor()
+    /** The selected model when it streams (Shakshuka) and this is not a language take; read once per take. */
+    private val streamModel: Catalogue.Model? = if (language == null) runCatching { Transcriber.streamingModel(app) }.getOrNull() else null
+    /** This take goes through one live stream (see the class doc). */
+    val streaming: Boolean get() = streamModel != null
     private val held = StringBuilder()
     private val hebrew = language?.language != null
     private val allCaps = !hebrew && OutputStyle.allCaps(app)
@@ -86,6 +99,8 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
         val model: Catalogue.Model? = null,
         /** "he" for a take decoded by the Hebrew model, "en" otherwise (2026-11-16). */
         val language: String = "en",
+        /** The selected model streamed the take (Shakshuka, B-13). */
+        val streaming: Boolean = false,
     )
 
     private val all = StringBuilder()
@@ -101,13 +116,25 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
     /** The previous piece's closing "." was held back. */
     private var stopHeld = false
 
+    // Streaming state, worker thread only. Positions are samples from the start of the take.
+    private var live: OnlineSlot.Live? = null
+    private val release = StreamRelease()
+    /** Where the open segment starts (the sum of the segments [add]ed so far). */
+    private var base = 0L
+    /** How far the stream has been fed: past [base] when [follow] fed part of a segment before its cut. */
+    private var fedTo = 0L
+    /** Segments [add]ed so far; [follow] only feeds an open segment with this many cuts before it. */
+    private var cutsAdded = 0
+    @Volatile private var follower: java.util.concurrent.ScheduledExecutorService? = null
+    private val polling = java.util.concurrent.atomic.AtomicBoolean(false)
+
     /** The whole take's text, including parts already handed to [onText]. Valid once [finish] is done. */
     val text: String get() = synchronized(all) { all.toString() }
 
     /** Valid once [finish] has called back. */
     fun stats() = Stats(audioSamples / Transcriber.SAMPLE_RATE.toDouble(), decodeMs / 1000.0, loadMs / 1000.0,
         waitMs / 1000.0, segmentsDecoded, allCaps, onText != null, contextSamples / Transcriber.SAMPLE_RATE.toDouble(),
-        language, language?.language ?: "en")
+        language, language?.language ?: "en", streamModel != null)
 
     /** Worker thread only: loads the model if needed (timed apart), then decodes (timed). */
     private fun <T> timed(decode: () -> T): T {
@@ -115,7 +142,11 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
             val t = SystemClock.elapsedRealtime()
             StreamingTranscriber.load(app, language)
             loadMs += SystemClock.elapsedRealtime() - t
-        } else if (language == null && !Transcriber.isLoaded(app)) {
+        } else if (streamModel != null && !StreamingTranscriber.dictation.isLoaded(app, streamModel)) {
+            val t = SystemClock.elapsedRealtime()
+            StreamingTranscriber.dictation.load(app, streamModel)
+            loadMs += SystemClock.elapsedRealtime() - t
+        } else if (language == null && streamModel == null && !Transcriber.isLoaded(app)) {
             val t = SystemClock.elapsedRealtime()
             Transcriber.load(app)
             loadMs += SystemClock.elapsedRealtime() - t
@@ -167,6 +198,68 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
         return OutputStyle.apply(lead + dictionary(text), allCaps)
     }
 
+    /**
+     * Worker thread only, streaming takes. Feeds [chunk] (audio that starts at take position [start])
+     * past what the stream already has, and returns the newly released text, styled; "" for nothing.
+     */
+    private fun streamPiece(chunk: FloatArray, start: Long, last: Boolean): String {
+        val model = streamModel ?: return ""
+        val from = (fedTo - start).coerceIn(0L, chunk.size.toLong()).toInt()
+        val result = timed {
+            val s = live ?: StreamingTranscriber.dictation.open(app, model).also { live = it }
+            s.accept(if (from == 0) chunk else chunk.copyOfRange(from, chunk.size), last)
+        }
+        fedTo = maxOf(fedTo, start + chunk.size)
+        if (last) live?.close()
+        val raw = release.next(result, last, SystemClock.elapsedRealtime()).trim()
+        if (raw.isEmpty()) return ""
+        val text = Disfluency.chop(raw, synchronized(all) { all.toString() })
+        return if (text.isEmpty()) "" else OutputStyle.apply(dictionary(text), allCaps)
+    }
+
+    /** Worker thread only, streaming takes: a segment the recorder cut. */
+    private fun streamSegment(samples: FloatArray): String {
+        val start = base
+        base += samples.size
+        cutsAdded++
+        return streamPiece(samples, start, last = false)
+    }
+
+    /**
+     * Streaming takes with [onText] only (else a no-op): every [FOLLOW_MS] feeds [recorder]'s open
+     * segment (the audio not cut yet) into the stream on the worker, so words are handed over while
+     * the user speaks instead of at the next pause cut. One poll at a time; stops at [finish] or
+     * [cancel]. Call once, after creating the recorder whose `onSegment` calls [add].
+     */
+    fun follow(recorder: Recorder) {
+        if (streamModel == null || onText == null || follower != null || cancelled) return
+        val timer = Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "stream-follow").apply { isDaemon = true } }
+        follower = timer
+        timer.scheduleWithFixedDelay({
+            if (!cancelled && polling.compareAndSet(false, true)) {
+                try {
+                    worker.execute { try { poll(recorder) } finally { polling.set(false) } }
+                } catch (_: java.util.concurrent.RejectedExecutionException) {
+                    polling.set(false)        // finish or cancel shut the worker down
+                }
+            }
+        }, FOLLOW_MS, FOLLOW_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+    }
+
+    /** Worker thread. A cut not [add]ed yet (open.cut ahead of us) waits for its [add], queued right behind. */
+    private fun poll(recorder: Recorder) {
+        if (cancelled || failure != null) return
+        val open = recorder.openSegment()
+        if (open.cut != cutsAdded || base + open.samples.size <= fedTo) return
+        runCatching { streamPiece(open.samples, base, last = false) }
+            .onSuccess { text ->
+                if (text.isEmpty() || cancelled) return@onSuccess
+                keep(text)
+                onText?.invoke(text)
+            }
+            .onFailure { failure = it }
+    }
+
     private fun keep(text: String) = synchronized(all) { all.append(join(all, text)) }
 
     /** Queues one recorded segment. Called from the recorder's capture thread. */
@@ -177,7 +270,7 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
         // runCatching: a cancel racing this call has already shut the worker down.
         runCatching { worker.execute {
             if (cancelled || failure != null) return@execute
-            runCatching { piece(samples, last = false) }
+            runCatching { if (streamModel != null) streamSegment(samples) else piece(samples, last = false) }
                 .onSuccess { text ->
                     segmentsDecoded++
                     if (text.isEmpty() || cancelled) return@onSuccess
@@ -196,10 +289,12 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
     fun finish(tail: FloatArray, minTail: Int = Transcriber.SAMPLE_RATE / 4, done: (Result<String>) -> Unit) {
         val stopped = SystemClock.elapsedRealtime()
         audioSamples += tail.size
+        follower?.shutdownNow()
         worker.execute {
             val result = runCatching {
                 failure?.let { throw it }
-                val tailText = if (tail.size >= minTail) piece(tail, last = true)
+                val tailText = if (streamModel != null) streamPiece(tail, base, last = true)
+                    else if (tail.size >= minTail) piece(tail, last = true)
                     else if (stopHeld) { stopHeld = false; OutputStyle.apply(".", allCaps) } else ""
                 // Only the last piece can end in "." (every earlier one held its stop back).
                 val last = if (dropFinalStop) withoutFinalStop(tailText) else tailText
@@ -215,12 +310,15 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
     /** Drops the take: queued segments are skipped and no callback fires. */
     fun cancel() {
         cancelled = true
+        follower?.shutdownNow()
         worker.shutdownNow()
     }
 
     companion object {
         /** Audio of the previous segment decoded again as context (desktop engine.CONTEXT_S). */
         const val CONTEXT_SECONDS = 3
+        /** Streaming takes: how often [follow] feeds the open segment (desktop `_live_tick`, 500 ms). */
+        const val FOLLOW_MS = 500L
         /** Less context than this is no context (desktop MIN_TAKE_S). */
         const val MIN_CONTEXT_SECONDS = 0.3f
         /**

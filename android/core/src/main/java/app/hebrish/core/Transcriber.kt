@@ -21,6 +21,11 @@ import com.k2fsa.sherpa.onnx.OfflineTransducerModelConfig
  * given, so [transcribe] trims silence off both ends ([trim]) and pads only the tail the model
  * needs. [load] runs one tiny decode so the first real one doesn't pay ONNX Runtime's first-run
  * setup. Long takes are decoded segment by segment while they are recorded ([TakeDecoder]).
+ *
+ * A streaming dictation model (Shakshuka, B-13, 2026-11-17) can't load as an OfflineRecognizer, so
+ * when the selected model streams ([streamingModel]) [isLoaded], [preload], [loadSelected],
+ * [transcribe] and [transcribeAfter] go to [StreamingTranscriber.dictation] instead, and [load]
+ * refuses. [TakeDecoder] feeds such a take through one live stream ([OnlineSlot.Live]).
  */
 object Transcriber {
     const val SAMPLE_RATE = 16000
@@ -72,12 +77,15 @@ object Transcriber {
      * - [onScreenOff], from the services' ACTION_SCREEN_OFF receivers: frees it unless a take is
      *   open (a decode still running finishes first: the free waits for its lock).
      */
+    /** Anything in memory: this recognizer or either streaming slot. */
+    private val anyLoaded: Boolean get() = recognizer != null || StreamingTranscriber.loaded || StreamingTranscriber.dictation.loaded
+
     fun checkIdle() {
-        if ((recognizer != null || StreamingTranscriber.loaded) && SystemClock.elapsedRealtime() - lastUse >= IDLE_UNLOAD_MS) freeInBackground(IDLE_UNLOAD_MS, "idle")
+        if (anyLoaded && SystemClock.elapsedRealtime() - lastUse >= IDLE_UNLOAD_MS) freeInBackground(IDLE_UNLOAD_MS, "idle")
     }
 
     fun onScreenOff(takeOpen: Boolean) {
-        if (!takeOpen && (recognizer != null || StreamingTranscriber.loaded)) freeInBackground(0L, "screen off")
+        if (!takeOpen && anyLoaded) freeInBackground(0L, "screen off")
     }
 
     private val freeing = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -86,7 +94,7 @@ object Transcriber {
     private fun freeInBackground(idleMs: Long, why: String) {
         if (!freeing.compareAndSet(false, true)) return
         // The language model (StreamingTranscriber, 2026-11-16) goes with it, on its own idle clock.
-        Thread { try { unloadIfIdle(idleMs, why); StreamingTranscriber.unloadIfIdle(idleMs, why) } finally { freeing.set(false) } }.start()
+        Thread { try { unloadIfIdle(idleMs, why); StreamingTranscriber.unloadIfIdle(idleMs, why); StreamingTranscriber.dictation.unloadIfIdle(idleMs, why) } finally { freeing.set(false) } }.start()
     }
 
     /**
@@ -108,20 +116,36 @@ object Transcriber {
      */
     fun onTrimMemory(level: Int, takeOpen: Boolean) {
         val pressure = level in 10..15 || level >= 40
-        if (pressure && !takeOpen && (recognizer != null || StreamingTranscriber.loaded)) freeInBackground(30_000L, "memory pressure, level $level")
+        if (pressure && !takeOpen && anyLoaded) freeInBackground(30_000L, "memory pressure, level $level")
     }
 
-    fun isLoaded(ctx: Context) = recognizer != null && loadedDir == ModelStore.dir(ctx)?.path
+    /** The selected dictation model when it streams (Shakshuka, B-13); null for an offline one. */
+    fun streamingModel(ctx: Context): Catalogue.Model? = Catalogue.selected(ctx).takeIf { it.streaming }
 
-    /** Frees the loaded model, e.g. after it moved; the next transcription loads it again. */
-    fun unload() = synchronized(lock) {
-        recognizer?.release()
-        recognizer = null
-        loadedDir = null
+    fun isLoaded(ctx: Context): Boolean {
+        streamingModel(ctx)?.let { return StreamingTranscriber.dictation.isLoaded(ctx, it) }
+        return recognizer != null && loadedDir == ModelStore.dir(ctx)?.path
+    }
+
+    /** Frees the loaded dictation model (offline or streaming), e.g. after it moved; the next transcription loads it again. */
+    fun unload() {
+        synchronized(lock) {
+            recognizer?.release()
+            recognizer = null
+            loadedDir = null
+        }
+        StreamingTranscriber.dictation.unload()
+    }
+
+    /** Blocking: loads the selected dictation model, offline or streaming (Try it's warm-up). */
+    fun loadSelected(ctx: Context) {
+        streamingModel(ctx)?.let { StreamingTranscriber.dictation.load(ctx, it); return }
+        load(ctx)
     }
 
     /** Loads on a background thread if needed. Cheap to call often (e.g. on every field focus). */
     fun preload(ctx: Context) {
+        streamingModel(ctx)?.let { StreamingTranscriber.dictation.preload(ctx, it); return }
         if (isLoaded(ctx)) { touch(); return }
         if (!ModelStore.isReady(ctx)) return
         // One at a time: it is called on every field focus, and up to 1.008 each call started a
@@ -132,8 +156,9 @@ object Transcriber {
     }
     private val preloading = java.util.concurrent.atomic.AtomicBoolean(false)
 
-    /** Blocking. Safe to call repeatedly; only the first call loads. */
+    /** Blocking. Safe to call repeatedly; only the first call loads. Offline models only: see [loadSelected]. */
     fun load(ctx: Context): OfflineRecognizer {
+        check(streamingModel(ctx) == null) { "the selected model streams: use loadSelected" }
         val want = ModelStore.dir(ctx)?.path
         recognizer?.takeIf { loadedDir == want }?.let { touch(); return it }
         synchronized(lock) {
@@ -175,6 +200,7 @@ object Transcriber {
      * native recognizer, and up to 0.7.0 that could happen under a decode still using it.
      */
     fun transcribe(ctx: Context, samples: FloatArray): String {
+        streamingModel(ctx)?.let { return StreamingTranscriber.dictation.transcribe(ctx, it, samples) }
         val speech = trim(samples)
         synchronized(lock) {
             return decode(load(ctx), speech + FloatArray((SAMPLE_RATE * PAD_SECONDS).toInt())).also { touch() }
@@ -190,6 +216,7 @@ object Transcriber {
      * context gave it nothing to say (no tokens before the boundary).
      */
     fun transcribeAfter(ctx: Context, samples: FloatArray, context: FloatArray): Pair<String, Boolean?> {
+        if (streamingModel(ctx) != null) return transcribe(ctx, samples) to null
         val before = trim(context)
         val speech = trim(samples)
         val at = before.size / SAMPLE_RATE.toFloat()
