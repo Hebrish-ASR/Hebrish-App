@@ -159,3 +159,35 @@ def test_upgrade_pkexec_exit_codes(monkeypatch, code, word):
     monkeypatch.setattr(au.subprocess, "run", lambda *a, **k: R())
     ok, msg = au.run_apt_upgrade("0.6.2")
     assert not ok and word in msg
+
+
+def test_windows_installer_and_store(tmp_path):
+    """1.041: the Velopack installer (<root>\\current\\Hebrish.exe beside <root>\\Update.exe) and the
+    MSIX package (under WindowsApps) are told apart from the portable zip."""
+    root = tmp_path / "HebrishDictation"
+    (root / "current").mkdir(parents=True)
+    (root / "Update.exe").write_bytes(b"")
+    env = {"HEBRISH_EXE": str(root / "current" / "Hebrish.exe")}
+    assert au.install_method("win32", True, env=env) == "velopack"
+    env = {"HEBRISH_EXE": str(tmp_path / "Hebrish" / "Hebrish.exe")}                 # unzipped anywhere
+    assert au.install_method("win32", True, env=env) == "windows"
+    env = {"HEBRISH_EXE": r"C:\Program Files\WindowsApps\Hebrish.Dictation_1.41.0.0_x64__abc\Hebrish.exe"}
+    assert au.install_method("win32", True, env=env) == "msix"
+    assert au.install_method("win32", False, env=env) == "source"
+
+
+@pytest.mark.parametrize("ours,semver", [("1.041", "1.41.0"), ("1.100", "1.100.0"), ("1.000", "1.0.0"),
+                                         ("2.007", "2.7.0")])
+def test_velopack_version_round_trip(ours, semver):
+    assert au.velopack_version(ours) == semver
+    assert au.our_version(semver) == ours
+
+
+def test_velopack_versions_keep_their_order():
+    vs = ["1.009", "1.010", "1.099", "1.100", "2.000"]
+    keys = [tuple(int(x) for x in au.velopack_version(v).split(".")) for v in vs]
+    assert keys == sorted(keys)
+
+
+def test_velopack_id_is_not_the_data_folder():
+    assert au.VELOPACK_ID.lower() != "hebrish"

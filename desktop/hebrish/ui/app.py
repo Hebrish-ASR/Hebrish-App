@@ -134,6 +134,7 @@ class Signals(QObject):
     downloaded = Signal(object, object)
     app_checked = Signal(object, object, bool)  # app_update.Release or None, error, manual
     app_updated = Signal(bool, str)             # ok, message: the pkexec apt upgrade
+    app_staged = Signal(object, object, bool)   # Velopack: version downloaded or None, error, manual
     maintained = Signal(object, object)         # history upkeep: result dict or None, error
     addon = Signal(str, object)                 # an add-on download finished: add-on id, error or None
     addon_progress = Signal(str, object, object)  # add-on id, bytes done, total
@@ -230,6 +231,7 @@ class Controller(QObject):
         self.sig.moved.connect(self._moved)
         self.sig.app_checked.connect(self._app_checked)
         self.sig.app_updated.connect(self._app_updated)
+        self.sig.app_staged.connect(self._app_staged)
         self.sig.maintained.connect(self._history_maintained)
         self.sig.addon.connect(self._addon_done)
         self.sig.addon_progress.connect(self._addon_progress)
@@ -1753,6 +1755,18 @@ class Controller(QObject):
 
     # -- app updates (0.6.2, app_update) ---------------------------------------------
     def check_app_update(self, manual=False):
+        if self.app_method == "msix":
+            self._app_said(f"The Microsoft Store keeps {APP_NAME} up to date.", manual)
+            return
+        if self.app_method == "velopack":
+            def stage():
+                try:
+                    self.sig.app_staged.emit(app_update.velopack_stage(), None, manual)
+                except Exception as e:
+                    self.sig.app_staged.emit(None, e, manual)
+            threading.Thread(target=stage, daemon=True, name="app-update").start()
+            return
+
         def work():
             try:
                 self.sig.app_checked.emit(app_update.fetch(), None, manual)
@@ -1791,6 +1805,34 @@ class Controller(QObject):
             self.notify(f"{APP_NAME} {rel.version} is available", "Open the window to update."
                         if self.app_method == "apt" else f"See the {APP_NAME} window for how to get it.")
         save_json(STATE_PATH, state)
+
+    def _app_staged(self, version, err, manual):
+        """Velopack (Windows installer, 1.041): a newer version is downloaded and installs itself at
+        the next start, so there is nothing for the user to do. One quiet notification per version;
+        a check from the menu also offers to restart now."""
+        log.info("app update (velopack): staged=%s err=%r", version, err)
+        if err:
+            if manual:
+                self._app_said(f"Couldn't check for a new {APP_NAME}: {err}")
+            return
+        state = load_json(STATE_PATH)
+        state["app_last_check"] = time.time()
+        save_json(STATE_PATH, state)
+        if not version or not app_update.is_newer(version):
+            self._app_said(f"Up to date: {APP_NAME} {__version__} is the latest.", manual)
+            return
+        self.app_installed = version
+        msg = f"{APP_NAME} {version} is downloaded and installs itself the next time {APP_NAME} starts."
+        self.win.app_update_status(msg)
+        self._update_tray()
+        if manual and self.state == "idle":
+            if self.win.ask_restart(msg):
+                self.restart()
+            return
+        if state.get("app_notified") != version:
+            state["app_notified"] = version
+            save_json(STATE_PATH, state)
+            self.notify(f"{APP_NAME} {version} is ready", f"It installs itself the next time {APP_NAME} starts.")
 
     def _said(self, text, manual=True):
         """A result the user asked for: in the window's status line, and as a notification when
@@ -1851,7 +1893,10 @@ class Controller(QObject):
             self.restart()
 
     def restart(self):
-        app_update.relaunch()
+        if self.app_method == "velopack":
+            app_update.velopack_restart()   # applies a downloaded update after we exit, then starts it
+        else:
+            app_update.relaunch()
         self.quit()
 
     def update_available(self) -> bool:
@@ -1887,6 +1932,9 @@ class Controller(QObject):
         self.act_autostart.setCheckable(True)
         self.act_autostart.triggered.connect(self.set_autostart)
         self.act_autostart.setChecked(autostart.enabled())
+        if self.app_method == "msix":   # a packaged app's Run key is private: the manifest's StartupTask
+            self.act_autostart.setText("Start at login: Windows Settings → Apps → Startup")
+            self.act_autostart.setEnabled(False)
         m.addSeparator()
         self.act_update = m.addAction("Install update", lambda: self.latest and self.download(self.latest))
         m.addAction("Check for model update", lambda: self.check_updates(manual=True))

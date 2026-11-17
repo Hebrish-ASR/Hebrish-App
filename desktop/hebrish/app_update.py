@@ -13,7 +13,14 @@ Model updates are model_store's job; this is the app itself. No Qt import, so it
               upgrade only hebrish), then the app offers to restart.
    deb-manual the .deb without that file (0.6.1 and earlier, or the user deleted it): link to
               the download page; the new .deb brings the source with it.
-   windows    the frozen PyInstaller build: link to the download page.
+   windows    the portable zip (frozen PyInstaller build, no installer): link to the download page,
+              which since 1.041 offers the installer.
+   velopack   the Windows installer (Velopack, 1.041, 2026-11-17): updates itself with no user action.
+              It does not read latest.json: it reads its own feed (VELOPACK_FEED, channel stable),
+              downloads in the background, and the update is applied the next time Hebrish starts
+              (Velopack's auto-apply on startup) or at once from "Restart to update".
+              research/windows-distribution/README.md.
+   msix       the Microsoft Store package: the Store updates it, so nothing is offered.
    appimage   the AppImage (build-appimage.sh; the runtime sets $APPIMAGE and $APPDIR, 2026-10-31):
               link to the download page.
    Channels (2026-10-31): the .deb follows beta (files.ubuntu, the APT repo); the AppImage and
@@ -41,7 +48,13 @@ DOWNLOAD_PAGE = "https://hebrish.app/download"
 INSTALL_DIR = Path("/usr/lib/hebrish")              # the .deb's copy of the package
 LAUNCHER = "/usr/bin/hebrish"
 SOURCES = Path("/etc/apt/sources.list.d/hebrish.sources")
-METHODS = ("apt", "deb-manual", "windows", "appimage", "source")
+METHODS = ("apt", "deb-manual", "windows", "velopack", "msix", "appimage", "source")
+
+# Velopack (Windows installer). packId is not "Hebrish": Velopack installs to %LOCALAPPDATA%\<packId>,
+# and %LOCALAPPDATA%\Hebrish is already the data folder (models, history; config.DATA_DIR).
+VELOPACK_ID = "HebrishDictation"
+VELOPACK_FEED = "https://cdn.hebrish.app/apps/windows/velopack/"
+VELOPACK_CHANNEL = "stable"
 
 # Refresh only the Hebrish source, then upgrade only hebrish (never install it, never touch
 # other packages). Option names checked against apt 3.2.0 on Ubuntu 26.04 (V, 2026-10-21, with
@@ -120,7 +133,14 @@ def install_method(platform: str = sys.platform, frozen: bool | None = None,
     exist for the tests; the app calls it bare."""
     frozen = getattr(sys, "frozen", False) if frozen is None else frozen
     if platform == "win32":
-        return "windows" if frozen else "source"
+        if not frozen:
+            return "source"
+        exe = Path(env_get(env, "HEBRISH_EXE") or sys.executable)
+        if "\\windowsapps\\" in str(exe).lower():                # an MSIX package (Store)
+            return "msix"
+        if (exe.parent.parent / "Update.exe").is_file():           # <root>\current\Hebrish.exe
+            return "velopack"
+        return "windows"
     here = Path(module_file or __file__).resolve()
     if appimage_path(env) and Path(env_get(env, "APPDIR")).resolve() in here.parents:
         return "appimage"
@@ -200,3 +220,49 @@ def relaunch(pid: int | None = None):
     subprocess.Popen(["sh", "-c", f"while kill -0 {pid} 2>/dev/null; do sleep 0.2; done; exec {launcher}"],
                      start_new_session=True, stdin=subprocess.DEVNULL,
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+# -- Velopack (Windows installer, 1.041) -------------------------------------------------------
+
+def velopack_version(version: str) -> str:
+    """Our M.NNN as the SemVer Velopack needs: '1.041' -> '1.41.0'. SemVer forbids leading zeros,
+    and the counter always has three digits, so the order is kept (1.099 < 1.100)."""
+    major, _, counter = version.partition(".")
+    return f"{int(major)}.{int(counter or 0)}.0"
+
+
+def our_version(semver: str) -> str:
+    """The inverse: '1.41.0' -> '1.041'."""
+    major, counter = semver.split(".")[:2]
+    return f"{int(major)}.{int(counter):03d}"
+
+
+def velopack_manager():
+    import velopack
+    from .model_store import USER_AGENT          # Cloudflare 403s unknown user agents on the CDN
+    http = velopack.HttpOptions([velopack.HttpHeader("User-Agent", USER_AGENT)], 120_000)
+    return velopack.UpdateManager(velopack.HttpSource(VELOPACK_FEED, http),
+                                  velopack.UpdateOptions(False, 10, VELOPACK_CHANNEL))
+
+
+def velopack_stage(on_progress=None) -> str | None:
+    """Blocking. Check the feed and download a newer version; return its version (M.NNN) or None.
+    Velopack applies a downloaded update when the app next starts (auto-apply, launcher.py)."""
+    um = velopack_manager()
+    pending = um.get_update_pending_restart()
+    if pending:
+        return our_version(pending.Version)
+    info = um.check_for_updates()
+    if not info:
+        return None
+    um.download_updates(info, on_progress)
+    return our_version(info.TargetFullRelease.Version)
+
+
+def velopack_restart():
+    """Apply the downloaded update once this process has exited, then start the new version.
+    The caller quits."""
+    um = velopack_manager()
+    pending = um.get_update_pending_restart()
+    if pending:
+        um.wait_exit_then_apply_updates(pending, silent=True, restart=True)

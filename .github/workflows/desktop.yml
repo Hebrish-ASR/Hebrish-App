@@ -194,6 +194,42 @@ jobs:
           $p = Start-Process dist\Hebrish\Hebrish.exe -ArgumentList "--selftest" -Wait -PassThru
           Get-Content selftest.txt
           if ($p.ExitCode -ne 0) { exit 1 }
+      # Velopack installer + update feed (1.041, 2026-11-17; research/windows-distribution). vpk must
+      # equal the velopack Python package pinned in pyproject.toml. Unsigned for now (SmartScreen warns
+      # on first install). Output: <packId>-stable-Setup.exe, the .nupkg(s) and releases.stable.json,
+      # published together to cdn.hebrish.app/apps/windows/velopack/ (scripts/publish-windows-cdn.sh).
+      - name: Velopack pack
+        run: |
+          dotnet tool install -g vpk --version 1.2.161
+          $sv = python -c "from hebrish import __version__ as v; from hebrish.app_update import velopack_version as f; print(f(v))"
+          "VPK_VERSION=$sv" | Out-File -Append $env:GITHUB_ENV
+          # The previous release, so vpk can build a delta; nothing there yet on the first one.
+          vpk download http --url https://cdn.hebrish.app/apps/windows/velopack/ --channel stable --outputDir Releases
+          if ($LASTEXITCODE -ne 0) { Write-Host "no previous release: full package only"; $global:LASTEXITCODE = 0 }
+          vpk pack --packId HebrishDictation --packVersion $sv --packDir dist\Hebrish --mainExe Hebrish.exe `
+            --packTitle Hebrish --packAuthors Hebrish --icon packaging\windows\icon.ico `
+            --channel stable --outputDir Releases
+          Get-ChildItem Releases
+      - name: Install silently and self-test the installed copy
+        timeout-minutes: 10
+        run: |
+          $setup = Get-ChildItem Releases\*Setup.exe | Select-Object -First 1
+          $p = Start-Process $setup.FullName -ArgumentList "--silent" -PassThru
+          $p.WaitForExit()
+          if ($p.ExitCode -ne 0) { Write-Host "Setup exit $($p.ExitCode)"; exit 1 }
+          Start-Sleep 5
+          Stop-Process -Name Hebrish -ErrorAction SilentlyContinue    # Setup starts the app after installing
+          $root = "$env:LOCALAPPDATA\HebrishDictation"
+          Get-ChildItem $root
+          if (-not (Test-Path "$root\Update.exe")) { Write-Host "no Update.exe"; exit 1 }
+          $env:HEBRISH_SELFTEST_OUT = "$PWD\selftest-installed.txt"
+          $q = Start-Process "$root\current\Hebrish.exe" -ArgumentList "--selftest" -PassThru
+          $q.WaitForExit()
+          Get-Content selftest-installed.txt
+          if ($q.ExitCode -ne 0) { exit 1 }
+          if (-not (Select-String -Path selftest-installed.txt -Pattern "install: velopack" -Quiet)) { Write-Host "not detected as velopack"; exit 1 }
+      - uses: actions/upload-artifact@v4
+        with: { name: velopack, path: "desktop/Releases" }
       - name: Zip
         run: |
           $ver = "${{ inputs.tag }}".Replace("desktop-", "")
@@ -217,9 +253,11 @@ jobs:
         with: { name: appimage, path: dist }
       - uses: actions/download-artifact@v4
         with: { name: windows-build, path: dist }
+      - uses: actions/download-artifact@v4
+        with: { name: velopack, path: dist/velopack }
       - name: Promote
         env: { GH_TOKEN: "${{ github.token }}", TAG: "${{ inputs.tag }}" }
         run: |
           gh release view "$TAG" >/dev/null   # a beta release must exist: stable promotes, never creates
-          gh release upload "$TAG" dist/*.AppImage dist/*.zip --clobber
+          gh release upload "$TAG" dist/*.AppImage dist/*.zip dist/velopack/*Setup.exe --clobber
           gh release edit "$TAG" --title "Hebrish for desktop ${TAG#desktop-} (stable)"
