@@ -7,6 +7,15 @@
   "entries": [
     {
       "date": "2026-11-17",
+      "tag": "Desktop 1.041",
+      "title": "Windows gets an installer that keeps Hebrish up to date",
+      "summary": "Windows now installs with a normal installer: for your user only, no admin rights, with Start menu and desktop shortcuts and an uninstaller.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-17",
       "tag": "Desktop 1.040",
       "title": "Model downloads survive a dropped connection",
       "summary": "A model download that loses its connection or times out no longer fails: it waits, retries and carries on from where it stopped.",
@@ -174,15 +183,6 @@
       "tag": "Site",
       "title": "Home page second pass, and a dataset index",
       "summary": "The home page leads with what Hebrish is, and regular speech recognition and Hebrish are side by side at the top again.",
-      "platforms": [
-        "site"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Site",
-      "title": "Just Sabich, and quicker Android downloads",
-      "summary": "The home page now says Sabich, with no version number. The model page shows the version in the apps, read live, and the latest benchmarked release.",
       "platforms": [
         "site"
       ]
