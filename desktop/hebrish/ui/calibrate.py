@@ -149,7 +149,7 @@ class CalibrateDialog(QDialog):
 
     def _measure(self, quiet, speech):
         try:
-            self.measured.emit(calibrate.run(quiet, speech), None)
+            self.measured.emit(calibrate.run(quiet, speech, self.ctl.cfg["vad_custom_path"]), None)
         except Exception as e:
             self.measured.emit(None, e)
 

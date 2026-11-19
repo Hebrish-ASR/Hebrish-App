@@ -9,6 +9,24 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-19-02: Custom VAD model: one config path to a Silero-format ONNX, no registry
+
+- **Decision:** Config `vad_custom_path` (default empty) points at a Silero-format `.onnx`. When it is set
+  and `vad.check()` passes (a sherpa-onnx `VoiceActivityDetector` builds from it and takes about 1 s of
+  zeros), it replaces the bundled `silero_vad.onnx` everywhere: the live detector and calibration. No SHA
+  pin for it. A file that fails the check on set or on load is never used: the bundled model runs, the
+  reason is logged and shown on Models > Utilities and in the status line, and dictation is unaffected.
+  Desktop only. Not in the local API's `/v1/app/settings` (that route leaves paths out on purpose).
+- **Why:** Daniel, 2026-11-19: "support for a custom [VAD]: just provide the path to your custom VAD ... it's
+  Silero, so point it to your custom Silero." He is about to fine-tune Silero on his own mics and
+  non-speech sounds and wants to try the result without a release.
+- **Alternatives:** A VAD registry with ids, SHA pins, downloads and per-model threshold maps (proposed in
+  the fine-tune planning repo's `docs/app-integration.md`): more than one file needs, and the fine-tune is
+  not measured yet; revisit if several models need to coexist. A separate onnxruntime wrapper for non-Silero
+  graphs: only if a fine-tune stops being Silero-compatible.
+- **By:** Daniel (the request), the agent (the validation and fallback rule).
+- **Links:** B-110, B-71a, `desktop/docs/maintaining.md` ("Custom VAD model").
+
 ### D-2026-11-19-01: The local API may serve listed web origins, two routes only
 
 - **Decision:** An opt-in list, `local_api_web_origins` (default empty), of exact web origins that may call

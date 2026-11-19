@@ -167,6 +167,9 @@ DEFAULTS = {
                                   # Transcription Mode, the local API; also in the tray menu
     "vad_silero": True,           # with Voice detection on, use Silero VAD (bundled, vad.py,
                                   # 2026-10-29); off = the energy rule
+    "vad_custom_path": "",        # a Silero-format .onnx used instead of the bundled one (vad.select,
+                                  # Daniel, 2026-11-19: "just provide the path to your custom VAD");
+                                  # "" or a file that won't load = the bundled model
     "vad_noise_filter": 60,       # Noise filter 0-100 (vad.threshold; 50 = the old fixed 0.5). Daniel,
                                   # 2026-11-05: room noise came out as stray words, so a stricter default
     "num_threads": 0,             # decoder threads; 0 = auto (physical cores, at most 8)

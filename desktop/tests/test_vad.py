@@ -77,3 +77,36 @@ def test_set_level_rebuilds_the_detector():
     s.set_level(100)
     assert s._det is None and s._cfg.silero_vad.threshold == pytest.approx(0.8)
 
+
+
+# Custom VAD model (vad_custom_path, 2026-11-19): a Silero-format file replaces the bundled one;
+# a file that won't load never does.
+def test_custom_path_default_is_empty():
+    from hebrish import config
+    assert config.DEFAULTS["vad_custom_path"] == ""
+
+
+def test_custom_model_is_loaded_and_used(tmp_path):
+    pytest.importorskip("sherpa_onnx")
+    mine = tmp_path / "my-silero.onnx"
+    mine.write_bytes(vad.BUNDLED.read_bytes())           # a copy: not the pinned path, no SHA check
+    assert vad.check(mine) is None
+    sel = vad.select(str(mine))
+    assert sel.custom and sel.path == mine and sel.error is None
+    assert vad.Silero(sel.path).path == mine             # the detector is built from it
+
+
+def test_garbage_custom_model_falls_back_to_bundled(tmp_path):
+    pytest.importorskip("sherpa_onnx")
+    bad = tmp_path / "bad.onnx"
+    bad.write_bytes(b"not an onnx file")
+    assert vad.check(bad)
+    sel = vad.select(str(bad))
+    assert not sel.custom and sel.path == vad.BUNDLED and sel.error
+
+
+def test_missing_or_empty_custom_path(tmp_path):
+    gone = vad.select(str(tmp_path / "gone.onnx"))
+    assert gone.path == vad.BUNDLED and not gone.custom and "not found" in gone.error
+    none = vad.select("")
+    assert none.path == vad.BUNDLED and not none.custom and none.error is None

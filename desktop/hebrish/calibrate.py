@@ -134,7 +134,8 @@ def measure(quiet: np.ndarray, speech: np.ndarray, detector) -> Result:
                   float(noise[safe]), float(noise[optimized]))
 
 
-def run(quiet: np.ndarray, speech: np.ndarray) -> Result | None:
-    """measure() with a fresh detector, so a live take's isn't touched; None without Silero."""
-    path = vad.installed()
+def run(quiet: np.ndarray, speech: np.ndarray, custom: str = "") -> Result | None:
+    """measure() with a fresh detector, so a live take's isn't touched; None without Silero.
+    custom: `vad_custom_path`, so the dial is calibrated against the model that will run."""
+    path = vad.select(custom).path
     return measure(settle(quiet), settle(speech), vad.Silero(path)) if path else None

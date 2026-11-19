@@ -176,6 +176,7 @@ class Controller(QObject):
         self.last_lang: dict | None = None        # the last take's, for the Dictate tab
         self.addon_busy: dict[str, threading.Event] = {}     # add-on id -> cancel, while downloading
         self.addon_done: dict[str, float] = {}               # add-on id -> fraction downloaded
+        self.vad_error: str | None = None         # why vad_custom_path was not used, if it wasn't
         self.apply_vad()
         self.recorder = audio.Recorder()                       # every take: hotkey or Dictate tab
         self.monitor = audio.Recorder(max_s=0)                 # Test mic: level only, keeps nothing
@@ -1748,16 +1749,25 @@ class Controller(QObject):
 
     # -- add-ons (Models > Utilities, 2026-10-29) --------------------------------------
     def apply_vad(self):
-        """Voice detection uses Silero (bundled) unless `vad_silero` is off (vad.py)."""
-        path = vad.installed() if self.cfg["vad_silero"] else None
+        """Voice detection uses Silero unless `vad_silero` is off (vad.py): the user's
+        `vad_custom_path` when it loads, else the bundled one. A custom file that fails is reported
+        (log + status line, `vad_error`) and dictation carries on with the bundled model."""
+        sel = vad.select(self.cfg["vad_custom_path"]) if self.cfg["vad_silero"] else vad.Selection(None, False, None)
+        self.vad_error = sel.error
+        win = getattr(self, "win", None)            # apply_vad also runs before the window exists
+        if sel.error and win:
+            win.status(f"Custom VAD model not used (bundled one is active): {sel.error}")
+        path = sel.path
         if path is None:
             engine.silero = None
         elif engine.silero is None or engine.silero.path != path:
             engine.silero = vad.Silero(path)
         if engine.silero:
             engine.silero.set_level(self.cfg["vad_noise_filter"])
-        log.info("voice detection: %s, noise filter %s", "silero" if engine.silero else "energy",
-                 self.cfg["vad_noise_filter"])
+        log.info("voice detection: %s (%s), noise filter %s", "silero" if engine.silero else "energy",
+                 "custom " + path.name if sel.custom else "bundled", self.cfg["vad_noise_filter"])
+        if win and hasattr(win, "refresh_vad_model"):
+            win.refresh_vad_model()
 
     @staticmethod
     def addon_fetchers() -> dict:

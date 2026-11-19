@@ -11,10 +11,18 @@ cuts (`live_cut`, `stretch_pauses`) stay on the energy rule: those cut points ar
 The file is sherpa-onnx's copy of Silero VAD (`asr-models` release, SHA-256 below), run through
 `sherpa_onnx.VoiceActivityDetector` (no new dependency). Android can use the same file through the
 same sherpa-onnx API (1.13.8 there too).
+
+Custom model (Daniel, 2026-11-19: "support for a custom [VAD]: just provide the path to your custom
+VAD ... it's Silero, so point it to your custom Silero"): config `vad_custom_path`, a Silero-format
+ONNX file (a fine-tune). When it is set and passes `check()` it replaces BUNDLED everywhere (live
+detector, calibration); no SHA pin. A file that fails the check is never used: `select()` falls back
+to BUNDLED and returns the error for the log and the Models page. Docs: maintaining.md, "VAD".
 """
 
+import logging
 import threading
 from pathlib import Path
+from typing import NamedTuple
 
 import numpy as np
 
@@ -39,8 +47,55 @@ def threshold(level: int) -> float:
     return 0.2 + 0.006 * min(100, max(0, int(level)))
 
 
+log = logging.getLogger(__name__)
+
+
 def installed() -> Path | None:
     return BUNDLED if BUNDLED.is_file() else None
+
+
+def check(path) -> str | None:
+    """None if `path` loads as a Silero VAD in sherpa-onnx and takes ~1 s of silence; else why not.
+    Run on set and on load of `vad_custom_path`. Never raises."""
+    try:
+        p = Path(path).expanduser()
+        if not p.is_file():
+            return f"file not found: {p}"
+        import sherpa_onnx
+        cfg = sherpa_onnx.VadModelConfig()
+        cfg.silero_vad.model = str(p)
+        cfg.silero_vad.threshold = THRESHOLD
+        cfg.silero_vad.min_speech_duration = MIN_SPEECH_S
+        cfg.silero_vad.min_silence_duration = MIN_SILENCE_S
+        cfg.silero_vad.window_size = WINDOW
+        cfg.sample_rate = SAMPLE_RATE
+        cfg.num_threads = 1
+        det = sherpa_onnx.VoiceActivityDetector(cfg, buffer_size_in_seconds=5)
+        zeros = np.zeros(WINDOW, np.float32)
+        for _ in range(SAMPLE_RATE // WINDOW):
+            det.accept_waveform(zeros)
+        det.flush()
+        return None
+    except Exception as e:                      # sherpa raises RuntimeError, or aborts the load with a message
+        return f"{type(e).__name__}: {e}".strip()[:300] or "could not be loaded"
+
+
+class Selection(NamedTuple):
+    path: Path | None             # the model to run: custom if it passed, else the bundled one
+    custom: bool                  # True when `path` is the user's file
+    error: str | None             # why the custom file was not used (None when none was asked for)
+
+
+def select(custom: str = "") -> Selection:
+    """The model `vad_custom_path` asks for, or BUNDLED (error says why) when it can't be used."""
+    custom = (custom or "").strip()
+    if custom:
+        err = check(custom)
+        if err is None:
+            return Selection(Path(custom).expanduser(), True, None)
+        log.warning("custom VAD %s not used, falling back to the bundled model: %s", custom, err)
+        return Selection(installed(), False, err)
+    return Selection(installed(), False, None)
 
 
 class Silero:

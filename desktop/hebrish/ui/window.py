@@ -1456,6 +1456,7 @@ class MainWindow(QMainWindow):
         if aid == vad.MODEL_ID:
             use = self._check("vad_silero", "Use it for voice detection", self.ctl.apply_vad)
             col.addWidget(use)
+            col.addWidget(self._vad_custom_block())
         body = QLabel(tech)
         body.setWordWrap(True)
         body.setOpenExternalLinks(True)
@@ -1486,6 +1487,71 @@ class MainWindow(QMainWindow):
         self.addon_rows[aid] = {"status": status, "dl": dl, "rm": rm, "use": use, "size": size,
                                 "pick": pick, "chip": chip}
         return f
+
+    # Custom VAD model (Daniel, 2026-11-19: "just provide the path to your custom VAD"): `vad_custom_path`,
+    # checked by vad.check() before it is saved; Controller.apply_vad falls back to the bundled model
+    # on a bad file and says why in `ctl.vad_error`.
+    def _vad_custom_block(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(0, 4, 0, 0)
+        lay.setSpacing(3)
+        lay.addWidget(QLabel("<b>Custom VAD model (Silero ONNX)</b>"))
+        row = QHBoxLayout()
+        path = QLabel()
+        path.setStyleSheet("font-size: 12px;")
+        path.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        pick = QPushButton("Choose file…")
+        pick.clicked.connect(self._pick_vad_model)
+        clear = QPushButton("Clear")
+        clear.clicked.connect(self._clear_vad_model)
+        row.addWidget(path, 1)
+        row.addWidget(pick)
+        row.addWidget(clear)
+        lay.addLayout(row)
+        active = QLabel()
+        active.setWordWrap(True)
+        active.setTextFormat(Qt.RichText)
+        active.setStyleSheet("font-size: 12px;")
+        lay.addWidget(active)
+        self.vad_custom = {"path": path, "clear": clear, "active": active}
+        self.refresh_vad_model()
+        return w
+
+    def refresh_vad_model(self):
+        """The path row and the 'Active:' line (bundled vs the custom file's name)."""
+        r = getattr(self, "vad_custom", None)
+        if not r:
+            return
+        custom = (self.cfg["vad_custom_path"] or "").strip()
+        r["path"].setText(custom or "<span style='color:gray'>None: the bundled model is used</span>")
+        r["clear"].setEnabled(bool(custom))
+        err = getattr(self.ctl, "vad_error", None)
+        if err:
+            r["active"].setText(f"<span style='color:#b3261e'>Not used: {err}</span><br>"
+                                "Active: bundled Silero VAD")
+        elif custom and self.cfg["vad_silero"]:
+            r["active"].setText(f"Active: custom model <b>{Path(custom).name}</b>")
+        else:
+            r["active"].setText("Active: bundled Silero VAD" if self.cfg["vad_silero"] else
+                                "Not active: voice detection uses loudness (the switch above is off)")
+
+    def _pick_vad_model(self):
+        start = (self.cfg["vad_custom_path"] or "") or str(Path.home())
+        f, _ = QFileDialog.getOpenFileName(self, "Custom VAD model (Silero ONNX)", start, "ONNX models (*.onnx)")
+        if not f:
+            return
+        err = vad.check(f)
+        if err:                                   # not saved: the old setting stays
+            QMessageBox.warning(self, "Custom VAD model", f"This file can't be used as a Silero VAD model, so it was "
+                                f"not set. The bundled model stays active.\n\n{err}")
+            return
+        self.cfg.set("vad_custom_path", f)
+        self.ctl.apply_vad()
+
+    def _clear_vad_model(self):
+        self.cfg.set("vad_custom_path", "")
+        self.ctl.apply_vad()
 
     def _update_addons(self):
         for aid, r in getattr(self, "addon_rows", {}).items():

@@ -219,6 +219,23 @@ Also, its licence is Apache 2.0 with added terms (no deployment that competes wi
 offerings), so it is not offered (D-2026-10-29-02). Gaussian noise is a stand-in, not a recorded
 room. Not measured: WER on the benchmark with Silero on; Android timing. Tests: `tests/test_vad.py`.
 
+**Custom VAD model (unreleased, 2026-11-19; B-110, D-2026-11-19-02).** Daniel: "just provide the path to
+your custom VAD ... it's Silero, so point it to your custom Silero" (he is fine-tuning Silero on his own
+mics and non-speech sounds). Config `vad_custom_path` (default `""`): a Silero-format ONNX file.
+`vad.select(path)` returns the model to run: the custom file when `vad.check()` passes, else the bundled
+one plus the error. `check()` builds a `sherpa_onnx.VoiceActivityDetector` from the file and feeds 1 s of
+zeros; any exception means "not usable". No SHA pin on the custom file. `Controller.apply_vad` (start-up,
+the Use-it switch, the Noise filter, a new path) calls `select`, so the live detector uses the custom file;
+on failure it logs a warning, sets `Controller.vad_error` and writes the status line, and the bundled model
+runs. `calibrate.run(..., custom)` uses the same selection. UI: Models > Utilities > Silero VAD, "Custom VAD
+model (Silero ONNX)": path, *Choose file…* (a bad pick is refused with the reason and not saved), *Clear*, and
+an "Active:" line (bundled, or the custom file's name). The threshold dial and window size are Silero's
+(512 samples at 16 kHz) whatever the file, so a fine-tune must keep that interface. Deliberately not in
+`/v1/app/settings` (it leaves paths out, `ui/api_control.py`). Android has none (no Silero there, B-71a).
+Tests: `tests/test_vad.py` (a tmp copy of the bundled file loads and is used; a garbage file, a missing
+file and an empty path fall back). Verified (V): those tests and the row's labels off-screen; not seen in
+the running app, and not tried with a real fine-tune (I).
+
 ## Floating overlay (0.3.0, 2026-10-20)
 
 Daniel: "an optional overlay to match the android app". `ui/overlay.py`. Config `overlay`
