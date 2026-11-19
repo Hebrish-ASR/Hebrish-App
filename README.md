@@ -26,7 +26,7 @@ app copies Parlance's settings (not its hotkey) and hardlinks its downloaded mod
 Every Hebrish model with its status, update cycle, use case and platforms (generated from [hebrish.app/models/inventory](https://hebrish.app/models/inventory)). The apps themselves offer the models marked Android or Desktop under "In the Hebrish apps".
 
 <!-- model-inventory:begin -->
-> Every model here can still be downloaded, and access requests for the older and less maintained ones are still approved. We strongly recommend the up-to-date models (marked Recommended): they are the ones still being trained, so they recognise the widest vocabulary.
+> Every model here can still be downloaded, and access requests for the older and less maintained ones are still approved. The up-to-date models (marked Recommended) are strongly recommended: they are the ones still being trained, so they recognise the widest vocabulary.
 
 | Model | Status | Use case | Updates | Platforms | In the Hebrish apps | Latest | Last release |
 |---|---|---|---|---|---|---|---|
