@@ -2088,7 +2088,13 @@ relaxes that guard as an opt-in, off by default.
 - **Verified** (V, 2026-11-19, Ubuntu): `tests/test_local_api.py` (allowed origin with CORS headers,
   control still required, unknown origins and look-alikes refused without CORS, every other route 403
   from an allowed origin, preflight headers, no-Origin unchanged, the list read live,
-  `parse_web_origins`); the Settings card rendered off-screen. **Not run:** a real browser page
+  `parse_web_origins`); the Settings card rendered off-screen; and the installed 1.042 .deb from the APT
+  repository (V, 2026-11-19, Ubuntu) with curl: the preflight (204 and all five headers), `/health` and
+  `{"action": "stop"}` from the allowed origin (200 with CORS headers, `state` idle), an unknown origin
+  (403, no CORS headers), `/v1/history` from the allowed origin (403). The first 1.042 tag failed CI:
+  `test_parse_web_origins` imported `hebrish.ui` without `importorskip("PySide6")` (the known trap); the
+  tag was deleted and re-made, nothing had been released from it. 1.042 is an Ubuntu beta; Windows
+  and the AppImage stay on 1.041. **Not run:** a real browser page
   (Chrome's newer Local Network Access permission prompt may also ask the user once per site,
   independent of these headers), Windows.
 

@@ -1354,9 +1354,9 @@
       },
       "windows": {
         "status": "present",
-        "since": "1.042",
+        "since": "unreleased",
         "verified": false,
-        "evidence": "shared desktop code; not run on Windows"
+        "evidence": "shared desktop code; not run on Windows. 1.042 was an Ubuntu beta; Windows is on 1.041 until a stable promotion"
       }
     },
     {
