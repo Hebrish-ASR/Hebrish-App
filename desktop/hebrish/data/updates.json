@@ -2,9 +2,18 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "desktop",
-  "built": "2026-11-17",
+  "built": "2026-11-19",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-19",
+      "tag": "Desktop 1.042",
+      "title": "A web page you choose can start and stop dictation",
+      "summary": "Web pages allowed (Settings, Local API; empty unless you fill it in): list a site, and a page on it can show whether Hebrish is recording and start or stop dictation, so it can have its own mic button.",
+      "platforms": [
+        "desktop"
+      ]
+    },
     {
       "date": "2026-11-17",
       "tag": "Desktop 1.041",
@@ -174,15 +183,6 @@
       "tag": "Site",
       "title": "The home page opens with the comparison, and a shorter footer",
       "summary": "The first thing on the home page is now regular speech recognition typing a sentence and getting the Hebrew wrong, then Hebrish typing it, then the headline benchmark numbers.",
-      "platforms": [
-        "site"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Site",
-      "title": "Home page second pass, and a dataset index",
-      "summary": "The home page leads with what Hebrish is, and regular speech recognition and Hebrish are side by side at the top again.",
       "platforms": [
         "site"
       ]

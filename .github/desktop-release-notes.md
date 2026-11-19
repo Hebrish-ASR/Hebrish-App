@@ -1,5 +1,7 @@
-**1.041: Windows gets an installer that keeps Hebrish up to date.**
+**1.042: Web pages you choose can start and stop dictation, and the local API covers the rest of the app.**
 
-- **Windows installer** (`HebrishDictation-stable-Setup.exe`, Velopack): per-user, no admin rights, Start menu and desktop shortcuts, an uninstaller. Installed this way Hebrish updates itself: new versions download in the background and install at the next start, or at once from *Restart Hebrish to finish updating*. Unsigned, so SmartScreen may warn on first install.
-- Model downloads survive a dropped connection (1.040): retry with backoff and resume from the partial file.
-- Ubuntu and Windows: Windows moves up from 1.026. The AppImage stays on 1.026 for now. The portable zip is still attached for those who want it.
+- **Web pages allowed** (Settings → Local API, empty by default): list a web page's origin, e.g. `https://label.example.com`, and that page may check `GET /health` (now with `state`: idle, recording or busy) and start or stop dictation with `POST /v1/app/dictation` (with the control switch on), so it can have its own mic button. It gets nothing else: history, the dictionary and settings still refuse web pages, as does every unlisted site. Config key `local_api_web_origins`.
+- **Local API control**: every dictation action key (pause, resume, retake, discard, send, paste last), correcting and deleting transcripts, choosing the dictation and Transcription Mode microphones, model download progress and removal, Transcription Mode on a file, and a live stream of changes (`GET /v1/app/events`). `GET /v1` lists every route.
+- **Gefilte PoC** as a second Hebrew model, with *Use for Hebrew* to pick which downloaded Hebrew model Hebrew takes use.
+- New installs dictate English by default (was Follow keyboard); saved settings keep their value. Sabich stays the recommended model.
+- Ubuntu and Windows. Downloads: [hebrish.app/download](https://hebrish.app/download).
