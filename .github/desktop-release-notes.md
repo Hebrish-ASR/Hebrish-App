@@ -4,4 +4,4 @@
 - **Local API control**: every dictation action key (pause, resume, retake, discard, send, paste last), correcting and deleting transcripts, choosing the dictation and Transcription Mode microphones, model download progress and removal, Transcription Mode on a file, and a live stream of changes (`GET /v1/app/events`). `GET /v1` lists every route.
 - **Gefilte PoC** as a second Hebrew model, with *Use for Hebrew* to pick which downloaded Hebrew model Hebrew takes use.
 - New installs dictate English by default (was Follow keyboard); saved settings keep their value. Sabich stays the recommended model.
-- Ubuntu and Windows. Downloads: [hebrish.app/download](https://hebrish.app/download).
+- Ubuntu beta (the .deb and the APT repository); Windows and the AppImage stay on 1.041 until a stable promotion. Downloads: [hebrish.app/download](https://hebrish.app/download).

@@ -523,6 +523,7 @@ def test_default_is_no_web_origin(api):
 
 
 def test_parse_web_origins():
+    pytest.importorskip("PySide6")       # Linux CI has no PySide6 (desktop-v1.042's first tag failed on it)
     from hebrish.ui.window import parse_web_origins
     assert parse_web_origins("https://Label.Example.com/, http://localhost:8080 https://x.org/path ftp://a "
                              "https://label.example.com") == ["https://label.example.com", "http://localhost:8080"]
