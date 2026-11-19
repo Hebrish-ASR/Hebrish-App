@@ -45,7 +45,7 @@ Every Hebrish model with its status, update cycle, use case and platforms (gener
 | [Whisper Hebrish](https://huggingface.co/danielrosehill/Whisper-Hebrish) | Legacy · Superseded (use [Sabich](https://hebrish.app/models/sabich) instead) | Dictation (speech to text) | None | GPU server | No | Version 2 | 2026-10-17 |
 | [Whisper Hebrish Small ACFT](https://huggingface.co/Hebrish/Whisper-Hebrish-Small-ACFT) | Legacy · Superseded (use [Sabich](https://hebrish.app/models/sabich) instead) | Dictation (speech to text) | None | Android | No | small-en-en30-acft | 2026-10-17 |
 | [Fritter](https://huggingface.co/Fritter-ASR/Fritter) | Separate project · Active | Dictation (speech to text) | Regular incremental updates | Linux, Windows, macOS, Android | No | Fritter v1.2 | 2026-11-05 |
-| [Gefilte](https://huggingface.co/Hebrish/Gefilte) | Separate project · Proof of concept | Dictation (speech to text) | Early development | Linux, Windows, Low-power / wearables | No | Gefilte PoC-1 | 2026-11-17 |
+| [Gefilte](https://huggingface.co/Hebrish/Gefilte) | Separate project · Proof of concept | Dictation (speech to text) | Early development | Linux, Windows, Low-power / wearables | Desktop | Gefilte PoC-1 | 2026-11-17 |
 
 Generated 2026-11-19 from [hebrish.app/models/inventory](https://hebrish.app/models/inventory) ([JSON](https://hebrish.app/data/model-inventory.json)).
 <!-- model-inventory:end -->
@@ -69,10 +69,11 @@ be), and whether speed or accuracy matters more, and answers with the same rules
 | | Sabich-Canary-Qwen-2.5B | Canary-Qwen 2.5B | listed; not runnable in the apps yet | Best on plain English, behind Qwen3-ASR on Hebrew words. Desktop GPU, about 6 GB VRAM (NeMo) |
 | | Sabich-Parakeet-110M | Parakeet TDT-CTC 110M | available | Older phones, wearables: a fifth of the size (137 MB), faster, more mistakes |
 | | Sabich-asr4all-M / -S | FUTO asr4all 56M / 28M | listed; not runnable in the apps yet | Tiny, for wearables; writes numbers as words |
-| **Jachnun** (code-switching only) | **Jachnun** | Parakeet TDT 0.6B v2 | available | English + Hebrew vocabulary (*teudat zehut*, *arnona*, *bituach leumi*), in Latin letters. Recommended until 2026-10-21. [Models](https://hebrish.app/models#parakeet) |
-| **Shakshuka** (streaming) | **Shakshuka** | Nemotron speech streaming 0.6B | desktop 0.7.0+ (streams while you talk); not on Android yet | Live text while you talk |
-| **Falafel** (voice commands, added 2026-11-10) | **Falafel** | Parakeet TDT 0.6B v2 | listed; "Coming soon" until its first release is on the CDN (1.028+), then downloadable | Short spoken commands to a computer or phone, Hebrew words included. [Model card](https://huggingface.co/Hebrish/Falafel) |
-| | Falafel-Parakeet-110M | Parakeet TDT-CTC 110M | as Falafel | Voice commands on a phone or laptop: a fifth of the size, faster, more mistakes |
+| **Shakshuka** (streaming) | **Shakshuka** | Nemotron speech streaming 0.6B | desktop 0.7.0+ (streams while you talk); Android support is built but not released yet (after Android 1.036, 2026-11-19) | Live text while you talk |
+| **Falafel** (voice commands) | **Falafel** | Parakeet TDT 0.6B v2 | available (1.028+; v1.0 2026-11-10, v1.1 2026-11-16) | Short spoken commands to a computer or phone, Hebrew words included. [Model page](https://hebrish.app/models/falafel) |
+| | Falafel-Parakeet-110M | Parakeet TDT-CTC 110M | available (1.028+) | Voice commands on a phone or laptop: a fifth of the size, faster, more mistakes |
+| **Hebrew** (Hebrew script; not picked as a dictation model) | Hebrew Zipformer 66M | ivrit.ai Zipformer2 66M streaming | used automatically when the keyboard is Hebrew (Android 1.034+, desktop 1.042) | Hebrew in Hebrew letters. [Model card](https://huggingface.co/Hebrish/Zipformer2-66M-Streaming-He) |
+| | Gefilte (PoC) | Hebrew Zipformer 66M | desktop 1.042 (Use for Hebrew); Android not released yet | Hebrew in Daniel's own accent, an early proof of concept. [Model card](https://huggingface.co/Hebrish/Gefilte) |
 | **Parakeet (stock)** | | Parakeet TDT 0.6B v2 | available | Standard English, without the Hebrew words. NVIDIA's release, unchanged |
 
 Everything the apps can run today is a sherpa-onnx int8 offline transducer. A version on an
@@ -80,7 +81,7 @@ engine the app doesn't have yet is shown greyed, with where it runs instead and 
 
 The fine-tunes are trained on **one speaker's voice**; recordings from more voices are welcome
 ([hebrish.app/contact?topic=samples](https://hebrish.app/contact?topic=samples)). Those are the only
-models Hebrish ships. The other Parakeet fine-tunes (technical vocabulary, personal voice) are in
+models Hebrish ships. Jachnun (code-switching only) left the apps in Android 1.013 and Desktop 1.020 (2026-11-04) and stays on Hugging Face. The other Parakeet fine-tunes (technical vocabulary, personal voice) are in
 [Parlance](https://github.com/danielrosehill/Parlance-Dictation), the general-purpose twin of this
 app; `desktop/tests/test_shared.py` fails if any other model appears in this catalogue.
 
