@@ -28,24 +28,43 @@ Every Hebrish model with its status, update cycle, use case and platforms (gener
 <!-- model-inventory:begin -->
 > Every model here can still be downloaded, and access requests for the older and less maintained ones are still approved. The up-to-date models (marked Recommended) are strongly recommended: they are the ones still being trained, so they recognise the widest vocabulary.
 
+### Speech to text
+
+Speech recognition (ASR): dictation, streaming and voice commands. [hebrish.app/models/asr](https://hebrish.app/models/asr)
+
 | Model | Status | Use case | Updates | Platforms | In the Hebrish apps | Latest | Last release |
 |---|---|---|---|---|---|---|---|
 | [Sabich](https://huggingface.co/Hebrish/Sabich-Rolling) | **Recommended** · Active | Dictation (speech to text) | Rolling: retrained from the latest weights as new recordings arrive | Android, Linux, Windows, macOS | Android + Desktop | Sabich v5.1 | 2026-11-19 |
 | [Shakshuka](https://huggingface.co/Hebrish/Shakshuka) | **Recommended** · Occasional updates | Streaming dictation | Retrained now and then while its accuracy is worked on | Linux, Windows | Desktop | Shakshuka v2.2 | 2026-11-17 |
 | [Falafel](https://huggingface.co/Hebrish/Falafel) | **Recommended** · Active | Voice commands | Updated alongside Sabich | Android, Linux, Windows | Android + Desktop | Falafel v1.1 | 2026-11-16 |
-| [Meorav](https://huggingface.co/Hebrish/Meorav) | **Recommended** · Active | Text to speech | New versions as the TTS work moves on | GPU server | No | Meorav v3.0 | 2026-11-15 |
 | [Jachnun](https://huggingface.co/Hebrish/Jachnun) | Available as is · Occasional updates (use [Sabich](https://hebrish.app/models/sabich) instead) | Dictation (speech to text) | Occasional updates, no schedule | Browser, Linux, Windows, macOS | No | Jachnun v1.0 | 2026-10-19 |
 | [Sabich-Canary-Qwen-2.5B](https://huggingface.co/Hebrish/Sabich-Canary-Qwen-2.5B) | Available as is · Frozen (use [Sabich](https://hebrish.app/models/sabich) instead) | Dictation (speech to text) | None planned | GPU server | No | Sabich-Canary-Qwen-2.5B v1.0 | 2026-10-21 |
 | [Sabich-Parakeet-110M](https://huggingface.co/Hebrish/Sabich-Parakeet-110M) | Available as is · Frozen (use [Sabich](https://hebrish.app/models/sabich) instead) | Dictation (speech to text) | None planned | Android, Low-power / wearables | No | Sabich-Parakeet-110M v1.0 | 2026-10-21 |
 | [Sabich-Qwen3-ASR-1.7B](https://huggingface.co/Hebrish/Sabich-Qwen3-ASR-1.7B) | Available as is · Proof of concept (use [Sabich](https://hebrish.app/models/sabich) instead) | Dictation (speech to text) | None: a one-off experiment | GPU server | No | Sabich-Qwen3-ASR-1.7B v1.0 | 2026-10-21 |
 | [Sabich-asr4all](https://huggingface.co/Hebrish/Sabich-asr4all-S) | Available as is · Frozen (use [Sabich](https://hebrish.app/models/sabich) instead) | Dictation (speech to text) | None planned | Low-power / wearables | No | Sabich-asr4all-S and -M v1.0 | 2026-10-21 |
-| [Meorav-Daniel](https://huggingface.co/Hebrish/Meorav-Daniel) | Available as is · Frozen | Text to speech | None planned | GPU server | No | Meorav-Daniel v1.0 | 2026-11-15 |
-| [Meorav-Multi-Voice](https://huggingface.co/Hebrish/Meorav-Multi-Voice) | Available as is · Frozen (use [Meorav](https://hebrish.app/models/meorav) instead) | Text to speech | None planned | GPU server | No | Meorav-Multi-Voice v1.0 | 2026-11-16 |
-| [Hebrew-Latin Token Classifier](https://huggingface.co/Hebrish/Hebrew-Latin-Token-Classifier) | Available as is · Frozen | Accessory (text tools) | None planned | Linux, Windows, macOS, GPU server | No | v1 | 2026-10-15 |
 | [Whisper Hebrish](https://huggingface.co/danielrosehill/Whisper-Hebrish) | Legacy · Superseded (use [Sabich](https://hebrish.app/models/sabich) instead) | Dictation (speech to text) | None | GPU server | No | Version 2 | 2026-10-17 |
 | [Whisper Hebrish Small ACFT](https://huggingface.co/Hebrish/Whisper-Hebrish-Small-ACFT) | Legacy · Superseded (use [Sabich](https://hebrish.app/models/sabich) instead) | Dictation (speech to text) | None | Android | No | small-en-en30-acft | 2026-10-17 |
 | [Fritter](https://huggingface.co/Fritter-ASR/Fritter) | Separate project · Active | Dictation (speech to text) | Regular incremental updates | Linux, Windows, macOS, Android | No | Fritter v1.2 | 2026-11-05 |
 | [Gefilte](https://huggingface.co/Hebrish/Gefilte) | Separate project · Proof of concept | Dictation (speech to text) | Early development | Linux, Windows, Low-power / wearables | Desktop | Gefilte PoC-1 | 2026-11-17 |
+
+### Text to speech
+
+Speech synthesis (TTS). [hebrish.app/models/tts](https://hebrish.app/models/tts)
+
+| Model | Status | Use case | Updates | Platforms | In the Hebrish apps | Latest | Last release |
+|---|---|---|---|---|---|---|---|
+| [Meorav](https://huggingface.co/Hebrish/Meorav) | **Recommended** · Active | Text to speech | New versions as the TTS work moves on | GPU server | No | Meorav v3.0 | 2026-11-15 |
+| [Meorav-Daniel](https://huggingface.co/Hebrish/Meorav-Daniel) | Available as is · Frozen | Text to speech | None planned | GPU server | No | Meorav-Daniel v1.0 | 2026-11-15 |
+| [Meorav-Multi-Voice](https://huggingface.co/Hebrish/Meorav-Multi-Voice) | Available as is · Frozen (use [Meorav](https://hebrish.app/models/meorav) instead) | Text to speech | None planned | GPU server | No | Meorav-Multi-Voice v1.0 | 2026-11-16 |
+
+### Accessory models
+
+Text tools that support the speech models. [hebrish.app/models/accessory](https://hebrish.app/models/accessory)
+
+| Model | Status | Use case | Updates | Platforms | In the Hebrish apps | Latest | Last release |
+|---|---|---|---|---|---|---|---|
+| [Hebrew-Gendered-Sentence-Creator](https://huggingface.co/Hebrish/Hebrew-Gendered-Sentence-Creator) | Available as is · Work in progress | Accessory (text tools) | In development | GPU server | No | v3 (work in progress) | 2026-11-18 |
+| [Hebrew-Latin Token Classifier](https://huggingface.co/Hebrish/Hebrew-Latin-Token-Classifier) | Available as is · Frozen | Accessory (text tools) | None planned | Linux, Windows, macOS, GPU server | No | v1 | 2026-10-15 |
 
 Generated 2026-11-19 from [hebrish.app/models/inventory](https://hebrish.app/models/inventory) ([JSON](https://hebrish.app/data/model-inventory.json)).
 <!-- model-inventory:end -->
