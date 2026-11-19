@@ -1340,6 +1340,26 @@
       }
     },
     {
+      "id": "local-api-web-origins",
+      "group": "app",
+      "name": "Local API allowed web origins: listed web pages may check /health and start or stop dictation, nothing else (B-109)",
+      "android": {
+        "status": "n/a",
+        "evidence": "Android has no local API; the client is a web page on the same computer as the desktop app"
+      },
+      "ubuntu": {
+        "status": "present",
+        "since": "1.042",
+        "evidence": "desktop/hebrish/local_api.py (WEB_ROUTES, _guard, do_OPTIONS); Settings → Local API → Web pages allowed; tests/test_local_api.py"
+      },
+      "windows": {
+        "status": "present",
+        "since": "1.042",
+        "verified": false,
+        "evidence": "shared desktop code; not run on Windows"
+      }
+    },
+    {
       "id": "model-bundles",
       "group": "models",
       "name": "Model bundles and Update all (B-79): download a named set of models in one click; Check for updates covers every downloaded model and add-on",

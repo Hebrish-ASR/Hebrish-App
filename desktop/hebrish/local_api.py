@@ -8,7 +8,9 @@ page in the browser can POST to localhost: a request with an `Origin` header (br
 cross-site POSTs) is refused, and the Host header must be localhost / 127.0.0.1 (DNS rebinding).
 
 Endpoints (OpenAI-compatible where one exists, so existing clients work unchanged):
-  GET  /health                     {"status": "ok", "app": ..., "model": {...} | null}
+  GET  /health                     {"status": "ok" | "no_model", "app": ..., "model": {...} | null,
+                                   "control": bool, "state": "idle"|"recording"|"busy", "paused": bool}
+                                   (state and paused only when the app passes a controller)
   GET  /v1/models                  the loaded model, OpenAI list shape
   POST /v1/audio/transcriptions    multipart/form-data with `file` (OpenAI shape), or the raw
                                    audio as the body (any Content-Type but multipart). Optional
@@ -33,6 +35,18 @@ The controller passes in `control` (hebrish.ui.api_control.Control). History rea
 dictionary are served from their files here; history writes go through the app's own History
 connection, which is tied to the GUI thread. Control raises LookupError (404), ValueError (400),
 RuntimeError (409).
+
+Allowed web origins (B-109, 2026-11-19; Daniel approved relaxing the 2026-10-31 Origin guard as an
+opt-in): config `local_api_web_origins`, a list of exact origins (e.g. "https://label.example.com"),
+empty by default. A request with no Origin header is served as above; an Origin not in the list is
+refused (403) as before; the Host check is the same for everyone. An allowed origin gets only
+WEB_ROUTES: GET /health and POST /v1/app/dictation (which still needs `local_api_control`), plus the
+CORS preflight (OPTIONS, 204) on those two paths. Every other route answers it 403, so transcripts,
+history, the dictionary and settings are never served to a web page. Responses to an allowed origin
+carry `Access-Control-Allow-Origin: <origin>` and `Vary: Origin`; the preflight adds
+`Access-Control-Allow-Private-Network: true` (Chrome's Private Network Access). `/health` and the
+dictation answer both carry the dictation `state` (idle | recording | busy) and `paused`, so a
+page's button can show whether a take is recording (`state == "recording"`).
 
 GET /v1/app/events is a Server-Sent Events stream: the Controller calls `publish` (any thread, never
 blocks), each open stream holds one HTTP thread until the client leaves, the server stops, control
@@ -83,6 +97,11 @@ EVENTS = {
     "history": "History changed: {action: added|edited|deleted|cleared, id, source}",
     "model": "A model download: {id, status: downloading|installed|failed|cancelled, error}",
 }
+
+# B-109: the only routes served to an allowed web origin (config local_api_web_origins). The
+# preflight answers OPTIONS on these paths; everything else from a web page is 403.
+WEB_ROUTES = {("GET", "/health"), ("POST", "/v1/app/dictation")}
+CORS_MAX_AGE = 600
 
 # (method, path, needs local_api_control, what it does). Served as GET /v1.
 ROUTES = [
@@ -181,8 +200,11 @@ def _phrases(body: dict) -> list[str]:
 
 
 class LocalApi:
-    def __init__(self, transcribe, info, port: int = DEFAULT_PORT, control=None):
+    def __init__(self, transcribe, info, port: int = DEFAULT_PORT, control=None, web_origins=None):
         self.transcribe, self.info, self.port, self.control = transcribe, info, port, control
+        # B-109: () -> list of exact origins allowed to use WEB_ROUTES; read per request, so a
+        # settings change applies without a restart. None: no web origin is allowed.
+        self.web_origins = web_origins or (lambda: [])
         self._server: _Server | None = None
         self._thread: threading.Thread | None = None
         self.error: str | None = None          # why the last start failed (port in use, ...)
@@ -284,12 +306,15 @@ class _Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         log.debug("local API: " + fmt, *args)
 
+    _cors: str | None = None                # the allowed web origin of the current request (B-109)
+
     def _send(self, status: int, body, ctype="application/json"):
         data = (json.dumps(body, ensure_ascii=False) + "\n").encode() if ctype == "application/json" \
             else str(body).encode()
         self.send_response(status)
         self.send_header("Content-Type", f"{ctype}; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
+        self._cors_headers()
         self.end_headers()
         self.wfile.write(data)
 
@@ -297,16 +322,60 @@ class _Handler(BaseHTTPRequestHandler):
         self._send(status, {"error": {"message": message, "type": "invalid_request_error"
                                       if status < 500 else "server_error"}})
 
-    def _guard(self) -> bool:
+    def _cors_headers(self):
+        if self._cors:
+            self.send_header("Access-Control-Allow-Origin", self._cors)
+            self.send_header("Vary", "Origin")
+
+    def _allowed_origin(self, origin: str) -> bool:
+        try:
+            allowed = self.owner.web_origins() or []
+        except Exception:
+            log.exception("local API: reading the allowed web origins failed")
+            return False
+        return isinstance(allowed, (list, tuple)) and origin in allowed
+
+    def _guard(self, method: str | None = None) -> bool:
+        """Host check for everyone; then a request with an Origin is refused unless the origin is in
+        local_api_web_origins and the route is in WEB_ROUTES (B-109)."""
+        self._cors = None                      # the handler serves several requests per connection
         host = (self.headers.get("Host") or "").lower()
         host = host.split("]")[0] + "]" if host.startswith("[") else host.split(":")[0]
         if host not in _LOCAL_HOSTS:
             self._error(403, "only localhost requests are served")
             return False
-        if self.headers.get("Origin"):
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        if not self._allowed_origin(origin):
+            self.close_connection = True       # a refused request's body is never read
             self._error(403, "browser requests are not served")
             return False
+        self._cors = origin
+        path = urlsplit(self.path).path.rstrip("/")
+        if (method or self.command, path) not in WEB_ROUTES:
+            self.close_connection = True
+            self._error(403, "web pages may only use GET /health and POST /v1/app/dictation")
+            return False
         return True
+
+    def do_OPTIONS(self):
+        """CORS preflight (B-109). Without an Origin this is the old answer: 501, no OPTIONS."""
+        if not self.headers.get("Origin"):
+            self.send_error(501, f"Unsupported method ({self.command!r})")
+            return
+        path = urlsplit(self.path).path.rstrip("/")
+        method = next((m for m, p in WEB_ROUTES if p == path), None)
+        if not self._guard(method or "OPTIONS"):
+            return
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Private-Network", "true")
+        self.send_header("Access-Control-Max-Age", str(CORS_MAX_AGE))
+        self.send_header("Content-Length", "0")
+        self._cors_headers()
+        self.end_headers()
 
     def do_GET(self):
         if not self._guard():
@@ -315,8 +384,10 @@ class _Handler(BaseHTTPRequestHandler):
         path = url.path.rstrip("/")
         info = self.owner.info()
         if path in ("", "/health"):
+            c = self.owner.control
+            state = c.take_state() if hasattr(c, "take_state") else {}
             self._send(200, {"status": "ok" if info else "no_model", "app": __version__, "model": info,
-                             "control": self._control_on()})
+                             "control": self._control_on(), **state})
         elif path == "/v1":
             self._send(200, {"app": __version__, "control": self._control_on(), "routes": [
                 {"method": m, "path": p, "control": c, "does": d} for m, p, c, d in ROUTES]})

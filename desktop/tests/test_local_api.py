@@ -407,3 +407,122 @@ def test_slow_stream_is_closed_not_blocking(monkeypatch):
     for i in range(5):
         a.publish("state", {"n": i})                            # never blocks
     assert a.streams == 0 and st.why.startswith("too slow")
+
+
+# -- allowed web origins (B-109) -------------------------------------------------------------
+
+WEB = "https://label.example.com"
+
+
+class WebControl(FakeControl):
+    """FakeControl plus the dictation route and take_state, as api_control.Control has them."""
+    recording = False
+
+    def take_state(self):
+        return {"state": "recording" if self.recording else "idle", "paused": False}
+
+    def handle(self, method, path, body):
+        if path == "/v1/app/dictation":
+            self.recording = {"start": True, "stop": False, "toggle": not self.recording}[body["action"]]
+            return 200, {"action": body["action"], **self.take_state()}
+        return super().handle(method, path, body)
+
+
+@pytest.fixture
+def web(tmp_path):
+    fake = WebControl(tmp_path / "history.db")
+    origins = [WEB]
+    a = local_api.LocalApi(lambda s: "", lambda: None, _free_port(), fake, lambda: origins)
+    assert a.start()
+    a.fake, a.origins = fake, origins
+    yield a
+    a.stop()
+
+
+def _resp(api, method, path, body=None, headers=None):
+    c = http.client.HTTPConnection("127.0.0.1", api.port, timeout=10)
+    c.request(method, path, body=json.dumps(body) if body is not None else None, headers=headers or {})
+    r = c.getresponse()
+    data = r.read()
+    c.close()
+    return r, (json.loads(data) if data else None)
+
+
+def test_allowed_origin_gets_health_and_dictation_with_cors(web):
+    r, j = _resp(web, "GET", "/health", headers={"Origin": WEB})
+    assert r.status == 200 and j["state"] == "idle" and j["paused"] is False
+    assert r.getheader("Access-Control-Allow-Origin") == WEB and r.getheader("Vary") == "Origin"
+    r, j = _resp(web, "POST", "/v1/app/dictation", {"action": "toggle"},
+                 {"Origin": WEB, "Content-Type": "application/json"})
+    assert r.status == 200 and j == {"action": "toggle", "state": "recording", "paused": False}
+    assert r.getheader("Access-Control-Allow-Origin") == WEB
+    assert _resp(web, "GET", "/health", headers={"Origin": WEB})[1]["state"] == "recording"
+    r, j = _resp(web, "POST", "/v1/app/dictation", {"action": "stop"}, {"Origin": WEB})
+    assert r.status == 200 and j["state"] == "idle"
+
+
+def test_allowed_origin_dictation_still_needs_control(web):
+    web.fake.on = False
+    r, j = _resp(web, "POST", "/v1/app/dictation", {"action": "stop"}, {"Origin": WEB})
+    assert r.status == 403 and "Settings" in j["error"]["message"]
+    assert r.getheader("Access-Control-Allow-Origin") == WEB
+
+
+def test_unknown_origin_is_refused_without_cors(web):
+    for method, path, body in (("GET", "/health", None), ("POST", "/v1/app/dictation", {"action": "stop"}),
+                               ("OPTIONS", "/v1/app/dictation", None)):
+        r, _ = _resp(web, method, path, body, {"Origin": "https://evil.example"})
+        assert r.status == 403 and r.getheader("Access-Control-Allow-Origin") is None, (method, path)
+    # a prefix or a different scheme of an allowed origin is not it
+    assert _resp(web, "GET", "/health", headers={"Origin": "http://label.example.com"})[0].status == 403
+    assert _resp(web, "GET", "/health", headers={"Origin": WEB + ".evil.example"})[0].status == 403
+
+
+def test_allowed_origin_gets_nothing_else(web):
+    for method, path, body in (("GET", "/v1/history", None), ("GET", "/v1/history/1", None),
+                               ("GET", "/v1/dictionary", None), ("GET", "/v1", None), ("GET", "/", None),
+                               ("GET", "/v1/app/status", None), ("GET", "/v1/app/events", None),
+                               ("GET", "/v1/app/dictation", None), ("POST", "/health", {}),
+                               ("POST", "/v1/app/settings", {"vad": True}),
+                               ("DELETE", "/v1/history/1", None), ("PATCH", "/v1/history/1", {"text": "x"})):
+        r, j = _resp(web, method, path, body, {"Origin": WEB})
+        assert r.status == 403 and "web pages" in j["error"]["message"], (method, path)
+    r, _ = _resp(web, "POST", "/v1/audio/transcriptions", None, {"Origin": WEB})
+    assert r.status == 403
+    assert web.fake.recording is False
+
+
+def test_preflight_headers(web):
+    for path, method in (("/v1/app/dictation", "POST"), ("/health", "GET")):
+        r, body = _resp(web, "OPTIONS", path, headers={
+            "Origin": WEB, "Access-Control-Request-Method": method,
+            "Access-Control-Request-Headers": "content-type", "Access-Control-Request-Private-Network": "true"})
+        assert r.status == 204 and body is None
+        assert r.getheader("Access-Control-Allow-Origin") == WEB and r.getheader("Vary") == "Origin"
+        assert r.getheader("Access-Control-Allow-Methods") == "GET, POST, OPTIONS"
+        assert r.getheader("Access-Control-Allow-Headers") == "Content-Type"
+        assert r.getheader("Access-Control-Allow-Private-Network") == "true"
+        assert r.getheader("Access-Control-Max-Age") == "600"
+    assert _resp(web, "OPTIONS", "/v1/history", headers={"Origin": WEB})[0].status == 403
+
+
+def test_no_origin_is_unchanged_and_list_is_read_live(web):
+    r, j = _resp(web, "GET", "/v1/history")
+    assert r.status == 200 and r.getheader("Access-Control-Allow-Origin") is None
+    assert _req(web, "OPTIONS", "/health")[0] == 501             # as before B-109: no OPTIONS
+    web.origins.clear()
+    assert _resp(web, "GET", "/health", headers={"Origin": WEB})[0].status == 403
+    web.origins.append(WEB)
+    assert _resp(web, "GET", "/health", headers={"Origin": WEB})[0].status == 200
+
+
+def test_default_is_no_web_origin(api):
+    assert _resp(api, "GET", "/health", headers={"Origin": WEB})[0].status == 403
+    from hebrish.config import DEFAULTS
+    assert DEFAULTS["local_api_web_origins"] == []
+
+
+def test_parse_web_origins():
+    from hebrish.ui.window import parse_web_origins
+    assert parse_web_origins("https://Label.Example.com/, http://localhost:8080 https://x.org/path ftp://a "
+                             "https://label.example.com") == ["https://label.example.com", "http://localhost:8080"]

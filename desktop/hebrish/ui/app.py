@@ -2176,7 +2176,8 @@ class Controller(QObject):
             self.api = None
         if want and self.api is None:
             from .api_control import Control
-            api = local_api.LocalApi(self.api_transcribe, self.api_info, port, Control(self))
+            api = local_api.LocalApi(self.api_transcribe, self.api_info, port, Control(self),
+                                     lambda: self.cfg["local_api_web_origins"])
             if not api.start():
                 self.api_error = api.error
                 return api.error

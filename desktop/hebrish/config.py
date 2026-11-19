@@ -96,6 +96,11 @@ DEFAULTS = {
     # Control endpoints on the same port (B-87): history, dictionary, updates, models, dictation.
     # A switch of its own, so turning on transcription never serves the user's transcripts.
     "local_api_control": False,
+    # Web pages allowed to use the local API (B-109): exact origins such as
+    # "https://label.example.com". Such a page gets only GET /health and POST /v1/app/dictation
+    # (the latter still needs local_api_control), never history, the dictionary or settings.
+    # Empty by default: any request from a web page is refused.
+    "local_api_web_origins": [],
 
     "paste_chord": "ctrl+v",      # e.g. ctrl+shift+v if you dictate mostly into terminals
     "trailing_space": True,

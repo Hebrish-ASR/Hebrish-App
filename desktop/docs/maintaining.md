@@ -1924,7 +1924,7 @@ adding find-and-replace rules, shipped with the app. `GET /v1` lists every route
   a downloaded model, a model download, anything on Windows (the beta tag skips the Windows job). `python -m hebrish` is unusable for this test while the installed app
   runs: the single-instance socket hands off to it and shows its window.
 
-### Control API: the rest of the app (B-108, unreleased, 2026-11-17)
+### Control API: the rest of the app (B-108, 1.042, 2026-11-17)
 
 Daniel approved filling the gaps on 2026-11-17: everything an agent needed the window for. HTTP only
 (no MCP server, no CLI); the security model is B-87's unchanged (127.0.0.1, Origin and Host guards,
@@ -2050,6 +2050,47 @@ setup steps: skill `set-up-hebrish-macro-deck` in Hebrish-ASR/Hebrish-Agent-Skil
   mic (asked of Daniel), Windows.
 - **Future:** physical stream decks (Elgato and similar) through the same routes; no app change is needed while the
   controller can send an HTTP request.
+
+### Allowed web origins (B-109, 1.042, 2026-11-19)
+
+Daniel (R-2026-11-19-1, D-2026-11-19-01): a mic button inside a self-hosted web app (a labelling tool's
+comment box) that starts and stops dictation, which then types into the focused text box. The page's
+JavaScript calls `fetch("http://127.0.0.1:8723/...")`, which the 2026-10-31 Origin guard refused. This
+relaxes that guard as an opt-in, off by default.
+
+- **Config.** `local_api_web_origins`: a list of exact origin strings (`scheme://host[:port]`, no path,
+  no trailing slash), default `[]`. Settings → Local API → *Web pages allowed* (space- or
+  comma-separated; `window.parse_web_origins` drops anything that isn't an http(s) origin). `LocalApi`
+  takes `web_origins`, a callable read on every request, so a change applies without restarting the
+  server. Matching is exact string equality against the browser's `Origin` header: `http://` vs
+  `https://`, a port, or a suffix are all different origins.
+- **What a web page gets.** `local_api.WEB_ROUTES`: `GET /health` and `POST /v1/app/dictation`, plus the
+  CORS preflight (`OPTIONS`) on those two paths. Every other route, method or path from an allowed
+  origin is 403 ("web pages may only use ..."), checked in `_guard` before the route runs, so
+  transcripts, history, the dictionary, settings, models and Transcription Mode are never served to a
+  page. Dictation still needs `local_api_control` (403 without it, as for any client).
+- **Unchanged.** No `Origin`: exactly as before (including `OPTIONS` answering 501, as it always did).
+  An `Origin` not in the list: 403 "browser requests are not served", no CORS headers. The Host check
+  (localhost / 127.0.0.1 / [::1], against DNS rebinding) applies to everyone first.
+- **Headers.** Every response to an allowed origin (errors too, so the page can read them) has
+  `Access-Control-Allow-Origin: <origin>` and `Vary: Origin`. The preflight answers 204 with
+  `Access-Control-Allow-Methods: GET, POST, OPTIONS`, `Access-Control-Allow-Headers: Content-Type`,
+  `Access-Control-Allow-Private-Network: true` (Chrome's Private Network Access preflight for a public
+  page calling a loopback address) and `Access-Control-Max-Age: 600`. A refused request closes the
+  connection, because its body is never read.
+- **Recording state.** No new field: `/health` now carries `state` (`idle` | `recording` | `busy`) and
+  `paused`, the same `Control.take_state()` the dictation answer (`{"action", "state", "paused"}`) and the
+  events stream's `ready` already had. A button shows "recording" when `state == "recording"`. After
+  `stop` the state is usually `busy` (transcribing), then `idle`.
+- **Risk accepted.** Any script running on an allowed origin can start and stop the mic and so type
+  into whatever has focus; it can't read anything back but the state. That is why it is per-origin,
+  off by default, and limited to two routes.
+- **Verified** (V, 2026-11-19, Ubuntu): `tests/test_local_api.py` (allowed origin with CORS headers,
+  control still required, unknown origins and look-alikes refused without CORS, every other route 403
+  from an allowed origin, preflight headers, no-Origin unchanged, the list read live,
+  `parse_web_origins`); the Settings card rendered off-screen. **Not run:** a real browser page
+  (Chrome's newer Local Network Access permission prompt may also ask the user once per site,
+  independent of these headers), Windows.
 
 ## Empty pieces are decoded again (1.014, 2026-10-31)
 

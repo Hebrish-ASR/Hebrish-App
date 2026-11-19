@@ -9,6 +9,20 @@ Each entry: **Decision**, **Why**, **Alternatives** (what was considered and not
 
 ---
 
+### D-2026-11-19-01: The local API may serve listed web origins, two routes only
+
+- **Decision:** An opt-in list, `local_api_web_origins` (default empty), of exact web origins that may call
+  `GET /health` and `POST /v1/app/dictation` (plus CORS preflight) from a browser. Every other route
+  stays closed to web pages; requests without an Origin and from unlisted origins behave as before.
+- **Why:** Daniel, 2026-11-19: a mic button inside his self-hosted labelling tool that starts and stops
+  dictation into the focused comment box. Relaxes his own 2026-10-31 "no browser requests" guard, only as
+  an opt-in.
+- **Alternatives:** A browser extension or a local relay (more moving parts); a token instead of an
+  origin list (a token in page JavaScript is readable by the page anyway); opening all control routes to
+  the origin (would serve transcripts to a web page).
+- **By:** Daniel.
+- **Links:** R-2026-11-19-1, B-109, desktop 1.042.
+
 ### D-2026-11-17-02: Sabich stays the default on desktop too (reverses D-2026-11-17-01)
 
 - **Decision:** `recommended_by_platform` for Linux and Windows goes back to `sabich-rolling`. Shakshuka stays a desktop option.

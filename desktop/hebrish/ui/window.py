@@ -61,6 +61,19 @@ def card(title: str = "") -> tuple[QFrame, QVBoxLayout]:
     return f, lay
 
 
+def parse_web_origins(text: str) -> list[str]:
+    """Settings → Local API, Web pages allowed (B-109): space- or comma-separated origins, each
+    scheme://host[:port] with no path; anything else is dropped. Order kept, duplicates removed."""
+    out = []
+    for tok in text.replace(",", " ").split():
+        tok = tok.strip().rstrip("/")
+        scheme, sep, rest = tok.partition("://")
+        origin = scheme.lower() + "://" + rest.lower()
+        if sep and scheme.lower() in ("http", "https") and rest and "/" not in rest and origin not in out:
+            out.append(origin)
+    return out
+
+
 def muted(text="") -> QLabel:
     lbl = QLabel(text, objectName="muted")
     lbl.setWordWrap(True)
@@ -2177,6 +2190,7 @@ class MainWindow(QMainWindow):
                        "dictation, Transcription Mode and change events to the local API. No password: "
                        "anything running on this computer can use it.")
         b.addWidget(ctl)
+        b.addWidget(self._web_origins_row())
         skills = QHBoxLayout()
         self.agent_skills_label = muted("Skills teach coding agents to update Hebrish, read history "
                                         "and add dictionary rules.")
@@ -2341,6 +2355,27 @@ class MainWindow(QMainWindow):
         row.addWidget(on)
         row.addStretch(1)
         row.addWidget(port)
+        return w
+
+    def _web_origins_row(self):
+        """B-109, local_api_web_origins: web pages that may check /health and start or stop dictation."""
+        w = QWidget()
+        row = QHBoxLayout(w)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addWidget(QLabel("Web pages allowed"))
+        self.web_origins = edit = QLineEdit(" ".join(self.cfg["local_api_web_origins"]))
+        edit.setPlaceholderText("none (e.g. https://label.example.com)")
+        edit.setToolTip("Exact origins, separated by spaces or commas. Such a page may only check the app "
+                        "and start or stop dictation (with the control switch on); never history, the "
+                        "dictionary or settings. Leave empty to refuse every web page.")
+
+        def save():
+            origins = parse_web_origins(edit.text())
+            edit.setText(" ".join(origins))
+            if origins != self.cfg["local_api_web_origins"]:
+                self.cfg.set("local_api_web_origins", origins)
+        edit.editingFinished.connect(save)
+        row.addWidget(edit, 1)
         return w
 
     def _install_agent_skills(self):

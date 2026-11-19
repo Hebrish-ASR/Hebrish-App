@@ -125,7 +125,7 @@ stock or the English-Hebrew code-switching fine-tune, running on your CPU with s
 Off by default; Settings → Local API. When on, Hebrish transcribes audio files sent to it by
 other programs on this computer, with the model it has loaded, so scripts and coding agents get
 on-device transcription without a cloud service. It listens on `127.0.0.1` only (port 8723 by
-default), has no password, and refuses requests from web pages. The endpoint is
+default), has no password, and refuses requests from web pages (unless you list one, below). The endpoint is
 OpenAI-compatible, so OpenAI clients work by pointing their base URL at it:
 
 ```bash
@@ -150,6 +150,12 @@ curl -s http://127.0.0.1:8723/v1
 curl -s -X POST http://127.0.0.1:8723/v1/app/dictation -H 'Content-Type: application/json' -d '{"action": "pause"}'
 curl -sN http://127.0.0.1:8723/v1/app/events
 ```
+
+*Web pages allowed* (1.042, empty by default) lets the listed web origins, e.g.
+`https://label.example.com`, use exactly two routes from the browser: `GET /health` (which reports
+`state`: idle, recording or busy) and `POST /v1/app/dictation` (with the control switch on), so a
+page can have its own start/stop dictation button. Every other route still refuses web pages.
+Config key `local_api_web_origins`; details in `docs/maintaining.md`, "Allowed web origins".
 
 A second switch, *Let agents read history and control the app*, adds history, the personal
 dictionary, updates, model choice and start/stop dictation to the same port (unreleased,
