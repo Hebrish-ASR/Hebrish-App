@@ -784,13 +784,18 @@ ended the transcript stayed the clipboard and the user's next Ctrl+V pasted it a
 ([`docs/debug-log/2026-11-02-transcript-pasted-twice.md`](../../docs/debug-log/2026-11-02-transcript-pasted-twice.md)).
 Windows has no restore yet.
 
-### A take goes to the pane or window it started in (2026-11-16, unreleased)
+### A take goes to the pane or window it started in (2026-11-16, unreleased; off by default since 2026-11-20)
+
+Off by default since 2026-11-20 (`bind_pane` and `bind_window` both `false`): in use, focus being
+pulled back to the window or pane a take started in made Daniel lose the one he had moved to. Text
+again goes wherever focus is when each piece is ready. The code stays as an opt-in; turn either key
+on in `config.json` or with `POST /v1/app/settings`.
 
 Problem (Daniel, 2026-11-16): with Claude Code in four Konsole split panes, moving to another pane
 while a take was still transcribing sent its text (and its Enter) to the wrong pane, because the
 paste chord goes to whatever has focus when each piece is ready.
 
-What it does (`hebrish/target_linux.py`, config `bind_pane`, default on):
+What it does (`hebrish/target_linux.py`, config `bind_pane`, default off since 2026-11-20):
 
 - `Controller.start()` → `_bind_take(take)` → `inserter.bind()`: a `Binding` looks up, off the GUI
   thread, the focused Konsole window and its focused pane (`active_pane()`, about 30 ms measured).
@@ -804,7 +809,7 @@ What it does (`hebrish/target_linux.py`, config `bind_pane`, default on):
 - Fallback when Konsole refuses sendText (its default, see below): `Window.setCurrentSession`
   focuses the bound pane if its window has focus, then the usual paste. One notice per Konsole
   process says how to turn the setting on.
-- Any app, on KWin (config `bind_window`, default on): the take's window is brought back before
+- Any app, on KWin (config `bind_window`, default off since 2026-11-20): the take's window is brought back before
   each fallback paste or key. `KWinWindow` loads the script `KWIN_SCRIPT` once per KWin session
   (`org.kde.KWin /Scripting isScriptLoaded/loadScript/start`, plugin `hebrish-take-window`,
   file in `$XDG_RUNTIME_DIR`). It registers two KWin global shortcuts with no key,

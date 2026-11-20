@@ -389,8 +389,8 @@ class Controller(QObject):
         for old in [t for t in targets if t < take - 8]:     # takes long finished
             targets.pop(old, None)
         try:
-            targets[take] = self.inserter.bind(pane=self.cfg.get("bind_pane", True),
-                                               window=self.cfg.get("bind_window", True))
+            targets[take] = self.inserter.bind(pane=self.cfg.get("bind_pane", False),
+                                               window=self.cfg.get("bind_window", False))
         except Exception:
             log.exception("binding the take failed")
             targets[take] = None

@@ -104,11 +104,12 @@ DEFAULTS = {
 
     "paste_chord": "ctrl+v",      # e.g. ctrl+shift+v if you dictate mostly into terminals
     "trailing_space": True,
+    # Opt-in (off since 2026-11-20: pulling focus back to the start window lost Daniel his place).
     # A take goes to the Konsole pane it started in, even if focus moves to another pane while it
     # is transcribed (hebrish.target_linux, 2026-11-16). Konsole only; other apps paste as before.
-    "bind_pane": True,
+    "bind_pane": False,
     # On KWin, the window a take started in is brought back for its pastes (target_linux.KWinWindow).
-    "bind_window": True,
+    "bind_window": False,
     "all_caps": False,            # type everything in capitals, just for fun (0.7.2)
     # B-105 (R-2026-11-13-2): drop the model's final "." of a take, for lookups and search boxes.
     # Only a full stop (not "...", "?" or "!"); full stops inside the take stay. engine.drop_final_stop.
