@@ -2,9 +2,27 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "desktop",
-  "built": "2026-11-19",
+  "built": "2026-11-23",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-23",
+      "tag": "Desktop 1.043",
+      "title": "A Maintainer tab for keeping the audio of your takes",
+      "summary": "Settings now has a Maintainer tab: switch maintainer mode on to keep each Voice Typing take's recording beside its History row, see how much disk the recordings use right now in gigabytes, and set the capacity and how many days to keep them.",
+      "platforms": [
+        "desktop"
+      ]
+    },
+    {
+      "date": "2026-11-19",
+      "tag": "Site",
+      "title": "Acknowledgements: the data supporters behind the names and places",
+      "summary": "A new acknowledgements page credits the organisations and people who gave data, recordings and help, with what each contributed: the Central Bureau of Statistics (first-name birth counts), data.gov.il at the National Digital Agency (the national street list and the Population…",
+      "platforms": [
+        "site"
+      ]
+    },
     {
       "date": "2026-11-19",
       "tag": "Desktop 1.042",
@@ -167,24 +185,6 @@
       "platforms": [
         "android",
         "desktop"
-      ]
-    },
-    {
-      "date": "2026-11-07",
-      "tag": "Site",
-      "title": "Stickers to download and print",
-      "summary": "Stickers, under About: the logo in English and Hebrew, Corn the Sloth, and \"I type with Hebrish\", as print-ready PDFs and transparent PNGs.",
-      "platforms": [
-        "site"
-      ]
-    },
-    {
-      "date": "2026-11-05",
-      "tag": "Site",
-      "title": "The home page opens with the comparison, and a shorter footer",
-      "summary": "The first thing on the home page is now regular speech recognition typing a sentence and getting the Hebrew wrong, then Hebrish typing it, then the headline benchmark numbers.",
-      "platforms": [
-        "site"
       ]
     }
   ]
