@@ -1,5 +1,4 @@
-**1.045: Maintainer mode is now called Ticked, and on Ubuntu it has its own tab in the main window.**
+**1.046: fewer invented phrases from breaths and pauses.**
 
-- **Ticked** is the new name for maintainer mode: the switch that keeps each Voice Typing take's recording beside its History row, with storage used, capacity and days to keep. Your settings and kept takes carry over.
-- On Ubuntu a **Ticked** tab sits next to History in the main window, as well as in Settings.
-- Ubuntu beta.
+- With live insertion, a breath or murmur before you speak, between sentences or after your last word could be transcribed by itself and come back as a phrase nobody said. Such a piece now stays with the words that follow, and a very quiet last piece is skipped.
+- Words may appear a little later after a short first word, because a piece now needs about a second of speech before it is cut off.

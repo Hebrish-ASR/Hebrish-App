@@ -2786,6 +2786,18 @@ on the main page of the app as well. Just on desktop versions, just on Ubuntu fo
 
 This is one cause of stray words, and room noise passing voice detection is another; the Noise filter below covers that. The fix was started in an earlier session on 2026-11-05 and finished without its author, so this records the code and tests, not that session's measurements. It has not been measured on real takes.
 
+### Again: breath and murmur (1.046, 2026-11-23)
+
+**Symptom:** "My mother's mother", "My name is Mr. ...", "My mother's maiden." at the start, at pauses and at the end of takes (Daniel, Sabich v5.3 and v5.4). A 30 s silent take wrote nothing.
+
+**Cause:** two opening pieces kept by maintainer mode (1.1 s and 2.7 s) held a breath or murmur and no words. `has_speech` passed them: Silero heard 0.68 s and 0.48 s of speech (limit 0.25 s), because each piece is scaled to `PEAK` by itself. The Noise filter does not fix it: at 100 the first reads 0.00 s and the second still 0.46 s. Whole-take decodes of both are clean, and v5.3, v5.4 and stock v2 all invent text for speech-free heads (the fine-tunes in sentences, stock in "Huh."/"Okay.").
+
+**Fix:** `live_split` cuts at a pause only with `LIVE_CUT_SPEECH_S` (1.0 s) of speech before it, so a breath stays with the words after it and nothing is dropped. `faint()` in `transcribe_after` skips a piece after speech with under 1 s of speech frames and under 0.06 s within 18 dB of the take's speech level (the end-of-take case).
+
+**Measured** (62 takes, replaying `live_cut` at a 6 s interval and 0.5 s steps): live pieces 134 to 112, pieces with under 1 s of speech 25 to 0, mean 4.5 to 5.2 s, longest 16.4 to 21.0 s. `faint()` on the app's recorded pieces skips 4, all of which had decoded to nothing. The two failed openings are no longer cut alone. **Not measured:** word errors, live latency, and the end-of-take case on a real recording (no audio of one was kept).
+
+**Wrong turns:** a breath added in front of a sentence does not trigger it (54 takes, 0 hits); raising the Noise filter; a training fix.
+
 ## Noise filter (B-92, 2026-11-05)
 
 Voice Typing tab, under Voice detection: a 0-100 slider, config `vad_noise_filter`, default 60 (Daniel: room noise was coming out as stray words; start a little more aggressive and let people adjust it). `vad.threshold()` maps it to Silero's speech probability: 0 = 0.2, 50 = 0.5 (the fixed value up to 1.023), 100 = 0.8, so the default is 0.56. `Controller.apply_vad` calls `Silero.set_level`, which rebuilds the detector on next use. It also changes what `auto_enter` counts as speech, because that shares the detector.

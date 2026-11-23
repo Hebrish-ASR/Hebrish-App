@@ -669,3 +669,21 @@ def test_hebrew_take_uses_its_engine_and_skips_the_chop():
     # the same words on an English take lose the repeat
     _, text = _run_worker(["זה מאוד מאוד טוב"], [(None, True)], take_info={"lang": "en", "engine": "main"})
     assert text == "זה מאוד טוב"
+
+
+def test_breath_before_speech_is_not_cut_alone():
+    """2026-11-23: a breath or murmur passed has_speech, was cut off as the first piece and came back as
+    "My mother's mother". It must stay with the speech that follows."""
+    breath = speech(0.5)        # 0.5 s of frames the VAD calls speech
+    x = np.concatenate([silence(0.5), breath, silence(1.4), speech(3)])
+    assert live_cut(x[: int(2.4 * SR)], 6) is None
+    cut = live_cut(np.concatenate([x, silence(1.4), speech(1)]), 6)
+    assert cut is not None and cut > int(2.4 * SR)
+
+
+def test_faint_tail_is_not_decoded():
+    from hebrish.engine import faint
+    take = speech(5)
+    assert faint(np.concatenate([silence(0.3), speech(0.6) * 0.04, silence(0.3)]), take)      # 28 dB under the take
+    assert not faint(np.concatenate([silence(0.3), speech(0.3), silence(0.3)]), take)         # a short real last word
+    assert not faint(speech(0.4) * 0.04, None)                                                # nothing to compare with

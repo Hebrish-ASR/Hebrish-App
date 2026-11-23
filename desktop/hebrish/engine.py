@@ -87,6 +87,9 @@ def stretch_pauses(x: np.ndarray) -> np.ndarray:
 VAD_ABS = 0.005
 VAD_QUIET = 0.01
 VAD_MIN_SPEECH_S = 0.25
+LIVE_CUT_SPEECH_S = 1.0    # least speech in a live piece cut at a pause (live_split)
+FAINT_DB = 18              # a short live piece this far under the take's speech level is breath or murmur
+FAINT_LOUD_S = 0.06        # unless it has this much sound above that line
 VAD_LONG_S = 1.5
 VAD_KEEP_S = 0.8
 # A piece of a take (live pieces and the last one, decoded after Stop) is judged against the levels
@@ -144,6 +147,21 @@ def _energy_frames(x: np.ndarray, ref: np.ndarray | None = None) -> np.ndarray:
 def has_speech(x: np.ndarray, ref: np.ndarray | None = None, sp: np.ndarray | None = None) -> bool:
     sp = _speech_frames(x, ref) if sp is None else sp
     return int(sp.sum()) * FRAME >= VAD_MIN_SPEECH_S * SAMPLE_RATE
+
+
+def speech_s(x: np.ndarray, ref: np.ndarray | None = None) -> float:
+    """Seconds of speech frames in x (as has_speech counts them)."""
+    return int(_speech_frames(x, ref).sum()) * FRAME / SAMPLE_RATE
+
+
+def faint(x: np.ndarray, ref: np.ndarray | None) -> bool:
+    """A live piece after speech that holds only breath or murmur: under LIVE_CUT_SPEECH_S of speech
+    frames and almost nothing within FAINT_DB of the take's speech level (95th percentile of `ref`).
+    A real short last word ("Done.") is about as loud as the rest of the take."""
+    if ref is None or len(ref) < SAMPLE_RATE or speech_s(x, ref) >= LIVE_CUT_SPEECH_S:
+        return False
+    level = np.percentile(_frame_rms(ref), 95) * 10 ** (-FAINT_DB / 20)
+    return int((_frame_rms(x) > level).sum()) * FRAME < FAINT_LOUD_S * SAMPLE_RATE
 
 
 def shorten_silences(x: np.ndarray, ref: np.ndarray | None = None, sp: np.ndarray | None = None) -> np.ndarray:
@@ -230,7 +248,11 @@ def live_split(x: np.ndarray, interval_s: float) -> tuple[int, float] | None:
         else:
             i += 1
     pause, cut = best * FRAME / sr, (a + b) // 2 * FRAME
-    if (pause >= LIVE_BREAK_S or (n >= interval_s * sr and pause >= LIVE_PAUSE_S)) and has_speech(x[:cut]):
+    # A breath or murmur passes has_speech (scaled up alone, Silero heard 0.68 s and 0.48 s of speech in
+    # two openings, at every Noise filter but the top), and Parakeet writes a sentence for it ("My mother's
+    # mother"; 2026-11-23, maintaining.md, "Stray words at the start"). So a piece needs LIVE_CUT_SPEECH_S
+    # of speech to be cut off alone; with less it stays with what follows. Nothing is dropped.
+    if (pause >= LIVE_BREAK_S or (n >= interval_s * sr and pause >= LIVE_PAUSE_S)) and speech_s(x[:cut]) >= LIVE_CUT_SPEECH_S:
         return cut, pause
     if n >= (interval_s + LIVE_FORCE_S) * sr:
         win = sr // 10
@@ -600,6 +622,8 @@ class Engine:
         back to transcribe (and None) without usable context: none, no speech in it, a streaming
         model, or a piece long enough to be split. `ref`: the take before this piece (voice
         detection judges the piece by the take's levels, REF_S)."""
+        if vad and faint(samples, ref):
+            return "", None
         ctx = None if context is None else context[-int(CONTEXT_S * SAMPLE_RATE):]
         if (ctx is None or self.streaming or len(samples) > (PIECE_S + LIVE_FORCE_S) * SAMPLE_RATE
                 or len(ctx) < MIN_TAKE_S * SAMPLE_RATE or not has_speech(ctx, ref)):
