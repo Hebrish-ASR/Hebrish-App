@@ -2759,6 +2759,25 @@ spontaneous takes) felt poor, so real takes are being collected again to annotat
 - **Verified:** `tests/test_maintainer.py::test_usage_counts_bytes_takes_and_seconds`; the page
   rendered off-screen against a temp folder. **Not verified:** a live take from the installed build.
 
+### Renamed Ticked, and a tab on the main window (1.045, 2026-11-23)
+
+Daniel, 2026-11-23: "give maintainer mode a new name, like just call it ticked, and let's show it
+on the main page of the app as well. Just on desktop versions, just on Ubuntu for now."
+
+- The UI says **Ticked** everywhere it said Maintainer mode / Maintainer: the Settings tab, the
+  page's card title, its status lines, and the pointer on the Settings tab. The code
+  (`maintainer.py`, `MaintainerPage`), config keys (`maintainer_mode`, `maintainer_max_gb`,
+  `maintainer_keep_days`) and the folder `DATA_DIR/maintainer/` keep the old name, so existing
+  settings and kept takes carry over.
+- On Linux (`sys.platform.startswith("linux")`) `MAIN_TABS` in `ui/window.py` gains
+  `("ticked", "Ticked")` after History: a second `MaintainerPage` instance
+  (`pages["ticked"]`). Both copies read `cfg` and refresh on show, so a switch flipped in one is
+  shown in the other. Windows keeps it in Settings only.
+- **Verified:** off-screen render of the page as a main-window tab, and two instances agreeing
+  after one is toggled; desktop tests pass except `test_cleanup.py::test_utilities_rows_and_choice`,
+  which fails the same way without this change. **Not verified:** the full MainWindow on the
+  installed build.
+
 ## Stray words at the start (2026-11-05)
 
 **What was broken:** live takes could open with a stock phrase nobody said ("I'm sorry.", "Hi."). `live_split` treated the quiet before speech as a pause, cut inside it, and sent a piece of pure silence to Parakeet, which turned it into words. The same could happen right after a cut, because the second half of that pause opens the next buffer. The model was not at fault.

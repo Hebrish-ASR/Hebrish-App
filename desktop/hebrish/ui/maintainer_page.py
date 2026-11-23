@@ -8,7 +8,13 @@ config keys `maintainer_max_gb` and `maintainer_keep_days`, applied by maintaine
 every saved take; lowering the capacity here prunes at once.
 
 Usage is measured from the folder itself (maintainer.usage()), never a running count, and refreshed
-every 5 s while the page is shown."""
+every 5 s while the page is shown.
+
+Renamed "Ticked" in the UI (1.045, Daniel 2026-11-23: "give maintainer mode a new name, like just
+call it ticked, and let's show it on the main page of the app as well. Just on desktop versions,
+just on Ubuntu for now"). Code, config keys (`maintainer_*`) and the folder keep the old name so
+existing settings and kept takes carry over. On Linux a second MaintainerPage is a tab of the main
+window (MAIN_TABS in window.py) as well as the Settings tab; both read cfg, so they agree on show."""
 
 import os
 import subprocess
@@ -38,7 +44,7 @@ class MaintainerPage(QScrollArea):
         lay.setContentsMargins(16, 14, 16, 14)
         lay.setSpacing(12)
 
-        box, b = card("Maintainer mode")
+        box, b = card("Ticked")
         b.addWidget(muted("For improving Hebrish: each Voice Typing take's recording (FLAC, about 1 MB "
                           "a minute) and how it was cut and joined are kept beside its History row, so "
                           "real dictation can be replayed, annotated and measured. Stays on this "
@@ -115,10 +121,10 @@ class MaintainerPage(QScrollArea):
             m = f"{mins:.1f}" if mins < 10 else f"{mins:,.0f}"
             self.detail.setText(f"{u['takes']:,} take{'' if u['takes'] == 1 else 's'}, {m} min of audio, "
                                 f"{u['first_day']} to {u['last_day']}"
-                                + ("" if self.cfg["maintainer_mode"] else ". Maintainer mode is off: nothing new is kept."))
+                                + ("" if self.cfg["maintainer_mode"] else ". Ticked is off: nothing new is kept."))
         else:
             self.detail.setText("Nothing kept yet." if self.cfg["maintainer_mode"]
-                                else "Nothing kept. Turn maintainer mode on to start.")
+                                else "Nothing kept. Turn Ticked on to start.")
 
     def showEvent(self, e):
         super().showEvent(e)

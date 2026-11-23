@@ -4,6 +4,7 @@ every transcript in a searchable SQLite file: hebrish.history)."""
 
 import os
 import sqlite3
+import sys
 import threading
 import time
 
@@ -133,8 +134,11 @@ class _BackupDone(QObject):
 
 
 MAIN_TABS = (("dictate", "Voice Typing"), ("file", "Transcription"), ("history", "History"))
+# Ticked (formerly Maintainer mode) also on the main window, Ubuntu only for now (1.045, Daniel 2026-11-23).
+if sys.platform.startswith("linux"):
+    MAIN_TABS += (("ticked", "Ticked"),)
 SETTINGS_TABS = (("settings", "Settings"), ("dictionary", "Dictionary"),
-                 ("updates", "Updates"), ("diagnostics", "Diagnostics"), ("maintainer", "Maintainer"),
+                 ("updates", "Updates"), ("diagnostics", "Diagnostics"), ("maintainer", "Ticked"),
                  ("about", "About"))
 SETTINGS_KEYS = {k for k, _ in SETTINGS_TABS}
 
@@ -233,6 +237,7 @@ class MainWindow(QMainWindow):
         self.pages["updates"] = UpdatesPage(card, muted)
         from .maintainer_page import MaintainerPage
         self.pages["maintainer"] = MaintainerPage(ctl, card, muted)
+        self.pages["ticked"] = MaintainerPage(ctl, card, muted)     # main-window copy (Linux, MAIN_TABS)
         self.pages["about"] = self._about_page()
         # The main window holds the modes and History; everything else is in the Settings window
         # (2026-11-12, Daniel: "a clean separation between the main UI, the modes, and then the
@@ -2006,8 +2011,8 @@ class MainWindow(QMainWindow):
         each.setToolTip("Otherwise takes collect, a blank line between them. Every take is in History either way.")
         b.addWidget(each)
         b.addWidget(self._check("keep_history", "Keep a history of every transcript (History tab)", self._on_history_setting))
-        b.addWidget(muted("Maintainer mode (keep each take's audio for improving Hebrish), its storage "
-                          "and capacity: the Maintainer tab."))
+        b.addWidget(muted("Ticked (keep each take's audio for improving Hebrish), its storage "
+                          "and capacity: the Ticked tab."))
         lay.addWidget(box)
 
         self.mics_card = MicsCard(self.cfg, self.mics_changed)

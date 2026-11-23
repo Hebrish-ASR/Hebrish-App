@@ -1383,7 +1383,7 @@
     {
       "id": "maintainer-mode",
       "group": "history-and-files",
-      "name": "Maintainer mode (B-84): keep each take's audio and seam log beside its History row, capped by age and size",
+      "name": "Ticked, formerly Maintainer mode (B-84; renamed 1.045): keep each take's audio and seam log beside its History row, capped by age and size",
       "android": {
         "status": "missing",
         "evidence": "not planned: maintainer tool (planning/requests.md R-2026-11-02-2)"
@@ -1399,7 +1399,7 @@
         "evidence": "desktop/hebrish/maintainer.py; ui/app.py _maint_end, _maint_save",
         "verified": false
       },
-      "notes": "Daniel 2026-11-02, R-2026-11-02-2. Maintainer tool; Android not planned."
+      "notes": "Daniel 2026-11-02, R-2026-11-02-2. Maintainer tool; Android not planned. 1.045 (Daniel 2026-11-23): renamed Ticked; a Ticked tab on the main window on Ubuntu only, Windows keeps it in Settings."
     },
     {
       "id": "enter-stops",
