@@ -2,9 +2,27 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "desktop",
-  "built": "2026-11-23",
+  "built": "2026-11-24",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-23",
+      "tag": "Site",
+      "title": "Acknowledgements: the Jerusalem Municipality",
+      "summary": "The acknowledgements page now credits the Jerusalem Municipality's GIS department for the city's street names and their official English spellings.",
+      "platforms": [
+        "site"
+      ]
+    },
+    {
+      "date": "2026-11-23",
+      "tag": "Desktop 1.045",
+      "title": "Maintainer mode is now called Ticked, with its own tab on Ubuntu",
+      "summary": "Ticked is the new name for maintainer mode: the switch that keeps each Voice Typing take's recording beside its History row, with the storage used, the capacity and how many days to keep them.",
+      "platforms": [
+        "desktop"
+      ]
+    },
     {
       "date": "2026-11-23",
       "tag": "Desktop 1.044",
@@ -165,25 +183,6 @@
       "title": "Ubuntu 1.028: Falafel coming soon",
       "summary": "Falafel: the new model for short voice commands has its own tab under Models, in a full size and a small one. It shows Coming soon until its first version is out, then downloads like any other model, with no app update.",
       "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-11-07",
-      "tag": "Ubuntu 1.027",
-      "title": "Ubuntu 1.027: same version as Android",
-      "summary": "No changes: same app as 1.026, with the version number kept in step with Android. Windows and the AppImage stay on 1.026.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-11-07",
-      "tag": "Apps 1.026",
-      "title": "Apps 1.026: a joint stable release, with a smoother look",
-      "summary": "One version everywhere: Android, Ubuntu and Windows are all 1.026. Windows and the AppImage move up from 1.022.",
-      "platforms": [
-        "android",
         "desktop"
       ]
     }
