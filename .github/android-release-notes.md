@@ -1,6 +1,7 @@
-**1.036: Model downloads survive a dropped connection.**
+**1.037: fewer invented phrases from breaths and pauses.**
 
-- **Retries instead of failing:** a timeout, a dropped connection or a server error no longer stops a model download. It waits (2 s, then longer, up to 30 s) and carries on from where it stopped; with no network at all it waits for one. It gives up only after 10 minutes online without any progress. The card shows "Connection lost: retrying…" or "Waiting for a connection…".
-- **Keeps going in the background:** a download you start runs with a progress notification (with Cancel), so it continues with the screen off or in another app.
-- **Background model updates on Wi-Fi now run:** the app was missing the permission to tell Wi-Fi from mobile data, so with "Only on Wi-Fi" on they never did.
+- A breath or murmur during a long pause, or after your last word, could be transcribed by itself and come back as a phrase nobody said. It now stays with the words after it or is skipped. Same fix as desktop 1.046.
+- **Shakshuka on Android:** the streaming model can be chosen on Models. Sabich stays the recommended model.
+- Hebrew: Gefilte (proof of concept) is available as a second Hebrew model.
+- Input language starts as English instead of following the keyboard.
 - Not yet tested on a device. arm64-v8a only. Android 9+. Downloads: [hebrish.app/download](https://hebrish.app/download).

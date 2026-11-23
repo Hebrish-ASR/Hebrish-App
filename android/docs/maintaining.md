@@ -2350,7 +2350,7 @@ now only reached by an installed variant that is no longer supported.
 (was `["android"]`), `falafel-110m` `offered_on` `["linux", "windows"]`. A copy already installed stays listed.
 Catalogue-only, so it applies to 1.035+ at the next catalogue fetch; older builds ignore `offered_on`.
 
-## Shakshuka streaming (unreleased, B-13, 2026-11-17)
+## Shakshuka streaming (1.037, B-13, 2026-11-17)
 
 Daniel, 2026-11-17: "let's also add shakshuka back to the Android app, I currently don't see it there at all."
 Parity with desktop B-12 ("Shakshuka: streaming dictation" in `desktop/docs/maintaining.md`). Sabich stays the
@@ -2484,3 +2484,20 @@ old call shape without hooks. Time is faked in the tests (no real waiting).
 **Not verified (I):** everything on a device (no phone was connected): that the service starts and its notification
 shows, Cancel from the notification, the locks keeping Wi-Fi up with the screen off on a Pixel, Doze behaviour,
 the Android 15 `onTimeout`, the card's retry line, and that the user's timeouts are gone.
+
+## Breath and murmur pieces (1.037, 2026-11-24)
+
+Port of desktop 1.046 (`desktop/docs/maintaining.md`, "Again: breath and murmur"). Daniel asked whether Android had the same
+cause after the desktop fix removed the invented phrases ("My mother's mother"). He had seen it less on Android.
+
+**Why less:** `Recorder` never cuts before 8 s (desktop live pieces could be 1 to 3 s), and `VoiceDetection.noiseOnly` already
+refuses quiet or flat pieces. **Two gaps were the same:** a segment of 8 s or more holding only a breath could be cut at a pause and
+decoded alone; and the tail after the last cut was judged only against its own level.
+
+**Fix:** `Recorder.Segmenting.cutsAtPause` needs 1 s of sound above the silence line (with less, the audio stays with what follows;
+the 28 s hard cut is unchanged). `TakeDecoder.background` also skips a piece that is `VoiceDetection.faint`: under 1 s of speech
+frames and under 0.06 s within 18 dB of the level of the last piece that gave text. Noise filter 0 turns `faint` off. Not applied:
+streaming takes (Shakshuka, one stream, no pieces) and a first piece (nothing to compare with).
+
+**Confirmed:** the code paths, by reading; unit tests in `VoiceDetectionTest`. **Not confirmed:** no Android recording of the
+problem exists, and it has not been tried on a phone.

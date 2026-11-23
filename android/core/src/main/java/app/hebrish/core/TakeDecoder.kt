@@ -113,6 +113,8 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
     // Seam state, worker thread only.
     /** The end of the previous segment, when it was cut in a pause; null otherwise. */
     private var context: FloatArray? = null
+    /** Speech level of the last piece that gave text, for [VoiceDetection.faint]; 0 until there is one. */
+    private var takeLevel = 0f
     /** The previous piece's closing "." was held back. */
     private var stopHeld = false
 
@@ -155,22 +157,31 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
         return decode().also { decodeMs += SystemClock.elapsedRealtime() - t }
     }
 
+    /** Worker thread only. Room noise, or breath and murmur after speech: decoding could only invent words. */
+    private fun background(samples: FloatArray) =
+        VoiceDetection.noiseOnly(samples, noiseFilter) || (noiseFilter > 0 && VoiceDetection.faint(samples, takeLevel))
+
+    private fun heard(samples: FloatArray, text: String) {
+        if (text.isNotBlank()) takeLevel = VoiceDetection.speechLevel(samples)
+    }
+
     /**
      * Worker thread only. Decodes one piece (with the previous segment's end as context when there
      * is usable context) and returns what to hand over, seam applied and styled; "" for nothing.
      */
     private fun piece(samples: FloatArray, last: Boolean): String {
         if (language != null) {
-            if (VoiceDetection.noiseOnly(samples, noiseFilter)) return ""
-            return timed { StreamingTranscriber.transcribe(app, language, samples) }
+            if (background(samples)) return ""
+            return timed { StreamingTranscriber.transcribe(app, language, samples) }.also { heard(samples, it) }
         }
         val ctx = context?.takeIf { it.size >= Transcriber.SAMPLE_RATE * MIN_CONTEXT_SECONDS && Transcriber.hasSpeech(it) }
-        val (decoded, stop) = if (VoiceDetection.noiseOnly(samples, noiseFilter)) {
+        val (decoded, stop) = if (background(samples)) {
             "" to null                                  // background only: decoding could only invent words
         } else if (ctx != null) {
             contextSamples += ctx.size
             timed { Transcriber.transcribeAfter(app, samples, ctx) }
         } else timed { Transcriber.transcribe(app, samples) } to null
+        heard(samples, decoded)
         // Context for the next piece only after a cut in a pause: a hard cut (28 s without one)
         // can land inside a word, which would then straddle the boundary.
         context = if (!last && (Transcriber.trailingQuietSeconds(samples) ?: 0f) >= PAUSE_CUT_SECONDS)

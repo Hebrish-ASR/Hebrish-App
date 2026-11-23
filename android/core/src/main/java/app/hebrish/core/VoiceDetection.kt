@@ -33,14 +33,45 @@ object VoiceDetection {
     fun noiseOnly(samples: FloatArray, level: Int): Boolean {
         val frames = samples.size / FRAME
         if (level <= 0 || frames < MIN_FRAMES) return false
-        val rms = FloatArray(frames) { f ->
-            var sum = 0.0
-            for (i in f * FRAME until (f + 1) * FRAME) sum += samples[i].toDouble() * samples[i]
-            sqrt(sum / FRAME).toFloat()
-        }
+        val rms = frameRms(samples)
         rms.sort()
         val noise = rms[frames / 10]
         val loud = rms[frames * 95 / 100]
         return loud < minLoud(level) || loud < noise * minRatio(level)
     }
+
+    private fun frameRms(samples: FloatArray) = FloatArray(samples.size / FRAME) { f ->
+        var sum = 0.0
+        for (i in f * FRAME until (f + 1) * FRAME) sum += samples[i].toDouble() * samples[i]
+        sqrt(sum / FRAME).toFloat()
+    }
+
+    /** The speech level of a piece that held speech: the 95th percentile of its 20 ms frames. */
+    fun speechLevel(samples: FloatArray): Float {
+        val rms = frameRms(samples)
+        if (rms.size < MIN_FRAMES) return 0f
+        rms.sort()
+        return rms[rms.size * 95 / 100]
+    }
+
+    /**
+     * True when a piece after speech holds only breath or murmur (desktop engine.faint, 1.046): under 1 s of
+     * speech frames and under [FAINT_LOUD_FRAMES] frames within 18 dB of [takeLevel], the take's speech level so far (0 = none yet,
+     * so nothing to compare with). A real short last word ("Done.") is about as loud as the rest of the take.
+     */
+    fun faint(samples: FloatArray, takeLevel: Float): Boolean {
+        val rms = frameRms(samples)
+        if (takeLevel <= 0f || rms.isEmpty()) return false
+        val sorted = rms.sortedArray()
+        val noise = sorted[rms.size / 10]
+        // Speech frames as Transcriber.speechFrames counts them: a longer soft passage is kept.
+        val own = maxOf(0.003f, noise + (sorted[rms.size * 95 / 100] - noise) * 0.1f)
+        if (rms.count { it > own } >= FAINT_MAX_SPEECH_FRAMES) return false
+        val line = takeLevel * FAINT_RATIO
+        return rms.count { it > line } < FAINT_LOUD_FRAMES
+    }
+
+    private const val FAINT_RATIO = 0.12589f      // -18 dB
+    private const val FAINT_MAX_SPEECH_FRAMES = 50   // 1 s
+    private const val FAINT_LOUD_FRAMES = 3       // 0.06 s
 }

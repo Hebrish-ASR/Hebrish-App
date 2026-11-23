@@ -64,6 +64,15 @@ class Recorder(
         /** Hard cut, at the quietest moment of the last [LOOKBACK_SECONDS], if nobody pauses. */
         const val MAX_SECONDS = 28f
         const val LOOKBACK_SECONDS = 4f
+        /**
+         * Sound a segment must hold to be cut at a pause (desktop LIVE_CUT_SPEECH_S, 1.046): decoded alone, a
+         * breath or murmur in 8 s of quiet comes back as a phrase nobody said ("My mother's mother"). With less,
+         * it stays with what follows; nothing is dropped, and the hard cut is unchanged.
+         */
+        const val MIN_VOICED_SECONDS = 1f
+
+        fun cutsAtPause(segment: Float, quiet: Float, voiced: Float): Boolean =
+            segment >= MIN_SECONDS && quiet >= PAUSE_SECONDS && voiced >= MIN_VOICED_SECONDS
     }
 
     @Volatile private var running = false
@@ -78,6 +87,8 @@ class Recorder(
     private var chunks = ArrayList<ShortArray>()
     /** RMS of each chunk in [chunks], for choosing a hard cut. */
     private var chunkRms = ArrayList<Float>()
+    /** Samples in each chunk of [chunks] that were above the silence line; 0 for a quiet chunk. */
+    private var chunkVoiced = ArrayList<Int>()
     private var segmentSamples = 0
     private var silentSamples = 0
     /** Slowly tracked background level, so "silence" adapts to the room. */
@@ -187,9 +198,11 @@ class Recorder(
         chunkRms.add(rms)
         segmentSamples += n
         noiseFloor = if (rms < noiseFloor) (noiseFloor + rms) / 2 else noiseFloor * 0.998f + rms * 0.002f
-        silentSamples = if (rms < maxOf(0.004f, noiseFloor * 3)) silentSamples + n else 0
+        val quiet = rms < maxOf(0.004f, noiseFloor * 3)
+        silentSamples = if (quiet) silentSamples + n else 0
+        chunkVoiced.add(if (quiet) 0 else n)
         when {
-            segmentSamples >= rate * Segmenting.MIN_SECONDS && silentSamples >= rate * Segmenting.PAUSE_SECONDS ->
+            Segmenting.cutsAtPause(segmentSamples / rate.toFloat(), silentSamples / rate.toFloat(), chunkVoiced.sum() / rate.toFloat()) ->
                 cut(chunks.size)
             segmentSamples >= rate * segmentMaxSeconds -> {
                 // Nobody paused: cut after the quietest chunk of the last few seconds.
@@ -215,6 +228,7 @@ class Recorder(
             head
         }
         chunkRms = ArrayList(chunkRms.subList(k, chunkRms.size))
+        chunkVoiced = ArrayList(chunkVoiced.subList(k, chunkVoiced.size))
         segmentSamples = chunks.sumOf { it.size }
         silentSamples = 0
         onSegment?.invoke(out)
@@ -262,6 +276,7 @@ class Recorder(
             cuts = 0
         }
         chunkRms = ArrayList()
+        chunkVoiced = ArrayList()
         samples = 0
         segmentSamples = 0
         silentSamples = 0
