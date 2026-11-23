@@ -1,4 +1,5 @@
-**1.044: A Maintainer tab: keep your takes' audio, see the storage it uses and set its capacity.**
+**1.045: Maintainer mode is now called Ticked, and on Ubuntu it has its own tab in the main window.**
 
-- **Maintainer** tab in Settings: the maintainer mode switch (keep each Voice Typing take's recording and seam log beside its History row), the storage used now in GB with takes, minutes and dates, and the capacity (GB) and days to keep. Lowering the capacity prunes the oldest takes at once. Off by default; the audio stays on this computer.
+- **Ticked** is the new name for maintainer mode: the switch that keeps each Voice Typing take's recording beside its History row, with storage used, capacity and days to keep. Your settings and kept takes carry over.
+- On Ubuntu a **Ticked** tab sits next to History in the main window, as well as in Settings.
 - Ubuntu beta.
