@@ -124,7 +124,7 @@ def size_bytes(root: Path | None = None) -> int:
 
 
 def usage(root: Path | None = None) -> dict:
-    """What the folder holds now, measured from the files (the Maintainer tab, 1.043): bytes on
+    """What the folder holds now, measured from the files (the Maintainer tab, 1.044): bytes on
     disk, takes (audio files), seconds of audio (FLAC/WAV headers), first and last day folder."""
     root = root or folder()
     out = {"bytes": 0, "takes": 0, "audio_s": 0.0, "first_day": None, "last_day": None}
@@ -144,7 +144,12 @@ def usage(root: Path | None = None) -> dict:
 
 
 def _seconds(f: Path) -> float:
+    """Length from the header: soundfile for FLAC, the wave module for WAV (written when soundfile
+    is missing, as on CI)."""
     try:
+        if f.suffix == ".wav":
+            with wave.open(str(f), "rb") as w:
+                return w.getnframes() / w.getframerate()
         import soundfile
         i = soundfile.info(str(f))
         return i.frames / i.samplerate

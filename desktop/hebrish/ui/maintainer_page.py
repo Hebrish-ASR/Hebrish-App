@@ -1,4 +1,4 @@
-"""Maintainer tab (Settings window, 1.043, Daniel 2026-11-23): maintainer mode's switch, how much
+"""Maintainer tab (Settings window, 1.044, Daniel 2026-11-23): maintainer mode's switch, how much
 disk its audio uses now, and its caps, on one page.
 
 Daniel, 2026-11-23: "a maintainer page that shows current storage used in gigabytes. You can change

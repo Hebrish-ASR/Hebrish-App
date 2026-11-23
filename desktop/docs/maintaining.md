@@ -2743,7 +2743,7 @@ rules on real dictation, since History has no audio and no seam positions.
 - **Verified:** `tests/test_maintainer.py` (FLAC round trip, prune by age then size, clear),
   `test_live.py` maintainer cases, off-screen settings render. **Not verified:** a live take.
 
-### Maintainer tab (1.043, 2026-11-23)
+### Maintainer tab (1.044, 2026-11-23; the 1.043 tag failed CI on this test, CI has no soundfile, so no release came from it)
 
 Daniel, 2026-11-23: "a maintainer page that shows current storage used in gigabytes. You can change
 the capacity and we can start recording." Reason: today's Bamba Bench scored Sabich-Rolling well

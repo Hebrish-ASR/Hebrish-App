@@ -40,7 +40,7 @@ def test_clear(tmp_path):
 
 
 def test_usage_counts_bytes_takes_and_seconds(tmp_path):
-    """The Maintainer tab's figures (1.043) come from the folder itself."""
+    """The Maintainer tab's figures (1.044) come from the folder itself."""
     import numpy as np
     from hebrish import maintainer
     assert maintainer.usage(tmp_path / "none") == {"bytes": 0, "takes": 0, "audio_s": 0.0,
