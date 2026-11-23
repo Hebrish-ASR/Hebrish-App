@@ -7,7 +7,7 @@
   "entries": [
     {
       "date": "2026-11-23",
-      "tag": "Desktop 1.043",
+      "tag": "Desktop 1.044",
       "title": "A Maintainer tab for keeping the audio of your takes",
       "summary": "Settings now has a Maintainer tab: switch maintainer mode on to keep each Voice Typing take's recording beside its History row, see how much disk the recordings use right now in gigabytes, and set the capacity and how many days to keep them.",
       "platforms": [
