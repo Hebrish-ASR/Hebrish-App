@@ -134,7 +134,8 @@ class _BackupDone(QObject):
 
 MAIN_TABS = (("dictate", "Voice Typing"), ("file", "Transcription"), ("history", "History"))
 SETTINGS_TABS = (("settings", "Settings"), ("dictionary", "Dictionary"),
-                 ("updates", "Updates"), ("diagnostics", "Diagnostics"), ("about", "About"))
+                 ("updates", "Updates"), ("diagnostics", "Diagnostics"), ("maintainer", "Maintainer"),
+                 ("about", "About"))
 SETTINGS_KEYS = {k for k, _ in SETTINGS_TABS}
 
 
@@ -230,6 +231,8 @@ class MainWindow(QMainWindow):
         self.pages["diagnostics"] = DiagnosticsPage(ctl, card, muted)
         from .updates import UpdatesPage
         self.pages["updates"] = UpdatesPage(card, muted)
+        from .maintainer_page import MaintainerPage
+        self.pages["maintainer"] = MaintainerPage(ctl, card, muted)
         self.pages["about"] = self._about_page()
         # The main window holds the modes and History; everything else is in the Settings window
         # (2026-11-12, Daniel: "a clean separation between the main UI, the modes, and then the
@@ -2003,12 +2006,8 @@ class MainWindow(QMainWindow):
         each.setToolTip("Otherwise takes collect, a blank line between them. Every take is in History either way.")
         b.addWidget(each)
         b.addWidget(self._check("keep_history", "Keep a history of every transcript (History tab)", self._on_history_setting))
-        maint = self._check("maintainer_mode", "Maintainer mode: keep each take's audio and seam log")
-        maint.setToolTip("For improving Hebrish: each Voice Typing take's recording (FLAC, about 1 MB a "
-                         "minute) and how it was cut and joined are kept beside its History row, in "
-                         "maintainer/ in the app's data folder. Kept 14 days, at most 3 GB. Deleting all "
-                         "History deletes these too. Stays on this computer. Needs the history on.")
-        b.addWidget(maint)
+        b.addWidget(muted("Maintainer mode (keep each take's audio for improving Hebrish), its storage "
+                          "and capacity: the Maintainer tab."))
         lay.addWidget(box)
 
         self.mics_card = MicsCard(self.cfg, self.mics_changed)

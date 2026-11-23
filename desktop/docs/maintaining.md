@@ -2743,6 +2743,22 @@ rules on real dictation, since History has no audio and no seam positions.
 - **Verified:** `tests/test_maintainer.py` (FLAC round trip, prune by age then size, clear),
   `test_live.py` maintainer cases, off-screen settings render. **Not verified:** a live take.
 
+### Maintainer tab (1.043, 2026-11-23)
+
+Daniel, 2026-11-23: "a maintainer page that shows current storage used in gigabytes. You can change
+the capacity and we can start recording." Reason: today's Bamba Bench scored Sabich-Rolling well
+(full-precision `.nemo` on GPU, short read clips) while his real dictation (int8 on CPU, long
+spontaneous takes) felt poor, so real takes are being collected again to annotate and replay.
+
+- Settings window, tab **Maintainer** (`hebrish/ui/maintainer_page.py`, `MaintainerPage`): the
+  `maintainer_mode` switch (moved off the Settings tab, which now points here), storage used now
+  (`maintainer.usage()`: bytes, takes, seconds of audio, first and last day, measured from the
+  folder, refreshed every 5 s while shown), a bar against the capacity, and spin boxes for
+  `maintainer_max_gb` (0.5 to 500) and `maintainer_keep_days` (1 to 3650). Changing either runs
+  `prune()` at once, so lowering the capacity deletes the oldest takes immediately.
+- **Verified:** `tests/test_maintainer.py::test_usage_counts_bytes_takes_and_seconds`; the page
+  rendered off-screen against a temp folder. **Not verified:** a live take from the installed build.
+
 ## Stray words at the start (2026-11-05)
 
 **What was broken:** live takes could open with a stock phrase nobody said ("I'm sorry.", "Hi."). `live_split` treated the quiet before speech as a pause, cut inside it, and sent a piece of pure silence to Parakeet, which turned it into words. The same could happen right after a cut, because the second half of that pause opens the next buffer. The model was not at fault.

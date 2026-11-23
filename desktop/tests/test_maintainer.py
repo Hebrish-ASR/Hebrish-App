@@ -37,3 +37,17 @@ def test_clear(tmp_path):
     maintainer.save(1, np.zeros(10, np.float32), {}, root=tmp_path / "m")
     maintainer.clear(tmp_path / "m")
     assert not (tmp_path / "m").exists()
+
+
+def test_usage_counts_bytes_takes_and_seconds(tmp_path):
+    """The Maintainer tab's figures (1.043) come from the folder itself."""
+    import numpy as np
+    from hebrish import maintainer
+    assert maintainer.usage(tmp_path / "none") == {"bytes": 0, "takes": 0, "audio_s": 0.0,
+                                                   "first_day": None, "last_day": None}
+    maintainer.save(1, np.zeros(16000 * 2, dtype=np.float32), {}, root=tmp_path, day="2026-11-22")
+    maintainer.save(2, np.zeros(16000, dtype=np.float32), {}, root=tmp_path, day="2026-11-23")
+    u = maintainer.usage(tmp_path)
+    assert u["takes"] == 2 and abs(u["audio_s"] - 3.0) < 0.01
+    assert u["bytes"] == sum(f.stat().st_size for f in tmp_path.rglob("*") if f.is_file())
+    assert (u["first_day"], u["last_day"]) == ("2026-11-22", "2026-11-23")

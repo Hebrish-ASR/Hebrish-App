@@ -123,6 +123,35 @@ def size_bytes(root: Path | None = None) -> int:
     return sum(f.stat().st_size for f in root.rglob("*") if f.is_file()) if root.is_dir() else 0
 
 
+def usage(root: Path | None = None) -> dict:
+    """What the folder holds now, measured from the files (the Maintainer tab, 1.043): bytes on
+    disk, takes (audio files), seconds of audio (FLAC/WAV headers), first and last day folder."""
+    root = root or folder()
+    out = {"bytes": 0, "takes": 0, "audio_s": 0.0, "first_day": None, "last_day": None}
+    if not root.is_dir():
+        return out
+    days = sorted(d.name for d in root.iterdir() if d.is_dir() and _is_day(d.name))
+    for f in root.rglob("*"):
+        if not f.is_file():
+            continue
+        out["bytes"] += f.stat().st_size
+        if f.suffix in (".flac", ".wav"):
+            out["takes"] += 1
+            out["audio_s"] += _seconds(f)
+    if days:
+        out["first_day"], out["last_day"] = days[0], days[-1]
+    return out
+
+
+def _seconds(f: Path) -> float:
+    try:
+        import soundfile
+        i = soundfile.info(str(f))
+        return i.frames / i.samplerate
+    except Exception:
+        return 0.0
+
+
 def _is_day(name: str) -> bool:
     try:
         date.fromisoformat(name)
