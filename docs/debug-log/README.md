@@ -53,6 +53,7 @@ Newest first.
 
 | Date | Platform | Symptom | Status | Entry |
 | --- | --- | --- | --- | --- |
+| 2026-11-25 | desktop-linux | Every paste fails with "Install wl-clipboard and xclip" although both are installed (autostarted before the display variables existed) | fixed, unreleased | [2026-11-25-autostart-before-display.md](2026-11-25-autostart-before-display.md) |
 | 2026-11-23 | desktop | Invented phrases ("My mother's mother") from breaths and pauses | fixed in 1.046 (Android port: 1.037) | [2026-11-23-breath-pieces-invented-phrases.md](2026-11-23-breath-pieces-invented-phrases.md) |
 | 2026-11-17 | models | The app stopped recognising any audio input (Sabich v4.8, the first model after tokenizer surgery, decodes nothing or invents sentences) | fixed: CDN rolled back to v4.7, no app release | [2026-11-17-sabich-v4-8-no-speech.md](2026-11-17-sabich-v4-8-no-speech.md) |
 | 2026-11-17 | desktop-windows | MSIX build: every SVG icon fails (packaged apps don't search PATH for qsvg.dll's Qt6Svg.dll) | fixed, unreleased; CI only | [2026-11-17-msix-svg-icons-fail.md](2026-11-17-msix-svg-icons-fail.md) |

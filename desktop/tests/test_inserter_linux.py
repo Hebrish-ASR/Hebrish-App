@@ -78,6 +78,7 @@ def test_clipboard_command_wayland_without_xclip(monkeypatch):
 
 
 def test_clipboard_command_x11(monkeypatch):
+    monkeypatch.setenv("XDG_SESSION_TYPE", "x11")
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
     monkeypatch.setenv("DISPLAY", ":0")
     monkeypatch.setattr(il.shutil, "which", lambda name: f"/usr/bin/{name}")
@@ -282,6 +283,7 @@ def test_read_clipboard_kde_wayland_without_klipper_is_unknown(monkeypatch):
 
 
 def test_read_clipboard_x11_uses_xclip(monkeypatch):
+    monkeypatch.setenv("XDG_SESSION_TYPE", "x11")
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
     monkeypatch.setenv("DISPLAY", ":0")
     monkeypatch.setattr(il, "_klipper_get", lambda: None)
@@ -289,3 +291,32 @@ def test_read_clipboard_x11_uses_xclip(monkeypatch):
     seen = []
     monkeypatch.setattr(il.subprocess, "run", lambda cmd, **kw: (seen.append(cmd), _Run(0, b"abc"))[1])
     assert il.read_clipboard() == "abc" and seen[0][0] == "xclip"
+
+
+def _session_env(monkeypatch, stdout):
+    for name in il.SESSION_VARS:
+        monkeypatch.setenv(name, "")             # restored after the test
+    monkeypatch.setenv("XDG_SESSION_TYPE", "wayland")
+    monkeypatch.setattr(il.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(il, "_globals", set)
+    monkeypatch.setattr(il.subprocess, "run", lambda *a, **k: il.subprocess.CompletedProcess(a, 0, stdout))
+
+
+def test_display_variables_published_after_start(monkeypatch):
+    _session_env(monkeypatch, "PATH=/evil\nWAYLAND_DISPLAY=wayland-0\nDISPLAY=:0\nXAUTHORITY=/run/x\n")
+    path = os.environ["PATH"]
+    assert il.clipboard_command()[0] == "xclip"
+    assert os.environ["XAUTHORITY"] == "/run/x" and os.environ["PATH"] == path
+
+
+def test_display_variables_already_set_are_kept(monkeypatch):
+    _session_env(monkeypatch, "WAYLAND_DISPLAY=wayland-9\nDISPLAY=:9\n")
+    monkeypatch.setenv("DISPLAY", ":0")
+    il.refresh_session_env()
+    assert os.environ["DISPLAY"] == ":0" and os.environ["WAYLAND_DISPLAY"] == "wayland-9"
+
+
+def test_no_display_is_not_reported_as_a_missing_package(monkeypatch):
+    _session_env(monkeypatch, "")
+    with pytest.raises(RuntimeError, match="No display"):
+        il.clipboard_command()

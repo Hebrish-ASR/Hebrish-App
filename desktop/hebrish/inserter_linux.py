@@ -64,6 +64,28 @@ def wayland_globals(timeout: float = 1.0) -> set[str]:
         return names
 
 
+SESSION_VARS = ("WAYLAND_DISPLAY", "DISPLAY", "XAUTHORITY")
+
+
+def refresh_session_env():
+    """Fill in missing display variables from the systemd user manager. An app autostarted at
+    login can start before the compositor has published them there, and keeps that environment
+    for its whole life (docs/debug-log/2026-11-25-autostart-before-display.md). Only missing
+    variables are set."""
+    env = os.environ
+    if env.get("DISPLAY") and (env.get("WAYLAND_DISPLAY") or env.get("XDG_SESSION_TYPE") != "wayland"):
+        return
+    try:
+        r = subprocess.run(["systemctl", "--user", "show-environment"], capture_output=True, text=True, timeout=2)
+    except (OSError, subprocess.SubprocessError, UnicodeError):
+        return
+    for line in r.stdout.splitlines():
+        name, _, value = line.partition("=")
+        if name in SESSION_VARS and value and not env.get(name):
+            env[name] = value
+            log.info("%s was missing at start, now %s", name, value)
+
+
 def clipboard_command() -> list[str]:
     """The tool that sets the clipboard while Hebrish is NOT the focused app (the dictation
     path: the text is pasted into another window).
@@ -77,6 +99,7 @@ def clipboard_command() -> list[str]:
     the compositor offers the wlr protocol (wlroots, Hyprland); elsewhere the X11 CLIPBOARD
     selection is set with xclip (XWayland), which never maps a window, and the compositor's
     selection bridge makes it the Wayland clipboard."""
+    refresh_session_env()
     wayland = bool(os.environ.get("WAYLAND_DISPLAY"))
     xclip = ["xclip", "-selection", "clipboard"] if shutil.which("xclip") and os.environ.get("DISPLAY") else None
     wl = ["wl-copy"] if wayland and shutil.which("wl-copy") else None
@@ -84,6 +107,8 @@ def clipboard_command() -> list[str]:
     for cmd in ((wl, xclip) if wlr or not wayland else (xclip, wl)):
         if cmd:
             return cmd
+    if not wayland and not os.environ.get("DISPLAY"):
+        raise RuntimeError("No display found for the clipboard: quit and restart Hebrish")
     raise RuntimeError("Install wl-clipboard and xclip")
 
 
@@ -196,6 +221,7 @@ def read_clipboard() -> str | None:
     text = _klipper_get()
     if text is not None:
         return text or None
+    refresh_session_env()
     wayland = bool(os.environ.get("WAYLAND_DISPLAY"))
     wlr = wayland and "zwlr_data_control_manager_v1" in _globals()
     if wlr and shutil.which("wl-paste"):
