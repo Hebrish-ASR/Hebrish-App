@@ -1342,6 +1342,7 @@ class Controller(QObject):
             self.engine.unload()
             self.win.update_model()
             self._update_tray()
+            self._redownload_damaged()
             self.load_hebrew()          # no main model yet: the Hebrew one still loads
             return
         self.loading = True
@@ -1359,6 +1360,21 @@ class Controller(QObject):
             except Exception as e:
                 self.sig.loaded.emit(e)
         threading.Thread(target=work, daemon=True).start()
+
+    def _redownload_damaged(self):
+        """The selected model has an install whose files don't match its manifest (a power cut
+        right after a download, 2026-11-26): download it again instead of failing every take."""
+        mid = model_store.current_id()
+        bad = model_store.damaged(mid)
+        if not bad or self.downloading:
+            return
+        d, m, files = bad[0]
+        log.warning("damaged install %s (%s): downloading again", d, ", ".join(files))
+        self.win.status(f"{m.full_label} is damaged on disk ({', '.join(files)}); downloading it again…")
+        self.notify("Model damaged, downloading again",
+                    f"{m.full_label}: {', '.join(files)} is incomplete, probably from a shutdown during the last update.")
+        self.pending_download = mid
+        self.check_updates(manual=True)
 
     def _loaded(self, err):
         self.loading = False

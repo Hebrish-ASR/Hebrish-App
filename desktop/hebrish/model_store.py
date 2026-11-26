@@ -508,9 +508,25 @@ def model_dir(mid: str) -> Path:
     return ROOT / mid
 
 
-def installed(mid: str | None = None) -> list[tuple[Path, Manifest]]:
-    """Complete installs of one model, newest first (by manifest mtime)."""
-    mid = mid or current_id()
+def damaged_files(d: Path, m: Manifest) -> list[str]:
+    """Files of an install that are missing or not the size its manifest records. A stat per file,
+    so cheap enough for every lookup. 2026-11-26: a power loss one second after a verified download
+    left the 652 MB encoder at 180 MiB under a valid manifest, and the app then failed every take
+    with "Model not loaded" (docs/debug-log/2026-11-26-truncated-encoder-after-power-loss.md)."""
+    bad = []
+    for name, info in m.files.items():
+        size = info.get("size") if isinstance(info, dict) else None
+        if size is None:
+            continue
+        try:
+            if (d / name).stat().st_size != size:
+                bad.append(name)
+        except OSError:
+            bad.append(name)
+    return bad
+
+
+def _manifests(mid: str) -> list[tuple[Path, Manifest]]:
     out, base = [], model_dir(mid)
     if base.is_dir():
         for d in base.iterdir():
@@ -520,6 +536,23 @@ def installed(mid: str | None = None) -> list[tuple[Path, Manifest]]:
                     out.append((d, Manifest.from_json(json.loads(mf.read_text(encoding="utf-8")), mid)))
                 except (ValueError, KeyError):
                     continue
+    return out
+
+
+def damaged(mid: str | None = None) -> list[tuple[Path, Manifest, list[str]]]:
+    """Installs of one model that have a manifest but damaged files (see damaged_files)."""
+    out = []
+    for d, m in _manifests(mid or current_id()):
+        if bad := damaged_files(d, m):
+            out.append((d, m, bad))
+    return out
+
+
+def installed(mid: str | None = None) -> list[tuple[Path, Manifest]]:
+    """Complete installs of one model, newest first (by manifest mtime). An install whose files
+    don't match its manifest's sizes is left out (damaged(), downloaded again by the app)."""
+    mid = mid or current_id()
+    out = [(d, m) for d, m in _manifests(mid) if not damaged_files(d, m)]
     out.sort(key=lambda t: (t[0] / "manifest.json").stat().st_mtime, reverse=True)
     return out
 
@@ -601,6 +634,22 @@ def needs_update(latest: Manifest) -> bool:
 
 
 # -- download ----------------------------------------------------------------
+
+def _fsync(path: Path):
+    """Flush a file, or a directory's entries, to disk. Without it a verified file renamed into
+    place can lose its data to a power cut seconds later (2026-11-26, see damaged_files)."""
+    import os
+    try:
+        fd = os.open(path, os.O_RDONLY)
+    except OSError:
+        return                              # Windows can't open a directory: the rename is enough there
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
 
 def _sha256(path: Path, cancel: threading.Event | None) -> str:
     h = hashlib.sha256()
@@ -736,7 +785,9 @@ def fetch_files(dest: Path, files: dict, url_for, on_progress=None,
             if got != info["sha256"]:
                 part.unlink()
                 raise RuntimeError(f"{name}: SHA-256 mismatch (got {got[:12]}…)")
-        part.rename(final)
+        _fsync(part)
+        part.replace(final)                 # replace: a damaged final copy may still be there
+        _fsync(dest)
         done += info["size"]
 
 
@@ -754,7 +805,11 @@ def download(m: Manifest, on_progress=None, cancel: threading.Event | None = Non
         return (m.base_url + name) if m.base_url else f"{HF}/{model.repo}/resolve/{m.revision}/{model.path(name)}"
     fetch_files(dest, {n: m.files[n] for n in FILES}, url_for, on_progress, cancel)
 
-    (dest / "manifest.json").write_text(json.dumps(m.to_json(), indent=2))
+    tmp = dest / "manifest.json.tmp"
+    tmp.write_text(json.dumps(m.to_json(), indent=2))
+    _fsync(tmp)
+    tmp.replace(dest / "manifest.json")
+    _fsync(dest)
     set_active(dest.name, m.model)
     if not keep_old:
         prune_except(dest.name, m.model)
@@ -788,6 +843,8 @@ def main():
     cur = active(mid)
     rows = [f"  {d.name}{'  (active)' if cur and d == cur[0] else ''}" for d, _ in installed(mid)]
     print(f"{mid} installed:", *(rows or ["  none"]), sep="\n")
+    for d, _, bad in damaged(mid):
+        print(f"  {d.name}  (damaged: {', '.join(bad)}; download replaces it)")
     if a.cmd == "status":
         return
     latest = fetch_latest(mid)

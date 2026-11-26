@@ -410,3 +410,35 @@ def test_other_http_errors_stay_errors(monkeypatch):
     monkeypatch.setattr(ms, "_get", down)
     with pytest.raises(urllib.error.HTTPError):
         ms.fetch_latest("falafel")
+
+
+def test_truncated_install_is_damaged_not_installed():
+    """2026-11-26: a power cut right after a verified download left the encoder truncated under a
+    valid manifest. Such an install is not offered for loading; an older complete one is."""
+    old = install(manifest(sha="1" * 40, version="v3"))
+    new = install(manifest(sha="2" * 40, version="v4", encoder_oid="9" * 64))
+    ms.set_active(new.name)
+    (new / "encoder.int8.onnx").write_bytes(b"x" * 2)              # 6 bytes in the manifest
+    assert [d for d, _, _ in ms.damaged()] == [new]
+    assert ms.damaged()[0][2] == ["encoder.int8.onnx"]
+    assert [d for d, _ in ms.installed()] == [old]
+    assert ms.active()[0] == old
+    (old / "joiner.int8.onnx").unlink()
+    assert ms.active() is None and ms.needs_update(manifest(sha="2" * 40, version="v4", encoder_oid="9" * 64))
+
+
+def test_download_repairs_a_truncated_file(monkeypatch):
+    m = manifest(sha="2" * 40, version="v4")
+    d = install(m)
+    for f in m.files.values():
+        f["sha256"] = None                                          # the fake bytes have no real hash
+    (d / "encoder.int8.onnx").write_bytes(b"x" * 2)
+
+    def fake_fetch(url, part, size, on_bytes, cancel):
+        part.write_bytes(b"y" * size)
+        on_bytes(size)
+    monkeypatch.setattr(ms, "_fetch_once", fake_fetch)
+    assert ms.download(m) == d
+    assert (d / "encoder.int8.onnx").read_bytes() == b"y" * 6
+    assert not ms.damaged() and ms.active()[0] == d
+    assert not (d / "manifest.json.tmp").exists()

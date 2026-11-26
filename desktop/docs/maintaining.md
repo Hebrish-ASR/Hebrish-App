@@ -82,6 +82,21 @@ it. While waiting, `on_progress`'s name is `"retrying <n> in <s> s: <error>"` (`
 `download.progress` shows "connection lost, retrying ·" on the model card. `sleep` and `clock` are injectable.
 Tests: `tests/test_download_retry.py` (a local server that cuts the body or answers 5xx/429/408/404; fake clock).
 
+### Downloads are flushed to disk; damaged installs are downloaded again (1.047, 2026-11-26)
+
+Debug log `docs/debug-log/2026-11-26-truncated-encoder-after-power-loss.md`. A power cut one second after a verified
+download left the 652 MB Sabich v5.7 encoder at 180 MiB under a valid `manifest.json`, and every take then failed with
+"Model not loaded". Two rules since:
+
+- `fetch_files` fsyncs each verified `.part` before `part.replace(final)` and fsyncs the folder after; `download`
+  writes `manifest.json` through `manifest.json.tmp` + fsync + replace. `_fsync` skips a folder it can't open (Windows).
+- `installed()` lists only installs whose files all match their manifest sizes (`damaged_files`, one stat per file).
+  `damaged(mid)` returns the rest. `Controller.load_model`, finding no complete install, calls `_redownload_damaged`:
+  status line, a notification, `pending_download`, then a manual update check that downloads it. `fetch_files`
+  refetches the wrong-size file and keeps the good ones. `hebrish-model status` lists damaged installs, and
+  `hebrish-model download` repairs one. Sizes only: a same-size file with bad contents still shows the load error banner.
+Tests: `tests/test_model_store.py` `test_truncated_install_is_damaged_not_installed`, `test_download_repairs_a_truncated_file`.
+
 ## Silence guard (1.035, 2026-11-15)
 
 Daniel, 2026-11-15: a take had been recording for more than 10 s with the input at nothing, so
