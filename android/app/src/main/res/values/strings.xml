@@ -112,6 +112,7 @@
     <string name="return_auto_option">Automatic</string>
     <string name="return_hint">Long-press the keyboard key in Hebrish to open the system keyboard picker at any time.</string>
     <string name="ime_no_model">Model not downloaded. Tap the mic to open setup.</string>
+    <string name="ime_model_damaged">The model is damaged. Open Hebrish to download it again.</string>
     <string name="ime_no_permission">Microphone not granted. Tap the mic to open setup.</string>
     <string name="ime_tap_to_speak">Tap the mic to speak</string>
     <string name="ime_loading">Loading model (first use)…</string>
@@ -709,6 +710,8 @@
     <!-- B-107: model updates in the background (Models, Updates). -->
     <string name="models_wifi_only">Only on Wi-Fi</string>
     <string name="modelupdate_done">%1$s updated to %2$s</string>
+    <string name="model_damaged_title">%1$s was damaged: downloading it again</string>
+    <string name="model_damaged_text">%1$s was incomplete, probably from a shutdown during the last update.</string>
     <!-- B-106: app updates in the background (fdroid build only: Setup, Install and updates). -->
     <string name="updates_channel">Updates</string>
     <string name="setup_updates_title">Automatic app updates</string>

@@ -105,6 +105,21 @@ with `failedId` unset and starts the next queued model (Download all no longer s
 `model_not_published` ("Coming soon: not published yet. Tap Download to check again.") and keeps Download.
 Compiled in CI, not run on a device.
 
+### Damaged models are downloaded again; downloads are synced (unreleased, 2026-11-26)
+
+Port of the desktop fix (debug log `docs/debug-log/2026-11-26-truncated-encoder-after-power-loss.md`: a power cut
+one second after a verified download left the encoder truncated under a valid manifest). `ModelStore.downloadFiles`
+calls `ModelStore.sync` (`RandomAccessFile.fd.sync()`) on each verified `.part` before the rename, and
+`writeFolderManifest` syncs `manifest.json.tmp` before its rename. The folder itself isn't synced (no portable way
+from Java); a lost rename leaves the `.part`, which resumes. `ModelStore.damaged(ctx, model)` lists the files of a
+*downloaded* version (manifest in ModelPrefs, folder present) that are missing or the wrong size
+(`damagedFiles`, also behind `isComplete`/`isReady`). `ModelRepair.run` posts a notification
+(`UpdateNotices.MODEL_DAMAGED`) and starts `ModelDownload.download`, which refetches only those files. It is called
+from `MainActivity.onResume` and from the background job (`ModelUpdates.run`, before updates, with
+`background = true`). The keyboard shows `ime_model_damaged` instead of "Model not downloaded"; it doesn't start a
+download itself (a foreground service from the IME isn't guaranteed). Test: `ModelFolderTest.truncatedFileIsDamaged`.
+Compiled in CI, not run on a device.
+
 ## sherpa-onnx API notes (1.13.8, read with javap from the AAR 2026-10-18)
 
 - Since 1.000 (2026-10-23) sherpa-onnx is built from source for F-Droid (`fdroid-main.md`):

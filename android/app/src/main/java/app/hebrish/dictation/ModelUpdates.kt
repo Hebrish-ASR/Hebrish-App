@@ -33,6 +33,15 @@ object ModelUpdates {
         if (!waitWhile(CHECK_TIMEOUT_MS) { ModelDownload.checking }) return true
         ModelDownload.checkError?.let { Log.w(TAG, "model check failed: $it"); return true }
 
+        // A downloaded model whose files were damaged (power cut after an update, 2026-11-26) first.
+        for (m in Catalogue.get(app).models.filter { it.available }) {
+            if (ModelStore.damaged(app, m).isEmpty()) continue
+            var started = false
+            onMain { started = ModelRepair.run(app, m, background = true) }
+            if (!started) return true
+            waitWhile(Long.MAX_VALUE) { ModelDownload.status is ModelDownload.Status.Running }
+            if (ModelStore.damaged(app, m).isNotEmpty()) { onMain { ModelDownload.clearFailure() }; return true }
+        }
         val installed = ModelStore.readyModels(app)
         val sel = Catalogue.selected(app)
         // The selected model first: it is the one dictation uses.

@@ -139,6 +139,7 @@ object UpdateNotices {
     const val APP_UPDATED = 51
     const val APP_CONFIRM = 52
     const val MODEL_UPDATED = 53
+    const val MODEL_DAMAGED = 54
 
     fun allowed(ctx: Context): Boolean {
         val nm = ctx.getSystemService(NotificationManager::class.java) ?: return false

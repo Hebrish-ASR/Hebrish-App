@@ -136,7 +136,7 @@ object ModelStore {
     fun isReady(ctx: Context, root: String? = ModelPrefs.modelRoot(ctx), model: Catalogue.Model = sel(ctx),
                 m: Manifest? = installed(ctx, model)): Boolean {
         val d = dir(ctx, root, model, m) ?: return false
-        return m!!.files.all { File(d, it.name).let { f -> f.exists() && f.length() == it.size } }
+        return isComplete(d, m!!)
     }
 
     /** Deletes every folder of [model] except its installed version: older versions and abandoned updates. */
@@ -165,6 +165,7 @@ object ModelStore {
     fun writeFolderManifest(dir: File, m: Manifest, modelId: String, name: String): Boolean = runCatching {
         val tmp = File(dir, "$MANIFEST_FILE.tmp")
         tmp.writeText(folderJson(m, modelId, name))
+        sync(tmp)
         tmp.renameTo(File(dir, MANIFEST_FILE)) || run { tmp.delete(); false }
     }.getOrDefault(false)
 
@@ -175,7 +176,33 @@ object ModelStore {
     }.getOrNull()
 
     /** Every file of [m] is in [dir] at its listed size. */
-    fun isComplete(dir: File, m: Manifest) = m.files.all { f -> File(dir, f.name).let { it.exists() && it.length() == f.size } }
+    fun isComplete(dir: File, m: Manifest) = damagedFiles(dir, m).isEmpty()
+
+    /** Files of [m] that are missing from [dir] or not at their listed size. */
+    fun damagedFiles(dir: File, m: Manifest): List<String> =
+        m.files.filter { f -> File(dir, f.name).let { !it.exists() || it.length() != f.size } }.map { it.name }
+
+    /**
+     * Files of [model]'s downloaded version that no longer match its manifest; empty if it is
+     * fine, was never downloaded, or its folder is gone. 2026-11-26 (desktop): a power cut a
+     * second after a verified download left the 652 MB encoder at 180 MiB under a valid manifest
+     * (docs/debug-log/2026-11-26-truncated-encoder-after-power-loss.md). [ModelDownload.download]
+     * refetches just these files; the app's ModelRepair starts it.
+     */
+    fun damaged(ctx: Context, model: Catalogue.Model = sel(ctx)): List<String> {
+        val m = ModelPrefs.installedManifest(ctx, model.id)?.let(Manifest::fromJson) ?: return emptyList()
+        val d = dir(ctx, model = model, m = m) ?: return emptyList()
+        return if (d.isDirectory) damagedFiles(d, m) else emptyList()
+    }
+
+    /**
+     * Flushes [f] to disk. Called on each verified file before its rename and on the manifest:
+     * without it the renamed file can lose its data to a power cut seconds later (2026-11-26).
+     * A failure is ignored; the size check in [damaged] still catches the result.
+     */
+    fun sync(f: File) {
+        runCatching { java.io.RandomAccessFile(f, "rw").use { it.fd.sync() } }
+    }
 
     /**
      * The newest complete version of [modelId] under [base] (one subfolder per version), by when
@@ -360,6 +387,7 @@ object ModelStore {
                 part.delete()
                 throw DownloadRetry.ChecksumMismatch(f.name)
             }
+            sync(part)
             if (!part.renameTo(target)) throw DownloadRetry.LocalFileError("Could not move ${f.name} into place")
             doneBefore += f.size
             progress(doneBefore)

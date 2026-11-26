@@ -1,10 +1,10 @@
 ---
 date: 2026-11-26
-platform: desktop-linux
+platform: desktop-linux    # Android ported the same day
 environment: Ubuntu, Hebrish desktop 1.046 (.deb), ext4 on LVM
 component: desktop/hebrish/model_store.py, desktop/hebrish/ui/app.py
 affected: "<= 1.046"
-fixed_in: "1.047 (unreleased)"
+fixed_in: "desktop 1.047, Android next release (both unreleased)"
 status: fixed
 ---
 
@@ -66,8 +66,9 @@ sizes.
   fails with and without this change (pre-existing).
 - (V) After the repair, all four files match the manifest's SHA-256, and the app restarted, loaded and transcribed a take.
 - (I) That fsync prevents a repeat: no power cut was simulated.
-- (I) Android: model downloads (not app updates) don't fsync before the rename either (grep, 2026-11-26). Not
-  changed here.
+- Android had the same gap: model downloads (not app updates) didn't sync before the rename. Ported on 2026-11-26
+  (unreleased): `ModelStore.sync`, `ModelStore.damaged`, `ModelRepair`; see `android/docs/maintaining.md`, "Damaged
+  models are downloaded again". (I) It compiles in CI and has a JVM test; it hasn't been run on a device.
 
 ## Related
 

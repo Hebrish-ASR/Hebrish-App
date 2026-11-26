@@ -106,4 +106,17 @@ class ModelFolderTest {
         assertNull(ModelStore.findComplete(none, "sabich"))
         assertTrue(ModelStore.prunable(none, null, "sabich").isEmpty())
     }
+
+    /** 2026-11-26: a truncated file under a valid manifest is damaged, not complete (debug log of that date). */
+    @Test fun truncatedFileIsDamaged() {
+        val m = manifest()
+        val dir = install(tmp.root, m)
+        assertTrue(ModelStore.damagedFiles(dir, m).isEmpty())
+        File(dir, "encoder.int8.onnx").writeBytes(ByteArray(2))
+        assertEquals(listOf("encoder.int8.onnx"), ModelStore.damagedFiles(dir, m))
+        assertFalse(ModelStore.isComplete(dir, m))
+        assertNull(ModelStore.findComplete(tmp.root, "sabich"))
+        File(dir, "tokens.txt").delete()
+        assertEquals(listOf("encoder.int8.onnx", "tokens.txt"), ModelStore.damagedFiles(dir, m))
+    }
 }

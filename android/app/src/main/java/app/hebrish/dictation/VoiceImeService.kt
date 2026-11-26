@@ -351,7 +351,8 @@ class VoiceImeService : InputMethodService() {
         switchWhenDone = false
         when {
             passwordField -> show(getString(R.string.ime_password), busy = false)
-            !ModelStore.isReady(this) -> show(getString(R.string.ime_no_model), busy = false)
+            !ModelStore.isReady(this) -> show(getString(if (ModelStore.damaged(this).isNotEmpty())
+                R.string.ime_model_damaged else R.string.ime_no_model), busy = false)
             !hasMic() -> show(getString(R.string.ime_no_permission), busy = false)
             // A floating mic take isn't dropped by a field gaining focus, only by a tap on this mic.
             Prefs.autoStart(this) && !FloatingMicService.takeOpen -> startRecording()
