@@ -699,7 +699,8 @@ class Utilities(QWidget):
     _cleanup_item = staticmethod(MainWindow._cleanup_item)
     _title_item = staticmethod(MainWindow._title_item)
     _transform_item = staticmethod(MainWindow._transform_item)
-    for _n in ("_utilities_page", "_utility_row", "_check", "_update_addons", "_use_cleanup", "_delete_addon"):
+    for _n in ("_utilities_page", "_utility_row", "_check", "_update_addons", "_use_cleanup", "_delete_addon",
+               "_vad_custom_block", "_pick_vad_model", "_clear_vad_model", "refresh_vad_model"):
         locals()[_n] = getattr(MainWindow, _n)
 
     def __init__(self, cfg):
