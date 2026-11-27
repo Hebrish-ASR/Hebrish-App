@@ -405,7 +405,9 @@ each part works there:
    (both in the `appimage` artifact; the AppImage's update information names that .zsync) and
    `apps/windows/Hebrish-latest-windows-x64.zip`, and set `files.appimage` (url, name, platform
    "Linux x86_64, AppImage", size, sha256, version) and `files.windows` in `downloads/latest.json`.
-   `/get/appimage` works with no site change (api/get.mjs reads any key). Until a stable is cut,
+   `/get/appimage` works with no site change (api/get.mjs reads any key). Since 2026-11-27 the AppImage part is scripted: download the run's `appimage` artifact and run
+   `with-secrets scripts/publish-appimage-cdn.sh <dir>/Hebrish-<ver>-x86_64.AppImage <dir>/Hebrish-latest-x86_64.AppImage.zsync v<ver>`
+   (repo root; `DRY_RUN=1` first); the Windows part is `scripts/publish-windows-cdn.sh` (see "Windows"). Until a stable is cut,
    `files.appimage`/`files.windows` keep naming the last stable; the AppImage and Windows builds
    check only their own key, so they are never offered a beta.
 3a. Beta .deb on the CDN (2026-11-13): `gh release download desktop-v<ver> -p "*.deb" -D dist`, then
