@@ -2,9 +2,27 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "android",
-  "built": "2026-11-24",
+  "built": "2026-11-27",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-27",
+      "tag": "Android 1.038",
+      "title": "Fewer invented phrases from silence and breaths",
+      "summary": "A recording with no speech in it, or the very first moment of one, could come back as a phrase nobody said. Hebrish now remembers how loud you usually speak and skips a piece that is far quieter than that and holds almost no speech.",
+      "platforms": [
+        "android"
+      ]
+    },
+    {
+      "date": "2026-11-24",
+      "tag": "Android 1.037",
+      "title": "Fewer invented phrases from breaths and pauses",
+      "summary": "A breath or murmur during a long pause, or after your last word, could come back as a phrase nobody said. It now stays with the words after it or is skipped.",
+      "platforms": [
+        "android"
+      ]
+    },
     {
       "date": "2026-11-16",
       "tag": "Android 1.036",
@@ -164,26 +182,6 @@
       "tag": "Android 1.010",
       "title": "Stability release: much less memory when you are not dictating",
       "summary": "The speech model (about 700 MB) no longer loads when the phone starts. It loads when you focus a text field or start a take, is freed after 5 minutes without use, and is freed straight away when the phone runs short of memory.",
-      "platforms": [
-        "android"
-      ]
-    },
-    {
-      "date": "2026-10-30",
-      "tag": "Models",
-      "title": "Sabich v2.3: 20% more recordings",
-      "summary": "Sabich v2.3 replaces v2.2 as the recommended model in the apps. It is a Sabich-only update to Release v2, trained the same way as v2.2 on 1,296 minutes of audio (522.8 minutes of English with Hebrew words in it, up from 471.4).",
-      "platforms": [
-        "android",
-        "desktop",
-        "models"
-      ]
-    },
-    {
-      "date": "2026-10-30",
-      "tag": "Android 1.009",
-      "title": "No dead ends, and steadier under load",
-      "summary": "Buttons that open a phone settings screen no longer close the app on phones that don't have that screen; the app tells you instead.",
       "platforms": [
         "android"
       ]

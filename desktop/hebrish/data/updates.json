@@ -2,9 +2,18 @@
   "_comment": "Baked by scripts/bake_updates.py from hebrish.app/changelog; do not edit by hand. Shown offline in the apps' What's new (Android Updates screen, desktop About tab).",
   "schema": 1,
   "platform": "desktop",
-  "built": "2026-11-24",
+  "built": "2026-11-27",
   "source": "https://hebrish.app/changelog",
   "entries": [
+    {
+      "date": "2026-11-27",
+      "tag": "Desktop 1.047",
+      "title": "Fewer invented phrases from silence and breaths",
+      "summary": "A recording with no speech in it, or the very first moment of one, could come back as a phrase nobody said. Hebrish now remembers how loud you usually speak into each microphone and skips a piece that is far quieter than that and holds almost no speech.",
+      "platforms": [
+        "desktop"
+      ]
+    },
     {
       "date": "2026-11-23",
       "tag": "Site",
@@ -173,15 +182,6 @@
       "tag": "Ubuntu 1.029",
       "title": "Ubuntu 1.029: late words stay on the clipboard",
       "summary": "Late words: when Enter goes in before the last words, Ctrl+V now pastes just the words that were missed. With \"whole take on the clipboard\" on, the whole take used to replace them a moment later.",
-      "platforms": [
-        "desktop"
-      ]
-    },
-    {
-      "date": "2026-11-10",
-      "tag": "Ubuntu 1.028",
-      "title": "Ubuntu 1.028: Falafel coming soon",
-      "summary": "Falafel: the new model for short voice commands has its own tab under Models, in a full size and a small one. It shows Coming soon until its first version is out, then downloads like any other model, with no app update.",
       "platforms": [
         "desktop"
       ]
