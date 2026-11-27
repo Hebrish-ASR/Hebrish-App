@@ -24,7 +24,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from .. import (__version__, app_update, audio, auto_enter, autostart, dictionary, disfluency, engine, keyboard_layout,
                local_api, maintainer, mics, model_store, vad)
-from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
+from ..config import (APP_NAME, HISTORY_DB, HISTORY_PATH, LEVELS_PATH, STATE_PATH, Config, in_quiet_hours, load_json,
                       migrate_legacy, import_parlance, models_root, save_json, threads)
 from ..engine import REF_S, Engine, draft_text, drop_final_stop, held_mark, live_split, seam_join
 from ..history import History, maintain
@@ -367,7 +367,9 @@ class Controller(QObject):
             return
         self.stop_monitor()
         try:
-            self.recorder.start(mics.resolve(self.cfg)[0])
+            dev, label = mics.resolve(self.cfg)
+            self.recorder.start(dev)
+            self._mic_key = label or dev or "default"     # whose usual speech level (LEVELS_PATH) applies
         except Exception as e:
             self.notify("Microphone error", str(e))
             return
@@ -843,6 +845,11 @@ class Controller(QObject):
             if job != take:
                 take, parts, stream, heard_audio, held, ctx = job, [], None, [], "", None
                 fresh, gap = False, False
+                # 1.047: the usual speech level on this mic, for pieces before the take's first text
+                # (engine.faint_level); learnt from every piece that gives text, saved at the take's end
+                mic = getattr(self, "_mic_key", "default")
+                levels = load_json(LEVELS_PATH, {}) or {}
+                usual = levels.get(mic)
                 eng, hebrew = _take_engine(self, job), _take_lang(self, job) == "he"
                 if hebrew and not self._he_ready.wait(HE_LOAD_WAIT_S):
                     log.warning("Hebrew model still loading after %d s", HE_LOAD_WAIT_S)
@@ -904,9 +911,12 @@ class Controller(QObject):
                 # 0.7.6: each piece is decoded after the end of the one before it (engine.CONTEXT_S),
                 # unless that one was cut without a pause (a forced cut may split a word)
                 ref = _before(heard_audio, REF_S * audio.SAMPLE_RATE)
-                text, stop = (eng.transcribe_after(samples, ctx, vad=self.cfg["vad"], ref=ref)
+                text, stop = (eng.transcribe_after(samples, ctx, vad=self.cfg["vad"], ref=ref,
+                                                   usual=None if parts else usual)
                               if live else ("", None))
                 raw, decode_s = text, time.monotonic() - t0
+                if raw and not hebrew:
+                    usual = engine.usual_update(usual, samples)
                 if final:
                     log.info("last piece: %.1f s of audio, %d words", len(samples) / audio.SAMPLE_RATE,
                              len(text.split()))
@@ -949,6 +959,11 @@ class Controller(QObject):
                         "text": text, "lead": lead, "held_in": held_in, "held_out": held, "decode_s": round(decode_s, 3)})
                 if final and live and parts and job == self._send_take and self._sends(job):
                     self._send(job)
+                if final and usual and usual != levels.get(mic):
+                    try:
+                        save_json(LEVELS_PATH, {**levels, mic: usual})
+                    except OSError:
+                        log.exception("couldn't save the usual speech level")
                 if final:
                     heard = parts or len(samples) < audio.SAMPLE_RATE // 2 or not live
                     self.sig.transcribed.emit(" ".join(parts), None if heard else NO_SPEECH, self._maint_end(job, whole_take()))

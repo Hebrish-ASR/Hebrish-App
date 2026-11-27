@@ -159,10 +159,17 @@ class TakeDecoder(ctx: Context, val language: Catalogue.Model? = null, private v
 
     /** Worker thread only. Room noise, or breath and murmur after speech: decoding could only invent words. */
     private fun background(samples: FloatArray) =
-        VoiceDetection.noiseOnly(samples, noiseFilter) || (noiseFilter > 0 && VoiceDetection.faint(samples, takeLevel))
+        VoiceDetection.noiseOnly(samples, noiseFilter) ||
+            (noiseFilter > 0 && VoiceDetection.faint(samples, if (takeLevel > 0f) takeLevel else usual))
+
+    /** The usual speech level (1.038), read once per take; used until the take gives text. */
+    private val usual by lazy { VoiceDetection.usualLevel(app) }
 
     private fun heard(samples: FloatArray, text: String) {
-        if (text.isNotBlank()) takeLevel = VoiceDetection.speechLevel(samples)
+        if (text.isNotBlank()) {
+            takeLevel = VoiceDetection.speechLevel(samples)
+            if (language == null) VoiceDetection.learnLevel(app, samples)
+        }
     }
 
     /**

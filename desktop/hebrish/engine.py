@@ -89,7 +89,8 @@ VAD_QUIET = 0.01
 VAD_MIN_SPEECH_S = 0.25
 LIVE_CUT_SPEECH_S = 1.0    # least speech in a live piece cut at a pause (live_split)
 FAINT_DB = 18              # a short live piece this far under the take's speech level is breath or murmur
-FAINT_LOUD_S = 0.06        # unless it has this much sound above that line
+FAINT_LOUD_S = 0.08        # unless it has this much sound above that line (0.06 up to 1.046: 3 frames let a breath through, 2026-11-27)
+USUAL_ALPHA = 0.2          # weight of the newest piece in the remembered usual speech level (usual_update)
 VAD_LONG_S = 1.5
 VAD_KEEP_S = 0.8
 # A piece of a take (live pieces and the last one, decoded after Stop) is judged against the levels
@@ -158,10 +159,34 @@ def faint(x: np.ndarray, ref: np.ndarray | None) -> bool:
     """A live piece after speech that holds only breath or murmur: under LIVE_CUT_SPEECH_S of speech
     frames and almost nothing within FAINT_DB of the take's speech level (95th percentile of `ref`).
     A real short last word ("Done.") is about as loud as the rest of the take."""
-    if ref is None or len(ref) < SAMPLE_RATE or speech_s(x, ref) >= LIVE_CUT_SPEECH_S:
+    if ref is None or len(ref) < SAMPLE_RATE:
         return False
-    level = np.percentile(_frame_rms(ref), 95) * 10 ** (-FAINT_DB / 20)
-    return int((_frame_rms(x) > level).sum()) * FRAME < FAINT_LOUD_S * SAMPLE_RATE
+    return faint_level(x, take_level(ref), ref)
+
+
+def take_level(x: np.ndarray) -> float:
+    """A take's speech level: the 95th percentile of its 20 ms frame RMS."""
+    rms = _frame_rms(x)
+    return float(np.percentile(rms, 95)) if len(rms) else 0.0
+
+
+def usual_update(old: float | None, piece: np.ndarray) -> float:
+    """The usual speech level after a piece that gave text: a running mean of take_level, so a new
+    gain or mic is learnt within a few pieces."""
+    level = take_level(piece)
+    return level if not old else (1 - USUAL_ALPHA) * old + USUAL_ALPHA * level
+
+
+def faint_level(x: np.ndarray, level: float | None, ref: np.ndarray | None = None) -> bool:
+    """faint() against a given speech level. With no speech yet in the take (its first piece, or a
+    take of silence), `level` is the user's usual speech level remembered from earlier takes
+    (`usual_level`, 1.047): up to 1.046 such a piece had nothing to be compared with, and a take of
+    breath or room noise came out as "My mother's mother" (2026-11-27, maintaining.md, "Stray words
+    at the start", "Again: a take with no speech")."""
+    if not level or len(x) < FRAME or speech_s(x, ref) >= LIVE_CUT_SPEECH_S:
+        return False
+    line = level * 10 ** (-FAINT_DB / 20)
+    return int((_frame_rms(x) > line).sum()) * FRAME < FAINT_LOUD_S * SAMPLE_RATE
 
 
 def shorten_silences(x: np.ndarray, ref: np.ndarray | None = None, sp: np.ndarray | None = None) -> np.ndarray:
@@ -616,13 +641,15 @@ class Engine:
         return x
 
     def transcribe_after(self, samples: np.ndarray, context: np.ndarray | None, vad: bool = False,
-                         record: bool = True, ref: np.ndarray | None = None) -> tuple[str, bool | None]:
+                         record: bool = True, ref: np.ndarray | None = None,
+                         usual: float | None = None) -> tuple[str, bool | None]:
         """A live piece decoded after the last CONTEXT_S of `context` (the audio just before it):
         (text of the piece alone, whether the model ended the context with a sentence mark). Falls
         back to transcribe (and None) without usable context: none, no speech in it, a streaming
         model, or a piece long enough to be split. `ref`: the take before this piece (voice
-        detection judges the piece by the take's levels, REF_S)."""
-        if vad and faint(samples, ref):
+        detection judges the piece by the take's levels, REF_S). `usual`: the user's usual speech
+        level, passed while the take has given no text yet (faint_level)."""
+        if vad and (faint(samples, ref) or faint_level(samples, usual, ref)):
             return "", None
         ctx = None if context is None else context[-int(CONTEXT_S * SAMPLE_RATE):]
         if (ctx is None or self.streaming or len(samples) > (PIECE_S + LIVE_FORCE_S) * SAMPLE_RATE

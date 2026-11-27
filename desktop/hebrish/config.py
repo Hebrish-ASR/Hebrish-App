@@ -24,6 +24,7 @@ else:
 CONFIG_PATH = CONFIG_DIR / "config.json"
 STATE_PATH = DATA_DIR / "state.json"          # active model, last update checks, dismissed app version
 HISTORY_PATH = DATA_DIR / "history.json"     # 0.6.x history (last 50); imported into HISTORY_DB once
+LEVELS_PATH = DATA_DIR / "levels.json"       # 1.047: usual speech level per mic (engine.usual_update), live worker only
 HISTORY_DB = DATA_DIR / "history.db"         # 0.7.0+: every transcript (hebrish.history)
 MODELS_DIR = DATA_DIR / "models"            # models/<catalogue id>/<version>-<sha12>/
 CATALOGUE_CACHE = DATA_DIR / "catalogue-v2.json"   # last shared/catalogue.json fetched (0.6.0+)

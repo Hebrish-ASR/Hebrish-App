@@ -495,6 +495,19 @@ root; `DRY_RUN=1` first). It uploads the feed (feed files last), `apps/windows/H
 (`files.windows`, which `hebrish.app/get/windows` follows) and the zip (`files.windows_zip`). The Store: upload the
 `msix` artifact in Partner Center as a new submission.
 
+### Microsoft Store updates (2026-11-27)
+
+The first Store submission (MSIX, product id `9N2TV8HPQ6LH`, listing https://apps.microsoft.com/detail/9n2tv8hpq6lh) was
+certified and published on 2026-11-18. Later versions don't need a hand upload: the `store` job in
+`.github/workflows/desktop.yml` runs after `promote` on every stable promotion and submits the `msix` artifact with the
+Microsoft Store Developer CLI (`microsoft/microsoft-store-apppublisher@v1.1`, `msstore publish <msix> -id <product id>`).
+Microsoft still certifies each update (automatic for a full-trust MSIX like this, usually hours, up to a few days), so
+the Store can trail the Velopack installer. Setup, once: a Microsoft Entra app registration, added in Partner Center →
+Account settings → User management → Microsoft Entra applications with the **Manager** role, and repository secrets
+`MSSTORE_TENANT_ID`, `MSSTORE_SELLER_ID`, `MSSTORE_CLIENT_ID`, `MSSTORE_CLIENT_SECRET` (optional variable
+`MSSTORE_PRODUCT_ID`). Without the secrets the job prints a notice and the msix is uploaded by hand as before.
+Not yet run (I): no secrets set on 2026-11-27.
+
 ## AppImage (B-80, 2026-10-31, first in 1.017)
 
 One file for Linux beyond Debian/Ubuntu (R-2026-10-31-8). Build: `desktop/build-appimage.sh`,
@@ -2812,6 +2825,23 @@ This is one cause of stray words, and room noise passing voice detection is anot
 **Measured** (62 takes, replaying `live_cut` at a 6 s interval and 0.5 s steps): live pieces 134 to 112, pieces with under 1 s of speech 25 to 0, mean 4.5 to 5.2 s, longest 16.4 to 21.0 s. `faint()` on the app's recorded pieces skips 4, all of which had decoded to nothing. The two failed openings are no longer cut alone. **Not measured:** word errors, live latency, and the end-of-take case on a real recording (no audio of one was kept).
 
 **Wrong turns:** a breath added in front of a sentence does not trigger it (54 takes, 0 hits); raising the Noise filter; a training fix.
+
+### Again: a take with no speech, and the first piece (1.047, 2026-11-27)
+
+**Symptom:** after 1.046 the opening hallucination was rarer (history audit, rate per 1,000 takes: Sabich v5.3 14.6 and v5.4 17.8 on 1.042; v5.5 6.5, v5.6 and v5.7 0, v5.8 7.0 on 1.046) but not gone. The 1.046 cases left: a 19.5 s take whose whole text was "My mother's mother", a 6-minute take of no speech that wrote it four times, and one at the start of a real take.
+
+**Cause:** `faint()` compares a piece with the take's speech level so far, so it only ever applied *after* speech. A take's first piece, and every piece of a take with no speech in it, had nothing to be compared with (`ref` empty, or `ref` all room noise, whose 95th percentile is the noise itself). Silero still passed breath and room noise there, because each piece is scaled to `PEAK` by itself.
+
+**Fix:** the app remembers the user's usual speech level per microphone (`LEVELS_PATH`, `levels.json` in the data folder: mic name to the running mean of `take_level` of pieces that gave text, `engine.usual_update`, weight `USUAL_ALPHA` 0.2; English takes only; written by the live worker at the end of a take). Until a take has given text, `transcribe_after` also skips a piece that `faint_level` finds faint against that usual level: under 1 s of speech frames and almost nothing within 18 dB of the usual level. With nothing remembered yet (a new install or a new mic) the rule is off, as before. `FAINT_LOUD_S` went from 0.06 to 0.08 s (3 to 4 frames): one known breath opening had exactly 3 loud frames.
+
+**Measured** (the 62 maintainer takes of 2026-11-23, usual level = their median, -17.7 dBFS; Silero at Noise filter 60; replay scripts not kept, they read private audio):
+- Pieces skipped: 4 with 1.046 (all had decoded to nothing anyway), 6 with 1.047. The 2 new ones are the two known breath openings ("My mother's mother", 1.1 s; "My mother's majority of the majority", 2.7 s). No piece that gave real text is skipped.
+- Not caught: two openings decoded "Mm-hmm." and "My name is Rem", within 6-15 dB of the usual level with 0.6-0.8 s of speech frames. A real short opening ("Yes, that's a ripoff.", 0.9 s of speech, 0.2 s loud) sits in the same range, so no level rule separates them; left alone.
+- Silent takes: the quiet stretches (20 dB+ under the take's speech level) of the same takes, 224 s, cut into eleven 20 s takes and run through `live_split`: 5 of 11 reached the decoder with 1.046, 2 with 1.047. Of the 2, one had 2.0 s of Silero "speech" with every frame 24 dB+ under the usual level (the per-piece `PEAK` scaling; not changed, see below).
+
+**Not measured:** word errors (no ASR is run on the maintainer laptop), real silent takes (no audio of one was kept: maintainer mode was off), a mic swap or gain change in real use. **Risk:** a short reply ("Okay.") said much more quietly than usual into a mic whose gain dropped by 18 dB or more, as the first words of a take, would be skipped; any piece with 1 s or more of speech is never skipped.
+
+**Considered, not done:** feeding Silero the usual level as its scaling floor (`speech_frames(floor=...)`) would catch the remaining silent takes, but it changes voice detection for every piece and needs a decode run to check against quiet real speech. A text filter for the known phrases: never, some are real sentences. Android: the same rule (1.038, `VoiceDetection.usualLevel`).
 
 ## Noise filter (B-92, 2026-11-05)
 

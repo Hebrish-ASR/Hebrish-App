@@ -53,6 +53,7 @@ Newest first.
 
 | Date | Platform | Symptom | Status | Entry |
 | --- | --- | --- | --- | --- |
+| 2026-11-27 | desktop, android | "My mother's mother" still from takes with no speech and from a take's first piece (nothing to compare it with) | fixed in desktop 1.047, Android 1.038 | [2026-11-27-silent-take-invented-phrases.md](2026-11-27-silent-take-invented-phrases.md) |
 | 2026-11-26 | desktop-linux | "Model not loaded" on every take: a power cut 1 s after a verified download left the encoder truncated | fixed, unreleased | [2026-11-26-truncated-encoder-after-power-loss.md](2026-11-26-truncated-encoder-after-power-loss.md) |
 | 2026-11-25 | desktop-linux | Every paste fails with "Install wl-clipboard and xclip" although both are installed (autostarted before the display variables existed) | fixed, unreleased | [2026-11-25-autostart-before-display.md](2026-11-25-autostart-before-display.md) |
 | 2026-11-23 | desktop | Invented phrases ("My mother's mother") from breaths and pauses | fixed in 1.046 (Android port: 1.037) | [2026-11-23-breath-pieces-invented-phrases.md](2026-11-23-breath-pieces-invented-phrases.md) |

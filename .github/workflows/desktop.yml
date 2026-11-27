@@ -336,3 +336,44 @@ jobs:
           gh release view "$TAG" >/dev/null   # a beta release must exist: stable promotes, never creates
           gh release upload "$TAG" dist/*.AppImage dist/*.zip dist/velopack/*Setup.exe --clobber
           gh release edit "$TAG" --title "Hebrish for desktop ${TAG#desktop-} (stable)"
+
+  store:
+    # Microsoft Store (2026-11-27): the first submission was certified and published by hand
+    # (Partner Center, 2026-11-18, product 9N2TV8HPQ6LH). From then on every stable promotion submits
+    # the same MSIX the windows job built and self-tested, through the Microsoft Store Developer CLI
+    # (learn.microsoft.com/windows/apps/publish/msstore-dev-cli/github-actions). Each update still goes
+    # through Microsoft's automatic certification before it reaches users; nothing is uploaded by hand.
+    # Needs a Microsoft Entra app added to Partner Center with the Manager role, and the repository
+    # secrets MSSTORE_TENANT_ID, MSSTORE_SELLER_ID, MSSTORE_CLIENT_ID, MSSTORE_CLIENT_SECRET. Without
+    # them the job says so and does nothing (desktop/docs/maintaining.md, "Microsoft Store updates").
+    needs: promote
+    if: github.event_name == 'workflow_dispatch' && inputs.stable && inputs.tag != ''
+    runs-on: windows-latest
+    defaults: { run: { shell: pwsh } }
+    env:
+      MSSTORE_TENANT_ID: "${{ secrets.MSSTORE_TENANT_ID }}"
+      MSSTORE_SELLER_ID: "${{ secrets.MSSTORE_SELLER_ID }}"
+      MSSTORE_CLIENT_ID: "${{ secrets.MSSTORE_CLIENT_ID }}"
+      MSSTORE_CLIENT_SECRET: "${{ secrets.MSSTORE_CLIENT_SECRET }}"
+      PRODUCT_ID: "${{ vars.MSSTORE_PRODUCT_ID || '9N2TV8HPQ6LH' }}"
+    steps:
+      - name: Credentials present?
+        id: creds
+        run: |
+          if ($env:MSSTORE_TENANT_ID -and $env:MSSTORE_SELLER_ID -and $env:MSSTORE_CLIENT_ID -and $env:MSSTORE_CLIENT_SECRET) {
+            "ok=true" | Out-File -Append $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "::notice::Microsoft Store secrets not set: upload the msix artifact in Partner Center by hand."
+            "ok=false" | Out-File -Append $env:GITHUB_OUTPUT
+          }
+      - uses: actions/download-artifact@v4
+        if: steps.creds.outputs.ok == 'true'
+        with: { name: msix, path: store }
+      - uses: microsoft/microsoft-store-apppublisher@v1.1
+        if: steps.creds.outputs.ok == 'true'
+      - name: Submit to the Microsoft Store
+        if: steps.creds.outputs.ok == 'true'
+        run: |
+          msstore reconfigure --tenantId $env:MSSTORE_TENANT_ID --sellerId $env:MSSTORE_SELLER_ID `
+            --clientId $env:MSSTORE_CLIENT_ID --clientSecret $env:MSSTORE_CLIENT_SECRET
+          msstore publish "$PWD\store\Hebrish.msix" -id $env:PRODUCT_ID

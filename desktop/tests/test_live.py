@@ -275,7 +275,7 @@ def _run_worker(texts, jobs, cfg=None, enter_at=None, hold=False, late=None, sen
     it = iter(texts)
     calls = iter(range(10_000))
 
-    def decode(s, c, vad=False, ref=None):
+    def decode(s, c, vad=False, ref=None, usual=None):
         if next(calls) == enter_at:
             ctl.hotkeys.holding = hold
             Controller._send_pressed(ctl, hold)
@@ -687,3 +687,18 @@ def test_faint_tail_is_not_decoded():
     assert faint(np.concatenate([silence(0.3), speech(0.6) * 0.04, silence(0.3)]), take)      # 28 dB under the take
     assert not faint(np.concatenate([silence(0.3), speech(0.3), silence(0.3)]), take)         # a short real last word
     assert not faint(speech(0.4) * 0.04, None)                                                # nothing to compare with
+
+
+def test_first_piece_judged_by_usual_level():
+    """1.047: before a take has given text there is no take level, so a breath or room noise
+    (a whole silent take) is judged by the usual level remembered for the mic."""
+    from hebrish.engine import faint_level, take_level, usual_update
+    usual = take_level(np.concatenate([speech(4.0), silence(1.0)]))
+    assert faint_level(np.concatenate([silence(0.5), speech(0.6) * 0.04, silence(0.5)]), usual)   # 28 dB under
+    assert not faint_level(np.concatenate([silence(0.3), speech(0.4), silence(0.3)]), usual)      # "Okay." at the usual level
+    assert not faint_level(np.concatenate([silence(0.3), speech(2.0) * 0.1, silence(0.3)]), usual)    # a long quiet passage (20 dB under) has over 1 s of speech: kept
+    assert not faint_level(speech(0.4) * 0.04, None)             # nothing remembered yet
+    assert not faint_level(speech(0.4) * 0.04, 0.0)
+    loud = speech(3.0) * 2
+    assert usual < usual_update(usual, loud) < take_level(loud)  # learns a new gain gradually
+    assert usual_update(None, loud) == take_level(loud)

@@ -56,8 +56,8 @@ object VoiceDetection {
 
     /**
      * True when a piece after speech holds only breath or murmur (desktop engine.faint, 1.046): under 1 s of
-     * speech frames and under [FAINT_LOUD_FRAMES] frames within 18 dB of [takeLevel], the take's speech level so far (0 = none yet,
-     * so nothing to compare with). A real short last word ("Done.") is about as loud as the rest of the take.
+     * speech frames and under [FAINT_LOUD_FRAMES] frames within 18 dB of [takeLevel], the take's speech level so far, or before the
+     * take's first text the [usualLevel] (0 = nothing to compare with). A real short last word ("Done.") is about as loud as the rest of the take.
      */
     fun faint(samples: FloatArray, takeLevel: Float): Boolean {
         val rms = frameRms(samples)
@@ -71,7 +71,24 @@ object VoiceDetection {
         return rms.count { it > line } < FAINT_LOUD_FRAMES
     }
 
+    /**
+     * The usual speech level (the [speechLevel] of pieces that gave text, a running mean), for pieces
+     * before a take's first text: up to 1.037 a take's first piece, or a take of breath and room noise,
+     * had nothing to be compared with and could come out as "My mother's mother" (desktop 1.047,
+     * engine.faint_level, 2026-11-27). 0 = nothing learnt yet.
+     */
+    fun usualLevel(ctx: Context) = sp(ctx).getFloat("usual_speech_level", 0f)
+
+    /** Learn from a piece that gave text: [USUAL_ALPHA] of the newest, so a new mic or gain is learnt within a few pieces. */
+    fun learnLevel(ctx: Context, samples: FloatArray) {
+        val level = speechLevel(samples)
+        if (level <= 0f) return
+        val old = usualLevel(ctx)
+        sp(ctx).edit().putFloat("usual_speech_level", if (old <= 0f) level else old * (1 - USUAL_ALPHA) + level * USUAL_ALPHA).apply()
+    }
+
+    private const val USUAL_ALPHA = 0.2f
     private const val FAINT_RATIO = 0.12589f      // -18 dB
     private const val FAINT_MAX_SPEECH_FRAMES = 50   // 1 s
-    private const val FAINT_LOUD_FRAMES = 3       // 0.06 s
+    private const val FAINT_LOUD_FRAMES = 4       // 0.08 s (0.06 up to 1.037: a breath at exactly 3 frames passed; desktop 1.047)
 }

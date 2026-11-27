@@ -2516,3 +2516,12 @@ streaming takes (Shakshuka, one stream, no pieces) and a first piece (nothing to
 
 **Confirmed:** the code paths, by reading; unit tests in `VoiceDetectionTest`. **Not confirmed:** no Android recording of the
 problem exists, and it has not been tried on a phone.
+
+### The first piece and takes with no speech (1.038, 2026-11-27)
+
+Port of desktop 1.047 (`desktop/docs/maintaining.md`, "Again: a take with no speech, and the first piece"). `faint` had
+nothing to compare a take's first piece with, nor any piece of a take with no speech. `VoiceDetection.usualLevel` now keeps
+the usual speech level (prefs `usual_speech_level`, a running mean of `speechLevel` of pieces that gave text, weight 0.2,
+English takes only, `learnLevel` from `TakeDecoder.heard`); `TakeDecoder.background` uses it until the take has a level of
+its own. One value for all mics (desktop keeps one per mic). `FAINT_LOUD_FRAMES` 3 to 4 (0.08 s), as desktop. Measured on
+desktop recordings only; compiled in CI, not tried on a phone.
